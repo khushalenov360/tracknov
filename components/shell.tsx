@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bell, FileText, FolderKanban, Medal, Users } from "lucide-react";
+import { GlobalCopilot } from "@/components/assistant/global-copilot";
 import { Badge } from "@/components/ui/badge";
+import { env } from "@/lib/env";
 import { roleLabels } from "@/lib/constants";
 import type { MemberRole } from "@/lib/types";
 
@@ -82,6 +84,7 @@ export function Shell({
         </div>
         {children}
       </main>
+      <GlobalCopilot enabled={env.aiReady} role={role} title={title} description={description} />
     </div>
   );
 }

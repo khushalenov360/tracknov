@@ -45,6 +45,11 @@
 - Document names in the Documents table are now secure hyperlinks:
   - each row opens the underlying file in a separate screen through signed URL routing
 - Project workspace now includes the AI Validation Assistant panel in the review sidebar.
+- A global AI Copilot is now mounted in the shared shell:
+  - available on all tabs/pages using `Shell` (dashboard, projects, documents, credits, team, project workspace)
+  - collapsible floating side window with persisted collapse state
+  - per-tab chat history persisted by route path
+  - uses existing `/api/assistant` endpoint with Gemini/fallback behavior
 - A Bhavarkua ingestion artifact is ready:
   - `BHAVARKUA_UPLOAD_MAP.md` generated from the submitted ZIP against IGBC catalog expectations
   - generation script: `scripts/build-bhavarkua-upload-map.ps1`

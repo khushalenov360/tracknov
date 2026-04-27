@@ -1,4 +1,10 @@
-export type AssistantSurface = "dashboard" | "project";
+export type AssistantSurface =
+  | "dashboard"
+  | "project"
+  | "projects"
+  | "documents"
+  | "credits"
+  | "team";
 
 export type AssistantContext = {
   surface: AssistantSurface;
@@ -20,8 +26,8 @@ function formatList(items: string[]) {
 
 export function buildAssistantSystemPrompt(context: AssistantContext) {
   return [
-    "You are HaritaGuide, the embedded AI assistant for HaritaDocs.",
-    "Your job is to help consultants decide the next best action in a project workspace.",
+    "You are Tracknov Copilot, the embedded AI assistant for Tracknov.",
+    "Your job is to help teams decide the next best operational action in certification workflows.",
     "Use only the context provided below. Do not claim access to data that is not included.",
     "Be concise, practical, and operational.",
     "Start with the most important next step.",
