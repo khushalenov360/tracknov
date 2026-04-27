@@ -51,6 +51,21 @@ export type DocumentRecord = {
   uploaded_at: string;
 };
 
+export type DocumentActivityAction = "uploaded" | "metadata_updated" | "status_updated" | "deleted";
+
+export type DocumentActivityLog = {
+  id: string;
+  document_id: string;
+  project_id: string;
+  action: DocumentActivityAction;
+  actor_id?: string | null;
+  actor_role?: string | null;
+  actor_name?: string | null;
+  summary: string;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
 export type RemarkRecord = {
   id: string;
   credit_id: string;
@@ -157,6 +172,8 @@ export type DocumentLibraryRecord = DocumentRecord & {
   can_edit_status?: boolean;
   can_reject?: boolean;
   can_delete?: boolean;
+  can_view_logs?: boolean;
+  activity_logs?: DocumentActivityLog[];
 };
 
 export type TeamMemberRecord = {

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { documentStatuses } from "@/lib/constants";
 import { getDashboardProjects, getDocumentLibrary, getDocumentUploadOptions } from "@/lib/data";
+import { formatDateTimeIST } from "@/lib/utils";
 
 export default async function DocumentsPage({
   searchParams,
@@ -144,7 +145,7 @@ export default async function DocumentsPage({
                       ) : <span className="text-[var(--color-text-tertiary)]">Credit mapping required</span>}
                     </td>
                     <td className="px-3 py-3 text-[var(--color-text-secondary)]">
-                      {new Date(document.uploaded_at).toLocaleDateString("en-IN")}
+                      {formatDateTimeIST(document.uploaded_at)}
                     </td>
                     <td className="px-3 py-3">
                       <Badge className={status.className}>{status.enovaitLabel}</Badge>
@@ -250,6 +251,30 @@ export default async function DocumentsPage({
                                   Delete document
                                 </Button>
                               </form>
+                            ) : null}
+
+                            {document.can_view_logs ? (
+                              <section className="border-t border-[var(--color-border)] pt-3">
+                                <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Upload/change log (IST)
+                                </p>
+                                <div className="mt-2 space-y-2">
+                                  {document.activity_logs?.length ? (
+                                    document.activity_logs.slice(0, 8).map((log) => (
+                                      <div key={log.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2">
+                                        <p className="text-[11px] text-[var(--color-text-primary)]">{log.summary}</p>
+                                        <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                                          {formatDateTimeIST(log.created_at)} / {log.actor_name ?? log.actor_role ?? "System"}
+                                        </p>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-[11px] text-[var(--color-text-tertiary)]">
+                                      No audit entries yet for this document.
+                                    </p>
+                                  )}
+                                </div>
+                              </section>
                             ) : null}
                           </div>
                         </details>

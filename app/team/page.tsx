@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, getDashboardProjects, getTeamMembers } from "@/lib/data";
 import { roleLabels } from "@/lib/constants";
 import { canManageTeamFromRole } from "@/lib/rbac";
+import { formatDateTimeIST } from "@/lib/utils";
 
 const roleTone = {
   super_user: "border border-[#0b1f33] bg-[#0b1f33] text-white",
@@ -113,7 +114,7 @@ export default async function TeamPage() {
                     {member.project_names.length ? member.project_names.join(", ") : "No project membership"}
                   </td>
                   <td className="px-3 py-3 text-[var(--color-text-secondary)]">
-                    {new Date(member.created_at).toLocaleDateString("en-IN")}
+                    {formatDateTimeIST(member.created_at)}
                   </td>
                 </tr>
               )) : (

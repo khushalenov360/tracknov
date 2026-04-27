@@ -13,7 +13,7 @@ import { categoryMeta, creditStatuses } from "@/lib/constants";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
 import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
-import { pct } from "@/lib/utils";
+import { formatDateTimeIST, pct } from "@/lib/utils";
 
 type PageProps = {
   params: { id: string };
@@ -625,7 +625,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     >
                       <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
                         <span>{remark.role}</span>
-                        <span>{new Date(remark.created_at).toLocaleDateString()}</span>
+                        <span>{formatDateTimeIST(remark.created_at)}</span>
                       </div>
                       <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{remark.body}</p>
                     </div>

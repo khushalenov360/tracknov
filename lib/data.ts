@@ -12,6 +12,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  DocumentActivityLog,
   CreditWorkspace,
   CurrentUser,
   DocumentLibraryRecord,
@@ -687,14 +688,53 @@ export async function getDocumentLibrary(filters: {
     (memberships ?? []).map((membership: any) => [membership.project_id, normalizeRole(membership.role)]),
   );
 
+  const documentRoleView = rows.map((document) => {
+    const projectRole =
+      currentUser?.role === "super_user"
+        ? "super_user"
+        : roleByProjectId.get(document.project_id) ?? currentUser?.role ?? "consultant";
+    return {
+      document,
+      projectRole,
+      canViewLogs: projectRole === "super_user" || projectRole === "project_admin",
+    };
+  });
+
+  const logDocumentIds = documentRoleView.filter((item) => item.canViewLogs).map((item) => item.document.id);
+  const { data: activityLogs } = logDocumentIds.length
+    ? await client
+        .from("document_activity_logs")
+        .select("id, document_id, project_id, action, actor_id, actor_role, summary, details, created_at")
+        .in("document_id", logDocumentIds)
+        .order("created_at", { ascending: false })
+        .limit(400)
+    : { data: [] };
+  const activityRows = (activityLogs ?? []) as Array<DocumentActivityLog>;
+  const activityActorIds = Array.from(new Set(activityRows.map((log) => log.actor_id).filter(Boolean))) as string[];
+  const { data: activityActorProfiles } = activityActorIds.length
+    ? await client.from("profiles").select("user_id, full_name, email").in("user_id", activityActorIds)
+    : { data: [] };
+  const activityActorsById = new Map(
+    (activityActorProfiles ?? []).map((profile: any) => [
+      profile.user_id,
+      profile.full_name ?? profile.email ?? "Project member",
+    ]),
+  );
+  const activityByDocumentId = new Map<string, DocumentActivityLog[]>();
+  for (const row of activityRows) {
+    const existing = activityByDocumentId.get(row.document_id) ?? [];
+    existing.push({
+      ...row,
+      actor_name: row.actor_id ? activityActorsById.get(row.actor_id) ?? null : null,
+      details: (row.details ?? {}) as Record<string, unknown>,
+    });
+    activityByDocumentId.set(row.document_id, existing);
+  }
+
   return filterDocuments(
-    rows.map((document) => {
+    documentRoleView.map(({ document, projectRole, canViewLogs }) => {
       const project = projectsById.get(document.project_id);
       const credit = document.credit_id ? creditsById.get(document.credit_id) : null;
-      const projectRole =
-        currentUser?.role === "super_user"
-          ? "super_user"
-          : roleByProjectId.get(document.project_id) ?? currentUser?.role ?? "consultant";
       const canEditStatus = canEditDocumentStatusAtAnyStage(projectRole);
       const canEditMetadata =
         canEditStatus ||
@@ -718,6 +758,8 @@ export async function getDocumentLibrary(filters: {
           projectRole === "super_user" ||
           projectRole === "super_admin" ||
           projectRole === "project_admin",
+        can_view_logs: canViewLogs,
+        activity_logs: canViewLogs ? activityByDocumentId.get(document.id) ?? [] : [],
       } satisfies DocumentLibraryRecord;
     }),
     filters,

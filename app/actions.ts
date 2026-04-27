@@ -10,7 +10,13 @@ import {
   updateProjectForCurrentUser,
 } from "@/lib/data";
 import { env } from "@/lib/env";
-import { canCreateProjects, canDeleteProjects, canEditDocumentStatusAtAnyStage, canEditOwnDocumentBeforeFinalApproval } from "@/lib/rbac";
+import {
+  canCreateProjects,
+  canDeleteProjects,
+  canEditDocumentStatusAtAnyStage,
+  canEditOwnDocumentBeforeFinalApproval,
+  canUploadProjectDocuments,
+} from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +28,9 @@ export type TeamMemberActionState = {
   status: "idle" | "success" | "error";
   message: string;
 };
+
+const uploadAllowedExtensions = [".pdf", ".docx", ".png", ".jpg", ".jpeg"] as const;
+const uploadMaxBytes = 10 * 1024 * 1024;
 
 async function getActorProjectRole(projectId: string) {
   const user = await getCurrentUser();
@@ -42,6 +51,37 @@ async function getActorProjectRole(projectId: string) {
     .maybeSingle();
 
   return membership?.role ?? user.role;
+}
+
+async function logDocumentActivity(
+  writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
+  {
+    documentId,
+    projectId,
+    action,
+    actorId,
+    actorRole,
+    summary,
+    details = {},
+  }: {
+    documentId?: string | null;
+    projectId: string;
+    action: "uploaded" | "metadata_updated" | "status_updated" | "deleted";
+    actorId?: string | null;
+    actorRole?: string | null;
+    summary: string;
+    details?: Record<string, unknown>;
+  },
+) {
+  await writer.from("document_activity_logs").insert({
+    document_id: documentId ?? null,
+    project_id: projectId,
+    action,
+    actor_id: actorId ?? null,
+    actor_role: actorRole ?? null,
+    summary,
+    details,
+  });
 }
 
 export async function createProjectAction(formData: FormData) {
@@ -175,7 +215,7 @@ export async function setDocumentStatusAction(formData: FormData) {
   const actorProjectRole = projectId ? await getActorProjectRole(projectId) : user?.role ?? null;
   const { data: currentDocument } = await client
     .from("documents")
-    .select("status, project_id")
+    .select("id, status, project_id")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -202,6 +242,15 @@ export async function setDocumentStatusAction(formData: FormData) {
     if (error) {
       return;
     }
+    await logDocumentActivity(writer, {
+      documentId,
+      projectId,
+      action: "status_updated",
+      actorId: user?.id ?? null,
+      actorRole,
+      summary: `Moved document to Project Admin review.`,
+      details: { from_status: currentStatus, to_status: status },
+    });
 
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -225,6 +274,15 @@ export async function setDocumentStatusAction(formData: FormData) {
     if (error) {
       return;
     }
+    await logDocumentActivity(writer, {
+      documentId,
+      projectId,
+      action: "status_updated",
+      actorId: user?.id ?? null,
+      actorRole,
+      summary: `Approved document for submission pack.`,
+      details: { from_status: currentStatus, to_status: status },
+    });
 
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -250,6 +308,15 @@ export async function setDocumentStatusAction(formData: FormData) {
     if (error) {
       return;
     }
+    await logDocumentActivity(writer, {
+      documentId,
+      projectId,
+      action: "status_updated",
+      actorId: user?.id ?? null,
+      actorRole,
+      summary: `Updated review status.`,
+      details: { from_status: currentStatus, to_status: status },
+    });
 
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -274,6 +341,15 @@ export async function setDocumentStatusAction(formData: FormData) {
   if (error) {
     return;
   }
+  await logDocumentActivity(writer, {
+    documentId,
+    projectId,
+    action: "status_updated",
+    actorId: user?.id ?? null,
+    actorRole,
+    summary: `Rejected document with review note.`,
+    details: { from_status: currentStatus, to_status: status, rejection_remark: rejectionRemark },
+  });
 
   if (rejectionRemark && user) {
     await client.from("remarks").insert({
@@ -287,6 +363,96 @@ export async function setDocumentStatusAction(formData: FormData) {
 
   revalidatePath("/documents");
   pathFor(projectId).forEach((path) => revalidatePath(path));
+}
+
+export async function uploadDocumentAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  if (!env.isConfigured) {
+    return { ok: false, error: "Live workspace credentials are not configured yet." };
+  }
+
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  const file = formData.get("file");
+
+  if (!projectId || !creditId || !docCategory || !(file instanceof File)) {
+    return { ok: false, error: "Choose project, mapped credit, document type, and file." };
+  }
+
+  const fileNameLower = file.name.toLowerCase();
+  const hasAllowedExtension = uploadAllowedExtensions.some((extension) => fileNameLower.endsWith(extension));
+  if (!hasAllowedExtension) {
+    return { ok: false, error: "Unsupported file type. Upload PDF, DOCX, PNG, or JPG files only." };
+  }
+
+  if (file.size > uploadMaxBytes) {
+    return { ok: false, error: "File is too large. The limit is 10 MB. Compress and re-upload." };
+  }
+
+  const client = createClient();
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, error: "Your session expired. Sign in again." };
+  }
+  const actorProjectRole = await getActorProjectRole(projectId);
+  if (!actorProjectRole || !canUploadProjectDocuments(actorProjectRole as any)) {
+    return { ok: false, error: "You do not have upload access for this project." };
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const safeDocType = docCategory.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  const safeBaseName = baseName.replace(/[^a-z0-9_-]+/gi, "_").replace(/_+/g, "_").slice(0, 80) || "file";
+  const filePath = `${projectId}/${creditId}/${safeDocType}/${crypto.randomUUID()}-${safeBaseName}.${extension}`;
+
+  const { error: storageError } = await writer.storage.from("project-documents").upload(filePath, file, {
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  if (storageError) {
+    return { ok: false, error: storageError.message };
+  }
+
+  const { data: documentRow, error: dbError } = await writer
+    .from("documents")
+    .insert({
+      project_id: projectId,
+      credit_id: creditId,
+      uploaded_by: user.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_type: extension,
+      doc_category: docCategory,
+      notes,
+      status: "uploaded",
+    })
+    .select("id")
+    .single();
+  if (dbError || !documentRow) {
+    return { ok: false, error: dbError?.message ?? "Upload record could not be saved." };
+  }
+
+  await logDocumentActivity(writer, {
+    documentId: documentRow.id,
+    projectId,
+    action: "uploaded",
+    actorId: user.id,
+    actorRole: actorProjectRole,
+    summary: `Uploaded ${file.name} under ${docCategory}.`,
+    details: {
+      file_name: file.name,
+      doc_category: docCategory,
+      credit_id: creditId,
+      file_type: extension,
+      bytes: file.size,
+    },
+  });
+
+  revalidatePath("/documents");
+  pathFor(projectId).forEach((path) => revalidatePath(path));
+  return { ok: true };
 }
 
 export async function updateDocumentMetadataAction(formData: FormData) {
@@ -318,7 +484,7 @@ export async function updateDocumentMetadataAction(formData: FormData) {
 
   const { data: document } = await client
     .from("documents")
-    .select("id, uploaded_by, status, project_id")
+    .select("id, uploaded_by, status, project_id, credit_id, doc_category, notes")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -370,6 +536,22 @@ export async function updateDocumentMetadataAction(formData: FormData) {
   if (error) {
     return;
   }
+  await logDocumentActivity(writer, {
+    documentId,
+    projectId,
+    action: "metadata_updated",
+    actorId: user.id,
+    actorRole: actorProjectRole,
+    summary: "Updated document mapping details.",
+    details: {
+      from_credit_id: document.credit_id,
+      to_credit_id: creditId,
+      from_doc_category: document.doc_category,
+      to_doc_category: docCategory,
+      from_notes: document.notes ?? "",
+      to_notes: notes,
+    },
+  });
 
   revalidatePath("/documents");
   pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -400,13 +582,28 @@ export async function deleteDocumentAction(formData: FormData) {
 
   const { data: existing } = await client
     .from("documents")
-    .select("id, project_id")
+    .select("id, project_id, file_name, status, credit_id, doc_category")
     .eq("id", documentId)
     .maybeSingle();
 
   if (!existing || existing.project_id !== projectId) {
     return;
   }
+
+  await logDocumentActivity(writer, {
+    documentId,
+    projectId,
+    action: "deleted",
+    actorId: user.id,
+    actorRole: actorProjectRole,
+    summary: `Deleted document ${existing.file_name}.`,
+    details: {
+      file_name: existing.file_name,
+      status: existing.status,
+      credit_id: existing.credit_id,
+      doc_category: existing.doc_category,
+    },
+  });
 
   const { error } = await writer.from("documents").delete().eq("id", documentId);
   if (error) {

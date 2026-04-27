@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, UploadCloud } from "lucide-react";
-import { createClient } from "@/lib/supabase/browser";
+import { uploadDocumentAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 
 export function UploadDocumentForm({
@@ -55,33 +55,12 @@ export function UploadDocumentForm({
     setLoading(true);
     setError("");
     try {
-      const supabase = createClient();
-      const extension = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const safeDocType = docType.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
-      const baseName = file.name.replace(/\.[^.]+$/, "");
-      const safeBaseName = baseName.replace(/[^a-z0-9_-]+/gi, "_").replace(/_+/g, "_").slice(0, 80) || "file";
-      const filePath = `${projectId}/${creditId}/${safeDocType}/${crypto.randomUUID()}-${safeBaseName}.${extension}`;
-
-      const { error: storageError } = await supabase.storage
-        .from("project-documents")
-        .upload(filePath, file, { upsert: false });
-
-      if (storageError) {
-        throw storageError;
-      }
-
-      const { error: dbError } = await supabase.from("documents").insert({
-        credit_id: creditId,
-        project_id: projectId,
-        file_name: file.name,
-        file_path: filePath,
-        file_type: extension,
-        doc_category: docType,
-        status: "uploaded",
-      });
-
-      if (dbError) {
-        throw dbError;
+      formData.set("project_id", projectId);
+      formData.set("credit_id", creditId);
+      formData.set("doc_category", docType);
+      const result = await uploadDocumentAction(formData);
+      if (!result.ok) {
+        throw new Error(result.error ?? "Upload failed");
       }
 
       form.reset();
