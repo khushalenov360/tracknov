@@ -152,6 +152,11 @@ export type DocumentLibraryRecord = DocumentRecord & {
   credit_code?: string | null;
   credit_name?: string | null;
   uploaded_by_name?: string | null;
+  project_role?: MemberRole;
+  can_edit_metadata?: boolean;
+  can_edit_status?: boolean;
+  can_reject?: boolean;
+  can_delete?: boolean;
 };
 
 export type TeamMemberRecord = {

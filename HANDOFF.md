@@ -38,6 +38,16 @@
   - `rejected` -> excluded with remark trail
 - A new migration was added for the document review workflow:
   - `supabase/migrations/0007_document_review_workflow.sql`
+- Documents tab editing was expanded with role-aware controls:
+  - contributors can edit only their own document mapping before final approval
+  - `super_user`, `super_admin`, and `project_admin` can override status at any stage
+  - `super_user`, `super_admin`, and `project_admin` can delete documents from Documents tab
+- Document names in the Documents table are now secure hyperlinks:
+  - each row opens the underlying file in a separate screen through signed URL routing
+- Project workspace now includes the AI Validation Assistant panel in the review sidebar.
+- A Bhavarkua ingestion artifact is ready:
+  - `BHAVARKUA_UPLOAD_MAP.md` generated from the submitted ZIP against IGBC catalog expectations
+  - generation script: `scripts/build-bhavarkua-upload-map.ps1`
 - Obvious test projects named `Test` were deleted from the live Supabase project.
 
 ## What still needs to be done next
@@ -54,6 +64,7 @@ The known blocking login-page build issue is fixed. The next live verification p
 - confirm Project Admin can include it for submission pack
 - confirm uploaded file opens from the UI
 - confirm no further storage/database errors appear for larger PDFs
+- confirm document delete is visible and works for `super_user`, `super_admin`, and `project_admin`
 
 ### 2. Re-apply latest migration to live Supabase if needed
 
@@ -80,7 +91,15 @@ This has not been implemented yet, but it is the next practical improvement for 
 - warn on oversized PDFs and request optimized uploads
 - optionally add a server-side compression pipeline later if needed
 
-### 4. Clean package/app identity
+### 4. Use Bhavarkua upload map for structured ingestion
+
+Use `BHAVARKUA_UPLOAD_MAP.md` as the pre-ingestion checklist:
+
+- `Present`: ready to map/upload directly
+- `Present but not structured`: evidence exists but folder pattern should be normalized
+- `Missing`: confirm NA vs pending evidence before review stage
+
+### 5. Clean package/app identity
 
 The product is now Tracknov, but there are still legacy Harita package/repo strings in places like:
 
@@ -93,18 +112,23 @@ This is cosmetic/cleanup, not a runtime blocker.
 ## Files changed in this handoff batch
 
 - `app/actions.ts`
+- `app/api/documents/[id]/route.ts`
+- `app/documents/page.tsx`
 - `app/projects/[id]/page.tsx`
 - `app/projects/page.tsx`
 - `app/team/page.tsx`
+- `lib/types.ts`
 - `lib/data.ts`
 - `lib/rbac.ts`
 - `app/login/page.tsx`
 - `components/project/general-upload-document-form.tsx`
 - `components/project/upload-document-form.tsx`
+- `BHAVARKUA_UPLOAD_MAP.md`
+- `scripts/build-bhavarkua-upload-map.ps1`
 - `supabase/migrations/0005_project_rbac.sql`
 - `supabase/migrations/0006_security_definer_membership_helpers.sql`
 - `supabase/migrations/0007_document_review_workflow.sql`
-- `handoff.md`
+- `HANDOFF.md`
 
 ## Files intentionally not meant for commit
 

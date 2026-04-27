@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Circle, Download, FileWarning, ShieldCheck } from "lucide-react";
 import { addRemarkAction, setCreditStateAction, setDocumentStatusAction } from "@/app/actions";
+import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import type { AssistantContext } from "@/lib/assistant";
 import { categoryMeta, creditStatuses } from "@/lib/constants";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
@@ -67,6 +69,52 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const canUpload = canUploadProjectDocuments(workspace.userRole);
   const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
   const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const reviewableDocuments = selectedCredit.documents.filter((document) =>
+    canOwnerReview ? document.status === "uploaded" : canFinalReview ? document.status === "owner_approved" : false,
+  );
+  const selectedReviewDocument = reviewableDocuments[0] ?? selectedCredit.documents[0] ?? null;
+  const aiFacts = [
+    `Selected credit: ${mandatoryCode(selectedCredit.credit_code, selectedCredit.is_mandatory)} ${selectedCredit.credit_name}.`,
+    `Required document types: ${
+      selectedCredit.documents_required.filter((doc) => doc.required).map((doc) => doc.label).join(", ") || "none"
+    }.`,
+    `Uploaded files on this credit: ${
+      selectedCredit.documents.map((document) => `${document.file_name} (${document.status})`).join(", ") || "none"
+    }.`,
+    `Current user role: ${workspace.userRole}.`,
+    canFinalReview
+      ? "Project Admin final approval is required before a document can be included in the submission pack."
+      : canOwnerReview
+        ? "Project Owner reviews first and forwards valid files to Project Admin."
+        : "This user can inspect the validation context but is not the final approver.",
+  ];
+  if (selectedReviewDocument?.notes) {
+    aiFacts.push(`Current document notes: ${selectedReviewDocument.notes}`);
+  }
+  if (selectedCredit.remarks[0]?.body) {
+    aiFacts.push(`Latest remark: ${selectedCredit.remarks[0].body}`);
+  }
+  const aiNextSteps = [
+    selectedReviewDocument
+      ? `Validate whether ${selectedReviewDocument.file_name} matches the required checklist for ${selectedCredit.credit_name}.`
+      : `Request the first required file for ${selectedCredit.credit_name}.`,
+    selectedCredit.documents_required
+      .filter((doc) => doc.required && !selectedCredit.documents.some((file) => file.doc_category === doc.type))
+      .map((doc) => `Missing required file type: ${doc.label}.`)[0] ?? "All required document types have at least one uploaded file.",
+    canFinalReview
+      ? "If the evidence is complete and relevant, include it in the submission pack. Otherwise add a precise rejection note."
+      : "If the evidence is relevant, forward it to Project Admin. Otherwise reject it with a precise reason.",
+  ];
+  const validationAssistantContext: AssistantContext = {
+    surface: "project",
+    title: workspace.project.name,
+    summary: `Validation assistant for ${selectedCredit.credit_name} under ${workspace.project.certification_type}.`,
+    currentItem: selectedReviewDocument
+      ? `${selectedReviewDocument.file_name} (${selectedReviewDocument.status})`
+      : `${selectedCredit.credit_name} review`,
+    facts: aiFacts,
+    nextSteps: aiNextSteps,
+  };
   const categoryProgress = stats.categories.map((item) => {
     const categoryCredits = workspace.credits.filter((credit) => credit.category === item.key);
     const completed = categoryCredits.filter((credit) => credit.status === "complete").length;
@@ -397,6 +445,34 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   {selectedCredit.remarks[0]?.body ?? "A blocking remark is pending."}
                 </p>
               </div>
+            ) : null}
+
+            {canReview ? (
+              <AiGuidePanel
+                context={validationAssistantContext}
+                enabled={env.aiReady}
+                storageKey={`tracknov-ai-validation-${params.id}-${selectedCredit.id}`}
+                title="AI Validation Assistant"
+                description="Use the current credit checklist, uploaded documents, remarks, and review stage to help decide whether the evidence is ready, incomplete, or should be excluded."
+                prompts={[
+                  "Validate this uploaded document against the credit checklist.",
+                  "What is missing before this can go into the submission pack?",
+                  "Draft a concise rejection note if this evidence is insufficient.",
+                  "What should I ask the Project Owner to upload next?",
+                ]}
+                suggestedActions={[
+                  {
+                    label: "Open documents library",
+                    href: `/documents?project=${params.id}`,
+                    description: "Review all uploaded files mapped to this project.",
+                  },
+                  {
+                    label: "Open submission pack",
+                    href: `/projects/${params.id}/submission`,
+                    description: "Check what is already eligible for final inclusion.",
+                  },
+                ]}
+              />
             ) : null}
 
             <section>

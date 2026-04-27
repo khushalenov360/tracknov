@@ -10,7 +10,7 @@ import {
   updateProjectForCurrentUser,
 } from "@/lib/data";
 import { env } from "@/lib/env";
-import { canCreateProjects, canDeleteProjects } from "@/lib/rbac";
+import { canCreateProjects, canDeleteProjects, canEditDocumentStatusAtAnyStage, canEditOwnDocumentBeforeFinalApproval } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +22,27 @@ export type TeamMemberActionState = {
   status: "idle" | "success" | "error";
   message: string;
 };
+
+async function getActorProjectRole(projectId: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return null;
+  }
+  if (user.role === "super_user") {
+    return "super_user";
+  }
+
+  const client = createClient();
+  const { data: membership } = await client
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  return membership?.role ?? user.role;
+}
 
 export async function createProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -151,19 +172,21 @@ export async function setDocumentStatusAction(formData: FormData) {
   const rejectionRemark = String(formData.get("rejection_remark") ?? "").trim();
   const creditId = String(formData.get("credit_id"));
   const user = await getCurrentUser();
+  const actorProjectRole = projectId ? await getActorProjectRole(projectId) : user?.role ?? null;
   const { data: currentDocument } = await client
     .from("documents")
-    .select("status")
+    .select("status, project_id")
     .eq("id", documentId)
     .maybeSingle();
 
   const currentStatus = currentDocument?.status ?? "";
-  const actorRole = user?.role ?? "consultant";
-  const canOwnerReview = ["owner", "super_user"].includes(actorRole);
-  const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(actorRole);
+  const actorRole = actorProjectRole ?? user?.role ?? "consultant";
+  const canOwnerReview = actorRole === "owner" || actorRole === "super_user";
+  const canStatusEditAtAnyStage = canEditDocumentStatusAtAnyStage(actorRole as any);
+  const canFinalReview = canStatusEditAtAnyStage;
 
   if (status === "owner_approved") {
-    if (!canOwnerReview || currentStatus !== "uploaded") {
+    if ((!canOwnerReview && !canStatusEditAtAnyStage) || (!canStatusEditAtAnyStage && currentStatus !== "uploaded")) {
       return;
     }
 
@@ -180,12 +203,13 @@ export async function setDocumentStatusAction(formData: FormData) {
       return;
     }
 
+    revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
     return;
   }
 
   if (status === "approved") {
-    if (!canFinalReview || currentStatus !== "owner_approved") {
+    if (!canFinalReview || (!canStatusEditAtAnyStage && currentStatus !== "owner_approved")) {
       return;
     }
 
@@ -202,11 +226,33 @@ export async function setDocumentStatusAction(formData: FormData) {
       return;
     }
 
+    revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
     return;
   }
 
   if (status !== "rejected") {
+    if (!canStatusEditAtAnyStage) {
+      return;
+    }
+
+    const { error } = await writer
+      .from("documents")
+      .update({
+        status,
+        rejection_reason: "",
+        owner_reviewed_by: status === "uploaded" ? null : undefined,
+        owner_reviewed_at: status === "uploaded" ? null : undefined,
+        reviewed_by: status === "approved" ? user?.id ?? null : status === "uploaded" || status === "owner_approved" ? null : undefined,
+        reviewed_at: status === "approved" ? new Date().toISOString() : status === "uploaded" || status === "owner_approved" ? null : undefined,
+      })
+      .eq("id", documentId);
+    if (error) {
+      return;
+    }
+
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
     return;
   }
 
@@ -239,6 +285,135 @@ export async function setDocumentStatusAction(formData: FormData) {
     });
   }
 
+  revalidatePath("/documents");
+  pathFor(projectId).forEach((path) => revalidatePath(path));
+}
+
+export async function updateDocumentMetadataAction(formData: FormData) {
+  if (!env.isConfigured) {
+    return;
+  }
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+
+  if (!documentId || !projectId || !creditId || !docCategory) {
+    return;
+  }
+
+  const client = createClient();
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
+  const user = await getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  const actorProjectRole = await getActorProjectRole(projectId);
+  if (!actorProjectRole) {
+    return;
+  }
+
+  const { data: document } = await client
+    .from("documents")
+    .select("id, uploaded_by, status, project_id")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (!document || document.project_id !== projectId) {
+    return;
+  }
+
+  const canAdminEdit = canEditDocumentStatusAtAnyStage(actorProjectRole as any);
+  const canOwnEdit =
+    document.uploaded_by === user.id &&
+    document.status !== "approved" &&
+    canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
+
+  if (!canAdminEdit && !canOwnEdit) {
+    return;
+  }
+
+  const { data: credit } = await client
+    .from("credits")
+    .select("id, project_id, documents_required")
+    .eq("id", creditId)
+    .maybeSingle();
+
+  if (!credit || credit.project_id !== projectId) {
+    return;
+  }
+
+  const allowedTypes = Array.from(
+    new Set(
+      ((credit.documents_required ?? []) as Array<{ type?: string; required?: boolean }>)
+        .filter((item) => item.required && item.type)
+        .map((item) => item.type as string),
+    ),
+  );
+
+  if (allowedTypes.length && !allowedTypes.includes(docCategory)) {
+    return;
+  }
+
+  const { error } = await writer
+    .from("documents")
+    .update({
+      credit_id: creditId,
+      doc_category: docCategory,
+      notes,
+    })
+    .eq("id", documentId);
+
+  if (error) {
+    return;
+  }
+
+  revalidatePath("/documents");
+  pathFor(projectId).forEach((path) => revalidatePath(path));
+}
+
+export async function deleteDocumentAction(formData: FormData) {
+  if (!env.isConfigured) {
+    return;
+  }
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  if (!documentId || !projectId) {
+    return;
+  }
+
+  const client = createClient();
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
+  const user = await getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  const actorProjectRole = await getActorProjectRole(projectId);
+  if (!(actorProjectRole === "super_user" || actorProjectRole === "super_admin" || actorProjectRole === "project_admin")) {
+    return;
+  }
+
+  const { data: existing } = await client
+    .from("documents")
+    .select("id, project_id")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (!existing || existing.project_id !== projectId) {
+    return;
+  }
+
+  const { error } = await writer.from("documents").delete().eq("id", documentId);
+  if (error) {
+    return;
+  }
+
+  revalidatePath("/documents");
   pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 

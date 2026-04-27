@@ -16,6 +16,21 @@ export function canReviewProjectDocuments(role?: MemberRole | null) {
   return role === "super_user" || role === "super_admin" || role === "project_admin" || role === "owner";
 }
 
+export function canEditDocumentStatusAtAnyStage(role?: MemberRole | null) {
+  return role === "super_user" || role === "super_admin" || role === "project_admin";
+}
+
+export function canEditOwnDocumentBeforeFinalApproval(role?: MemberRole | null) {
+  return (
+    role === "owner" ||
+    role === "client" ||
+    role === "consultant" ||
+    role === "architect" ||
+    role === "mep" ||
+    role === "contractor"
+  );
+}
+
 export function canUploadProjectDocuments(role?: MemberRole | null) {
   return (
     role === "super_user" ||

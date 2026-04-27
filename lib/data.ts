@@ -2,7 +2,13 @@ import { redirect } from "next/navigation";
 import { buildSeedCredits } from "@/lib/catalog";
 import { categoryMeta, igbcRatingSystems } from "@/lib/constants";
 import { env } from "@/lib/env";
-import { canCreateProjects, canDeleteProjects, canManageProject } from "@/lib/rbac";
+import {
+  canCreateProjects,
+  canDeleteProjects,
+  canEditDocumentStatusAtAnyStage,
+  canEditOwnDocumentBeforeFinalApproval,
+  canManageProject,
+} from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -632,6 +638,7 @@ export async function getDocumentLibrary(filters: {
   if (!user) {
     redirect("/login");
   }
+  const currentUser = await getCurrentUser();
 
   let query = client.from("documents").select("*").order("uploaded_at", { ascending: false });
   if (filters.project) {
@@ -645,29 +652,72 @@ export async function getDocumentLibrary(filters: {
   const rows = (documents ?? []) as DocumentRecord[];
   const projectIds = Array.from(new Set(rows.map((document) => document.project_id).filter(Boolean)));
   const creditIds = Array.from(new Set(rows.map((document) => document.credit_id).filter(Boolean))) as string[];
+  const uploadedByIds = Array.from(new Set(rows.map((document) => document.uploaded_by).filter(Boolean))) as string[];
 
-  const [{ data: projects }, { data: credits }] = await Promise.all([
+  const [{ data: projects }, { data: credits }, { data: uploaderProfiles }, { data: memberships }] = await Promise.all([
     projectIds.length
       ? client.from("projects").select("id, name").in("id", projectIds)
       : Promise.resolve({ data: [] }),
     creditIds.length
       ? client.from("credits").select("id, credit_code, credit_name").in("id", creditIds)
       : Promise.resolve({ data: [] }),
+    uploadedByIds.length
+      ? client.from("profiles").select("user_id, full_name, email").in("user_id", uploadedByIds)
+      : Promise.resolve({ data: [] }),
+    currentUser?.role === "super_user"
+      ? Promise.resolve({ data: [] })
+      : projectIds.length
+        ? client
+            .from("project_members")
+            .select("project_id, role")
+            .eq("user_id", user.id)
+            .in("project_id", projectIds)
+        : Promise.resolve({ data: [] }),
   ]);
 
   const projectsById = new Map((projects ?? []).map((project: any) => [project.id, project]));
   const creditsById = new Map((credits ?? []).map((credit: any) => [credit.id, credit]));
+  const uploadersById = new Map(
+    (uploaderProfiles ?? []).map((profile: any) => [
+      profile.user_id,
+      profile.full_name ?? profile.email ?? "Project member",
+    ]),
+  );
+  const roleByProjectId = new Map(
+    (memberships ?? []).map((membership: any) => [membership.project_id, normalizeRole(membership.role)]),
+  );
 
   return filterDocuments(
     rows.map((document) => {
       const project = projectsById.get(document.project_id);
       const credit = document.credit_id ? creditsById.get(document.credit_id) : null;
+      const projectRole =
+        currentUser?.role === "super_user"
+          ? "super_user"
+          : roleByProjectId.get(document.project_id) ?? currentUser?.role ?? "consultant";
+      const canEditStatus = canEditDocumentStatusAtAnyStage(projectRole);
+      const canEditMetadata =
+        canEditStatus ||
+        Boolean(
+          document.uploaded_by &&
+            document.uploaded_by === user.id &&
+            document.status !== "approved" &&
+            canEditOwnDocumentBeforeFinalApproval(projectRole),
+        );
       return {
         ...document,
         project_name: project?.name ?? "Untitled project",
         credit_code: credit?.credit_code ?? null,
         credit_name: credit?.credit_name ?? null,
-        uploaded_by_name: null,
+        uploaded_by_name: document.uploaded_by ? uploadersById.get(document.uploaded_by) ?? null : null,
+        project_role: projectRole,
+        can_edit_metadata: canEditMetadata,
+        can_edit_status: canEditStatus,
+        can_reject: canEditStatus || projectRole === "owner",
+        can_delete:
+          projectRole === "super_user" ||
+          projectRole === "super_admin" ||
+          projectRole === "project_admin",
       } satisfies DocumentLibraryRecord;
     }),
     filters,

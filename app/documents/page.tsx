@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
+import { deleteDocumentAction, setDocumentStatusAction, updateDocumentMetadataAction } from "@/app/actions";
 import { GeneralUploadDocumentForm } from "@/components/project/general-upload-document-form";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ export default async function DocumentsPage({
     getDocumentLibrary(searchParams),
     getDocumentUploadOptions(),
   ]);
+  const projectOptionsById = new Map(uploadProjects.map((project) => [project.id, project]));
 
   return (
     <Shell
@@ -75,7 +77,7 @@ export default async function DocumentsPage({
           <table className="min-w-full border-collapse text-[12px]">
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
-                {["Document", "Project", "Credit", "Uploaded", "Status", "Notes"].map((heading) => (
+                {["Document", "Project", "Credit", "Uploaded", "Status", "Notes", "Actions"].map((heading) => (
                   <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
@@ -85,6 +87,14 @@ export default async function DocumentsPage({
             <tbody>
               {documents.map((document) => {
                 const status = documentStatuses[document.status];
+                const projectOptions = projectOptionsById.get(document.project_id);
+                const creditOptions = projectOptions?.credits ?? [];
+                const selectedCredit =
+                  creditOptions.find((credit) => credit.id === document.credit_id) ?? creditOptions[0];
+                const docTypeOptions = selectedCredit?.doc_types.length
+                  ? selectedCredit.doc_types
+                  : Array.from(new Set(creditOptions.flatMap((credit) => credit.doc_types)));
+                const canOpen = Boolean(document.file_path);
                 return (
                   <tr key={document.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)]">
                     <td className="px-3 py-3">
@@ -93,12 +103,28 @@ export default async function DocumentsPage({
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
-                            {document.file_name}
-                          </p>
+                          {canOpen ? (
+                            <a
+                              href={`/api/documents/${document.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block truncate text-[13px] font-medium text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+                            >
+                              {document.file_name}
+                            </a>
+                          ) : (
+                            <p className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
+                              {document.file_name}
+                            </p>
+                          )}
                           <p className="mt-0.5 text-[10px] uppercase text-[var(--color-text-tertiary)]">
                             {document.file_type} / {document.doc_category}
                           </p>
+                          {document.uploaded_by_name ? (
+                            <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                              Uploaded by {document.uploaded_by_name}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -119,12 +145,117 @@ export default async function DocumentsPage({
                     <td className="max-w-[260px] truncate px-3 py-3 text-[11px] text-[var(--color-text-secondary)]">
                       {document.notes || document.rejection_reason || "No notes"}
                     </td>
+                    <td className="px-3 py-3 align-top">
+                      {document.can_edit_metadata || document.can_edit_status || document.can_reject || document.can_delete ? (
+                        <details className="min-w-[260px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <summary className="cursor-pointer list-none text-[12px] font-medium text-[var(--color-text-primary)]">
+                            Edit document
+                          </summary>
+                          <div className="mt-3 space-y-3">
+                            {document.can_edit_metadata ? (
+                              <form action={updateDocumentMetadataAction} className="space-y-2">
+                                <input type="hidden" name="document_id" value={document.id} />
+                                <input type="hidden" name="project_id" value={document.project_id} />
+                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Credit mapping
+                                </label>
+                                <select
+                                  name="credit_id"
+                                  defaultValue={document.credit_id ?? selectedCredit?.id ?? ""}
+                                  className="h-[34px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                >
+                                  {creditOptions.map((credit) => (
+                                    <option key={credit.id} value={credit.id}>
+                                      {credit.credit_code} - {credit.credit_name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Document type
+                                </label>
+                                <select
+                                  name="doc_category"
+                                  defaultValue={document.doc_category}
+                                  className="h-[34px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                >
+                                  {docTypeOptions.map((docType) => (
+                                    <option key={docType} value={docType}>
+                                      {docType}
+                                    </option>
+                                  ))}
+                                </select>
+                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Notes
+                                </label>
+                                <textarea
+                                  name="notes"
+                                  defaultValue={document.notes ?? ""}
+                                  rows={3}
+                                  className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                />
+                                <Button type="submit" className="h-[32px] rounded-md px-3 text-[12px]">
+                                  Save mapping
+                                </Button>
+                              </form>
+                            ) : null}
+
+                            {document.can_edit_status || document.can_reject ? (
+                              <form action={setDocumentStatusAction} className="space-y-2 border-t border-[var(--color-border)] pt-3">
+                                <input type="hidden" name="document_id" value={document.id} />
+                                <input type="hidden" name="project_id" value={document.project_id} />
+                                <input type="hidden" name="credit_id" value={document.credit_id ?? ""} />
+                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Review status
+                                </label>
+                                <select
+                                  name="status"
+                                  defaultValue={document.status}
+                                  className="h-[34px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                >
+                                  {document.can_edit_status ? (
+                                    <>
+                                      <option value="uploaded">Pending Project Owner Review</option>
+                                      <option value="owner_approved">Pending Project Admin Review</option>
+                                      <option value="approved">Approved For Submission</option>
+                                    </>
+                                  ) : null}
+                                  {(document.can_reject || document.can_edit_status) ? (
+                                    <option value="rejected">Rejected / Excluded</option>
+                                  ) : null}
+                                </select>
+                                <textarea
+                                  name="rejection_remark"
+                                  placeholder="Reason for rejection or status override"
+                                  rows={3}
+                                  className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                />
+                                <Button type="submit" variant="secondary" className="h-[32px] rounded-md px-3 text-[12px]">
+                                  Update status
+                                </Button>
+                              </form>
+                            ) : null}
+
+                            {document.can_delete ? (
+                              <form action={deleteDocumentAction} className="border-t border-[var(--color-border)] pt-3">
+                                <input type="hidden" name="document_id" value={document.id} />
+                                <input type="hidden" name="project_id" value={document.project_id} />
+                                <Button type="submit" variant="danger" className="h-[32px] rounded-md px-3 text-[12px]">
+                                  Delete document
+                                </Button>
+                              </form>
+                            ) : null}
+                          </div>
+                        </details>
+                      ) : (
+                        <span className="text-[11px] text-[var(--color-text-tertiary)]">View only</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-[12px] text-[var(--color-text-tertiary)]">
+                  <td colSpan={7} className="px-3 py-10 text-center text-[12px] text-[var(--color-text-tertiary)]">
                     No documents match the current filters.
                   </td>
                 </tr>
