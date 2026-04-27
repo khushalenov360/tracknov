@@ -24,8 +24,8 @@ function formatList(items: string[]) {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
-export function buildAssistantSystemPrompt(context: AssistantContext) {
-  return [
+export function buildAssistantSystemPrompt(context: AssistantContext, workspaceSnapshot?: string) {
+  const lines = [
     "You are Tracknov Copilot, the embedded AI assistant for Tracknov.",
     "Your job is to help teams decide the next best operational action in certification workflows.",
     "Use only the context provided below. Do not claim access to data that is not included.",
@@ -45,7 +45,14 @@ export function buildAssistantSystemPrompt(context: AssistantContext) {
     formatList(context.facts),
     "Recommended next steps:",
     formatList(context.nextSteps),
-  ].join("\n");
+  ];
+
+  if (workspaceSnapshot?.trim()) {
+    lines.push("Workspace data snapshot:");
+    lines.push(workspaceSnapshot.trim());
+  }
+
+  return lines.join("\n");
 }
 
 export function buildFallbackAssistantReply(context: AssistantContext, prompt: string) {

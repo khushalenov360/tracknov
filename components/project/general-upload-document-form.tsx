@@ -38,9 +38,10 @@ export function GeneralUploadDocumentForm({
     [creditId, currentProject],
   );
   const [docType, setDocType] = useState(currentCredit?.doc_types[0] ?? "");
-  const maxFileSizeBytes = 50 * 1024 * 1024;
-  const maxFileSizeLabel = "50 MB";
-  const accept = useMemo(() => ".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.dwg", []);
+  const maxFileSizeBytes = 10 * 1024 * 1024;
+  const maxFileSizeLabel = "10 MB";
+  const allowedExtensions = useMemo(() => [".pdf", ".docx", ".png", ".jpg", ".jpeg"], []);
+  const accept = useMemo(() => allowedExtensions.join(","), [allowedExtensions]);
 
   useEffect(() => {
     const nextCreditId = currentProject?.credits[0]?.id ?? "";
@@ -66,8 +67,15 @@ export function GeneralUploadDocumentForm({
       return;
     }
 
+    const fileNameLower = file.name.toLowerCase();
+    const hasAllowedExtension = allowedExtensions.some((extension) => fileNameLower.endsWith(extension));
+    if (!hasAllowedExtension) {
+      setError("Unsupported file type. Upload PDF, DOCX, PNG, or JPG files only.");
+      return;
+    }
+
     if (file.size > maxFileSizeBytes) {
-      setError(`File is too large. The limit is ${maxFileSizeLabel}.`);
+      setError(`File is too large. The limit is ${maxFileSizeLabel}. Compress the file and try again.`);
       return;
     }
 
@@ -175,6 +183,9 @@ export function GeneralUploadDocumentForm({
         Upload
       </Button>
       {error ? <p className="lg:col-span-5 text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      <p className="lg:col-span-5 text-[11px] text-[var(--color-text-tertiary)]">
+        Upload limit: {maxFileSizeLabel}. For larger files, reduce PDF size or image resolution before upload.
+      </p>
       <p className="lg:col-span-5 text-[11px] text-[var(--color-text-tertiary)]">
         Each upload is mapped to a credit immediately and enters review with the Project Owner before final Project Admin inclusion in the submission pack.
       </p>

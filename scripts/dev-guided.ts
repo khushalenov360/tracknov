@@ -66,7 +66,7 @@ async function confirm(question: string, defaultYes = true) {
 }
 
 async function main() {
-  console.log("Starting HaritaDocs local studio...");
+  console.log("Starting Tracknov local studio...");
   const requestedUrl = new URL(requestedBaseUrl);
   const port = await pickPort(Number(requestedUrl.port || "3010"));
   const baseUrl = `${requestedUrl.protocol}//${requestedUrl.hostname}:${port}`;
@@ -88,7 +88,7 @@ async function main() {
 
   try {
     await waitForServer(`${baseUrl}/login`);
-    console.log(`\nHaritaDocs is ready at ${baseUrl}`);
+    console.log(`\nTracknov is ready at ${baseUrl}`);
     console.log("The smoke test walks through dashboard, project workspace, and submission flow.");
 
     openBrowser(`${baseUrl}/login`);

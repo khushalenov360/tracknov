@@ -32,7 +32,7 @@ if (!env.isConfigured || !env.supabaseServiceRoleKey) {
 }
 
 const args = process.argv.slice(2);
-const projectName = args[0] ?? "HaritaDocs Seed Project";
+const projectName = args[0] ?? "Tracknov Seed Project";
 const targetRating = args[1] ?? "Gold";
 const ownerUserId = args[2] ?? null;
 

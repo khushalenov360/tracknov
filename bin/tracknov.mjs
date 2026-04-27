@@ -48,7 +48,7 @@ function writeEnvFile(values) {
     "GEMINI_API_KEY",
     "AI_PROVIDER",
     "AI_MODEL",
-    "HARITA_TOUR_SEEN",
+    "TRACKNOV_TOUR_SEEN",
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
@@ -86,7 +86,7 @@ async function chooseMode() {
   console.log("1) Review project files");
   console.log("2) Upload supporting evidence");
   console.log("3) Prepare the final package");
-  console.log("4) Learn what Harita can do");
+  console.log("4) Learn what Tracknov can do");
   console.log("5) Exit");
 
   const answer = (await rl.question("Select 1, 2, 3, 4, or 5: ")).trim();
@@ -165,13 +165,13 @@ function scaffoldWorkspace() {
 
 function printBanner() {
   console.log("");
-  console.log("Harita by Enov360");
+  console.log("Tracknov by Enov360");
   console.log("Consultant workspace, guided by AI.");
   console.log("");
 }
 
 function printCapabilities() {
-  console.log("What Harita can do:");
+  console.log("What Tracknov can do:");
   console.log("- Keep each project in a simple checklist");
   console.log("- Collect notes, uploads, and review actions in one place");
   console.log("- Prepare a final submission package when the work is ready");
@@ -199,13 +199,13 @@ function printNextStep(mode) {
 }
 
 async function showFirstRunTour(envValues) {
-  if (envValues.HARITA_TOUR_SEEN === "1") {
+  if (envValues.TRACKNOV_TOUR_SEEN === "1") {
     return envValues;
   }
 
   console.log("First-time tour:");
   printCapabilities();
-  console.log("How to use Harita:");
+  console.log("How to use Tracknov:");
   console.log("1. Open a project and look for items that still need attention.");
   console.log("2. Add notes or supporting files only where they are needed.");
   console.log("3. Use the checklist to move work toward completion.");
@@ -213,7 +213,7 @@ async function showFirstRunTour(envValues) {
   console.log("");
 
   if (await confirm("Show this tour only once and continue?", true)) {
-    envValues.HARITA_TOUR_SEEN = "1";
+    envValues.TRACKNOV_TOUR_SEEN = "1";
     writeEnvFile(envValues);
   }
 
@@ -225,11 +225,11 @@ async function main() {
 
   if (!existsSync(resolve(cwd, "package.json"))) {
     if (!isEmptyWorkspace()) {
-      console.error("This folder already has files, but no package.json. Run the launcher from the Harita project folder or scaffold into a clean folder.");
+      console.error("This folder already has files, but no package.json. Run the launcher from the Tracknov project folder or scaffold into a clean folder.");
       process.exit(1);
     }
 
-    if (!(await confirm("Scaffold a new Harita workspace here?", true))) {
+    if (!(await confirm("Scaffold a new Tracknov workspace here?", true))) {
       process.exit(0);
     }
 
@@ -257,7 +257,7 @@ async function main() {
   envValues.SUPABASE_PROJECT_REF = "";
   envValues.SUPABASE_DB_PASSWORD = "";
   envValues.SUPABASE_ACCESS_TOKEN = "";
-  envValues.SEED_PROJECT_NAME = envValues.SEED_PROJECT_NAME || "HaritaDocs Seed Project";
+  envValues.SEED_PROJECT_NAME = envValues.SEED_PROJECT_NAME || "Tracknov Seed Project";
   envValues.SEED_PROJECT_TARGET_RATING = envValues.SEED_PROJECT_TARGET_RATING || "Gold";
   envValues.SEED_OWNER_USER_ID = "";
   envValues.PLAYWRIGHT_BASE_URL = envValues.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3010";

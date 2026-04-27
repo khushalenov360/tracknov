@@ -1,17 +1,17 @@
 {
-  "name": "harita-studio",
+  "name": "tracknov-studio",
   "version": "0.1.0",
-  "description": "HaritaDocs launcher for consultants and project teams.",
+  "description": "Tracknov launcher for IGBC consultants and project teams.",
   "private": false,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vishalgojha/harita.git"
+    "url": "git+https://github.com/khushalenov360/tracknov.git"
   },
   "bugs": {
-    "url": "https://github.com/vishalgojha/harita/issues"
+    "url": "https://github.com/khushalenov360/tracknov/issues"
   },
-  "homepage": "https://github.com/vishalgojha/harita#readme",
+  "homepage": "https://github.com/khushalenov360/tracknov#readme",
   "publishConfig": {
     "access": "public"
   },
@@ -19,15 +19,15 @@
     "node": ">=18.17"
   },
   "keywords": [
-    "harita",
-    "haritadocs",
+    "tracknov",
+    "igbc-documentation",
     "igbc",
     "consulting",
     "nextjs",
     "cli"
   ],
   "bin": {
-    "harita": "./bin/harita.mjs"
+    "tracknov": "./bin/tracknov.mjs"
   },
   "files": [
     "bin",
@@ -61,7 +61,7 @@
     "prepublishOnly": "npm run lint",
     "publish:public": "npm publish --access public",
     "seed": "node scripts/seed.mjs",
-    "onboard": "node bin/harita.mjs",
+    "onboard": "node bin/tracknov.mjs",
     "smoke": "playwright test",
     "smoke:headed": "playwright test --headed"
   },

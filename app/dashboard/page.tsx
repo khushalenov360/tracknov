@@ -36,12 +36,8 @@ export default async function DashboardPage() {
           { label: "Open remarks", value: totals.openRemarks, meta: "Needs consultant review" },
         ].map((item) => (
           <div key={item.label} className="surface-card p-4">
-            <p className="text-[11px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
-              {item.label}
-            </p>
-            <p className="mono mt-2 text-[28px] font-medium leading-none text-[var(--color-text-primary)]">
-              {item.value}
-            </p>
+            <p className="text-[11px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">{item.label}</p>
+            <p className="mono mt-2 text-[28px] font-medium leading-none text-[var(--color-text-primary)]">{item.value}</p>
             <p className="mt-2 text-[11px] text-[var(--color-text-tertiary)]">{item.meta}</p>
           </div>
         ))}
@@ -56,87 +52,101 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {projects.map((project) => (
-              <Button key={project.id} asChild variant="secondary" className="rounded-md px-3 text-[12px]">
-                <Link href={`/projects/${project.id}`}>{project.name}</Link>
-              </Button>
-            ))}
+            {projects.length ? (
+              projects.map((project) => (
+                <Button key={project.id} asChild variant="secondary" className="rounded-md px-3 text-[12px]">
+                  <Link href={`/projects/${project.id}`}>{project.name}</Link>
+                </Button>
+              ))
+            ) : (
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">No active projects yet.</span>
+            )}
           </div>
         </div>
       </section>
 
       {canCreateProject ? (
-      <section className="surface-card mt-4 p-4">
-        <form action={createProjectAction} className="grid gap-3 lg:grid-cols-[minmax(260px,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_180px_auto]">
-          <select
-            name="rating_system"
-            required
-            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-            defaultValue="IGBC Green Interiors"
-          >
-            {igbcRatingSystemGroups.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.systems.map((system) => (
-                  <option key={system} value={system}>
-                    {system}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <Input name="name" placeholder="Project name" required />
-          <Input name="client" placeholder="Client" required />
-          <Input name="location" placeholder="Location" required />
-          <Button type="submit" className="h-[34px] rounded-md px-4">
-            Create project
-          </Button>
-          <input type="hidden" name="project_type" value="commercial" />
-          <input type="hidden" name="status" value="active" />
-          <input type="hidden" name="green_certification" value="IGBC" />
-          <input type="hidden" name="igbc_variant" value="new" />
-          <input type="hidden" name="target_rating" value="Certified" />
-        </form>
-      </section>
+        <section className="surface-card mt-4 p-4">
+          <form action={createProjectAction} className="grid gap-3 lg:grid-cols-[minmax(260px,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_180px_auto]">
+            <select
+              name="rating_system"
+              required
+              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+              defaultValue="IGBC Green Interiors"
+            >
+              {igbcRatingSystemGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.systems.map((system) => (
+                    <option key={system} value={system}>
+                      {system}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <Input name="name" placeholder="Project name" required />
+            <Input name="client" placeholder="Client" required />
+            <Input name="location" placeholder="Location" required />
+            <Button type="submit" className="h-[34px] rounded-md px-4">
+              Create project
+            </Button>
+            <input type="hidden" name="project_type" value="commercial" />
+            <input type="hidden" name="status" value="active" />
+            <input type="hidden" name="green_certification" value="IGBC" />
+            <input type="hidden" name="igbc_variant" value="new" />
+            <input type="hidden" name="target_rating" value="Certified" />
+          </form>
+        </section>
       ) : null}
 
       <section className="mt-4 grid gap-3">
-        {projects.map((project) => (
-          <article key={project.id} className="surface-card flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[15px] font-medium text-[var(--color-text-primary)]">{project.client || "Project workspace"}</p>
-                <Badge className="border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[11px] text-[var(--color-green)]">
-                  {project.target_rating}
-                </Badge>
-                <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[11px] text-[var(--color-text-secondary)]">
-                  {roleLabels[project.role]}
-                </Badge>
+        {projects.length ? (
+          projects.map((project) => (
+            <article key={project.id} className="surface-card flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[15px] font-medium text-[var(--color-text-primary)]">{project.client || "Project workspace"}</p>
+                  <Badge className="border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[11px] text-[var(--color-green)]">
+                    {project.target_rating}
+                  </Badge>
+                  <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[11px] text-[var(--color-text-secondary)]">
+                    {roleLabels[project.role]}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+                  {project.certification_type} / {project.location || "Location TBD"}
+                </p>
+                <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
+                  {project.totalCredits} credits · {project.uploadedDocs} docs · {project.mandatoryCreditsMet} mandatory met · {project.openRemarks} remarks ·{" "}
+                  {project.membersCount} members
+                </p>
+                <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
+                  <Progress value={project.overallCompletion} />
+                  <span className="mono text-[12px] text-[var(--color-text-secondary)]">{pct(project.overallCompletion)}</span>
+                </div>
               </div>
-              <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
-                {project.certification_type} / {project.location || "Location TBD"}
-              </p>
-              <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
-                {project.totalCredits} credits · {project.uploadedDocs} docs · {project.mandatoryCreditsMet} mandatory
-                met · {project.openRemarks} remarks · {project.membersCount} members
-              </p>
-              <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
-                <Progress value={project.overallCompletion} />
-                <span className="mono text-[12px] text-[var(--color-text-secondary)]">
-                  {pct(project.overallCompletion)}
-                </span>
+              <div className="flex items-center gap-2 lg:justify-end">
+                <Button asChild className="rounded-md px-3 text-[12px]">
+                  <Link href={`/projects/${project.id}`}>Open workspace</Link>
+                </Button>
+                <Button asChild variant="secondary" className="rounded-md px-3 text-[12px]">
+                  <Link href={`/projects/${project.id}/submission`}>Submission pack</Link>
+                </Button>
               </div>
-            </div>
-            <div className="flex items-center gap-2 lg:justify-end">
-              <Button asChild className="rounded-md px-3 text-[12px]">
-                <Link href={`/projects/${project.id}`}>Open workspace</Link>
-              </Button>
-              <Button asChild variant="secondary" className="rounded-md px-3 text-[12px]">
-                <Link href={`/projects/${project.id}/submission`}>Submission pack</Link>
-              </Button>
-            </div>
+            </article>
+          ))
+        ) : (
+          <article className="surface-card p-6">
+            <h3 className="text-[14px] font-medium text-[var(--color-text-primary)]">No projects available</h3>
+            <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+              {canCreateProject
+                ? "Create your first project from the form above to start documentation workflows."
+                : "Ask a Super User or Project Admin to add you to a project workspace."}
+            </p>
           </article>
-        ))}
+        )}
       </section>
     </Shell>
   );
 }
+

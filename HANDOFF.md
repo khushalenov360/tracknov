@@ -1,5 +1,60 @@
 # Tracknov Handoff
 
+## Project Plan Baseline
+
+- Canonical project plan file:
+  - `tracknov-project-plan.md`
+- Use this document as the default baseline for project-completion assessment and milestone tracking in future updates.
+
+## Latest execution pass (2026-04-28)
+
+- Closed remaining non-functional pending items from `todo.md`:
+  - Empty states aligned on major tabs (`dashboard`, `projects`, `documents`, `team`, `credits`).
+  - Tracknov identity cleanup completed for runtime surfaces (`app/`, `components/`, `lib/`, `scripts/`, `bin/`, `README`, launchers).
+  - Legacy compatibility launchers removed (`Start-Harita.ps1`, `Start-Harita.bat`, `bin/harita.mjs`).
+- Live Supabase verification completed against `uiecvxxamykfubgtqzap`:
+  - RLS confirmed enabled on key public tables (`credits`, `documents`, `notifications`, `profiles`, `project_invites`, `project_members`, `projects`, `remarks`).
+  - Storage/private access policies confirmed in `pg_policies` (`storage_select_project_documents`, `storage_insert_project_documents`, `storage_update_project_documents`).
+  - Migration history confirmed in `supabase_migrations.schema_migrations` through `0007`.
+  - `0006` helper functions verified as `security definer`.
+  - `0007` document workflow status constraint verified and reapplied safely.
+- Deployment readiness artifacts added:
+  - `vercel.json`
+  - `RELEASE_READINESS_CHECKLIST.md`
+  - README deployment env section for Vercel.
+
+### Note on migration tooling
+
+- Migration filenames are normalized to a linear sequence (`0001` ... `0008`) and `supabase migration up` now runs successfully against the live project.
+- Latest applied migration: `supabase/migrations/0008_project_rbac.sql`.
+
+## Latest execution pass (todo.md implementation)
+
+- Upload limits were aligned to plan:
+  - `50 MB` -> `10 MB` in both document upload forms.
+- Upload type validation was aligned to allowed project file types in UI:
+  - PDF, DOCX, PNG, JPG/JPEG.
+- Oversize guidance was added to upload forms with clear user-facing instructions to compress files.
+- Global app error boundary was added:
+  - `app/error.tsx`
+- Loading states were added for major surfaces:
+  - `app/loading.tsx`
+  - `app/dashboard/loading.tsx`
+  - `app/projects/loading.tsx`
+  - `app/projects/[id]/loading.tsx`
+  - `app/projects/[id]/submission/loading.tsx`
+  - `app/documents/loading.tsx`
+  - `app/team/loading.tsx`
+  - `app/credits/loading.tsx`
+  - shared loader: `components/ui/page-loading.tsx`
+- Tracknov identity cleanup was executed for main metadata and onboarding surfaces:
+  - `package.json` updated to Tracknov package/repo metadata.
+  - `bin/tracknov.mjs` added and wired as primary launcher.
+  - `Start-Tracknov.ps1` and `Start-Tracknov.bat` added.
+  - Existing `Start-Harita.*` launchers now point to Tracknov binary for compatibility.
+  - `README.md`, `.env.example`, onboarding scripts, and seed defaults updated to Tracknov naming.
+- `todo.md` was updated with completed checkboxes for the implemented items in Priority 2 and parts of Priority 3.
+
 ## What is ready
 
 - Tracknov is connected to the Supabase project at `uiecvxxamykfubgtqzap`.
@@ -18,7 +73,7 @@
   - update project for `super_user`, `super_admin`, and assigned `project_admin`
   - delete project for `super_user` only
 - A new migration was added for project-level RBAC policies:
-  - `supabase/migrations/0005_project_rbac.sql`
+  - `supabase/migrations/0008_project_rbac.sql`
 - Login page startup/build issue was fixed by wrapping the `LoginForm` search-param usage in `Suspense`.
 - Production build now completes successfully.
 - Document upload path was improved:
@@ -71,32 +126,7 @@ The known blocking login-page build issue is fixed. The next live verification p
 - confirm no further storage/database errors appear for larger PDFs
 - confirm document delete is visible and works for `super_user`, `super_admin`, and `project_admin`
 
-### 2. Re-apply latest migration to live Supabase if needed
-
-If the live database does not yet have the latest policy changes, apply:
-
-- `supabase/migrations/0005_project_rbac.sql`
-- `supabase/migrations/0006_security_definer_membership_helpers.sql`
-- `supabase/migrations/0007_document_review_workflow.sql`
-
-This is the DB-level enforcement for:
-
-- super-user-only project delete
-- project-admin/super-admin project update
-- super-user elevated project select
-- non-recursive membership helper evaluation during storage/document RLS checks
-- two-step document review state with Project Owner and Project Admin gates
-
-### 3. Reduce uploaded file size
-
-This has not been implemented yet, but it is the next practical improvement for real usage. Recommended approach:
-
-- add frontend file-size validation with clear limits
-- auto-resize/compress images before upload
-- warn on oversized PDFs and request optimized uploads
-- optionally add a server-side compression pipeline later if needed
-
-### 4. Use Bhavarkua upload map for structured ingestion
+### 2. Use Bhavarkua upload map for structured ingestion
 
 Use `BHAVARKUA_UPLOAD_MAP.md` as the pre-ingestion checklist:
 
@@ -104,15 +134,9 @@ Use `BHAVARKUA_UPLOAD_MAP.md` as the pre-ingestion checklist:
 - `Present but not structured`: evidence exists but folder pattern should be normalized
 - `Missing`: confirm NA vs pending evidence before review stage
 
-### 5. Clean package/app identity
+### 3. Normalize migration sequencing for CI/CD
 
-The product is now Tracknov, but there are still legacy Harita package/repo strings in places like:
-
-- `package.json`
-- repository metadata
-- some internal naming
-
-This is cosmetic/cleanup, not a runtime blocker.
+Completed in this pass. The local sequence now matches runtime history (`0001` through `0008`), and standard `supabase migration up` runs cleanly.
 
 ## Files changed in this handoff batch
 
@@ -130,7 +154,7 @@ This is cosmetic/cleanup, not a runtime blocker.
 - `components/project/upload-document-form.tsx`
 - `BHAVARKUA_UPLOAD_MAP.md`
 - `scripts/build-bhavarkua-upload-map.ps1`
-- `supabase/migrations/0005_project_rbac.sql`
+- `supabase/migrations/0008_project_rbac.sql`
 - `supabase/migrations/0006_security_definer_membership_helpers.sql`
 - `supabase/migrations/0007_document_review_workflow.sql`
 - `HANDOFF.md`

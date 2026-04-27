@@ -21,9 +21,10 @@ export function UploadDocumentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [docType, setDocType] = useState(docTypes[0] ?? "Narrative");
-  const maxFileSizeBytes = 50 * 1024 * 1024;
-  const maxFileSizeLabel = "50 MB";
-  const accept = useMemo(() => ".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.dwg,.mp4,.mov", []);
+  const maxFileSizeBytes = 10 * 1024 * 1024;
+  const maxFileSizeLabel = "10 MB";
+  const allowedExtensions = useMemo(() => [".pdf", ".docx", ".png", ".jpg", ".jpeg"], []);
+  const accept = useMemo(() => allowedExtensions.join(","), [allowedExtensions]);
 
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,8 +40,15 @@ export function UploadDocumentForm({
       return;
     }
 
+    const fileNameLower = file.name.toLowerCase();
+    const hasAllowedExtension = allowedExtensions.some((extension) => fileNameLower.endsWith(extension));
+    if (!hasAllowedExtension) {
+      setError("Unsupported file type. Upload PDF, DOCX, PNG, or JPG files only.");
+      return;
+    }
+
     if (file.size > maxFileSizeBytes) {
-      setError(`File is too large. The limit is ${maxFileSizeLabel}.`);
+      setError(`File is too large. The limit is ${maxFileSizeLabel}. Compress the file and try again.`);
       return;
     }
 
@@ -94,6 +102,9 @@ export function UploadDocumentForm({
         <p className="mt-3 text-[11px] font-medium text-[var(--color-text-primary)]">Add a supporting file</p>
         <p className="mt-1 text-[10px] leading-5 text-[var(--color-text-tertiary)]">
           Choose the file type, upload one file, and it will appear in the project checklist. Max size: {maxFileSizeLabel}.
+        </p>
+        <p className="mt-1 text-[10px] leading-5 text-[var(--color-text-tertiary)]">
+          For larger files, reduce PDF size or image resolution before upload.
         </p>
       </div>
       <select

@@ -4,7 +4,7 @@ import { MoonStar, MonitorSmartphone, SunMedium } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "harita-theme";
+const STORAGE_KEY = "tracknov-theme";
 
 type ThemeMode = "light" | "dark" | "system";
 

@@ -303,4 +303,3 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     </aside>
   );
 }
-

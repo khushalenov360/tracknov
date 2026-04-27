@@ -27,9 +27,16 @@ export default async function DocumentsPage({
       role={projects[0]?.role ?? "consultant"}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
-      <GeneralUploadDocumentForm
-        projects={uploadProjects}
-      />
+      {uploadProjects.length ? (
+        <GeneralUploadDocumentForm projects={uploadProjects} />
+      ) : (
+        <section className="surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">No project access</h2>
+          <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+            You need at least one assigned project before uploading documents to the shared library.
+          </p>
+        </section>
+      )}
 
       <section className="mt-4 surface-card p-4">
         <form className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto]">

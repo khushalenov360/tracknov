@@ -87,7 +87,7 @@ export default async function TeamPage() {
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
+              {members.length ? members.map((member) => (
                 <tr key={member.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)]">
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -116,7 +116,13 @@ export default async function TeamPage() {
                     {new Date(member.created_at).toLocaleDateString("en-IN")}
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={5} className="px-3 py-10 text-center text-[12px] text-[var(--color-text-tertiary)]">
+                    No team members found for your current workspace scope.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

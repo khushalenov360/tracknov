@@ -1,6 +1,7 @@
-$catalogPath = "C:\Users\91922\Documents\Codex\2026-04-23-can-you-read-https-github-com\harita\data\igbc-green-interiors-v2.json"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$catalogPath = Join-Path $repoRoot "data\igbc-green-interiors-v2.json"
 $zipPath = "C:\Users\91922\Documents\Sapphire Foods\bhavarkua\IGBC Bhavarkua-Final.zip"
-$outPath = "C:\Users\91922\Documents\Codex\2026-04-23-can-you-read-https-github-com\harita\BHAVARKUA_UPLOAD_MAP.md"
+$outPath = Join-Path $repoRoot "BHAVARKUA_UPLOAD_MAP.md"
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)

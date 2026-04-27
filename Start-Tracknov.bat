@@ -1,5 +1,6 @@
 @echo off
 setlocal
 set "ROOT=%~dp0"
-node "%ROOT%bin\harita.mjs" %*
+node "%ROOT%bin\tracknov.mjs" %*
 endlocal
+

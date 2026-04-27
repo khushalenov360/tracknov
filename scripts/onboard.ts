@@ -108,7 +108,7 @@ async function configureEnv() {
   envValues.SUPABASE_PROJECT_REF = "";
   envValues.SUPABASE_DB_PASSWORD = "";
   envValues.SUPABASE_ACCESS_TOKEN = "";
-  envValues.SEED_PROJECT_NAME = envValues.SEED_PROJECT_NAME || "HaritaDocs Seed Project";
+  envValues.SEED_PROJECT_NAME = envValues.SEED_PROJECT_NAME || "Tracknov Seed Project";
   envValues.SEED_PROJECT_TARGET_RATING = envValues.SEED_PROJECT_TARGET_RATING || "Gold";
   envValues.SEED_OWNER_USER_ID = "";
   envValues.PLAYWRIGHT_BASE_URL = envValues.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3010";
@@ -119,7 +119,7 @@ async function configureEnv() {
 }
 
 async function main() {
-  console.log("HaritaDocs onboarding");
+  console.log("Tracknov onboarding");
   console.log("This flow asks for your Gemini API key and the Supabase settings needed to run the live workspace.");
 
   try {

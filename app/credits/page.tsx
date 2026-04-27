@@ -20,7 +20,7 @@ export default async function CreditsPage() {
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
       <section className="grid gap-4">
-        {workspaces.map((workspace) => {
+        {workspaces.length ? workspaces.map((workspace) => {
           const score = scoreIgbcCredits(workspace.credits, workspace.project.igbc_variant);
           const mandatory = workspace.credits.filter((credit) => credit.is_mandatory);
           const mandatoryComplete = mandatory.filter((credit) => credit.status === "complete").length;
@@ -99,7 +99,14 @@ export default async function CreditsPage() {
               </div>
             </article>
           );
-        })}
+        }) : (
+          <article className="surface-card p-6">
+            <h3 className="text-[14px] font-medium text-[var(--color-text-primary)]">No scoring data yet</h3>
+            <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+              Add or join a project first, then this page will show category-wise points and mandatory credit progress.
+            </p>
+          </article>
+        )}
       </section>
     </Shell>
   );

@@ -53,7 +53,7 @@ export default async function ProjectsPage() {
       ) : null}
 
       <section className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-        {projects.map((project) => (
+        {projects.length ? projects.map((project) => (
           <article key={project.id} className="surface-card overflow-hidden">
             <div className="h-1 bg-[var(--color-green)]" />
             <div className="space-y-4 p-5">
@@ -184,7 +184,16 @@ export default async function ProjectsPage() {
               ) : null}
             </div>
           </article>
-        ))}
+        )) : (
+          <article className="surface-card p-6 lg:col-span-2 2xl:col-span-3">
+            <h3 className="text-[14px] font-medium text-[var(--color-text-primary)]">No projects assigned</h3>
+            <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+              {canCreateProject
+                ? "Create your first project above to initialize the workspace."
+                : "You are signed in, but no projects are assigned to your role yet."}
+            </p>
+          </article>
+        )}
       </section>
     </Shell>
   );

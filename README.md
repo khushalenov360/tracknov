@@ -1,6 +1,6 @@
-# HaritaDocs
+# Tracknov
 
-HaritaDocs is a Next.js 14 workspace for IGBC Green Interiors documentation collection, review, and submission packaging. It is built around the real CCIL documentation tracker and the IGBC Green Interiors v2 reference guide supplied for this build.
+Tracknov is a Next.js 14 workspace for IGBC Green Interiors documentation collection, review, and submission packaging. It is built around the real CCIL documentation tracker and the IGBC Green Interiors v2 reference guide supplied for this build.
 
 The current UI is intentionally dense and operational rather than marketing-led:
 
@@ -15,7 +15,7 @@ For Windows setup, use the guided bootstrap instead of following setup steps man
 
 Important:
 
-- If you cloned the repo, run the command from the `harita` folder, not from `C:\Users\<name>` or another parent folder.
+- If you cloned the repo, run the command from the `tracknov` folder, not from `C:\Users\<name>` or another parent folder.
 - If this project is being distributed to consultants as a folder or zip, they should use the root launcher files in that folder instead of the internal `scripts\` path.
 
 From the repo root:
@@ -27,15 +27,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\onboard.ps1
 Or, from the folder consultants receive:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-Harita.ps1
+powershell -ExecutionPolicy Bypass -File .\Start-Tracknov.ps1
 ```
 
-You can also double-click `Start-Harita.bat` in that folder.
+You can also double-click `Start-Tracknov.bat` in that folder.
 
 Or with an absolute path:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\path\to\harita\scripts\onboard.ps1
+powershell -ExecutionPolicy Bypass -File C:\\path\\to\\tracknov\\scripts\\onboard.ps1
 ```
 
 This flow will:
@@ -77,7 +77,26 @@ bun run onboard
 5. Run `npm run dev`
 
 Without env vars, the app stays on the login screen and prompts for live Supabase configuration.
-The guided launcher avoids crowded default ports by starting HaritaDocs on its own local port range beginning at `3010`.
+The guided launcher avoids crowded default ports by starting Tracknov on its own local port range beginning at `3010`.
+
+## Vercel deployment
+
+Tracknov now includes `vercel.json` for consistent Next.js deployment defaults.
+
+Required Vercel environment variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY` (if AI Copilot should be active in production)
+- `AI_PROVIDER` (default `gemini`)
+- `AI_MODEL` (default `gemini-2.5-flash`)
+
+Recommended pre-deploy steps:
+
+1. Confirm migrations `0001` through `0007` are applied on the target Supabase project.
+2. Run `npm run build` locally.
+3. After deploy, run smoke checks for login, projects, documents upload/open, and exports.
 
 ## Guided commands
 
@@ -90,7 +109,7 @@ The guided launcher avoids crowded default ports by starting HaritaDocs on its o
 
 ## Database notes
 
-- The seeded IGBC catalog lives in [data/igbc-green-interiors-v2.json](/C:/Users/visha/harita/data/igbc-green-interiors-v2.json)
+- The seeded IGBC catalog lives in `data/igbc-green-interiors-v2.json`
 - The credit matrix is derived from the CCIL tracker workbook you provided, not hand-entered
 - The tracker source produces 47 seeded rows including mandatory requirements, which differs from the original 42-credit note in the prompt
 
@@ -106,7 +125,7 @@ If these are blank, onboarding still completes the app env setup and launch flow
 
 ## Seed command
 
-`npm run seed -- "HaritaDocs Seed Project" Gold <owner-user-id>`
+`npm run seed -- "Tracknov Seed Project" Gold <owner-user-id>`
 
 - Creates a test project
 - Seeds the full credit catalog
@@ -123,9 +142,9 @@ If these are blank, onboarding still completes the app env setup and launch flow
 - `/documents`
   Unified document hub for project-level files and IGBC credit evidence, with upload, search, project filters, and validation status labels.
 - `/credits`
-  IGBC score overview for each project using ENOVAIT's New Interiors / Existing Interiors point model and Harita's detailed evidence tracker.
+  IGBC score overview for each project using ENOVAIT's New Interiors / Existing Interiors point model and Tracknov's detailed evidence tracker.
 - `/team`
-  ENOVAIT-style team surface mapped to Harita project membership roles: admin, consultant, architect, MEP, contractor, client, and owner.
+  ENOVAIT-style team surface mapped to Tracknov project membership roles: admin, consultant, architect, MEP, contractor, client, and owner.
 - `/projects/[id]`
   Three-column workspace with category navigation, dense credit table, status/doc requirement chips, upload/review actions, and remarks.
 - `/projects/[id]/submission`
@@ -133,9 +152,9 @@ If these are blank, onboarding still completes the app env setup and launch flow
 
 ## Unified merge model
 
-- Harita is the target runtime: Next.js, Supabase Auth, Postgres, Storage, RLS, exports, and demo fallback stay canonical.
-- ENOVAIT project, document, team, role, and IGBC scoring features are mapped into Harita routes and tables.
-- Document status conflicts are resolved by using Harita database values (`uploaded`, `approved`, `rejected`) and ENOVAIT-facing labels (`Pending`, `Validated`, `Rejected`) in the UI.
+- Tracknov is the target runtime: Next.js, Supabase Auth, Postgres, Storage, RLS, exports, and demo fallback stay canonical.
+- ENOVAIT project, document, team, role, and IGBC scoring features are mapped into Tracknov routes and tables.
+- Document status conflicts are resolved by using Tracknov database values (`uploaded`, `approved`, `rejected`) and ENOVAIT-facing labels (`Pending`, `Validated`, `Rejected`) in the UI.
 - Project roles are unified across both apps: `admin`, `consultant`, `architect`, `mep`, `contractor`, `client`, and `owner`.
 - Project-level documents and credit-level evidence now share one `documents` table; `credit_id` is nullable for general ENOVAIT project files.
 
