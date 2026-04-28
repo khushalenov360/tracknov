@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, FileText, FolderKanban, Medal, Users } from "lucide-react";
+import { Bell, FileText, FolderKanban, Medal, Users, Inbox } from "lucide-react";
 import { GlobalCopilot } from "@/components/assistant/global-copilot";
+import { SessionHeartbeat } from "@/components/session-heartbeat";
 import { Badge } from "@/components/ui/badge";
 import { env } from "@/lib/env";
 import { roleLabels } from "@/lib/constants";
@@ -26,10 +27,14 @@ export function Shell({
     { href: "/documents", label: "Documents", icon: FileText },
     { href: "/credits", label: "Credits", icon: Medal },
     { href: "/team", label: "Team", icon: Users },
+    ...(["owner", "project_admin", "super_admin", "super_user"].includes(role ?? "")
+      ? [{ href: "/review-queue", label: "Review Queue", icon: Inbox }]
+      : []),
   ];
 
   return (
     <div className="app-shell">
+      <SessionHeartbeat />
       <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="mx-auto flex min-h-[56px] max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">

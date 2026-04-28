@@ -5,6 +5,23 @@ import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { CreditWorkspace, ProjectWorkspace } from "@/lib/types";
 
+export function isSubmissionExportReady(workspace: Pick<ProjectWorkspace, "credits">) {
+  const mandatoryCredits = workspace.credits.filter((credit) => credit.is_mandatory);
+  if (!mandatoryCredits.length) {
+    return false;
+  }
+  return mandatoryCredits.every((credit) => credit.status === "complete");
+}
+
+export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "credits">) {
+  return workspace.credits
+    .map((credit) => ({
+      ...credit,
+      documents: credit.documents.filter((document) => document.status === "approved"),
+    }))
+    .filter((credit) => credit.documents.length > 0);
+}
+
 function trackerRows(credits: CreditWorkspace[]) {
   const rows: (string | number)[][] = [
     [],
@@ -125,9 +142,9 @@ export async function buildSubmissionZip(workspace: ProjectWorkspace) {
   const zip = new JSZip();
   const client = env.isConfigured ? createClient() : null;
 
-  for (const credit of workspace.credits) {
-    const approvedDocs = credit.documents.filter((document) => document.status === "approved");
-    for (const document of approvedDocs) {
+  const approvedCredits = getApprovedSubmissionCredits(workspace);
+  for (const credit of approvedCredits) {
+    for (const document of credit.documents) {
       const folder = zip.folder(`${credit.credit_code}/${document.doc_category}`);
       if (!folder) {
         continue;

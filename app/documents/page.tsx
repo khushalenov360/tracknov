@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
-import { deleteDocumentAction, setDocumentStatusAction, updateDocumentMetadataAction } from "@/app/actions";
+import { deleteDocumentAction, resubmitDocumentAction, setDocumentStatusAction, updateDocumentMetadataAction } from "@/app/actions";
 import { GeneralUploadDocumentForm } from "@/components/project/general-upload-document-form";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,17 @@ export default async function DocumentsPage({
     getDocumentUploadOptions(),
   ]);
   const projectOptionsById = new Map(uploadProjects.map((project) => [project.id, project]));
+  const activeRole = projects[0]?.role ?? "consultant";
+  const roleScopedSummary =
+    activeRole === "architect" || activeRole === "mep" || activeRole === "contractor"
+      ? (() => {
+          const total = documents.length;
+          const completed = documents.filter((document) => document.status === "approved").length;
+          const rejected = documents.filter((document) => document.status === "rejected").length;
+          const incomplete = Math.max(total - completed - rejected, 0);
+          return { total, completed, rejected, incomplete };
+        })()
+      : null;
 
   return (
     <Shell
@@ -38,6 +49,32 @@ export default async function DocumentsPage({
           </p>
         </section>
       )}
+      {roleScopedSummary ? (
+        <section className="mt-4 surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My scope readiness</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Assigned uploads in your role scope across current project access.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Assigned docs</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roleScopedSummary.total}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Completed</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roleScopedSummary.completed}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Incomplete</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roleScopedSummary.incomplete}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Rejected</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roleScopedSummary.rejected}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-4 surface-card p-4">
         <form className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
@@ -231,9 +268,21 @@ export default async function DocumentsPage({
                                     <option value="rejected">Rejected / Excluded</option>
                                   ) : null}
                                 </select>
+                                <select
+                                  name="rejection_type"
+                                  defaultValue=""
+                                  className="h-[34px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                >
+                                  <option value="">Reject reason type (required for rejection)</option>
+                                  <option value="missing_data">Missing required information</option>
+                                  <option value="incorrect_format">Incorrect format</option>\n                                  <option value="wrong_document">Wrong document type</option>
+                                  <option value="poor_quality">Poor image quality / unreadable</option>
+                                  <option value="outdated_document">Outdated document</option>
+                                  <option value="wrong_credit_mapping">Wrong credit mapping</option>
+                                </select>
                                 <textarea
                                   name="rejection_remark"
-                                  placeholder="Reason for rejection or status override"
+                                  placeholder="Specific reason and correction step (minimum 20 characters)"
                                   rows={3}
                                   className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--color-text-primary)] outline-none"
                                 />
@@ -249,6 +298,25 @@ export default async function DocumentsPage({
                                 <input type="hidden" name="project_id" value={document.project_id} />
                                 <Button type="submit" variant="danger" className="h-[32px] rounded-md px-3 text-[12px]">
                                   Delete document
+                                </Button>
+                              </form>
+                            ) : null}
+
+                            {document.status === "rejected" && document.can_edit_metadata ? (
+                              <form action={resubmitDocumentAction} className="space-y-2 border-t border-[var(--color-border)] pt-3">
+                                <input type="hidden" name="document_id" value={document.id} />
+                                <input type="hidden" name="project_id" value={document.project_id} />
+                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                  Resubmit for owner review
+                                </label>
+                                <textarea
+                                  name="resubmit_note"
+                                  placeholder="What changed in this resubmission?"
+                                  rows={2}
+                                  className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--color-text-primary)] outline-none"
+                                />
+                                <Button type="submit" variant="secondary" className="h-[32px] rounded-md px-3 text-[12px]">
+                                  Resubmit document
                                 </Button>
                               </form>
                             ) : null}
@@ -299,3 +367,4 @@ export default async function DocumentsPage({
     </Shell>
   );
 }
+

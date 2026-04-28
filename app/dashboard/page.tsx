@@ -1,18 +1,24 @@
 import Link from "next/link";
-import { createProjectAction } from "@/app/actions";
+import { createProjectAction, updateOnboardingChecklistAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getCurrentUser, getDashboardProjects } from "@/lib/data";
+import { getCurrentUser, getDashboardProjects, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { pct } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const [user, projects] = await Promise.all([getCurrentUser(), getDashboardProjects()]);
+  const [user, projects, ownerQueue] = await Promise.all([getCurrentUser(), getDashboardProjects(), getOwnerReviewQueue()]);
   const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
+  const clientMode = activeRole === "client";
+  const primaryProjectId = projects[0]?.id ?? null;
+  const onboarding = primaryProjectId ? await getOrCreateOnboardingChecklist(primaryProjectId) : null;
+  const checklist = onboarding?.checklist ?? null;
+  const checklistDone = checklist ? Object.values(checklist).filter(Boolean).length : 0;
+  const isOwner = activeRole === "owner";
 
   const totals = {
     totalCredits: projects.reduce((sum, project) => sum + project.totalCredits, 0),
@@ -21,19 +27,346 @@ export default async function DashboardPage() {
     openRemarks: projects.reduce((sum, project) => sum + project.openRemarks, 0),
   };
 
+  const totalTokensLoaded = projects.reduce((sum, project) => {
+    const used = Math.max(project.documentCreditsUsed ?? 0, 0);
+    const remaining = Math.max(project.documentCreditsRemaining ?? 0, 0);
+    return sum + used + remaining;
+  }, 0);
+  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
+  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
+  const weeklyTokenBurn = Math.max(
+    1,
+    Math.round(
+      projects.reduce((sum, project) => {
+        const docs = Math.max(project.documentCreditsUsed ?? 0, 0);
+        const consult = Math.max(project.consultantCreditsUsed ?? 0, 0);
+        return sum + docs + consult;
+      }, 0) / 4,
+    ),
+  );
+  const exhaustionWeeks = totalTokensRemaining > 0 ? Math.ceil(totalTokensRemaining / weeklyTokenBurn) : 0;
+  const portfolioCompleted = projects.filter((project) => project.overallCompletion >= 95).length;
+  const portfolioDelayed = projects.filter((project) => (project.statusFlag ?? "green") === "red").length;
+  const portfolioInProgress = Math.max(projects.length - portfolioCompleted, 0);
+  const atRiskCount = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
+  const overallCompletionPct = projects.length
+    ? Math.round(projects.reduce((sum, project) => sum + project.overallCompletion, 0) / projects.length)
+    : 0;
+  const projectedRating = overallCompletionPct >= 80 ? "Gold" : overallCompletionPct >= 60 ? "Silver" : "Certified";
+  const approvalBase = projects.reduce(
+    (sum, project) => sum + Math.max((project.pendingReviewsCount ?? 0) + (project.rejectedCount ?? 0), 0),
+    0,
+  );
+  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount ?? 0, 0), 0);
+  const rejectionRate = approvalBase > 0 ? Math.round((rejectionTotal / approvalBase) * 100) : 0;
+  const firstTimeApprovalRate = Math.max(100 - rejectionRate, 0);
+  const avgTokensPerProject = projects.length ? Math.round(totalTokensUsed / projects.length) : 0;
+  const efficiencyScore = Math.max(
+    0,
+    Math.min(100, Math.round((firstTimeApprovalRate * 0.7) + (Math.max(0, 100 - rejectionRate) * 0.3))),
+  );
+
+  const executiveRiskRows = projects.map((project) => {
+    const pending = Math.max(project.pendingReviewsCount ?? 0, 0);
+    const rejected = Math.max(project.rejectedCount ?? 0, 0);
+    const risk =
+      (project.statusFlag ?? "green") === "red"
+        ? "Critical"
+        : (project.statusFlag ?? "green") === "amber"
+          ? "Delay Risk"
+          : "On Track";
+    return {
+      id: project.id,
+      name: project.name,
+      completion: pct(project.overallCompletion),
+      pending,
+      rejected,
+      risk,
+    };
+  });
+
+  const ownerRows = projects.map((project) => {
+    const queueForProject = ownerQueue.filter((item) => item.project_id === project.id);
+    const pendingUploads = Math.max(project.totalCredits - project.uploadedDocs, 0);
+    const pendingMyReview = queueForProject.length;
+    const pendingApprovals = Number(project.pendingReviewsCount ?? 0);
+    const rejectedCount = Number(project.rejectedCount ?? 0);
+    const atConsultant = Math.max(project.openRemarks, 0);
+    const riskScore = pendingUploads + pendingMyReview + atConsultant;
+    const risk =
+      project.statusFlag === "red" || riskScore >= 8 ? "Risk" : project.statusFlag === "amber" || riskScore >= 3 ? "Delayed" : "On Track";
+    return {
+      project,
+      pendingUploads,
+      pendingMyReview,
+      pendingApprovals,
+      rejectedCount,
+      atConsultant,
+      risk,
+    };
+  });
+
+  const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
+  const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
+  const weeklyUsage = projects.reduce((sum, project) => sum + Math.max(project.consultantCreditsUsed ?? 0, 0), 0);
+
   return (
     <Shell
-      title={`${roleLabels[activeRole]} Dashboard`}
-      description="Overview of active projects, documentation progress, and review status."
+      title={clientMode ? "Client Dashboard" : `${roleLabels[activeRole]} Dashboard`}
+      description={
+        clientMode
+          ? "Simple project progress, pending actions, and submission readiness."
+          : "Overview of active projects, documentation progress, and review status."
+      }
       role={activeRole}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
+      {primaryProjectId && checklist ? (
+        <section className="surface-card mb-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Onboarding checklist</h2>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                {checklistDone}/4 completed for your active project.
+              </p>
+            </div>
+            <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
+              {checklistDone === 4 ? "Completed" : "In progress"}
+            </Badge>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {[
+              ["profile_completed", "Confirm profile details"],
+              ["project_scope_confirmed", "Confirm project scope"],
+              ["first_document_uploaded", "Upload first mapped document"],
+              ["first_review_completed", "Complete first review handoff"],
+            ].map(([key, label]) => {
+              const checked = Boolean((checklist as any)[key]);
+              return (
+                <form
+                  key={key}
+                  action={updateOnboardingChecklistAction}
+                  className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
+                >
+                  <input type="hidden" name="project_id" value={primaryProjectId} />
+                  <input type="hidden" name="key" value={key} />
+                  <input type="hidden" name="value" value={checked ? "false" : "true"} />
+                  <span className="text-[12px] text-[var(--color-text-primary)]">{label}</span>
+                  <Button type="submit" variant={checked ? "secondary" : "default"} className="h-[28px] rounded-md px-2.5 text-[11px]">
+                    {checked ? "Done" : "Mark done"}
+                  </Button>
+                </form>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {isOwner ? (
+        <section className="surface-card mb-4 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Project Owner command view</h2>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                One-screen portfolio with pending uploads, pending owner reviews, consultant queue, and risk signal.
+              </p>
+            </div>
+            <Button asChild className="h-[32px] rounded-md px-3 text-[12px]">
+              <Link href="/review-queue">Open My Review Queue</Link>
+            </Button>
+          </div>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--color-border)]">
+            <table className="min-w-full border-collapse text-[12px]">
+              <thead className="bg-[var(--color-surface-2)]">
+                <tr className="border-b border-[var(--color-border)]">
+                  {["Project", "Progress", "Pending Uploads", "Pending Approvals", "Rejected", "Pending My Review", "At Consultant", "Status"].map((heading) => (
+                    <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ownerRows.map(({ project, pendingUploads, pendingApprovals, rejectedCount, pendingMyReview, atConsultant, risk }) => (
+                  <tr key={project.id} className="border-b border-[var(--color-border)]">
+                    <td className="px-3 py-2">
+                      <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+                        {project.name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2">{pct(project.overallCompletion)}</td>
+                    <td className="px-3 py-2">{pendingUploads}</td>
+                    <td className="px-3 py-2">{pendingApprovals}</td>
+                    <td className="px-3 py-2">{rejectedCount}</td>
+                    <td className="px-3 py-2">{pendingMyReview}</td>
+                    <td className="px-3 py-2">{atConsultant}</td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        className={
+                          risk === "Risk"
+                            ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                            : risk === "Delayed"
+                              ? "border border-[var(--color-amber)] bg-[var(--color-amber-soft)] text-[var(--color-amber)]"
+                              : "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                        }
+                      >
+                        {risk}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens remaining</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{totalDocTokensRemaining}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens used</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{totalDocTokensUsed}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Consult credits used</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{weeklyUsage}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Action queue</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{ownerQueue.length}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {clientMode ? (
+        <section className="surface-card mb-4 p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            30-second status for certification progress, portfolio risk, and token usage.
+          </p>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              { label: "Overall status", value: atRiskCount > 0 ? "Attention needed" : "On Track", meta: `${atRiskCount} at risk` },
+              { label: "Projected rating", value: projectedRating, meta: `${overallCompletionPct}% complete` },
+              { label: "Active projects", value: String(projects.length), meta: `${portfolioDelayed} delayed` },
+              { label: "Token balance", value: String(totalTokensRemaining), meta: `${weeklyTokenBurn}/week burn` },
+              { label: "Runway", value: `${exhaustionWeeks} weeks`, meta: "Estimated exhaustion" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">{item.label}</p>
+                <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{item.value}</p>
+                <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">{item.meta}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Portfolio status</p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Completed: {portfolioCompleted} / In progress: {portfolioInProgress} / Delayed: {portfolioDelayed}
+              </p>
+              <div className="mt-3 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <table className="min-w-full border-collapse text-[12px]">
+                  <thead className="bg-[var(--color-surface-2)]">
+                    <tr className="border-b border-[var(--color-border)]">
+                      {["Project", "Completion", "Pending", "Rejected", "Risk"].map((heading) => (
+                        <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {executiveRiskRows.map((item) => (
+                      <tr key={item.id} className="border-b border-[var(--color-border)]">
+                        <td className="px-3 py-2">{item.name}</td>
+                        <td className="px-3 py-2">{item.completion}</td>
+                        <td className="px-3 py-2">{item.pending}</td>
+                        <td className="px-3 py-2">{item.rejected}</td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            className={
+                              item.risk === "Critical"
+                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                : item.risk === "Delay Risk"
+                                  ? "border border-[var(--color-amber)] bg-[var(--color-amber-soft)] text-[var(--color-amber)]"
+                                  : "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                            }
+                          >
+                            {item.risk}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Efficiency and spend</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Efficiency score</p>
+                  <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{efficiencyScore}%</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">First-time approval</p>
+                  <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{firstTimeApprovalRate}%</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Rejection rate</p>
+                  <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{rejectionRate}%</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Avg tokens/project</p>
+                  <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{avgTokensPerProject}</p>
+                </div>
+              </div>
+              <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                <p className="text-[11px] text-[var(--color-text-secondary)]">
+                  Tokens loaded: <span className="mono text-[var(--color-text-primary)]">{totalTokensLoaded}</span> / Used:{" "}
+                  <span className="mono text-[var(--color-text-primary)]">{totalTokensUsed}</span> / Remaining:{" "}
+                  <span className="mono text-[var(--color-text-primary)]">{totalTokensRemaining}</span>
+                </p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {projects.slice(0, 3).map((project) => (
+                  <Button key={project.id} asChild variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                    <Link href={`/api/projects/${project.id}/summary`}>Export {project.name} PDF</Link>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Tracked credits", value: totals.totalCredits, meta: `${projects.length} active projects` },
-          { label: "Docs uploaded", value: totals.uploadedDocs, meta: "Across all workspaces" },
-          { label: "Mandatory met", value: totals.mandatoryCreditsMet, meta: "Ready for submission checks" },
-          { label: "Open remarks", value: totals.openRemarks, meta: "Needs consultant review" },
+          {
+            label: clientMode ? "Checklist items tracked" : "Tracked credits",
+            value: totals.totalCredits,
+            meta: `${projects.length} active projects`,
+          },
+          {
+            label: clientMode ? "Files uploaded" : "Docs uploaded",
+            value: totals.uploadedDocs,
+            meta: clientMode ? "Across assigned projects" : "Across all workspaces",
+          },
+          {
+            label: clientMode ? "Must-have items ready" : "Mandatory met",
+            value: totals.mandatoryCreditsMet,
+            meta: clientMode ? "Ready for final pack review" : "Ready for submission checks",
+          },
+          {
+            label: clientMode ? "Pending comments" : "Open remarks",
+            value: totals.openRemarks,
+            meta: clientMode ? "Needs team action" : "Needs consultant review",
+          },
         ].map((item) => (
           <div key={item.label} className="surface-card p-4">
             <p className="text-[11px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">{item.label}</p>
@@ -48,7 +381,9 @@ export default async function DashboardPage() {
           <div>
             <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Projects</h2>
             <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-              Open any project to view section-wise progress and completion.
+              {clientMode
+                ? "Open a project for simple progress and pending actions."
+                : "Open any project to view section-wise progress and completion."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -117,8 +452,9 @@ export default async function DashboardPage() {
                   {project.certification_type} / {project.location || "Location TBD"}
                 </p>
                 <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
-                  {project.totalCredits} credits · {project.uploadedDocs} docs · {project.mandatoryCreditsMet} mandatory met · {project.openRemarks} remarks ·{" "}
-                  {project.membersCount} members
+                  {clientMode
+                    ? `${project.totalCredits} checklist items · ${project.uploadedDocs} files · ${project.mandatoryCreditsMet} must-have ready · ${project.openRemarks} pending comments · ${project.membersCount} team members`
+                    : `${project.totalCredits} credits · ${project.uploadedDocs} docs · ${project.mandatoryCreditsMet} mandatory met · ${project.openRemarks} remarks · ${project.membersCount} members`}
                 </p>
                 <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
                   <Progress value={project.overallCompletion} />
@@ -149,4 +485,3 @@ export default async function DashboardPage() {
     </Shell>
   );
 }
-

@@ -1,82 +1,152 @@
-# Tracknov TODO
+# Tracknov TODO (Pending Items Only)
 
-This checklist is based on the current completion review against `tracknov-project-plan.md`.
-Last updated: 2026-04-28
+Last updated: 2026-04-29 IST  
+Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
-## Priority 1: Production blockers
+## Priority 0 - Persona-critical UX and workflow (new, highest priority)
 
-- [ ] Run a full end-to-end live workflow test using real roles and real data:
-  login -> dashboard -> create/open project -> upload document -> Project Owner review -> Project Admin review -> approved document appears in submission flow -> export tracker/PDF/ZIP.
-- [x] Verify all current Supabase migrations are fully applied on the live project.
-- [ ] Confirm document upload creates both:
-  storage object in Supabase bucket and matching `documents` row in database.
-- [ ] Confirm signed document links open correctly for uploaded files from the Documents tab.
-- [ ] Verify project delete works only for `super_user`.
-- [ ] Verify document delete is visible and works only for allowed roles.
-- [ ] Verify role-based restrictions for document editing and status changes across:
-  `super_user`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
+- [x] L0 role-focused workspace views:
+  show only assigned credits for `mep`, `architect`, `contractor` (no full 47-credit noise by default).
+- [x] L0 mobile-first upload path:
+  3-step flow (credit -> doc type -> file) with strong touch UX and clear success state.
+- [x] Pre-submit confirmation safety:
+  5-second cancel window before upload starts.
+- [x] Prevent accidental token burn:
+  no token deduction when upload fails or credit/doc-type mapping is invalid.
+- [x] Doc requirement clarity before upload:
+  show exact "required evidence" text and accepted file types for selected credit/doc type.
+- [x] Rejection quality:
+  enforce specific rejection reason templates and free-text guidance (not generic "non-compliant").
+- [x] L0 self-service correction:
+  allow move/delete/edit before review lock without token penalty for mapping mistakes.
+- [x] L1 Project Owner review cockpit:
+  document preview + approve/send back + mandatory reason + queue summary.
+- [x] L1 dedicated review queue baseline:
+  new `review-queue` page with clean rows and approve/send-back actions.
+- [x] L1 bulk action baseline:
+  multi-select and bulk approve/send-back with shared rejection remark.
+- [x] L1 one-screen portfolio baseline:
+  owner dashboard table with progress, pending uploads, pending review, consultant queue, risk tag.
+- [x] L1 rejection template baseline:
+  structured reject reason types in queue (`missing_data`, `wrong_document`, `poor_quality`, `outdated_document`, `wrong_credit_mapping`).
+- [x] L1 inline preview-first review:
+  queue rows render embedded preview with no project-page navigation required.
+- [x] L1 project prioritization metrics:
+  owner table includes pending approvals + rejected count + status flag (green/amber/red).
+- [x] L2 Client executive snapshot:
+  30-second page with overall progress, projected rating, RAG per location, token burn trend, wallet balance.
+- [x] L2 executive snapshot baseline:
+  one-screen client panel with overall status, projected rating, completion, active projects, at-risk count, token runway.
+- [x] L2 risk and portfolio panel:
+  per-project risk table (`On Track`, `Delay Risk`, `Critical`) with pending/rejected counts.
+- [x] L2 token intelligence panel:
+  loaded/used/remaining tokens, burn rate, estimated exhaustion weeks.
+- [x] L2 efficiency baseline metrics:
+  first-time approval rate, rejection rate, avg tokens/project, efficiency score.
+- [x] L2 one-click reporting baseline:
+  direct PDF summary export links from executive panel.
+- [x] L3 Project Admin high-throughput queue:
+  cross-project validation feed, quick actions, rejection template library, audit-accurate timestamps (IST).
+- [x] L3 cross-project command view baseline:
+  project admin section with progress, pending validation, rejections, and submission readiness.
+- [x] L3 queue performance counters:
+  reviewed/approved/rejected today and approval-rate card in review queue.
+- [x] L3 rejection template engine baseline:
+  bulk rejection supports typed template messages for repeat scenarios.
+- [x] L5 Super User monetization panel:
+  client wallets, token top-ups, monthly usage split (uploads vs consulting), and manual override controls.
+- [x] L5 command-center baseline:
+  multi-client wallet table, project counts, client status, and super-user token override form.
+- [x] L5 token economy baseline:
+  sold/consumed/weekly burn/revenue estimate + upload vs consulting spend split.
+- [x] L5 system health baseline:
+  uploads today, failed transactions, pending reviews, active users.
+- [x] L5 critical alert baseline:
+  low-wallet and queue/anomaly alerts surfaced in super-user panel.
+- [ ] Notifications:
+  email/WhatsApp style alerts for rejection, resubmission, pending-review aging, and low-token warnings.
+- [x] Session continuity:
+  reduce unwanted session drops/logouts for low-frequency users.
 
-## Priority 2: Plan gaps still incomplete
+## Priority 0A - Architect workflow (Priya) critical path
 
-- [x] Reduce upload-size limit behavior to match plan requirement.
-- [x] Change current frontend upload warning from `50 MB` to plan-aligned `10 MB`.
-- [x] Add file-size handling strategy for large PDFs and image-heavy submissions.
-- [x] Add graceful handling guidance for oversized uploads.
-- [x] Add app-level `error.tsx` for friendly global error handling.
-- [x] Add loading states where still missing across major data pages.
-- [x] Review empty states on all major tabs and align them with the project plan.
-- [x] Validate allowed upload file types against the plan and business needs.
+- [x] Credit-to-document slot mapping:
+  render per-credit required document slots (certificate/spec/invoice) with mandatory/optional markers.
+- [x] Multi-file upload structure per credit:
+  preserve grouped uploads by credit + requirement slot (not generic flat uploads).
+- [ ] Pre-review editable mapping:
+  allow move/edit/delete while `status = uploaded`; lock at `owner_approved` and above.
+- [ ] Architect pre-validation checklist:
+  visible per-credit checklist (`uploaded` / `missing`) before owner review.
+- [x] Structured rejection taxonomy:
+  `missing_data`, `incorrect_format`, `outdated_document`, `wrong_credit_mapping`.
+- [x] Duplicate guard:
+  detect likely duplicate file name/hash and prompt reuse before charging token.
+- [ ] Vendor intelligence baseline:
+  enable vendor doc reuse suggestions by vendor + doc type history.
+- [x] Architect scope readiness:
+  role-scoped progress card (`completed`, `incomplete`, `rejected`) for assigned architect credits only.
+- [ ] Architect notification rules:
+  actionable reject/missing/completion notifications without spam.
 
-## Priority 3: Identity and cleanup
+## Priority 1 - Production blockers (must close before release)
 
-- [x] Rename remaining legacy `Harita` references to `Tracknov`. (non-doc runtime surfaces now Tracknov-only)
-- [x] Update `package.json` name, description, keywords, bin command, repository metadata, bugs URL, and homepage.
-- [x] Rename launcher scripts from `Start-Harita.*` to `Start-Tracknov.*`.
-- [x] Update onboarding scripts and README references to use `Tracknov` consistently.
-- [x] Review internal labels, CLI text, and helper script copy for legacy naming.
+- [ ] Run full end-to-end live workflow with real role accounts and real data:
+  login -> dashboard -> create/open project -> upload -> Project Owner review -> Project Admin review -> included in submission pack -> XLSX/PDF/ZIP export.
+- [ ] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
+- [ ] Verify upload integrity for every upload:
+  Supabase storage object exists + matching `documents` row + signed URL opens.
+- [ ] Verify `super_user`-only project delete in live session.
+- [ ] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
+- [ ] Verify role-based edit/status restrictions across:
+  `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
+- [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
 
-## Priority 4: Security and hardening
+## Priority 2 - New business-model scope gaps (from updated plan)
 
-- [x] Re-check that every Supabase table has RLS enabled in the live environment.
-- [x] Re-check storage policies for private document access in the live environment.
-- [x] Audit API routes to confirm session validation is enforced everywhere.
-- [x] Confirm service-role usage is server-only and never exposed client-side.
-- [x] Review production logs and code paths for sensitive debug output.
+- [x] Implement plans/pricing model with per-project quotas:
+  document credits and consultant interaction credits.
+- [x] Implement real-time usage tracking (consumed vs remaining credits per project).
+- [x] Implement consultant interaction session logger that decrements consultant credits.
+- [x] Implement billing/invoicing module (plan usage, top-ups, invoice records).
 
-## Priority 5: Deployment readiness
+## Priority 3 - Product workflow gaps (from updated plan)
 
-- [x] Prepare final Vercel deployment configuration.
-- [x] Verify all required environment variables are documented and present.
-- [ ] Run a production smoke test on deployed URL:
-  login, dashboard, projects, documents, uploads, exports.
-- [ ] Confirm Supabase storage uploads work from deployed app, not only local.
+- [x] Add per-credit "What to Submit" guidance in clear client language.
+- [x] Add credit difficulty classification (`Easy`, `Moderate`, `Hard`) and surface it in workspace.
+- [x] Complete rejection + resubmit lifecycle:
+  rejected -> resubmitted -> owner review -> admin review with reason trail.
+- [x] Extend audit trail beyond current document logs to full history for key actions:
+  project/member changes, credit status changes, workflow transitions.
+- [x] Add/verify jargon-free client view distinct from consultant/admin workspace.
+- [x] Add per-credit cost/effort guidance.
+- [x] Complete onboarding checklist flow for first-time users.
 
-## Priority 6: Functional refinement
+## Priority 4 - Submission and export correctness
 
-- [ ] Review AI Copilot against live project database behavior on all tabs.
-- [ ] Improve Copilot grounding so answers consistently reflect project-specific documents, credits, and status.
-- [ ] Verify submission pack includes only approved documents.
-- [ ] Verify mandatory-credit gating blocks submission export when incomplete.
-- [ ] Review exports against expected CCIL / IGBC formatting and completeness.
+- [x] Verify submission pack includes only admin-approved/included documents.
+- [x] Verify mandatory-credit gating blocks submission export when incomplete.
+- [ ] Validate tracker/PDF/ZIP outputs against final CCIL/IGBC expected structure and naming.
 
-## Priority 7: Documentation and project control
+## Priority 5 - Copilot readiness
 
-- [x] Keep `HANDOFF.md` updated with each push.
-- [x] Use `tracknov-project-plan.md` as the baseline for milestone tracking.
-- [x] Keep `BHAVARKUA_UPLOAD_MAP.md` available as ingestion reference for structured uploads.
-- [x] Create a final release-readiness checklist once the above items are closed.
+- [ ] Validate Copilot behavior on all tabs against live project data.
+- [x] Improve grounding to reliably answer with project-specific documents/credits/status.
+- [x] Confirm role-safe Copilot responses (no overexposure of restricted data).
 
-## Suggested execution order
+## Priority 6 - Deployment and QA closeout
 
-1. Close live workflow verification.
-2. Apply any missing Supabase migration/state fixes.
-3. Complete remaining identity cleanup and UI empty-state alignment.
-4. Complete Tracknov identity cleanup.
-5. Run deployment smoke test.
-6. Freeze release checklist and update handoff.
+- [ ] Run deployed smoke test on production URL:
+  login, dashboard, projects, documents upload/open, workspace review, exports.
+- [ ] Verify uploads from deployed environment (not only localhost).
+- [ ] Run mobile QA pass (login/dashboard/projects/documents/workspace) and resolve responsive issues.
+- [ ] Run role-based UAT signoff matrix and attach evidence.
 
-## Next immediate focus
+## Execution order
 
-1. Execute Priority 1 live verification with real role accounts and capture evidence.
-2. Run deployment readiness checks and live smoke on hosted URL.
-3. Close Priority 6 functional refinement checks for Copilot and exports.
+1. Close Priority 1 live blockers.
+2. Implement Priority 2 business-model modules.
+3. Complete Priority 3 workflow/product gaps.
+4. Finish Priority 4 export correctness checks.
+5. Complete Priority 5 Copilot grounding and safety.
+6. Finish Priority 6 deployment/mobile/UAT signoff.

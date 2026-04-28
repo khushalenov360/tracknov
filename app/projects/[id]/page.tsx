@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Circle, Download, FileWarning, ShieldCheck } from "lucide-react";
-import { addRemarkAction, setCreditStateAction, setDocumentStatusAction } from "@/app/actions";
+import {
+  addRemarkAction,
+  setCreditStateAction,
+  setDocumentStatusAction,
+  updateCreditGuidanceAction,
+  updateCreditDocumentRequirementsAction,
+} from "@/app/actions";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
 import { Shell } from "@/components/shell";
@@ -55,20 +61,25 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
   const workspace = await getProjectWorkspace(params.id);
-  const stats = creditStats(workspace.credits);
+  const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
+  const roleScopedCredits = isL0Contributor
+    ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
+    : workspace.credits;
+  const stats = creditStats(roleScopedCredits);
   const selectedCredit =
-    workspace.credits.find((credit) => credit.id === searchParams?.credit) ?? workspace.credits[0];
-  const filteredCredits = workspace.credits.filter((credit) => {
+    roleScopedCredits.find((credit) => credit.id === searchParams?.credit) ?? roleScopedCredits[0];
+  const filteredCredits = roleScopedCredits.filter((credit) => {
     const categoryOk = searchParams?.category ? credit.category === searchParams.category : true;
     const statusOk = searchParams?.status ? credit.status === searchParams.status : true;
     return categoryOk && statusOk;
   });
-  const mandatoryCredits = workspace.credits.filter((credit) => credit.is_mandatory);
+  const mandatoryCredits = roleScopedCredits.filter((credit) => credit.is_mandatory);
   const mandatoryComplete = mandatoryCredits.filter((credit) => credit.status === "complete").length;
   const canReview = canReviewProjectDocuments(workspace.userRole);
   const canUpload = canUploadProjectDocuments(workspace.userRole);
   const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
   const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
   const reviewableDocuments = selectedCredit.documents.filter((document) =>
     canOwnerReview ? document.status === "uploaded" : canFinalReview ? document.status === "owner_approved" : false,
   );
@@ -82,6 +93,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       selectedCredit.documents.map((document) => `${document.file_name} (${document.status})`).join(", ") || "none"
     }.`,
     `Current user role: ${workspace.userRole}.`,
+    `What to submit guidance: ${selectedCredit.what_to_submit || selectedCredit.documentation_summary || "Not set"}.`,
+    `Effort profile: ${selectedCredit.effort_level ?? "moderate"}; guidance: ${selectedCredit.effort_guidance ?? "Not set"}.`,
     canFinalReview
       ? "Project Admin final approval is required before a document can be included in the submission pack."
       : canOwnerReview
@@ -116,7 +129,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     nextSteps: aiNextSteps,
   };
   const categoryProgress = stats.categories.map((item) => {
-    const categoryCredits = workspace.credits.filter((credit) => credit.category === item.key);
+    const categoryCredits = roleScopedCredits.filter((credit) => credit.category === item.key);
     const completed = categoryCredits.filter((credit) => credit.status === "complete").length;
     const inProgress = categoryCredits.filter((credit) => credit.status === "in_progress").length;
     const blocked = categoryCredits.filter((credit) => credit.status === "blocked").length;
@@ -227,7 +240,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   All credits
                 </span>
                 <span className="mono rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px]">
-                  {workspace.credits.length}
+                  {roleScopedCredits.length}
                 </span>
               </Link>
               {stats.categories.map((item) => {
@@ -252,7 +265,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       {item.key}
                     </span>
                     <span className="mono rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px]">
-                      {item.count}
+                      {roleScopedCredits.filter((credit) => credit.category === item.key).length}
                     </span>
                   </Link>
                 );
@@ -280,12 +293,21 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     }`}
                   >
                     <span>{status.replace("_", " ")}</span>
-                    <Badge className={classes}>{workspace.credits.filter((credit) => credit.status === status).length}</Badge>
+                    <Badge className={classes}>{roleScopedCredits.filter((credit) => credit.status === status).length}</Badge>
                   </Link>
                 );
               })}
             </div>
           </div>
+
+          {isL0Contributor ? (
+            <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">My tasks</p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                {roleScopedCredits.filter((credit) => credit.status === "complete").length} of {roleScopedCredits.length} credits complete
+              </p>
+            </div>
+          ) : null}
 
           <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--color-red)]">
@@ -326,9 +348,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <table className="min-w-full border-collapse text-[12px]">
               <thead className="sticky top-0 z-10 bg-[var(--color-surface-2)]">
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Credit code
-                  </th>
+                  {!isL0Contributor ? (
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                      Credit code
+                    </th>
+                  ) : null}
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Credit name
                   </th>
@@ -361,22 +385,33 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                           : "hover:bg-[var(--color-surface-2)]"
                       }`}
                     >
-                      <td className="px-3 py-2 align-middle">
+                      {!isL0Contributor ? (
+                        <td className="px-3 py-2 align-middle">
+                          <Link
+                            href={`/projects/${params.id}${queryString({
+                              category: searchParams?.category,
+                              status: searchParams?.status,
+                              credit: credit.id,
+                            })}`}
+                            className={`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${
+                              credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color
+                            }`}
+                          >
+                            {displayCode}
+                          </Link>
+                        </td>
+                      ) : null}
+                      <td className="max-w-[200px] truncate px-3 py-2 align-middle text-[13px] text-[var(--color-text-primary)]">
                         <Link
                           href={`/projects/${params.id}${queryString({
                             category: searchParams?.category,
                             status: searchParams?.status,
                             credit: credit.id,
                           })}`}
-                          className={`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${
-                            credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color
-                          }`}
+                          className="hover:text-[var(--color-green)]"
                         >
-                          {displayCode}
+                          {credit.credit_name}
                         </Link>
-                      </td>
-                      <td className="max-w-[200px] truncate px-3 py-2 align-middle text-[13px] text-[var(--color-text-primary)]">
-                        {credit.credit_name}
                       </td>
                       <td className="px-3 py-2 align-middle">
                         <div className="flex flex-wrap gap-1">
@@ -386,7 +421,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                               className={`inline-flex rounded-[3px] px-[5px] py-[2px] text-[9px] ${
                                 doc.required
                                   ? "border border-[var(--color-green)] bg-[var(--color-green-light)] text-[var(--color-green)]"
-                                  : "bg-[var(--color-surface-2)] text-[var(--color-text-tertiary)]"
+                                  : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-60"
                               }`}
                             >
                               {docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase()}
@@ -476,6 +511,39 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             ) : null}
 
             <section>
+              <p className="dense-label">What to submit</p>
+              <p className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] leading-5 text-[var(--color-text-secondary)]">
+                {selectedCredit.what_to_submit?.trim() || selectedCredit.documentation_summary || "Guidance is not set yet for this credit."}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedCredit.sample_document_url ? (
+                  <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
+                    <Link href={selectedCredit.sample_document_url} target="_blank">
+                      Open sample document
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
+                  <Link href="https://wa.me/?text=Tracknov%20support%20needed%20for%20credit%20upload" target="_blank">
+                    Not sure what to upload? (50 tokens / 1h consult)
+                  </Link>
+                </Button>
+              </div>
+            </section>
+
+            <section className="grid gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="dense-label">Effort profile</p>
+                <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                  {(selectedCredit.effort_level ?? "moderate").toUpperCase()}
+                </Badge>
+              </div>
+              <p className="text-[11px] leading-5 text-[var(--color-text-secondary)]">
+                {selectedCredit.effort_guidance?.trim() || "Define cost/effort guidance for this credit."}
+              </p>
+            </section>
+
+            <section>
               <p className="dense-label">Document checklist</p>
               <div className="mt-2 space-y-2">
                 {selectedCredit.documents_required.map((doc) => {
@@ -508,6 +576,88 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 })}
               </div>
             </section>
+
+            {canConfigureDocRequirements ? (
+              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Document Type Requirements</p>
+                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                  Set active/inactive document blocks for this credit. Active types are required.
+                </p>
+                <form action={updateCreditDocumentRequirementsAction} className="mt-3 space-y-3">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedCredit.documents_required.map((doc) => (
+                      <label key={doc.type} className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
+                        <input
+                          type="checkbox"
+                          name="required_doc_types"
+                          value={doc.type}
+                          defaultChecked={doc.required}
+                          className="h-3.5 w-3.5 rounded border-[var(--color-border)]"
+                        />
+                        <span className="truncate">{docAbbreviations[doc.type] ?? doc.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
+                    Save Requirements
+                  </Button>
+                </form>
+              </section>
+            ) : null}
+
+            <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Project activity log (IST)</p>
+              <div className="mt-2 space-y-2">
+                {(workspace.activityLogs ?? []).length ? (
+                  (workspace.activityLogs ?? []).slice(0, 8).map((log) => (
+                    <div key={log.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2">
+                      <p className="text-[11px] text-[var(--color-text-primary)]">{log.summary}</p>
+                      <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                        {formatDateTimeIST(log.created_at)} / {log.actor_role ?? "system"}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[11px] text-[var(--color-text-tertiary)]">No project activity recorded yet.</p>
+                )}
+              </div>
+            </section>
+
+            {canConfigureDocRequirements ? (
+              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Client Guidance Controls</p>
+                <form action={updateCreditGuidanceAction} className="mt-2 grid gap-2">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                  <Textarea
+                    name="what_to_submit"
+                    defaultValue={selectedCredit.what_to_submit ?? selectedCredit.documentation_summary ?? ""}
+                    className="min-h-[78px]"
+                    placeholder="What should the client upload for this credit?"
+                  />
+                  <select
+                    name="effort_level"
+                    defaultValue={selectedCredit.effort_level ?? "moderate"}
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <Textarea
+                    name="effort_guidance"
+                    defaultValue={selectedCredit.effort_guidance ?? ""}
+                    className="min-h-[62px]"
+                    placeholder="Cost and effort guidance for this credit."
+                  />
+                  <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                    Save guidance
+                  </Button>
+                </form>
+              </section>
+            ) : null}
 
             <section>
               <p className="dense-label">Uploaded files</p>
@@ -552,6 +702,30 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
                       {canReview ? (
                         <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                              Document preview
+                            </p>
+                            <Link
+                              href={`/api/documents/${document.id}`}
+                              target="_blank"
+                              className="text-[10px] text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+                            >
+                              Open full screen
+                            </Link>
+                          </div>
+                          <div className="overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                            <iframe
+                              src={`/api/documents/${document.id}`}
+                              title={`Preview ${document.file_name}`}
+                              className="h-[220px] w-full"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {canReview ? (
+                        <div className="mt-3 space-y-2">
                           {canOwnerReview && document.status === "uploaded" ? (
                             <form action={setDocumentStatusAction}>
                               <input type="hidden" name="project_id" value={params.id} />
@@ -579,9 +753,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                             <input type="hidden" name="credit_id" value={selectedCredit.id} />
                             <input type="hidden" name="document_id" value={document.id} />
                             <input type="hidden" name="status" value="rejected" />
+                            <select
+                              name="rejection_type"
+                              defaultValue="missing_data"
+                              className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                            >
+                              <option value="missing_data">Missing required information</option>
+                              <option value="incorrect_format">Incorrect format</option>\n                              <option value="wrong_document">Wrong document type</option>
+                              <option value="poor_quality">Poor image quality / unreadable</option>
+                              <option value="outdated_document">Outdated document</option>
+                              <option value="wrong_credit_mapping">Wrong credit mapping</option>
+                            </select>
                             <input
                               name="rejection_remark"
-                              placeholder="Reason for rejection"
+                              placeholder="Specific correction note (minimum 20 characters)"
                               className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
                             />
                             <Button type="submit" variant="danger" className="h-7 w-full rounded-md text-[11px]">
@@ -600,8 +785,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               <UploadDocumentForm
                 projectId={params.id}
                 creditId={selectedCredit.id}
-                docTypes={selectedCredit.documents_required.filter((doc) => doc.required).map((doc) => doc.type)}
-                disabled={!env.isConfigured || !selectedCredit.documents_required.some((doc) => doc.required)}
+                docTypes={selectedCredit.documents_required.map((doc) => doc.type)}
+                disabled={!env.isConfigured || !selectedCredit.documents_required.length}
               />
             ) : null}
 
@@ -678,3 +863,4 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     </Shell>
   );
 }
+

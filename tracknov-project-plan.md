@@ -18,6 +18,56 @@ Build a production-ready web application that replaces Excel sheets and WhatsApp
 
 ---
 
+## Merged Additions (Updated Plan Overlay - 28 Apr 2026)
+
+The following additions are merged from the updated project plan so this file remains the single source of truth.
+
+### Business Model Additions
+
+- Add plans and pricing with per-project limits for:
+  - Document credits
+  - Consultant interaction credits
+- Real-time usage tracking for consumed and remaining credits per project
+- Consultant interaction session logger (credit burn per session/event)
+- Billing and invoicing module for plan usage and top-ups
+
+### Product Capability Additions
+
+- Built-in "What to Submit" guidance per credit in plain language
+- Credit classification by implementation effort:
+  - Easy wins
+  - Moderate
+  - Hard
+- Rejection + resubmit workflow (not only a one-way rejection path)
+- Full audit trail and history logs across key actions
+- Mobile-optimized UI behavior for login, dashboard, workspace, and documents
+- Jargon-free client-facing view separate from internal consultant view
+- Cost and effort guidance per credit to aid decision-making
+- Onboarding checklist for first-time users
+
+### Delivery and Validation Additions
+
+- Extend execution horizon from 5 weeks to 7 weeks with tighter day-wise checkpoints
+- Include explicit role-based test passes for:
+  - Super User
+  - Super Admin
+  - Project Admin
+  - Client
+  - Project Owner
+  - Architect / MEP Consultant / Contractor
+- Add performance and mobile QA pass before launch
+- Add final launch-day smoke matrix including upload, review, export, and RBAC gates
+
+### Data and Compliance Additions
+
+- Ensure document lifecycle supports:
+  - Upload -> Project Owner review -> Project Admin final decision
+  - Reopen and resubmit loop with reason tracking
+- Enforce timestamp display in IST (Asia/Kolkata) for all user-facing logs
+- Maintain immutable change logs for document status transitions
+
+---
+
 ## Phase 0 — Foundation (Week 1)
 
 This phase sets up everything the rest of the app depends on. Nothing else is built until this is rock solid.
@@ -467,6 +517,24 @@ Test checklist:
 | 8 | Polish & Deployment | Week 5 |
 
 **Total estimated timeline: 5 weeks from zero to production.**
+
+## Updated Timeline Note (Merged)
+
+With the newly merged scope (plans/billing, client view, consultant logger, resubmit loop, mobile optimization, and expanded QA), the active baseline should now be treated as a **7-week execution plan** with day-wise tracking.
+
+---
+
+## Added Features vs Original Baseline
+
+- Pricing plans and credit consumption governance
+- Usage analytics and burn tracking
+- Consultant interaction credit logging
+- Billing and invoicing
+- Credit-level submission guidance and difficulty tags
+- Resubmit workflow with review loop
+- Audit trail hardening
+- Jargon-free client mode
+- Mobile optimization and final performance pass
 
 ---
 

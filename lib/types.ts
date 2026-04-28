@@ -66,6 +66,19 @@ export type DocumentActivityLog = {
   created_at: string;
 };
 
+export type SystemActivityLog = {
+  id: string;
+  project_id?: string | null;
+  entity_type: "project" | "credit" | "document" | "team" | "billing" | "auth";
+  entity_id?: string | null;
+  action: string;
+  actor_id?: string | null;
+  actor_role?: string | null;
+  summary: string;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
 export type RemarkRecord = {
   id: string;
   credit_id: string;
@@ -82,12 +95,17 @@ export type CreditWorkspace = {
   credit_code: string;
   category: string;
   credit_name: string;
+  responsible_role?: MemberRole | null;
   is_mandatory: boolean;
   documents_required: DocumentRequirement[];
   status: CreditStatus;
   blocked_by?: string | null;
   completion_pct: number;
   documentation_summary?: string | null;
+  what_to_submit?: string | null;
+  sample_document_url?: string | null;
+  effort_level?: "easy" | "moderate" | "hard" | null;
+  effort_guidance?: string | null;
   na: boolean;
   documents: DocumentRecord[];
   remarks: RemarkRecord[];
@@ -112,6 +130,18 @@ export type ProjectSummary = {
   mandatoryCreditsMet: number;
   openRemarks: number;
   membersCount: number;
+  planCode?: string;
+  planName?: string;
+  monthlyPriceInr?: number;
+  documentCreditLimit?: number;
+  consultantCreditLimit?: number;
+  documentCreditsUsed?: number;
+  consultantCreditsUsed?: number;
+  documentCreditsRemaining?: number;
+  consultantCreditsRemaining?: number;
+  pendingReviewsCount?: number;
+  rejectedCount?: number;
+  statusFlag?: "green" | "amber" | "red";
 };
 
 export type ProjectInviteRecord = {
@@ -160,6 +190,7 @@ export type ProjectWorkspace = {
     created_at: string;
     read_at?: string | null;
   }[];
+  activityLogs?: SystemActivityLog[];
 };
 
 export type DocumentLibraryRecord = DocumentRecord & {
@@ -185,6 +216,14 @@ export type TeamMemberRecord = {
   role: MemberRole;
   project_names: string[];
   created_at: string;
+  token_balance?: number;
+};
+
+export type OnboardingChecklist = {
+  profile_completed: boolean;
+  project_scope_confirmed: boolean;
+  first_document_uploaded: boolean;
+  first_review_completed: boolean;
 };
 
 export type CurrentUser = {

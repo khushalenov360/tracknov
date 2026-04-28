@@ -5,14 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getSubmissionWorkspace } from "@/lib/data";
+import { getApprovedSubmissionCredits, isSubmissionExportReady } from "@/lib/exports";
 
 export const dynamic = "force-dynamic";
 
 export default async function SubmissionPage({ params }: { params: { id: string } }) {
   const workspace = await getSubmissionWorkspace(params.id);
-  const mandatoryCredits = workspace.credits.filter((credit) => credit.is_mandatory);
-  const mandatoryReady =
-    mandatoryCredits.length > 0 && mandatoryCredits.every((credit) => credit.status === "complete");
+  const mandatoryReady = isSubmissionExportReady(workspace);
+  const exportCredits = getApprovedSubmissionCredits(workspace);
 
   return (
     <Shell
@@ -23,7 +23,7 @@ export default async function SubmissionPage({ params }: { params: { id: string 
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-3">
-          {workspace.credits.map((credit) => (
+          {exportCredits.map((credit) => (
             <Card key={credit.id}>
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -75,7 +75,7 @@ export default async function SubmissionPage({ params }: { params: { id: string 
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {workspace.credits.length === 0 ? (
+            {exportCredits.length === 0 ? (
               <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)]">
                 No completed credits are available for this rating system yet.
               </div>

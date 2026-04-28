@@ -1,7 +1,8 @@
 import { Shell } from "@/components/shell";
+import { loadClientTokensAction } from "@/app/actions";
 import { TeamMemberCreateForm } from "@/components/team-member-create-form";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser, getDashboardProjects, getTeamMembers } from "@/lib/data";
+import { getCurrentUser, getDashboardProjects, getSuperUserCommandCenter, getTeamMembers } from "@/lib/data";
 import { roleLabels } from "@/lib/constants";
 import { canManageTeamFromRole } from "@/lib/rbac";
 import { formatDateTimeIST } from "@/lib/utils";
@@ -19,7 +20,12 @@ const roleTone = {
 } as const;
 
 export default async function TeamPage() {
-  const [currentUser, projects, members] = await Promise.all([getCurrentUser(), getDashboardProjects(), getTeamMembers()]);
+  const [currentUser, projects, members, commandCenter] = await Promise.all([
+    getCurrentUser(),
+    getDashboardProjects(),
+    getTeamMembers(),
+    getSuperUserCommandCenter(),
+  ]);
   const activeRole = currentUser?.role ?? projects[0]?.role ?? "consultant";
   const canCreateSystemProfiles = activeRole === "super_user";
   const canCreatePlatformProfiles = activeRole === "super_admin";
@@ -72,6 +78,179 @@ export default async function TeamPage() {
             canCreateSystemProfiles={canCreateSystemProfiles}
             canCreateProjectAdmins={canCreatePlatformProfiles}
           />
+        </section>
+      ) : null}
+
+      {canCreateSystemProfiles && commandCenter ? (
+        <section className="surface-card mt-4 p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Super User Command Center</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Multi-client control, token economy, system health, and override actions.
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens sold</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.totalTokensSold}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens consumed</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.totalTokensConsumed}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Weekly burn</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.weeklyConsumed}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Revenue estimate (INR)</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.revenueEstimateInr}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Client portfolio</p>
+              <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <table className="min-w-full border-collapse text-[12px]">
+                  <thead className="bg-[var(--color-surface-2)]">
+                    <tr className="border-b border-[var(--color-border)]">
+                      {["Client", "Tokens", "Projects", "Status"].map((heading) => (
+                        <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commandCenter.clients.map((row) => (
+                      <tr key={row.client_name} className="border-b border-[var(--color-border)]">
+                        <td className="px-3 py-2">{row.client_name}</td>
+                        <td className="px-3 py-2 mono">{row.wallet_balance}</td>
+                        <td className="px-3 py-2 mono">{row.project_count}</td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            className={
+                              row.status === "Needs Top-Up"
+                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                : "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                            }
+                          >
+                            {row.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[12px] font-medium text-[var(--color-text-primary)]">System health</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="dense-label">Uploads today</p>
+                  <p className="mono mt-1">{commandCenter.health.uploadsToday}</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="dense-label">Failed transactions</p>
+                  <p className="mono mt-1">{commandCenter.health.failedTransactions}</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="dense-label">Pending reviews</p>
+                  <p className="mono mt-1">{commandCenter.health.pendingReviews}</p>
+                </div>
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                  <p className="dense-label">Active users</p>
+                  <p className="mono mt-1">{commandCenter.health.activeUsers}</p>
+                </div>
+              </div>
+              <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Critical alerts</p>
+                <ul className="mt-1 space-y-1 text-[11px] text-[var(--color-text-secondary)]">
+                  {commandCenter.alerts.length ? (
+                    commandCenter.alerts.map((alert) => <li key={alert}>- {alert}</li>)
+                  ) : (
+                    <li>- No critical alerts right now.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Token override controls</p>
+              <form action={loadClientTokensAction} className="mt-2 grid gap-2">
+                <select
+                  name="client_user_id"
+                  required
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                >
+                  <option value="">Select client wallet</option>
+                  {commandCenter.wallets.map((wallet) => (
+                    <option key={wallet.client_user_id} value={wallet.client_user_id}>
+                      {wallet.client_name} ({wallet.client_contact}) / Balance {wallet.balance}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  name="project_id"
+                  required
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                >
+                  <option value="">Select project context</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  name="tokens"
+                  type="number"
+                  min={1}
+                  defaultValue={50}
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                />
+                <input
+                  name="reason"
+                  placeholder="Reason for manual load"
+                  defaultValue="Super User manual top-up"
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                />
+                <button type="submit" className="h-[32px] rounded-md bg-[var(--color-green)] px-3 text-[12px] font-medium text-white">
+                  Add tokens
+                </button>
+              </form>
+            </div>
+
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Recent token transactions</p>
+              <div className="mt-2 max-h-[240px] overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <table className="min-w-full border-collapse text-[11px]">
+                  <thead className="bg-[var(--color-surface-2)]">
+                    <tr className="border-b border-[var(--color-border)]">
+                      {["Tokens", "Reason", "Timestamp (IST)"].map((heading) => (
+                        <th key={heading} className="px-2 py-1.5 text-left text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commandCenter.recentTransactions.map((tx) => (
+                      <tr key={tx.id} className="border-b border-[var(--color-border)]">
+                        <td className="px-2 py-1.5 mono">{tx.tokens}</td>
+                        <td className="px-2 py-1.5">{tx.reason}</td>
+                        <td className="px-2 py-1.5 text-[var(--color-text-secondary)]">{formatDateTimeIST(tx.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </section>
       ) : null}
 

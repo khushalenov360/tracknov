@@ -79,7 +79,7 @@ type DocumentRow = {
   uploaded_at: string;
 };
 
-function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], documents: DocumentRow[]) {
+function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], documents: DocumentRow[], role: string) {
   if (!projects.length) {
     return "No accessible projects were found for this user.";
   }
@@ -114,8 +114,15 @@ function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], do
     const recentFiles = projectDocs
       .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
       .slice(0, 5)
-      .map((doc) => `${doc.file_name} [${doc.doc_category}/${doc.status}]`)
+      .map((doc) =>
+        role === "client" ? `${doc.doc_category}/${doc.status}` : `${doc.file_name} [${doc.doc_category}/${doc.status}]`,
+      )
       .join("; ");
+    const topPendingCredits = projectCredits
+      .filter((credit) => credit.status !== "complete")
+      .slice(0, 5)
+      .map((credit) => `${credit.credit_code}:${credit.status}`)
+      .join(", ");
 
     lines.push(
       `Project ${project.name} | status=${project.status ?? "unknown"} | certification=${project.certification_type ?? "n/a"} | client=${project.client ?? "n/a"} | location=${project.location ?? "n/a"}`,
@@ -124,6 +131,7 @@ function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], do
       `Credits: total=${projectCredits.length}, complete=${completeCredits}, blocked=${blockedCredits}. Documents: uploaded=${uploadedCount}, owner_review=${ownerReviewCount}, approved=${approvedCount}, rejected=${rejectedCount}.`,
     );
     lines.push(`Recent files: ${recentFiles || "none"}`);
+    lines.push(`Priority credits: ${topPendingCredits || "none"}`);
   }
 
   return lines.join("\n");
@@ -146,8 +154,9 @@ async function getWorkspaceSnapshot() {
     .maybeSingle();
 
   const metadataRole = typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "";
+  const resolvedRole = (profile?.global_role ?? metadataRole ?? "consultant") as string;
   const isSuperUser =
-    profile?.global_role === "super_user" || metadataRole === "super_user" || metadataRole === "superuser";
+    resolvedRole === "super_user" || metadataRole === "super_user" || metadataRole === "superuser";
   const reader = isSuperUser && env.supabaseServiceRoleKey ? createAdminClient() : client;
 
   const { data: projectsData } = await reader
@@ -160,7 +169,7 @@ async function getWorkspaceSnapshot() {
   const projectIds = projects.map((project) => project.id);
 
   if (!projectIds.length) {
-    return { user, snapshot: "No projects currently available in the workspace." };
+    return { user, role: resolvedRole, snapshot: "No projects currently available in the workspace." };
   }
 
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
@@ -179,7 +188,7 @@ async function getWorkspaceSnapshot() {
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
-  return { user, snapshot: buildWorkspaceSnapshot(projects, credits, documents) };
+  return { user, role: resolvedRole, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
 }
 
 async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
@@ -299,7 +308,7 @@ export async function POST(request: Request) {
   }
 
   const latestPrompt = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
-  const { user, snapshot } = await getWorkspaceSnapshot();
+  const { user, role, snapshot } = await getWorkspaceSnapshot();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -320,7 +329,11 @@ export async function POST(request: Request) {
   try {
     const enrichedContext: AssistantContext = {
       ...context,
-      facts: [...context.facts, "Responses should use the workspace snapshot attached in system instructions."],
+      facts: [
+        ...context.facts,
+        `Resolved role: ${role}`,
+        "Responses must be grounded in the workspace snapshot attached in system instructions.",
+      ],
     };
     const geminiStream = await createGeminiStream(
       {
