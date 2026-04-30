@@ -547,10 +547,19 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               <p className="dense-label">Document checklist</p>
               <div className="mt-2 space-y-2">
                 {selectedCredit.documents_required.map((doc) => {
-                  const approved = selectedCredit.documents.some(
-                    (file) => file.doc_category === doc.type && file.status === "approved",
-                  );
+                  const matchingDocs = selectedCredit.documents.filter((file) => file.doc_category === doc.type);
+                  const hasApproved = matchingDocs.some((file) => file.status === "approved");
+                  const hasUploaded = matchingDocs.some((file) => file.status === "uploaded");
+                  const hasOwnerApproved = matchingDocs.some((file) => file.status === "owner_approved");
+                  const hasRejected = matchingDocs.some((file) => file.status === "rejected");
                   const short = docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase();
+                  const checklistState = !matchingDocs.length
+                    ? "Not started"
+                    : hasApproved
+                      ? "Approved"
+                      : hasRejected && !hasUploaded && !hasOwnerApproved
+                        ? "Rejected"
+                        : "Uploaded";
                   return (
                     <div key={doc.type} className="flex h-7 items-center gap-2">
                       <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[var(--color-surface-2)] text-[9px] font-medium text-[var(--color-text-secondary)]">
@@ -559,12 +568,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[11px] text-[var(--color-text-primary)]">{doc.label}</p>
                         <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">
-                          {doc.required ? "Required for review" : "Not required for this credit"}
+                          {doc.required ? "Required for review" : "Not required for this credit"} / {checklistState}
                         </p>
                       </div>
                       {doc.required ? (
-                        approved ? (
+                        checklistState === "Approved" ? (
                           <CheckCircle2 className="h-4 w-4 text-[var(--color-green)]" />
+                        ) : checklistState === "Rejected" ? (
+                          <AlertTriangle className="h-4 w-4 text-[var(--color-red)]" />
                         ) : (
                           <Circle className="h-4 w-4 text-[var(--color-border-strong)]" />
                         )

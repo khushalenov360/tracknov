@@ -63,6 +63,7 @@
     "seed": "node scripts/seed.mjs",
     "onboard": "node bin/tracknov.mjs",
     "smoke": "playwright test",
+    "qa:ux": "playwright test tests/ux-quality-gates.spec.ts",
     "smoke:headed": "playwright test --headed"
   },
   "dependencies": {

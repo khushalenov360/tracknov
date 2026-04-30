@@ -22,6 +22,7 @@ type UploadProject = {
       label: string;
       required: boolean;
     }[];
+    prior_examples_by_type?: Record<string, string[]>;
   }[];
 };
 
@@ -51,6 +52,10 @@ export function GeneralUploadDocumentForm({
   const [pendingQueue, setPendingQueue] = useState<PendingFile[] | null>(null);
   const [requirementSlot, setRequirementSlot] = useState("");
   const [lastUploadedFileName, setLastUploadedFileName] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentProject = useMemo(
     () => projects.find((project) => project.id === projectId) ?? projects[0],
@@ -76,6 +81,10 @@ export function GeneralUploadDocumentForm({
     () => currentCredit?.requirements.find((requirement) => requirement.type === docType) ?? null,
     [currentCredit, docType],
   );
+  const priorExamples = useMemo(
+    () => (currentCredit?.prior_examples_by_type?.[docType] ?? []).slice(0, 3),
+    [currentCredit, docType],
+  );
 
   useEffect(() => {
     const nextCreditId = currentProject?.credits[0]?.id ?? "";
@@ -93,6 +102,21 @@ export function GeneralUploadDocumentForm({
     const slot = matchingRequirement?.label || docType;
     setRequirementSlot(slot);
   }, [matchingRequirement, docType]);
+
+  const normalizeFiles = useCallback((incomingFiles: File[]) => {
+    const deduped = new Map<string, File>();
+    for (const file of incomingFiles) {
+      deduped.set(`${file.name}-${file.size}-${file.lastModified}`, file);
+    }
+    return Array.from(deduped.values());
+  }, []);
+
+  const appendFiles = useCallback(
+    (incomingFiles: File[]) => {
+      setSelectedFiles((existing) => normalizeFiles([...existing, ...incomingFiles]));
+    },
+    [normalizeFiles],
+  );
 
   const submitPendingQueue = useCallback(
     async (pendingItems: PendingFile[]) => {
@@ -124,6 +148,13 @@ export function GeneralUploadDocumentForm({
             ? `${pendingItems.length} files uploaded and mapped successfully.`
             : "Upload complete and mapped to the selected credit.",
         );
+        setSelectedFiles([]);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        if (cameraInputRef.current) {
+          cameraInputRef.current.value = "";
+        }
         setPendingQueue(null);
         router.refresh();
       } catch (uploadError) {
@@ -166,7 +197,7 @@ export function GeneralUploadDocumentForm({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const files = formData.getAll("file").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const files = selectedFiles.filter((entry) => entry.size > 0);
 
     if (!files.length || !projectId || !creditId || !docType) {
       setError("Step 3 needs at least one file selected after credit and document type are set.");
@@ -195,7 +226,7 @@ export function GeneralUploadDocumentForm({
         return;
       }
       if (file.size > maxFileSizeBytes) {
-        setError(`File ${file.name} is too large. The limit is ${maxFileSizeLabel}.`);
+      setError(`File ${file.name} is too large. The limit is ${maxFileSizeLabel}.`);
         return;
       }
     }
@@ -288,7 +319,75 @@ export function GeneralUploadDocumentForm({
             </option>
           ))}
         </select>
-        <Input name="file" type="file" multiple accept={accept} required />
+        <div
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            if (event.currentTarget === event.target) {
+              setDragActive(false);
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragActive(false);
+            const dropped = Array.from(event.dataTransfer.files ?? []);
+            if (dropped.length) {
+              appendFiles(dropped);
+            }
+          }}
+          className={`rounded-md border px-3 py-2 text-[12px] ${
+            dragActive
+              ? "border-[var(--color-blue)] bg-[var(--color-blue-soft)]"
+              : "border-[var(--color-border)] bg-[var(--color-surface)]"
+          }`}
+        >
+          <p className="text-[11px] text-[var(--color-text-secondary)]">
+            Drag and drop files here, or use the pickers below.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Input
+              ref={fileInputRef}
+              name="file"
+              type="file"
+              multiple
+              accept={accept}
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                if (picked.length) {
+                  appendFiles(picked);
+                }
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                if (picked.length) {
+                  appendFiles(picked);
+                }
+              }}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-[36px] rounded-md px-3 text-[11px]"
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              Capture photo
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
@@ -296,7 +395,14 @@ export function GeneralUploadDocumentForm({
         <Button
           type="submit"
           className="h-[36px] rounded-md"
-          disabled={loading || Boolean(pendingQueue) || projects.length === 0 || !currentProject?.credits.length || !docTypeOptions.length}
+          disabled={
+            loading ||
+            Boolean(pendingQueue) ||
+            projects.length === 0 ||
+            !currentProject?.credits.length ||
+            !docTypeOptions.length ||
+            selectedFiles.length === 0
+          }
         >
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
           Upload
@@ -304,6 +410,38 @@ export function GeneralUploadDocumentForm({
       </div>
 
       {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      {selectedFiles.length ? (
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
+          <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+            Selected files ({selectedFiles.length})
+          </p>
+          <ul className="mt-1 space-y-1">
+            {selectedFiles.map((file) => (
+              <li key={`${file.name}-${file.size}-${file.lastModified}`} className="truncate text-[11px] text-[var(--color-text-primary)]">
+                {file.name}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-[30px] rounded-md px-3 text-[11px]"
+              onClick={() => {
+                setSelectedFiles([]);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+                if (cameraInputRef.current) {
+                  cameraInputRef.current.value = "";
+                }
+              }}
+            >
+              Clear selected files
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {successMessage ? (
         <div className="rounded-md border border-[var(--color-green-light)] bg-[var(--color-green-light)] p-2 text-[11px] text-[var(--color-green)]">
           <p className="flex items-center gap-1.5">
@@ -345,6 +483,13 @@ export function GeneralUploadDocumentForm({
                 }
                 setPendingQueue(null);
                 setCountdown(0);
+                setSelectedFiles([]);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+                if (cameraInputRef.current) {
+                  cameraInputRef.current.value = "";
+                }
               }}
             >
               Cancel upload
@@ -380,9 +525,25 @@ export function GeneralUploadDocumentForm({
           <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
             Tokens are charged only after storage upload + document save succeed.
           </p>
+          {priorExamples.length ? (
+            <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                Reuse suggestion
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                You previously uploaded approved files for this credit and document type:
+              </p>
+              <ul className="mt-1 list-disc pl-4 text-[11px] text-[var(--color-text-primary)]">
+                {priorExamples.map((fileName) => (
+                  <li key={fileName} className="truncate">
+                    {fileName}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </form>
   );
 }
-

@@ -12,6 +12,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  AuditTimelineRecord,
   DocumentActivityLog,
   CreditWorkspace,
   CurrentUser,
@@ -1190,7 +1191,7 @@ export async function getDocumentLibrary(filters: {
         Boolean(
           document.uploaded_by &&
             document.uploaded_by === user.id &&
-            document.status !== "approved" &&
+            document.status === "uploaded" &&
             canEditOwnDocumentBeforeFinalApproval(projectRole),
         );
       return {
@@ -1222,12 +1223,40 @@ export async function getDocumentUploadOptions() {
   }
 
   const client = createClient();
+  const user = await getCurrentUser();
   const projectIds = projects.map((project) => project.id);
-  const { data: credits } = await client
-    .from("credits")
-    .select("id, project_id, credit_code, credit_name, documents_required, what_to_submit")
-    .in("project_id", projectIds)
-    .order("credit_code");
+  const [{ data: credits }, { data: historicalDocs }] = await Promise.all([
+    client
+      .from("credits")
+      .select("id, project_id, credit_code, credit_name, documents_required, what_to_submit")
+      .in("project_id", projectIds)
+      .order("credit_code"),
+    user
+      ? client
+          .from("documents")
+          .select("credit_id, doc_category, file_name, status, uploaded_by")
+          .eq("uploaded_by", user.id)
+          .eq("status", "approved")
+          .order("uploaded_at", { ascending: false })
+          .limit(300)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const priorFilesByCreditAndType = new Map<string, string[]>();
+  for (const doc of historicalDocs ?? []) {
+    const creditId = String((doc as any).credit_id ?? "").trim();
+    const docType = String((doc as any).doc_category ?? "").trim();
+    const fileName = String((doc as any).file_name ?? "").trim();
+    if (!creditId || !docType || !fileName) {
+      continue;
+    }
+    const key = `${creditId}::${docType}`;
+    const existing = priorFilesByCreditAndType.get(key) ?? [];
+    if (!existing.includes(fileName)) {
+      existing.push(fileName);
+    }
+    priorFilesByCreditAndType.set(key, existing.slice(0, 3));
+  }
 
   const creditsByProject = new Map<string, {
     id: string;
@@ -1236,6 +1265,7 @@ export async function getDocumentUploadOptions() {
     doc_types: string[];
     what_to_submit: string;
     requirements: Array<{ type: string; label: string; required: boolean }>;
+    prior_examples_by_type: Record<string, string[]>;
   }[]>();
 
   for (const credit of credits ?? []) {
@@ -1259,6 +1289,16 @@ export async function getDocumentUploadOptions() {
             .map((doc) => doc.type),
         ),
       ),
+      prior_examples_by_type: Array.from(
+        new Set(
+          ((credit.documents_required ?? []) as DocumentRequirement[])
+            .filter((doc) => doc.type)
+            .map((doc) => doc.type),
+        ),
+      ).reduce<Record<string, string[]>>((acc, docType) => {
+        acc[docType] = priorFilesByCreditAndType.get(`${credit.id}::${docType}`) ?? [];
+        return acc;
+      }, {}),
     });
     creditsByProject.set(credit.project_id, existing);
   }
@@ -1519,6 +1559,229 @@ export async function getReviewerPerformanceSummary() {
     rejectedToday,
     approvalRateToday,
   };
+}
+
+export async function getExecutiveInsights() {
+  const projects = await getDashboardProjects();
+  if (!projects.length) {
+    return {
+      stuckItems: [] as Array<{
+        projectId: string;
+        projectName: string;
+        creditId: string;
+        creditCode: string;
+        creditName: string;
+        responsibleRole: string;
+        missingDoc: string;
+        rejectedCount: number;
+      }>,
+      rejectionPatterns: [] as Array<{ key: string; count: number }>,
+      vendorStats: [] as Array<{
+        uploader: string;
+        projectCount: number;
+        approved: number;
+        rejected: number;
+        approvalRate: number;
+      }>,
+      projectComparisons: [] as Array<{
+        projectId: string;
+        projectName: string;
+        completion: number;
+        pending: number;
+        rejected: number;
+        efficiency: number;
+      }>,
+    };
+  }
+
+  const client = createClient();
+  const projectIds = projects.map((project) => project.id);
+  const [{ data: credits }, { data: documents }, { data: profiles }] = await Promise.all([
+    client
+      .from("credits")
+      .select("id, project_id, credit_code, credit_name, responsible_role, documents_required")
+      .in("project_id", projectIds),
+    client
+      .from("documents")
+      .select("id, project_id, credit_id, uploaded_by, status, rejection_reason")
+      .in("project_id", projectIds),
+    client.from("profiles").select("user_id, full_name, email"),
+  ]);
+
+  const docsByCredit = new Map<string, any[]>();
+  for (const document of documents ?? []) {
+    const existing = docsByCredit.get(document.credit_id) ?? [];
+    existing.push(document);
+    docsByCredit.set(document.credit_id, existing);
+  }
+
+  const projectById = new Map(projects.map((project) => [project.id, project]));
+  const uploaderById = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile.full_name ?? profile.email ?? "Team member"]));
+
+  const stuckItems = (credits ?? [])
+    .map((credit: any) => {
+      const creditDocuments = docsByCredit.get(credit.id) ?? [];
+      const requiredDocs = ((credit.documents_required ?? []) as Array<any>).filter((item) => Boolean(item?.required));
+      const missing = requiredDocs.find((item) => !creditDocuments.some((doc) => doc.doc_category === item.type));
+      const rejectedCount = creditDocuments.filter((doc) => doc.status === "rejected").length;
+      const pendingCount = creditDocuments.filter((doc) => doc.status === "uploaded" || doc.status === "owner_approved").length;
+      return {
+        projectId: credit.project_id,
+        projectName: projectById.get(credit.project_id)?.name ?? "Project",
+        creditId: credit.id,
+        creditCode: credit.credit_code,
+        creditName: credit.credit_name,
+        responsibleRole: credit.responsible_role ?? "consultant",
+        missingDoc: missing?.label ?? "No mandatory evidence uploaded",
+        rejectedCount,
+        pendingCount,
+      };
+    })
+    .filter((item) => item.missingDoc || item.rejectedCount > 0 || item.pendingCount > 0)
+    .sort((a, b) => b.rejectedCount + b.pendingCount - (a.rejectedCount + a.pendingCount))
+    .slice(0, 15);
+
+  const rejectionPatternsMap = new Map<string, number>();
+  for (const document of documents ?? []) {
+    if (document.status !== "rejected") continue;
+    const reason = String(document.rejection_reason ?? "Unspecified").trim();
+    const bucket = reason ? reason.split(".")[0].slice(0, 90) : "Unspecified";
+    rejectionPatternsMap.set(bucket, (rejectionPatternsMap.get(bucket) ?? 0) + 1);
+  }
+  const rejectionPatterns = Array.from(rejectionPatternsMap.entries())
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const uploaderAgg = new Map<
+    string,
+    { name: string; projects: Set<string>; approved: number; rejected: number }
+  >();
+  for (const document of documents ?? []) {
+    if (!document.uploaded_by) continue;
+    const existing = uploaderAgg.get(document.uploaded_by) ?? {
+      name: uploaderById.get(document.uploaded_by) ?? "Team member",
+      projects: new Set<string>(),
+      approved: 0,
+      rejected: 0,
+    };
+    existing.projects.add(document.project_id);
+    if (document.status === "approved") existing.approved += 1;
+    if (document.status === "rejected") existing.rejected += 1;
+    uploaderAgg.set(document.uploaded_by, existing);
+  }
+  const vendorStats = Array.from(uploaderAgg.values())
+    .map((entry) => {
+      const totalReviewed = entry.approved + entry.rejected;
+      return {
+        uploader: entry.name,
+        projectCount: entry.projects.size,
+        approved: entry.approved,
+        rejected: entry.rejected,
+        approvalRate: totalReviewed ? Math.round((entry.approved / totalReviewed) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.rejected - a.rejected)
+    .slice(0, 10);
+
+  const projectComparisons = projects.map((project) => {
+    const pending = Number(project.pendingReviewsCount ?? 0);
+    const rejected = Number(project.rejectedCount ?? 0);
+    const reviewedBase = Math.max(pending + rejected, 1);
+    const efficiency = Math.max(0, Math.round(((reviewedBase - rejected) / reviewedBase) * 100));
+    return {
+      projectId: project.id,
+      projectName: project.name,
+      completion: Math.round(project.overallCompletion),
+      pending,
+      rejected,
+      efficiency,
+    };
+  });
+
+  return {
+    stuckItems,
+    rejectionPatterns,
+    vendorStats,
+    projectComparisons,
+  };
+}
+
+export async function getAuditTimeline(filters: {
+  projectId?: string;
+  action?: string;
+  entityType?: string;
+  actorRole?: string;
+  limit?: number;
+} = {}): Promise<AuditTimelineRecord[]> {
+  if (!env.isConfigured) {
+    return [];
+  }
+
+  const client = createClient();
+  const user = await getSupabaseUser(client);
+  if (!user) {
+    return [];
+  }
+
+  const projects = await getDashboardProjects();
+  const visibleProjectIds = projects.map((project) => project.id);
+  if (!visibleProjectIds.length) {
+    return [];
+  }
+
+  let query = client
+    .from("system_activity_logs")
+    .select("id, project_id, entity_type, action, actor_id, actor_role, summary, created_at")
+    .in("project_id", visibleProjectIds)
+    .order("created_at", { ascending: false })
+    .limit(Math.min(Math.max(filters.limit ?? 60, 10), 200));
+
+  if (filters.projectId) {
+    query = query.eq("project_id", filters.projectId);
+  }
+  if (filters.action) {
+    query = query.eq("action", filters.action);
+  }
+  if (filters.entityType) {
+    query = query.eq("entity_type", filters.entityType);
+  }
+  if (filters.actorRole) {
+    query = query.eq("actor_role", filters.actorRole);
+  }
+
+  const { data: logs } = await query;
+  const rows = logs ?? [];
+  if (!rows.length) {
+    return [];
+  }
+
+  const actorIds = Array.from(new Set(rows.map((row: any) => row.actor_id).filter(Boolean)));
+  const [profilesResult] = await Promise.all([
+    actorIds.length
+      ? client.from("profiles").select("user_id, full_name, email").in("user_id", actorIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const actorById = new Map(
+    (profilesResult.data ?? []).map((profile: any) => [
+      profile.user_id,
+      profile.full_name ?? profile.email ?? "Team member",
+    ]),
+  );
+  const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    project_id: row.project_id ?? null,
+    project_name: row.project_id ? projectNameById.get(row.project_id) ?? "Project" : "Project",
+    entity_type: row.entity_type,
+    action: row.action,
+    summary: row.summary,
+    actor_id: row.actor_id ?? null,
+    actor_role: row.actor_role ?? null,
+    actor_name: row.actor_id ? actorById.get(row.actor_id) ?? null : null,
+    created_at: row.created_at,
+  }));
 }
 
 export async function getSuperUserCommandCenter() {

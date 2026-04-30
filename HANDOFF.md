@@ -1,5 +1,41 @@
 # Tracknov Handoff
 
+## Latest execution pass (2026-04-30, P0 UX quality gates completion)
+
+- Completed **UX0.12 UX quality/speed gates** with executable checks:
+  - added Playwright suite `tests/ux-quality-gates.spec.ts`
+  - checks include:
+    - login render without runtime/server error overlay
+    - key path response safety (`/login`, `/dashboard`, `/projects`, `/documents`, `/credits`, `/team`)
+    - mobile viewport readability for login controls
+- Added package script:
+  - `npm run qa:ux`
+- Executed validation:
+  - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3010 npm run qa:ux`
+  - result: **3 passed**
+- Updated `todo.md`:
+  - marked `Epic UX0.12` complete.
+
+## Latest execution pass (2026-04-30, P0 UX sprint continuation)
+
+- Executed P0 continuation per request (notifications intentionally deferred).
+- Completed **UX0.6 Upload experience hardening (mobile-first)** in `components/project/general-upload-document-form.tsx`:
+  - drag-and-drop upload zone with visual active state
+  - camera capture action (`Capture photo`) for site-first mobile uploads
+  - persistent selected-file queue with clear action before submit
+  - stronger submit guard (disabled until at least one file is selected)
+  - existing pre-submit 5-second cancel safety retained
+  - existing persistent success confirmation retained
+- Updated `todo.md`:
+  - marked `Epic UX0.6` as complete.
+- Build verification:
+  - `npm run build` completed successfully.
+
+### P0 status after this pass
+
+- Completed: `UX0.1` to `UX0.11` except `UX0.12`.
+- Still open: `UX0.12` (quality/speed gates and full mobile QA hardening).
+
 ## Latest execution pass (2026-04-29, L0-L5 pending-role closure sweep)
 
 - Implemented L0 upload/workflow hardening in `components/project/general-upload-document-form.tsx`:

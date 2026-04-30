@@ -231,3 +231,16 @@ export type CurrentUser = {
   email: string;
   role: MemberRole;
 };
+
+export type AuditTimelineRecord = {
+  id: string;
+  project_id: string | null;
+  project_name: string;
+  entity_type: string;
+  action: string;
+  summary: string;
+  actor_id: string | null;
+  actor_role: string | null;
+  actor_name: string | null;
+  created_at: string;
+};

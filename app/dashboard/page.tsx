@@ -5,12 +5,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getCurrentUser, getDashboardProjects, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
-import { pct } from "@/lib/utils";
+import { formatDateTimeIST, pct } from "@/lib/utils";
 
-export default async function DashboardPage() {
-  const [user, projects, ownerQueue] = await Promise.all([getCurrentUser(), getDashboardProjects(), getOwnerReviewQueue()]);
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
+}) {
+  const [user, projects, ownerQueue, insights] = await Promise.all([
+    getCurrentUser(),
+    getDashboardProjects(),
+    getOwnerReviewQueue(),
+    getExecutiveInsights(),
+  ]);
+  const [timelineRows] = await Promise.all([
+    getAuditTimeline({
+      projectId: searchParams?.project,
+      action: searchParams?.action,
+      entityType: searchParams?.entity,
+      actorRole: searchParams?.actor_role,
+      limit: 80,
+    }),
+  ]);
   const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
   const clientMode = activeRole === "client";
@@ -53,6 +71,12 @@ export default async function DashboardPage() {
     ? Math.round(projects.reduce((sum, project) => sum + project.overallCompletion, 0) / projects.length)
     : 0;
   const projectedRating = overallCompletionPct >= 80 ? "Gold" : overallCompletionPct >= 60 ? "Silver" : "Certified";
+  const projectedOutcome =
+    overallCompletionPct >= 80
+      ? "High confidence: target likely on current pace."
+      : overallCompletionPct >= 60
+        ? "Moderate confidence: needs steady weekly closure."
+        : "At risk: improve upload and review velocity.";
   const approvalBase = projects.reduce(
     (sum, project) => sum + Math.max((project.pendingReviewsCount ?? 0) + (project.rejectedCount ?? 0), 0),
     0,
@@ -105,6 +129,42 @@ export default async function DashboardPage() {
       risk,
     };
   });
+  const nextBestActions = (() => {
+    const stuckTop = insights.stuckItems[0];
+    if (activeRole === "owner") {
+      return [
+        `Clear your review queue (${ownerQueue.length} pending) to keep vendor submissions moving.`,
+        stuckTop
+          ? `Escalate ${stuckTop.projectName} / ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
+          : "No major blocker detected. Continue daily owner-review sweeps.",
+        "Use precise send-back remarks so L0 users can resubmit without calls.",
+      ];
+    }
+    if (activeRole === "project_admin" || activeRole === "super_admin") {
+      const highRisk = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
+      return [
+        `Prioritize ${highRisk} at-risk project(s) first in validation queue.`,
+        stuckTop
+          ? `Resolve top blocker: ${stuckTop.projectName} / ${stuckTop.creditCode} (${stuckTop.responsibleRole}).`
+          : "No blocker cluster detected. Push owner-approved documents to final decision.",
+        "Close repeated rejection reasons with template-based corrective guidance.",
+      ];
+    }
+    if (activeRole === "client") {
+      return [
+        `Review ${atRiskCount} at-risk location(s) and escalate delayed vendors.`,
+        `Token runway is ${exhaustionWeeks} week(s); plan top-up before freeze.`,
+        "Use project comparison board to prioritize leadership reviews this week.",
+      ];
+    }
+    return [
+      "Complete mapped uploads for your assigned credits first.",
+      stuckTop
+        ? `Focus on ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
+        : "No blocking alert found. Continue checklist closure.",
+      "Resubmit rejected files with explicit correction notes to speed approval.",
+    ];
+  })();
 
   const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
   const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
@@ -239,6 +299,20 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
+      <section className="surface-card mb-4 p-4">
+        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Next best actions</h2>
+        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          Role-guided actions based on live backlog, blockers, and project risk.
+        </p>
+        <div className="mt-3 grid gap-2">
+          {nextBestActions.map((action) => (
+            <div key={action} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] text-[var(--color-text-primary)]">
+              {action}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {clientMode ? (
         <section className="surface-card mb-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
@@ -250,9 +324,10 @@ export default async function DashboardPage() {
             {[
               { label: "Overall status", value: atRiskCount > 0 ? "Attention needed" : "On Track", meta: `${atRiskCount} at risk` },
               { label: "Projected rating", value: projectedRating, meta: `${overallCompletionPct}% complete` },
+              { label: "Projected outcome", value: atRiskCount > 2 ? "Delay risk" : "Trackable", meta: projectedOutcome },
               { label: "Active projects", value: String(projects.length), meta: `${portfolioDelayed} delayed` },
               { label: "Token balance", value: String(totalTokensRemaining), meta: `${weeklyTokenBurn}/week burn` },
-              { label: "Runway", value: `${exhaustionWeeks} weeks`, meta: "Estimated exhaustion" },
+              { label: "Runway", value: `${exhaustionWeeks} weeks`, meta: "Estimated exhaustion date" },
             ].map((item) => (
               <div key={item.label} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                 <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">{item.label}</p>
@@ -342,6 +417,127 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">What is stuck right now</p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Delayed credits with responsible role and exact missing evidence.
+              </p>
+              <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <table className="min-w-full border-collapse text-[12px]">
+                  <thead className="bg-[var(--color-surface-2)]">
+                    <tr className="border-b border-[var(--color-border)]">
+                      {["Project", "Credit", "Responsible", "Missing", "Rejected"].map((heading) => (
+                        <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {insights.stuckItems.slice(0, 8).map((item) => (
+                      <tr key={`${item.projectId}-${item.creditId}`} className="border-b border-[var(--color-border)]">
+                        <td className="px-3 py-2">{item.projectName}</td>
+                        <td className="px-3 py-2">{item.creditCode}</td>
+                        <td className="px-3 py-2">{item.responsibleRole}</td>
+                        <td className="px-3 py-2">{item.missingDoc}</td>
+                        <td className="px-3 py-2 mono">{item.rejectedCount}</td>
+                      </tr>
+                    ))}
+                    {insights.stuckItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-6 text-center text-[11px] text-[var(--color-text-tertiary)]">
+                          No major blockers detected.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Rejection intelligence</p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Most frequent rejection reasons across portfolio.
+              </p>
+              <div className="mt-2 space-y-2">
+                {insights.rejectionPatterns.length ? (
+                  insights.rejectionPatterns.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                      <span className="text-[11px] text-[var(--color-text-primary)]">{item.key}</span>
+                      <Badge className="border border-[var(--color-amber)] bg-[var(--color-amber-soft)] text-[var(--color-amber)]">
+                        {item.count}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-[11px] text-[var(--color-text-tertiary)]">
+                    No rejection patterns yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Project comparison board</p>
+              <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <table className="min-w-full border-collapse text-[12px]">
+                  <thead className="bg-[var(--color-surface-2)]">
+                    <tr className="border-b border-[var(--color-border)]">
+                      {["Project", "%", "Pending", "Rejected", "Efficiency"].map((heading) => (
+                        <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {insights.projectComparisons.map((item) => (
+                      <tr key={item.projectId} className="border-b border-[var(--color-border)]">
+                        <td className="px-3 py-2">{item.projectName}</td>
+                        <td className="px-3 py-2 mono">{item.completion}%</td>
+                        <td className="px-3 py-2 mono">{item.pending}</td>
+                        <td className="px-3 py-2 mono">{item.rejected}</td>
+                        <td className="px-3 py-2 mono">{item.efficiency}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Vendor intelligence baseline</p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Submission quality trends by contributor.
+              </p>
+              <div className="mt-2 space-y-2">
+                {insights.vendorStats.length ? (
+                  insights.vendorStats.map((vendor) => (
+                    <div key={vendor.uploader} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-medium text-[var(--color-text-primary)]">{vendor.uploader}</p>
+                        <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
+                          {vendor.approvalRate}% success
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                        Projects: {vendor.projectCount} / Approved: {vendor.approved} / Rejected: {vendor.rejected}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-[11px] text-[var(--color-text-tertiary)]">
+                    Vendor performance data will appear after more reviews.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -374,6 +570,82 @@ export default async function DashboardPage() {
             <p className="mt-2 text-[11px] text-[var(--color-text-tertiary)]">{item.meta}</p>
           </div>
         ))}
+      </section>
+
+      <section className="surface-card mt-4 p-4">
+        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Visual audit timeline (IST)</h2>
+        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          Who did what and when, across visible projects.
+        </p>
+        <form className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_180px_180px_auto]">
+          <select
+            name="project"
+            defaultValue={searchParams?.project ?? ""}
+            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+          >
+            <option value="">All projects</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+          <input
+            name="action"
+            defaultValue={searchParams?.action ?? ""}
+            placeholder="Action (optional)"
+            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
+          />
+          <input
+            name="entity"
+            defaultValue={searchParams?.entity ?? ""}
+            placeholder="Entity (optional)"
+            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
+          />
+          <input
+            name="actor_role"
+            defaultValue={searchParams?.actor_role ?? ""}
+            placeholder="Role (optional)"
+            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
+          />
+          <Button type="submit" className="h-[34px] rounded-md px-4">
+            Filter
+          </Button>
+        </form>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--color-border)]">
+          <table className="min-w-full border-collapse text-[12px]">
+            <thead className="bg-[var(--color-surface-2)]">
+              <tr className="border-b border-[var(--color-border)]">
+                {["Timestamp", "Project", "Entity", "Action", "Summary", "Actor"].map((heading) => (
+                  <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {timelineRows.map((row) => (
+                <tr key={row.id} className="border-b border-[var(--color-border)]">
+                  <td className="px-3 py-2 text-[var(--color-text-secondary)]">{formatDateTimeIST(row.created_at)}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-primary)]">{row.project_name}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-secondary)]">{row.entity_type}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-secondary)]">{row.action}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-primary)]">{row.summary}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+                    {row.actor_name ?? row.actor_role ?? "System"}
+                  </td>
+                </tr>
+              ))}
+              {timelineRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-[11px] text-[var(--color-text-tertiary)]">
+                    No timeline events match current filters.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="mt-4 surface-card p-4">

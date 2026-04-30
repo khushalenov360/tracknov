@@ -3,6 +3,33 @@
 Last updated: 2026-04-29 IST  
 Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
+## P0 UX Epics (Client Experience Vision, highest priority)
+
+- [x] Epic UX0.1 - One-screen executive clarity dashboard:
+  show portfolio completion %, risk (RAG), pending documents, rejection count, and estimated certification outcome without deep navigation.
+- [x] Epic UX0.2 - "What is stuck right now" command panel:
+  one-click list of delayed credits across projects with owner, responsible role, exact missing document, and aging days.
+- [x] Epic UX0.3 - Credit-level checklist clarity:
+  each credit must present `pending -> responsible -> exact required evidence` with unambiguous states (`Not started`, `Uploaded`, `Approved`, `Rejected`).
+- [x] Epic UX0.4 - Rejection intelligence workspace:
+  cross-project rejection pattern analysis, common-reason suggestions, and fix guidance with successful-example references.
+- [x] Epic UX0.5 - Guided next-best-action workflow:
+  Copilot and dashboard should drive concrete next tasks (role-specific action prompts), not generic Q&A only.
+- [x] Epic UX0.6 - Upload experience hardening (mobile-first):
+  large touch controls, drag-drop and simple file attach flow, auto-tag confirmation (credit + doc type), and persistent success confirmations.
+- [x] Epic UX0.7 - Timeline intelligence:
+  predict completion date by current velocity and surface delay-risk reasons with urgency indicators.
+- [x] Epic UX0.8 - Token transparency panel:
+  per-project token usage, burn rate, cost progression, and predicted exhaustion shown in plain business language.
+- [x] Epic UX0.9 - Visual audit timeline:
+  human-readable timeline of who did what and when (not raw logs), with filters by project/credit/user/action.
+- [x] Epic UX0.10 - Project comparison board:
+  compare locations on efficiency, delay, rejection rate, and readiness to enable management decisions.
+- [x] Epic UX0.11 - Vendor intelligence baseline:
+  vendor submission performance profile (success %, rejection frequency, delayed-resubmission rate) for future ranking and guidance.
+- [x] Epic UX0.12 - UX quality and speed gates:
+  enforce page-load targets (<2s where feasible), stable upload flow, crash-free key paths, and mobile-first readability.
+
 ## Priority 0 - Persona-critical UX and workflow (new, highest priority)
 
 - [x] L0 role-focused workspace views:
@@ -74,15 +101,15 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   render per-credit required document slots (certificate/spec/invoice) with mandatory/optional markers.
 - [x] Multi-file upload structure per credit:
   preserve grouped uploads by credit + requirement slot (not generic flat uploads).
-- [ ] Pre-review editable mapping:
+- [x] Pre-review editable mapping:
   allow move/edit/delete while `status = uploaded`; lock at `owner_approved` and above.
-- [ ] Architect pre-validation checklist:
+- [x] Architect pre-validation checklist:
   visible per-credit checklist (`uploaded` / `missing`) before owner review.
 - [x] Structured rejection taxonomy:
   `missing_data`, `incorrect_format`, `outdated_document`, `wrong_credit_mapping`.
 - [x] Duplicate guard:
   detect likely duplicate file name/hash and prompt reuse before charging token.
-- [ ] Vendor intelligence baseline:
+- [x] Vendor intelligence baseline:
   enable vendor doc reuse suggestions by vendor + doc type history.
 - [x] Architect scope readiness:
   role-scoped progress card (`completed`, `incomplete`, `rejected`) for assigned architect credits only.
@@ -150,3 +177,47 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 4. Finish Priority 4 export correctness checks.
 5. Complete Priority 5 Copilot grounding and safety.
 6. Finish Priority 6 deployment/mobile/UAT signoff.
+
+## Technical Epics (Prioritized)
+
+Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
+
+## Critical
+
+- [ ] Epic C1 - Workflow engine state machine:
+  replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
+- [ ] Epic C2 - Event-driven foundation:
+  implement `events/event-bus.ts` with producers/consumers and retry/dead-letter behavior.
+- [ ] Epic C3 - AI subsystem baseline:
+  implement `ai-engine` foundation (RAG + validator + rejection intelligence capture).
+- [ ] Epic C4 - Transaction-safe token ledger:
+  enforce idempotent upload/token orchestration with immutable debit/credit references.
+
+## High
+
+- [ ] Epic H1 - Dedicated review event model:
+  add `document_reviews` trail table and wire all approvals/rejections through immutable review entries.
+- [ ] Epic H2 - Production-grade notification delivery:
+  extend in-app notifications to email/WhatsApp channels with anti-spam rules and deep links.
+- [ ] Epic H3 - Security verification suite:
+  automated RBAC and project-isolation tests for all role/action combinations.
+- [ ] Epic H4 - AI risk and recommendation services:
+  deliver risk scoring and next-best-action generation per role/project.
+
+## Medium
+
+- [ ] Epic M1 - Service layer extraction:
+  move core business logic from `app/actions.ts` into `lib/services/*` modules.
+- [ ] Epic M2 - Frontend real-time behavior:
+  role-aware dynamic queue/alert updates via polling or realtime subscriptions.
+- [ ] Epic M3 - Monetization intelligence v2:
+  burn-rate forecasting, anomaly detection, and token usage trend analytics.
+- [ ] Epic M4 - Vendor intelligence:
+  document reuse suggestions and duplicate-avoidance recommendations by vendor/doc-type history.
+
+## Technical Delivery Windows (12-week alignment)
+
+- [ ] Weeks 1-3 (Foundation): close `C1`, `C4`, `H1`.
+- [ ] Weeks 4-6 (AI Foundation): close `C3` baseline and capture rejection patterns.
+- [ ] Weeks 7-9 (Intelligence): close `H4`, `M3`, and client/admin forecast widgets.
+- [ ] Weeks 10-12 (Scale): close `C2`, `M2`, and performance/observability hardening.

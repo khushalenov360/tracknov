@@ -15,6 +15,7 @@ import {
   updateProjectForCurrentUser,
 } from "@/lib/data";
 import { env } from "@/lib/env";
+import { recordDocumentReviewEvent } from "@/lib/services/review-service";
 import {
   canCreateProjects,
   canDeleteProjects,
@@ -24,6 +25,7 @@ import {
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { canTransitionDocument } from "@/lib/workflow/state-machine";
 
 function pathFor(projectId: string) {
   return [`/dashboard`, `/projects/${projectId}`, `/projects/${projectId}/submission`];
@@ -527,6 +529,15 @@ export async function setDocumentStatusAction(formData: FormData) {
   const canFinalReview = canStatusEditAtAnyStage;
 
   if (status === "owner_approved") {
+    const transitionAllowed = canTransitionDocument({
+      fromStatus: currentStatus,
+      toStatus: "owner_approved",
+      actorRole,
+      allowOverride: canStatusEditAtAnyStage && !canOwnerReview,
+    });
+    if (!transitionAllowed) {
+      return;
+    }
     if ((!canOwnerReview && !canStatusEditAtAnyStage) || (!canStatusEditAtAnyStage && currentStatus !== "uploaded")) {
       return;
     }
@@ -552,6 +563,15 @@ export async function setDocumentStatusAction(formData: FormData) {
       summary: `Moved document to Project Admin review.`,
       details: { from_status: currentStatus, to_status: status },
     });
+    await recordDocumentReviewEvent({
+      documentId,
+      projectId,
+      reviewerId: user?.id ?? null,
+      reviewerRole: actorRole,
+      action: "owner_forward",
+      statusAfter: "owner_approved",
+      remarks: null,
+    });
     const projectAdminIds = await getProjectMembersByRoles(writer, projectId, ["project_admin", "super_admin"]);
     await notifyUsers(writer, {
       projectId,
@@ -567,6 +587,15 @@ export async function setDocumentStatusAction(formData: FormData) {
   }
 
   if (status === "approved") {
+    const transitionAllowed = canTransitionDocument({
+      fromStatus: currentStatus,
+      toStatus: "approved",
+      actorRole,
+      allowOverride: canStatusEditAtAnyStage && !canFinalReview,
+    });
+    if (!transitionAllowed) {
+      return;
+    }
     if (!canFinalReview || (!canStatusEditAtAnyStage && currentStatus !== "owner_approved")) {
       return;
     }
@@ -592,6 +621,15 @@ export async function setDocumentStatusAction(formData: FormData) {
       summary: `Approved document for submission pack.`,
       details: { from_status: currentStatus, to_status: status },
     });
+    await recordDocumentReviewEvent({
+      documentId,
+      projectId,
+      reviewerId: user?.id ?? null,
+      reviewerRole: actorRole,
+      action: "admin_approve",
+      statusAfter: "approved",
+      remarks: null,
+    });
     const uploaderRecord = await client
       .from("documents")
       .select("uploaded_by")
@@ -612,6 +650,15 @@ export async function setDocumentStatusAction(formData: FormData) {
   }
 
   if (status !== "rejected") {
+    const transitionAllowed = canTransitionDocument({
+      fromStatus: currentStatus,
+      toStatus: status as any,
+      actorRole,
+      allowOverride: canStatusEditAtAnyStage,
+    });
+    if (!transitionAllowed) {
+      return;
+    }
     if (!canStatusEditAtAnyStage) {
       return;
     }
@@ -639,6 +686,15 @@ export async function setDocumentStatusAction(formData: FormData) {
       summary: `Updated review status.`,
       details: { from_status: currentStatus, to_status: status },
     });
+    await recordDocumentReviewEvent({
+      documentId,
+      projectId,
+      reviewerId: user?.id ?? null,
+      reviewerRole: actorRole,
+      action: "status_override",
+      statusAfter: status,
+      remarks: null,
+    });
 
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -654,6 +710,15 @@ export async function setDocumentStatusAction(formData: FormData) {
   const formattedRemark = rejectionType
     ? `[${rejectionType}] ${rejectionRemark}`
     : rejectionRemark;
+  const transitionAllowed = canTransitionDocument({
+    fromStatus: currentStatus,
+    toStatus: "rejected",
+    actorRole,
+    allowOverride: canStatusEditAtAnyStage && !(canOwnerReview || canFinalReview),
+  });
+  if (!transitionAllowed) {
+    return;
+  }
 
   const { error } = await writer
     .from("documents")
@@ -678,6 +743,15 @@ export async function setDocumentStatusAction(formData: FormData) {
       summary: `Rejected document with review note.`,
       details: { from_status: currentStatus, to_status: status, rejection_type: rejectionType || null, rejection_remark: formattedRemark },
     });
+  await recordDocumentReviewEvent({
+    documentId,
+    projectId,
+    reviewerId: user?.id ?? null,
+    reviewerRole: actorRole,
+    action: canOwnerReview ? "owner_reject" : "admin_reject",
+    statusAfter: "rejected",
+    remarks: formattedRemark,
+  });
 
   if (formattedRemark && user) {
     await client.from("remarks").insert({
@@ -750,6 +824,15 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
       if (!nextStatus) {
         continue;
       }
+      if (
+        !canTransitionDocument({
+          fromStatus: currentDocument.status,
+          toStatus: nextStatus as "owner_approved" | "approved",
+          actorRole: actorProjectRole,
+        })
+      ) {
+        continue;
+      }
       if (canOwnerReview && currentDocument.status !== "uploaded") {
         continue;
       }
@@ -786,6 +869,14 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
             : "Bulk-approved for submission pack.",
         details: { to_status: nextStatus, bulk: true },
       });
+      await recordDocumentReviewEvent({
+        documentId,
+        projectId: currentDocument.project_id,
+        reviewerId: user.id,
+        reviewerRole: actorProjectRole,
+        action: nextStatus === "owner_approved" ? "owner_forward" : "admin_approve",
+        statusAfter: nextStatus,
+      });
       pathFor(currentDocument.project_id).forEach((path) => revalidatePath(path));
       continue;
     }
@@ -796,6 +887,15 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
       continue;
     }
     if (!(canOwnerReview || canFinalReview)) {
+      continue;
+    }
+    if (
+      !canTransitionDocument({
+        fromStatus: currentDocument.status,
+        toStatus: "rejected",
+        actorRole: actorProjectRole,
+      })
+    ) {
       continue;
     }
     const formattedRemark = rejectionType
@@ -823,6 +923,15 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
       actorRole: actorProjectRole,
       summary: "Bulk-rejected with review remark.",
       details: { to_status: "rejected", rejection_type: rejectionType || null, rejection_remark: formattedRemark, bulk: true },
+    });
+    await recordDocumentReviewEvent({
+      documentId,
+      projectId: currentDocument.project_id,
+      reviewerId: user.id,
+      reviewerRole: actorProjectRole,
+      action: canOwnerReview ? "owner_reject" : "admin_reject",
+      statusAfter: "rejected",
+      remarks: formattedRemark,
     });
     if (currentDocument.credit_id) {
       await client.from("remarks").insert({
@@ -1079,7 +1188,7 @@ export async function updateDocumentMetadataAction(formData: FormData) {
   const canAdminEdit = canEditDocumentStatusAtAnyStage(actorProjectRole as any);
   const canOwnEdit =
     document.uploaded_by === user.id &&
-    document.status !== "approved" &&
+    document.status === "uploaded" &&
     canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
 
   if (!canAdminEdit && !canOwnEdit) {
@@ -1262,6 +1371,15 @@ export async function resubmitDocumentAction(formData: FormData) {
   const canOwnEdit =
     documentRow.uploaded_by === user.id &&
     canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
+  const transitionAllowed = canTransitionDocument({
+    fromStatus: documentRow.status,
+    toStatus: "uploaded",
+    actorRole: actorProjectRole,
+    allowOverride: canAdminEdit,
+  });
+  if (!transitionAllowed) {
+    return;
+  }
 
   if (!canAdminEdit && !canOwnEdit) {
     return;
@@ -1301,6 +1419,15 @@ export async function resubmitDocumentAction(formData: FormData) {
       previous_rejection_reason: documentRow.rejection_reason ?? "",
       resubmit_note: resubmitNote,
     },
+  });
+  await recordDocumentReviewEvent({
+    documentId,
+    projectId,
+    reviewerId: user.id,
+    reviewerRole: actorProjectRole,
+    action: "resubmit",
+    statusAfter: "uploaded",
+    remarks: resubmitNote || null,
   });
   const ownerIds = await getProjectMembersByRoles(writer, projectId, ["owner"]);
   await notifyUsers(writer, {
