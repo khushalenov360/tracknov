@@ -64,6 +64,10 @@
     "onboard": "node bin/tracknov.mjs",
     "smoke": "playwright test",
     "qa:ux": "playwright test tests/ux-quality-gates.spec.ts",
+    "qa:rbac": "playwright test tests/rbac-matrix.spec.ts",
+    "qa:exports": "playwright test tests/export-structure.spec.ts",
+    "qa:events": "playwright test tests/event-bus.spec.ts",
+    "qa:workflow": "playwright test tests/workflow-state-machine.spec.ts",
     "smoke:headed": "playwright test --headed"
   },
   "dependencies": {

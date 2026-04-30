@@ -8,6 +8,7 @@ import {
   canEditDocumentStatusAtAnyStage,
   canEditOwnDocumentBeforeFinalApproval,
   canManageProject,
+  canUploadProjectDocuments,
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -62,6 +63,7 @@ function mapCredit(
 ): CreditWorkspace {
   return {
     id: credit.id,
+    project_credit_id: credit.project_credit_id ?? credit.id,
     project_id: credit.project_id,
     credit_code: credit.credit_code,
     category: credit.category,
@@ -187,13 +189,13 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
 export async function getDashboardProjects() {
   if (!env.isConfigured) {
-    redirect("/login");
+    return [];
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return [];
   }
 
   const currentUser = await getCurrentUser();
@@ -366,13 +368,13 @@ export async function getDashboardProjects() {
 
 export async function getProjectWorkspace(projectId: string) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return null;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return null;
   }
 
   const currentUser = await getCurrentUser();
@@ -431,7 +433,7 @@ export async function getProjectWorkspace(projectId: string) {
     .single();
 
   if (!membership) {
-    redirect("/dashboard");
+    return null;
   }
 
   const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
@@ -512,6 +514,7 @@ export async function getProjectWorkspaceForApi(projectId: string): Promise<Proj
 
 export async function getSubmissionWorkspace(projectId: string) {
   const workspace = await getProjectWorkspace(projectId);
+  if (!workspace) return null;
   return {
     ...workspace,
     credits: workspace.credits.filter((credit) => credit.status === "complete"),
@@ -558,17 +561,17 @@ export async function createProjectForCurrentUser({
   igbcVariant?: string;
 }) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return null;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return null;
   }
   const currentUser = await getCurrentUser();
   if (!canCreateProjects(currentUser?.role)) {
-    redirect("/dashboard");
+    return null;
   }
   const elevatedClient =
     env.supabaseServiceRoleKey && canCreateProjects(currentUser?.role)
@@ -611,9 +614,23 @@ export async function createProjectForCurrentUser({
   }
 
   if (safeRatingSystem === greenInteriorsSystem) {
-    const { error: creditsError } = await elevatedClient.from("credits").insert(buildSeedCredits(project.id));
+    const { data: createdCredits, error: creditsError } = await elevatedClient
+      .from("credits")
+      .insert(buildSeedCredits(project.id))
+      .select("id, project_id");
     if (creditsError) {
       throw creditsError;
+    }
+    if ((createdCredits ?? []).length) {
+      const { error: projectCreditError } = await elevatedClient.from("project_credits").insert(
+        (createdCredits ?? []).map((credit: any) => ({
+          project_id: credit.project_id,
+          credit_id: credit.id,
+        })),
+      );
+      if (projectCreditError) {
+        throw projectCreditError;
+      }
     }
   }
 
@@ -781,13 +798,13 @@ export async function updateProjectForCurrentUser({
   status: string;
 }) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return;
   }
 
   const currentUser = await getCurrentUser();
@@ -797,7 +814,7 @@ export async function updateProjectForCurrentUser({
       : await getMembershipRoleForProject(client, user.id, projectId);
 
   if (!canManageProject(projectRole)) {
-    redirect("/projects");
+    return;
   }
 
   const elevatedClient =
@@ -836,13 +853,13 @@ export async function updateProjectBillingSettingsForCurrentUser({
   topupConsultantCredits: number;
 }) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return;
   }
 
   const currentUser = await getCurrentUser();
@@ -852,7 +869,7 @@ export async function updateProjectBillingSettingsForCurrentUser({
       : await getMembershipRoleForProject(client, user.id, projectId);
 
   if (!canManageProject(projectRole)) {
-    redirect("/projects");
+    return;
   }
 
   const elevatedClient =
@@ -889,13 +906,13 @@ export async function logConsultantSessionForCurrentUser({
   creditsBurned: number;
 }) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return;
   }
 
   const currentUser = await getCurrentUser();
@@ -905,7 +922,7 @@ export async function logConsultantSessionForCurrentUser({
       : await getMembershipRoleForProject(client, user.id, projectId);
 
   if (!projectRole) {
-    redirect("/projects");
+    return;
   }
 
   const elevatedClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
@@ -951,13 +968,13 @@ export async function createProjectTopupInvoiceForCurrentUser({
   notes: string;
 }) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return;
   }
 
   const currentUser = await getCurrentUser();
@@ -967,7 +984,7 @@ export async function createProjectTopupInvoiceForCurrentUser({
       : await getMembershipRoleForProject(client, user.id, projectId);
 
   if (!canManageProject(projectRole)) {
-    redirect("/projects");
+    return;
   }
 
   const elevatedClient =
@@ -1053,18 +1070,18 @@ export async function createProjectTopupInvoiceForCurrentUser({
 
 export async function deleteProjectForCurrentUser(projectId: string) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return;
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return;
   }
 
   const currentUser = await getCurrentUser();
   if (!canDeleteProjects(currentUser?.role)) {
-    redirect("/projects");
+    return;
   }
 
   const elevatedClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
@@ -1081,13 +1098,13 @@ export async function getDocumentLibrary(filters: {
   search?: string;
 } = {}) {
   if (!env.isConfigured) {
-    redirect("/login");
+    return [];
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return [];
   }
   const currentUser = await getCurrentUser();
 
@@ -1218,19 +1235,20 @@ export async function getDocumentLibrary(filters: {
 
 export async function getDocumentUploadOptions() {
   const projects = await getDashboardProjects();
-  if (!projects.length) {
+  const uploadableProjects = projects.filter(p => canUploadProjectDocuments(p.role as MemberRole));
+  if (!uploadableProjects.length) {
     return [];
   }
 
   const client = createClient();
   const user = await getCurrentUser();
-  const projectIds = projects.map((project) => project.id);
-  const [{ data: credits }, { data: historicalDocs }] = await Promise.all([
+  const projectIds = uploadableProjects.map((project) => project.id);
+  const [{ data: projectCredits }, { data: historicalDocs }] = await Promise.all([
     client
-      .from("credits")
-      .select("id, project_id, credit_code, credit_name, documents_required, what_to_submit")
+      .from("project_credits")
+      .select("id, project_id, status, credit:credits(id, credit_code, credit_name, documents_required, what_to_submit)")
       .in("project_id", projectIds)
-      .order("credit_code"),
+      .order("created_at"),
     user
       ? client
           .from("documents")
@@ -1260,6 +1278,8 @@ export async function getDocumentUploadOptions() {
 
   const creditsByProject = new Map<string, {
     id: string;
+    project_credit_id: string;
+    status: string;
     credit_code: string;
     credit_name: string;
     doc_types: string[];
@@ -1268,10 +1288,14 @@ export async function getDocumentUploadOptions() {
     prior_examples_by_type: Record<string, string[]>;
   }[]>();
 
-  for (const credit of credits ?? []) {
-    const existing = creditsByProject.get(credit.project_id) ?? [];
+  for (const row of projectCredits ?? []) {
+    const credit = Array.isArray((row as any).credit) ? (row as any).credit[0] : (row as any).credit;
+    if (!credit) continue;
+    const existing = creditsByProject.get((row as any).project_id) ?? [];
     existing.push({
       id: credit.id,
+      project_credit_id: (row as any).id,
+      status: String((row as any).status ?? "NOT_STARTED"),
       credit_code: credit.credit_code,
       credit_name: credit.credit_name,
       what_to_submit: String((credit as any).what_to_submit ?? "").trim(),
@@ -1300,10 +1324,10 @@ export async function getDocumentUploadOptions() {
         return acc;
       }, {}),
     });
-    creditsByProject.set(credit.project_id, existing);
+    creditsByProject.set((row as any).project_id, existing);
   }
 
-  return projects.map((project) => ({
+  return uploadableProjects.map((project) => ({
     id: project.id,
     name: project.name,
     credits: creditsByProject.get(project.id) ?? [],
@@ -1334,13 +1358,13 @@ function filterDocuments(documents: DocumentLibraryRecord[], filters: { project?
 
 export async function getTeamMembers() {
   if (!env.isConfigured) {
-    redirect("/login");
+    return [];
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return [];
   }
 
   const currentUser = await getCurrentUser();
@@ -1442,18 +1466,21 @@ export async function getTeamMembers() {
 
 export async function getOwnerReviewQueue() {
   if (!env.isConfigured) {
-    redirect("/login");
+    return [];
   }
 
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
-    redirect("/login");
+    return [];
   }
 
   const currentUser = await getCurrentUser();
   const userRole = currentUser?.role ?? "consultant";
-  const reviewStatus = userRole === "owner" ? "uploaded" : "owner_approved";
+  const reviewWorkflowStates =
+    userRole === "owner"
+      ? ["SUBMITTED"]
+      : ["UNDER_REVIEW"];
   const projectRoleRows =
     userRole === "super_user"
       ? []
@@ -1473,9 +1500,9 @@ export async function getOwnerReviewQueue() {
 
   const { data: docs } = await client
     .from("documents")
-    .select("id, project_id, credit_id, uploaded_by, file_name, uploaded_at, notes, status")
+    .select("id, project_id, credit_id, uploaded_by, file_name, uploaded_at, notes, status, workflow_state")
     .in("project_id", ownedProjectIds)
-    .eq("status", reviewStatus)
+    .in("workflow_state", reviewWorkflowStates)
     .order("uploaded_at", { ascending: true });
   const rows = docs ?? [];
   if (!rows.length) {
@@ -1542,11 +1569,11 @@ export async function getReviewerPerformanceSummary() {
   let rejectedToday = 0;
   for (const row of logs ?? []) {
     const details = (row as any).details ?? {};
-    const status = String(details.to_status ?? "");
-    if (status === "approved" || status === "owner_approved") {
+    const toState = String(details.to_state ?? "");
+    if (toState === "APPROVED" || toState === "UNDER_REVIEW") {
       approvedToday += 1;
     }
-    if (status === "rejected") {
+    if (toState === "REJECTED" || toState === "CLARIFICATION") {
       rejectedToday += 1;
     }
   }

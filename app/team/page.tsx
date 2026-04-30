@@ -6,6 +6,10 @@ import { getCurrentUser, getDashboardProjects, getSuperUserCommandCenter, getTea
 import { roleLabels } from "@/lib/constants";
 import { canManageTeamFromRole } from "@/lib/rbac";
 import { formatDateTimeIST } from "@/lib/utils";
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const roleTone = {
   super_user: "border border-[#0b1f33] bg-[#0b1f33] text-white",
@@ -20,6 +24,7 @@ const roleTone = {
 } as const;
 
 export default async function TeamPage() {
+  cookies();
   const [currentUser, projects, members, commandCenter] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),

@@ -2,6 +2,28 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
+// Routes that require authentication
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/projects",
+  "/documents",
+  "/team",
+  "/credits",
+  "/review-queue",
+  "/welcome",
+  "/invite",
+];
+
+// Routes that are public (login, signup, etc.)
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/_next", "/favicon.ico", "/api/auth"];
+
+function isProtectedRoute(pathname: string): boolean {
+  if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return false;
+  }
+  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({
     request: {
@@ -29,6 +51,19 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // Redirect unauthenticated users away from protected routes
+  if (!user && isProtectedRoute(pathname)) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   return response;
 }

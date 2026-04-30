@@ -20,6 +20,10 @@ import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
 import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
 import { formatDateTimeIST, pct } from "@/lib/utils";
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type PageProps = {
   params: { id: string };
@@ -60,7 +64,22 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
+  cookies();
   const workspace = await getProjectWorkspace(params.id);
+  if (!workspace) {
+    return (
+      <Shell title="Project Not Found" description="The requested project could not be found." role="consultant" notificationCount={0}>
+        <div className="surface-card p-8 text-center">
+          <p className="text-[14px] text-[var(--color-text-secondary)]">
+            Project not found or you do not have access.
+          </p>
+          <Link href="/dashboard">
+            <Button variant="secondary" className="mt-4">Back to Dashboard</Button>
+          </Link>
+        </div>
+      </Shell>
+    );
+  }
   const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
   const roleScopedCredits = isL0Contributor
     ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
@@ -770,7 +789,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                               className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
                             >
                               <option value="missing_data">Missing required information</option>
-                              <option value="incorrect_format">Incorrect format</option>\n                              <option value="wrong_document">Wrong document type</option>
+                              <option value="incorrect_format">Incorrect format</option>
+                              <option value="wrong_document">Wrong document type</option>
                               <option value="poor_quality">Poor image quality / unreadable</option>
                               <option value="outdated_document">Outdated document</option>
                               <option value="wrong_credit_mapping">Wrong credit mapping</option>
@@ -796,6 +816,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               <UploadDocumentForm
                 projectId={params.id}
                 creditId={selectedCredit.id}
+                projectCreditId={(selectedCredit as any).project_credit_id ?? selectedCredit.id}
                 docTypes={selectedCredit.documents_required.map((doc) => doc.type)}
                 disabled={!env.isConfigured || !selectedCredit.documents_required.length}
               />
@@ -874,4 +895,3 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     </Shell>
   );
 }
-

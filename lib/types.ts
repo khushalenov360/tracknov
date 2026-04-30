@@ -35,6 +35,7 @@ export type CatalogCredit = {
 export type DocumentRecord = {
   id: string;
   credit_id?: string | null;
+  project_credit_id?: string | null;
   project_id: string;
   uploaded_by?: string | null;
   file_name: string;
@@ -48,6 +49,9 @@ export type DocumentRecord = {
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   status: DocumentStatus;
+  version?: number;
+  is_latest?: boolean;
+  parent_document_id?: string | null;
   uploaded_at: string;
 };
 
@@ -91,6 +95,7 @@ export type RemarkRecord = {
 
 export type CreditWorkspace = {
   id: string;
+  project_credit_id?: string | null;
   project_id: string;
   credit_code: string;
   category: string;

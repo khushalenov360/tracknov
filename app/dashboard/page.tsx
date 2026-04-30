@@ -9,11 +9,17 @@ import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveIns
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
+  cookies();
   const [user, projects, ownerQueue, insights] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),

@@ -1,0 +1,374 @@
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
+import { canUploadProjectDocuments, canEditOwnDocumentBeforeFinalApproval, canEditDocumentStatusAtAnyStage } from "@/lib/rbac";
+import { transitionDocumentState } from "./document-state-service";
+import { logDocumentActivity } from "./activity-service";
+import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
+import { recordDocumentReviewEvent } from "./review-service";
+import { eventBus } from "@/lib/events/event-bus";
+import type { CurrentUser } from "@/lib/types";
+
+export class DocumentService {
+  private get client() { return createClient(); }
+  private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
+
+  private async getActorProjectRole(projectId: string, user: CurrentUser) {
+    if (user.role === "super_user") return "super_user";
+    const { data: membership } = await this.client
+      .from("project_members")
+      .select("role")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    return membership?.role ?? user.role;
+  }
+
+  private async getClientUserForProject(projectId: string) {
+    const { data } = await this.admin
+      .from("project_members")
+      .select("user_id")
+      .eq("project_id", projectId)
+      .eq("role", "client")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return data?.user_id ?? null;
+  }
+
+  async uploadDocument(user: CurrentUser, params: {
+    projectId: string;
+    creditId: string;
+    projectCreditId?: string;
+    docCategory: string;
+    requirementSlot?: string;
+    notes?: string;
+    file: File;
+  }) {
+    const actorRole = await this.getActorProjectRole(params.projectId, user);
+    if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
+      throw new Error("Unauthorized: You do not have upload access for this project.");
+    }
+
+    let projectCreditId = params.projectCreditId;
+    if (!projectCreditId) {
+      const { data: mappedProjectCredit } = await this.admin
+        .from("project_credits")
+        .select("id")
+        .eq("project_id", params.projectId)
+        .eq("credit_id", params.creditId)
+        .maybeSingle();
+      projectCreditId = mappedProjectCredit?.id;
+    }
+
+    if (!projectCreditId) {
+      throw new Error("Project credit mapping not found.");
+    }
+
+    const clientUserId = await this.getClientUserForProject(params.projectId);
+    if (!clientUserId) {
+      throw new Error("Client wallet is not linked for this project yet.");
+    }
+
+    // Quota check
+    const { data: usage } = await this.admin
+      .from("project_usage_summary")
+      .select("documents_used, document_credit_limit, topup_document_credits")
+      .eq("project_id", params.projectId)
+      .maybeSingle();
+
+    const allowedDocuments = Number(usage?.document_credit_limit ?? 0) + Number(usage?.topup_document_credits ?? 0);
+    const usedDocuments = Number(usage?.documents_used ?? 0);
+    if (allowedDocuments > 0 && usedDocuments >= allowedDocuments) {
+      throw new Error("Document credit limit reached for this project plan.");
+    }
+
+    // Duplicate check
+    const { data: duplicate } = await this.admin
+      .from("documents")
+      .select("id")
+      .eq("project_id", params.projectId)
+      .eq("project_credit_id", projectCreditId)
+      .eq("doc_category", params.docCategory)
+      .ilike("file_name", params.file.name)
+      .in("status", ["uploaded", "owner_approved", "approved"])
+      .limit(1)
+      .maybeSingle();
+
+    if (duplicate) {
+      throw new Error("Possible duplicate file already exists for this credit/doc type.");
+    }
+
+    // Versioning
+    const { data: latestVersion } = await this.admin
+      .from("documents")
+      .select("id, version")
+      .eq("project_id", params.projectId)
+      .eq("project_credit_id", projectCreditId)
+      .eq("doc_category", params.docCategory)
+      .eq("is_latest", true)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextVersion = Number(latestVersion?.version ?? 0) + 1;
+    const extension = params.file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const safeDocType = params.docCategory.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+    const safeBaseName = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "file";
+    const filePath = `${params.projectId}/${projectCreditId}/${safeDocType}/v${nextVersion}-${crypto.randomUUID()}-${safeBaseName}.${extension}`;
+
+    // Upload to Storage
+    const { error: storageError } = await this.admin.storage.from("project-documents").upload(filePath, params.file, {
+      upsert: false,
+      contentType: params.file.type || undefined,
+    });
+
+    if (storageError) throw storageError;
+
+    // DB Insert via RPC (Atomic with token consumption)
+    const mergedNotes = [params.notes, params.requirementSlot ? `Requirement slot: ${params.requirementSlot}` : ""].filter(Boolean).join("\n");
+    const { data: documentId, error: dbError } = await this.admin.rpc("insert_document_and_consume_tokens", {
+      p_project_id: params.projectId,
+      p_credit_id: params.creditId,
+      p_project_credit_id: projectCreditId,
+      p_uploaded_by: user.id,
+      p_file_name: params.file.name,
+      p_file_path: filePath,
+      p_file_type: extension,
+      p_doc_category: params.docCategory,
+      p_notes: mergedNotes,
+      p_status: "uploaded",
+      p_version: nextVersion,
+      p_is_latest: true,
+      p_parent_document_id: latestVersion?.id ?? null,
+      p_client_user_id: clientUserId,
+      p_tokens: 1,
+      p_reason: "Document upload token burn",
+      p_actor_id: user.id,
+      p_token_meta: {
+        file_name: params.file.name,
+        doc_category: params.docCategory,
+        credit_id: params.creditId,
+        project_credit_id: projectCreditId,
+        version: nextVersion,
+      },
+    });
+
+    if (dbError || !documentId) {
+      await this.admin.storage.from("project-documents").remove([filePath]);
+      throw dbError ?? new Error("Upload record could not be saved.");
+    }
+
+    // Post-upload side effects
+    await logDocumentActivity(this.admin, {
+      documentId,
+      projectId: params.projectId,
+      action: "uploaded",
+      actorId: user.id,
+      actorRole,
+      summary: `Uploaded ${params.file.name} under ${params.docCategory}.`,
+      details: {
+        file_name: params.file.name,
+        doc_category: params.docCategory,
+        credit_id: params.creditId,
+        project_credit_id: projectCreditId,
+        version: nextVersion,
+      },
+    });
+
+    const ownerIds = await getProjectMembersByRoles(this.admin, params.projectId, ["owner"]);
+    await notifyUsers(this.admin, {
+      projectId: params.projectId,
+      creditId: params.creditId,
+      documentId,
+      userIds: ownerIds,
+      body: `New upload received for owner review: ${params.file.name}`,
+    });
+    
+    // Emit Event
+    await eventBus.emit({
+      type: "DOCUMENT_UPLOADED",
+      payload: {
+        documentId,
+        projectId: params.projectId,
+        userId: user.id,
+      }
+    });
+
+    return { id: documentId };
+  }
+
+  async updateMetadata(user: CurrentUser, params: {
+    documentId: string;
+    projectId: string;
+    creditId: string;
+    docCategory: string;
+    notes: string;
+  }) {
+    const actorRole = await this.getActorProjectRole(params.projectId, user);
+    if (!actorRole) throw new Error("Unauthorized.");
+
+    const { data: document } = await this.client
+      .from("documents")
+      .select("*")
+      .eq("id", params.documentId)
+      .maybeSingle();
+
+    if (!document || document.project_id !== params.projectId) {
+      throw new Error("Document not found.");
+    }
+
+    const workflowState = String(document.workflow_state ?? "DRAFT").toUpperCase();
+    if (workflowState === "SUBMITTED" || workflowState === "UNDER_REVIEW") {
+      throw new Error("Document is locked for review.");
+    }
+
+    const editWindowState = workflowState === "DRAFT" || workflowState === "CLARIFICATION";
+    const canAdminEdit = canEditDocumentStatusAtAnyStage(actorRole as any);
+    const canOwnEdit = document.uploaded_by === user.id && document.status === "uploaded" && editWindowState && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
+
+    if (!canAdminEdit && !canOwnEdit) {
+      throw new Error("Unauthorized: Insufficient permissions to edit metadata.");
+    }
+
+    const { error } = await this.admin
+      .from("documents")
+      .update({
+        credit_id: params.creditId,
+        doc_category: params.docCategory,
+        notes: params.notes,
+      })
+      .eq("id", params.documentId);
+
+    if (error) throw error;
+
+    await logDocumentActivity(this.admin, {
+      documentId: params.documentId,
+      projectId: params.projectId,
+      action: "metadata_updated",
+      actorId: user.id,
+      actorRole,
+      summary: "Updated document mapping details.",
+      details: {
+        to_credit_id: params.creditId,
+        to_doc_category: params.docCategory,
+      },
+    });
+
+    // Emit Event
+    await eventBus.emit({
+      type: "DOCUMENT_METADATA_UPDATED",
+      payload: {
+        documentId: params.documentId,
+        projectId: params.projectId,
+        userId: user.id,
+      }
+    });
+  }
+
+  async deleteDocument(user: CurrentUser, params: {
+    documentId: string;
+    projectId: string;
+  }) {
+    const actorRole = await this.getActorProjectRole(params.projectId, user);
+    if (!actorRole) throw new Error("Unauthorized.");
+
+    const { data: document } = await this.client
+      .from("documents")
+      .select("*")
+      .eq("id", params.documentId)
+      .maybeSingle();
+
+    if (!document || document.project_id !== params.projectId) {
+      throw new Error("Document not found.");
+    }
+
+    const canAdminDelete = ["super_user", "super_admin", "project_admin"].includes(actorRole);
+    const canOwnWithdraw = document.uploaded_by === user.id && document.status === "uploaded" && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
+
+    if (!canAdminDelete && !canOwnWithdraw) {
+      throw new Error("Unauthorized: Insufficient permissions to delete document.");
+    }
+
+    if (canOwnWithdraw) {
+      const clientUserId = await this.getClientUserForProject(params.projectId);
+      if (clientUserId) {
+        await this.admin.rpc("credit_client_tokens", {
+          p_client_user_id: clientUserId,
+          p_project_id: params.projectId,
+          p_tokens: 1,
+          p_reason: "Token refund for unreviewed document delete",
+          p_actor_id: user.id,
+          p_meta: { document_id: document.id, file_name: document.file_name },
+        });
+      }
+    }
+
+    await logDocumentActivity(this.admin, {
+      documentId: params.documentId,
+      projectId: params.projectId,
+      action: "deleted",
+      actorId: user.id,
+      actorRole,
+      summary: `Deleted document ${document.file_name}.`,
+    });
+
+    const { error } = await this.admin.from("documents").delete().eq("id", params.documentId);
+    if (error) throw error;
+
+    // Emit Event
+    await eventBus.emit({
+      type: "DOCUMENT_DELETED",
+      payload: {
+        documentId: params.documentId,
+        projectId: params.projectId,
+        userId: user.id,
+        fileName: document.file_name,
+      }
+    });
+  }
+
+  async resubmitDocument(user: CurrentUser, params: {
+    documentId: string;
+    projectId: string;
+    resubmitNote: string;
+  }) {
+    const actorRole = await this.getActorProjectRole(params.projectId, user);
+    if (!actorRole) throw new Error("Unauthorized.");
+
+    const { data: document } = await this.client
+      .from("documents")
+      .select("*")
+      .eq("id", params.documentId)
+      .maybeSingle();
+
+    if (!document || document.project_id !== params.projectId || document.workflow_state !== "CLARIFICATION") {
+      throw new Error("Document cannot be resubmitted at this stage.");
+    }
+
+    const canAdminEdit = canEditDocumentStatusAtAnyStage(actorRole as any);
+    const canOwnEdit = document.uploaded_by === user.id && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
+
+    if (!canAdminEdit && !canOwnEdit) {
+      throw new Error("Unauthorized.");
+    }
+
+    const transition = await transitionDocumentState(this.admin, {
+      documentId: params.documentId,
+      newState: "RESUBMITTED",
+      userId: user.id,
+      actorRole,
+      manualSubmit: true,
+      updatedEvidence: true,
+      remarks: params.resubmitNote,
+    });
+
+    if (!transition.ok) throw new Error(transition.error);
+
+    const nextNotes = [document.notes ?? "", params.resubmitNote ? `Resubmission note: ${params.resubmitNote}` : ""].filter(Boolean).join("\n\n");
+    await this.admin.from("documents").update({ notes: nextNotes }).eq("id", params.documentId);
+  }
+}
+
+export const documentService = new DocumentService();

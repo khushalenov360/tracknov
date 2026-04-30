@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { buildSubmissionZip, isSubmissionExportReady } from "@/lib/exports";
+import { logSystemActivity } from "@/lib/services/activity-service";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const workspace = await getProjectWorkspaceForApi(params.id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+
+  // Audit Log
+  const admin = createAdminClient();
+  await logSystemActivity(admin, {
+    projectId: params.id,
+    entityType: "project",
+    action: "export_submission_pack",
+    summary: `Exported final submission ZIP pack for ${workspace.project.name}`,
+  });
+
   const mandatoryReady = isSubmissionExportReady(workspace);
 
   if (!mandatoryReady) {

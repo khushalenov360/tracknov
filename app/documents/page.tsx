@@ -9,11 +9,17 @@ import { documentStatuses } from "@/lib/constants";
 import { getDashboardProjects, getDocumentLibrary, getDocumentUploadOptions } from "@/lib/data";
 import { formatDateTimeIST } from "@/lib/utils";
 
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DocumentsPage({
   searchParams,
 }: {
   searchParams?: { project?: string; status?: string; search?: string };
 }) {
+  cookies(); // Explicitly call cookies to force dynamic behavior
   const [projects, documents, uploadProjects] = await Promise.all([
     getDashboardProjects(),
     getDocumentLibrary(searchParams),
@@ -275,7 +281,8 @@ export default async function DocumentsPage({
                                 >
                                   <option value="">Reject reason type (required for rejection)</option>
                                   <option value="missing_data">Missing required information</option>
-                                  <option value="incorrect_format">Incorrect format</option>\n                                  <option value="wrong_document">Wrong document type</option>
+                                  <option value="incorrect_format">Incorrect format</option>
+                                  <option value="wrong_document">Wrong document type</option>
                                   <option value="poor_quality">Poor image quality / unreadable</option>
                                   <option value="outdated_document">Outdated document</option>
                                   <option value="wrong_credit_mapping">Wrong credit mapping</option>
@@ -367,4 +374,3 @@ export default async function DocumentsPage({
     </Shell>
   );
 }
-

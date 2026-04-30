@@ -11,6 +11,17 @@ export const dynamic = "force-dynamic";
 
 export default async function SubmissionPage({ params }: { params: { id: string } }) {
   const workspace = await getSubmissionWorkspace(params.id);
+  if (!workspace) {
+    return (
+      <Shell title="Project Not Found" description="The requested project could not be found." role="consultant" notificationCount={0}>
+        <div className="surface-card p-8 text-center">
+          <p className="text-[14px] text-[var(--color-text-secondary)]">Project not found or you do not have access.</p>
+          <Link href="/dashboard"><Button variant="secondary" className="mt-4">Back to Dashboard</Button></Link>
+        </div>
+      </Shell>
+    );
+  }
+
   const mandatoryReady = isSubmissionExportReady(workspace);
   const exportCredits = getApprovedSubmissionCredits(workspace);
 

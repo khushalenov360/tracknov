@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser, getOwnerReviewQueue, getReviewerPerformanceSummary } from "@/lib/data";
 import { formatDateTimeIST } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReviewQueuePage() {
   const [user, queue, metrics] = await Promise.all([getCurrentUser(), getOwnerReviewQueue(), getReviewerPerformanceSummary()]);
   const role = user?.role ?? "consultant";
@@ -62,7 +64,8 @@ export default async function ReviewQueuePage() {
             >
               <option value="">Reject reason type</option>
               <option value="missing_data">Missing required information</option>
-              <option value="incorrect_format">Incorrect format</option>\n              <option value="wrong_document">Wrong document type</option>
+              <option value="incorrect_format">Incorrect format</option>
+              <option value="wrong_document">Wrong document type</option>
               <option value="poor_quality">Poor image quality / unreadable</option>
               <option value="outdated_document">Outdated certificate/document</option>
               <option value="wrong_credit_mapping">Wrong credit mapping</option>

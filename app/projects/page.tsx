@@ -17,7 +17,13 @@ import { getActiveSubscriptionPlans, getCurrentUser, getDashboardProjects } from
 import { canCreateProjects, canDeleteProjects, canManageProject } from "@/lib/rbac";
 import { pct } from "@/lib/utils";
 
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProjectsPage() {
+  cookies();
   const [user, projects, plans] = await Promise.all([getCurrentUser(), getDashboardProjects(), getActiveSubscriptionPlans()]);
   const canCreateProject = canCreateProjects(user?.role);
   const canDeleteAnyProject = canDeleteProjects(user?.role);

@@ -3,6 +3,540 @@
 Last updated: 2026-04-29 IST  
 Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
+## Tracknov V2 TODO (Mapped to `Ai developerhandoff.md`)
+
+### P0 - Foundation-critical (must complete first)
+
+- [x] V2.0 Workflow state model alignment:
+  align canonical workflow with handoff states (`uploaded -> owner_review -> admin_review -> approved/rejected`) while preserving existing workflow engine guarantees.
+- [x] V2.1 RBAC hard enforcement middleware:
+  enforce action-level guards for `L0`, `L1`, `L3`, `L5` on every API/server action path.
+- [x] V2.2 Token ledger strictness:
+  ensure token debit occurs only after successful upload commit and ledger entry is immutable/auditable.
+- [x] V2.3 Review decoupling completion:
+  wire all review actions to dedicated review records (`reviews`/`document_reviews`) with multi-cycle tracking.
+- [x] V2.4 API-level transition-only updates:
+  block any direct status mutation paths that bypass workflow transition service.
+
+### P1 - Core architecture and scale
+
+- [x] V2.5 Service-layer completion:
+  finish extraction from `app/actions.ts` into:
+  - `document_service`
+  - `review_service`
+  - `billing_service`
+  - `project_service`
+- [x] V2.6 Event-driven backbone:
+  implement event bus foundation and async consumers for:
+  - `DOCUMENT_UPLOADED`
+  - `REVIEW_COMPLETED`
+  - `DOCUMENT_REJECTED`
+  - `TOKEN_DEDUCTED`
+- [x] V2.7 Event consumers:
+  connect billing, notification, and AI validator consumers to event stream.
+- [x] V2.8 Database completeness pass:
+  verify/close schema coverage for:
+  - `clients`
+  - `projects`
+  - `credits`
+  - `project_credits`
+  - `documents`
+  - `reviews`
+  - `users`
+  - `project_users`
+  - `wallets`
+  - `token_transactions`
+  - `embeddings`
+  - `rejection_patterns`
+  - `activity_logs`
+- [x] V2.9 API surface completion:
+  finalize role-secured APIs for:
+  - document upload/list/versioning
+  - review approve/reject/remarks
+  - wallet balance + transaction history
+  - AI suggestions + risk score
+
+### P2 - AI intelligence layer
+
+- [ ] V2.10 RAG baseline:
+  ingest approved docs + IGBC guidance into embeddings and retrieval pipeline.
+- [ ] V2.11 Pre-upload validator:
+  file type, naming, and credit relevance checks before acceptance.
+- [ ] V2.12 Rejection intelligence:
+  pattern capture and corrective suggestion pipeline per credit/document type.
+- [ ] V2.13 Risk engine:
+  project risk score using missing docs, rejection frequency, and delays.
+
+### P3 - Frontend role UX and performance
+
+- [ ] V2.14 Role dashboards completion:
+  ensure clear role-mode surfaces:
+  - L0 upload workspace
+  - L1 review queue
+  - L2 portfolio summary
+  - L3 approval console
+- [ ] V2.15 Persistent AI copilot:
+  one shared panel across tabs with context-aware suggestions and risk alerts.
+- [ ] V2.16 Non-functional targets:
+  - async heavy operations
+  - target API latency <300ms for core endpoints
+  - project-level data isolation checks
+  - immutable activity logging checks
+
+### V2 Delivery checklist (from AI handoff)
+
+- [ ] Workflow state machine implemented
+- [ ] Token ledger active and tested
+- [ ] AI validator working
+- [ ] RAG system integrated
+- [ ] Risk engine functional
+- [ ] RBAC enforced
+- [ ] Event system operational
+- [ ] APIs documented
+
+## UX/UI V2 TODO (Mapped to `UX_UI_developer_handoff.md`)
+
+### UX P0 - Product definition and navigation lock
+
+- [ ] UX0.1 Scope lock implementation:
+  remove/avoid UI language that implies ESG/carbon/tokenization product scope beyond certification workflow.
+- [ ] UX0.2 Global navigation lock:
+  ensure top nav contains and consistently routes:
+  - Dashboard
+  - Projects
+  - Credits
+  - Documents
+  - Tasks
+- [ ] UX0.3 Workflow-first navigation audit:
+  remove duplicate navigation paths and dead-end routes.
+
+### UX P1 - Primary screen coverage
+
+- [ ] UX1.1 Dashboard compliance:
+  show project list, completion %, pending credits, and risk flags with quick drilldowns.
+- [ ] UX1.2 Create Project screen:
+  include project name, rating system, location, and team assignment fields.
+- [ ] UX1.3 Project Overview screen:
+  include progress %, credit summary, and activity log panel.
+- [ ] UX1.4 Credits List screen:
+  include filters, status, assignee, and deadline columns.
+- [ ] UX1.5 Credit Detail core workflow:
+  support upload, status update, assignment, comments, and submit actions with required evidence context.
+- [ ] UX1.6 Documents screen:
+  ensure linked project, linked credit, version, and status are visible and filterable.
+- [ ] UX1.7 Tasks screen:
+  implement task CRUD with linked credit, assignee, due date.
+- [ ] UX1.8 Submission/Review screen:
+  implement submit/resubmit, reviewer comments, and timestamped trail.
+- [ ] UX1.9 User Management screen:
+  support add/edit users and role assignment with clear permissions visibility.
+
+### UX P2 - Role rendering and state-driven behavior
+
+- [ ] UX2.1 Consultant role mode:
+  dense execution UI (tables/filters) with full workflow controls where authorized.
+- [ ] UX2.2 Client role mode:
+  read-only visual dashboard mode; hide/disable credit/document edit actions.
+- [ ] UX2.3 State-driven controls:
+  - Approved -> lock all editing controls
+  - Submitted -> lock edits except comments
+  - Review Failed -> reopen allowed edits
+- [ ] UX2.4 Credit lifecycle UX mapping:
+  reflect states:
+  - Not Started
+  - In Progress
+  - Ready for Submission
+  - Submitted
+  - Review Failed
+  - Approved
+  with strict transition affordances.
+
+### UX P3 - Flow and component architecture refactor
+
+- [ ] UX3.1 Primary journey validation:
+  - Dashboard -> Create Project -> Project Overview
+  - Project -> Credits List -> Credit Detail
+  - Credit Detail -> Upload Docs -> Mark Ready -> Submit
+  - Dashboard Risk -> Credit drilldown
+- [ ] UX3.2 Component architecture cleanup:
+  refactor toward:
+  - `components/project/`
+  - `components/credit/`
+  - `components/document/`
+  - `components/task/`
+  - `components/shared/`
+- [ ] UX3.3 Non-negotiables QA pass:
+  - every screen has a clear primary action
+  - no mixed-role UI on same view
+  - no feature without workflow mapping
+  - no dead-end screens
+
+## IGBC Engine TODO (Mapped to `IGBC_Developer_Handoff.md`)
+
+### IGBC P0 - Certification engine foundation
+
+- [ ] IGBC0.1 Credit-stage relational model:
+  implement stage-aware schema:
+  - `rating_systems`
+  - `credits`
+  - `credit_stages`
+  - `submittals`
+  - `documents`
+  - `document_versions`
+- [ ] IGBC0.2 Strict stage mapping:
+  ensure all submittals are bound to a single `credit_stage_id` and cannot float across stages.
+- [ ] IGBC0.3 Dual lifecycle readiness:
+  add `DESIGN` and `CONSTRUCTION` stage lifecycle support in backend services.
+
+### IGBC P1 - Workflow and control engines
+
+- [ ] IGBC1.1 Multi-level workflow engine:
+  enforce transitions at:
+  - submittal level
+  - derived credit level
+  - derived project level
+- [ ] IGBC1.2 Stage gate rules:
+  block construction lifecycle start unless design approval gate is met.
+- [ ] IGBC1.3 Override engine:
+  admin-controlled credit-stage overrides with reason-required logs (`override_logs`).
+- [ ] IGBC1.4 Immutable versioning:
+  prevent document overwrite; all updates must create a new version row.
+- [ ] IGBC1.5 Inheritance engine:
+  design-to-construction reference carry-forward using:
+  - `source_stage`
+  - `source_version_id`
+  - `inherited_flag`
+
+### IGBC P2 - Scoring and submission engines
+
+- [ ] IGBC2.1 Rule-based scoring:
+  mandatory credit enforcement + points aggregation + threshold outcomes.
+- [ ] IGBC2.2 Stage score outputs:
+  design provisional score + construction final score.
+- [ ] IGBC2.3 Submission pack generator:
+  one-click stage-wise pack output:
+  - credit-wise bundle
+  - narratives
+  - calculations
+  - latest approved supporting documents
+
+### IGBC P3 - Audit and compliance reporting
+
+- [ ] IGBC3.1 Audit engine:
+  log state changes, uploads, overrides in `audit_logs`.
+- [ ] IGBC3.2 Audit export:
+  generate PDF + Excel exports including:
+  - credit states
+  - version history
+  - override logs
+  - timeline
+- [ ] IGBC3.3 Compliance hard validations:
+  - mandatory credits must be approved
+  - submission blocked if incomplete
+  - override must log reason
+  - no certification without construction validation
+
+### IGBC P4 - RBAC and governance enforcement
+
+- [ ] IGBC4.1 Hierarchy enforcement:
+  - L5 full control (override + audit)
+  - L3 workflow owner
+  - L1 internal approval
+  - L0 upload only
+  - L2 read-only
+- [ ] IGBC4.2 API-only enforcement:
+  no UI-only protections; reject unauthorized actions server-side.
+- [ ] IGBC4.3 Hard-rule tests:
+  automated tests for:
+  - no stage duplication
+  - no state skipping
+  - no overwrite
+  - no incomplete submission
+
+## SaaS Sales Enablement TODO (Mapped to `SAASsales_Developer_Handoff.md`)
+
+### Sales P1 (Immediate): ROI Engine + Executive Dashboard
+
+- [ ] SALES1.1 ROI intelligence service:
+  build backend calculation service for:
+  - time saved
+  - cost saved
+  - rejection reduction
+  from configurable input constants.
+- [ ] SALES1.2 ROI config model:
+  add admin-editable assumptions (review time, hourly rate, rework reduction) with safe defaults.
+- [ ] SALES1.3 ROI caching:
+  cache aggregate ROI results for dashboard response speed.
+- [ ] SALES1.4 Executive sales dashboard API:
+  build aggregated API for portfolio snapshot, risk indicators, efficiency metrics, and ROI widget.
+- [ ] SALES1.5 Executive dashboard UI:
+  card-based CXO view with RAG signals and low-click clarity.
+- [ ] SALES1.6 Performance targets (phase 1):
+  verify:
+  - dashboard load <2 sec target
+  - ROI calculation <1 sec target
+
+### Sales P2: Demo Mode (Guided Walkthrough)
+
+- [ ] SALES2.1 Demo-mode feature flag:
+  introduce `demo_mode` gate and sandbox isolation.
+- [ ] SALES2.2 Preloaded demo dataset:
+  seeded demo projects/credits/docs/review outcomes isolated from production data.
+- [ ] SALES2.3 Guided walkthrough overlay:
+  step prompts for upload -> review -> dashboard insight.
+- [ ] SALES2.4 Demo reset mechanism:
+  one-click resettable demo state for repeated sales sessions.
+- [ ] SALES2.5 Demo security checks:
+  enforce sandboxed data boundaries and role-safe visibility.
+
+### Sales P3: Case Study Generator
+
+- [ ] SALES3.1 Case-study metrics service:
+  derive completion delta, rejection reduction, and time-saved summaries per client/project.
+- [ ] SALES3.2 Template-driven report generation:
+  backend templating for standardized case study narratives.
+- [ ] SALES3.3 Export outputs:
+  PDF generation + shareable link support.
+- [ ] SALES3.4 Performance target (phase 3):
+  PDF generation <5 sec target.
+
+### Sales governance and integration checks
+
+- [ ] SALES4.1 Integration validation:
+  confirm sales layer consumes existing workflow engine, token system, and audit logs.
+- [ ] SALES4.2 Data isolation validation:
+  ensure ROI and case-study views cannot expose other clients' data.
+- [ ] SALES4.3 Scope guardrails:
+  keep out-of-scope exclusions enforced:
+  - no CRM
+  - no marketing automation
+  - no external lead generation features
+
+## Client Layer TODO (Mapped to `Client_Developer_Handoff.md`)
+
+### Client P1 - Executive visibility and trust
+
+- [ ] CLIENT1.1 Executive dashboard panel:
+  show:
+  - overall completion %
+  - target rating
+  - active projects
+  - projects at risk
+  - token balance
+  with sub-30-second readability.
+- [ ] CLIENT1.2 Portfolio overview:
+  show total/completed/in-progress/delayed projects in one view.
+- [ ] CLIENT1.3 Token wallet transparency:
+  show loaded/used/remaining/weekly usage with clear provenance from ledger.
+- [ ] CLIENT1.4 Efficiency metrics panel:
+  show rejection rate, avg tokens/project, first-pass approval rate.
+
+### Client P2 - Risk, forecasting, and drilldowns
+
+- [ ] CLIENT2.1 Project risk engine:
+  compute RAG risk from pending uploads, rejections, inactivity, and token balance.
+- [ ] CLIENT2.2 Forecasting outputs:
+  estimated completion and projected rating at project + portfolio level.
+- [ ] CLIENT2.3 Restricted drilldown mode:
+  allow only project-level completion/pending/rejections for client role.
+- [ ] CLIENT2.4 Enforce document-level restriction:
+  block client access to document-level internal review screens/details.
+
+### Client P3 - Reports and alerts
+
+- [ ] CLIENT3.1 Client report exports:
+  downloadable PDF summary including status, risk, and token intelligence.
+- [ ] CLIENT3.2 Client alert rules:
+  actionable-only alerts for:
+  - project risk
+  - low tokens
+  - milestone transitions
+- [ ] CLIENT3.3 Client alert delivery:
+  in-app + extensible channel support without notification spam.
+
+### Client P4 - API and backend coverage
+
+- [ ] CLIENT4.1 Client API surface:
+  implement/verify:
+  - `/client/dashboard`
+  - `/client/projects`
+  - `/client/tokens`
+  - `/client/metrics`
+  - `/client/reports`
+  - `/client/alerts`
+- [ ] CLIENT4.2 Data model readiness:
+  ensure required tables/derived views:
+  - `clients`
+  - `projects`
+  - `tokens_wallet`
+  - `token_transactions`
+  - `project_metrics`
+- [ ] CLIENT4.3 Role-scoped data isolation:
+  ensure client APIs cannot return other-client records.
+
+### Client P5 - UX/performance/testing gates
+
+- [ ] CLIENT5.1 UX guideline compliance:
+  - max 1-2 clicks to key answers
+  - no IGBC jargon on client views
+  - RAG color coding across all client status cards
+  - mobile responsive behavior
+- [ ] CLIENT5.2 Performance gate:
+  client dashboard target load <2 sec.
+- [ ] CLIENT5.3 Validation suite:
+  test:
+  - dashboard accuracy
+  - token consistency
+  - risk correctness
+  - load <2 sec
+  - no-training usability
+
+## Role and Engine Handoffs TODO (Mapped to newly added handoff files)
+
+### Role-specific tracks
+
+- [ ] ROLE-MEP0 (Mapped to `MEPCON_Developer_Handoff.md`):
+  implement MEP consultant focused workspace, credit scoping, upload validation guidance, and actionable rejection loop.
+- [ ] ROLE-ARCH0 (Mapped to `Architect_Developer_Handoff.md`):
+  implement architect multi-document-per-credit mapping, pre-review edit/move, and structured checklist completion.
+- [ ] ROLE-CONTR0 (Mapped to `Contractor_Developer_Handoff.md`):
+  simplify contractor upload flow (plain-language, low-friction, confirmation-first) with role-safe restrictions.
+- [ ] ROLE-OWNER0 (Mapped to `ProjectOwner_Developer_Handoff.md`):
+  complete owner review cockpit, bulk actions, escalation signals, and vendor accountability views.
+- [ ] ROLE-PADMIN0 (Mapped to `ProjectAdmin_Developer_Handoff.md`):
+  complete high-throughput validation queue, rejection template workflows, submission readiness controls.
+- [ ] ROLE-CLIENT0 (Mapped to `Client_Developer_Handoff_Refined.md`):
+  refine executive/client views for 30-second decision clarity and strict read-only drilldowns.
+
+### Engine-specific tracks
+
+- [ ] ENG-WF0 (Mapped to `Workflow_Engine_Developer_Handoff.md`):
+  finalize strict workflow engine compliance with no bypass transitions and derived credit/project rollups.
+- [ ] ENG-CRED0 (Mapped to `Credits_Engine_Developer_Handoff.md`):
+  complete credit engine rules, lifecycle, assignment constraints, and scoring dependencies.
+- [ ] ENG-DOC0 (Mapped to `Documents_Engine_Developer_Handoff.md`):
+  complete document engine for version immutability, lineage, stage-safe mappings, and lifecycle constraints.
+- [ ] ENG-TOKEN0 (Mapped to `TokenEngine_Developer_Handoff.md`):
+  complete token engine reconciliation guarantees, debit/refund correctness, and balance transparency.
+- [ ] ENG-USER0 (Mapped to `users_developerhandoff.md`):
+  complete user engine onboarding, role assignment hierarchy, access isolation, and lifecycle management.
+
+### Consolidation and conflict-resolution pass
+
+- [ ] HANDOFF-SYNC0:
+  reconcile overlapping requirements across all role/module handoff files into one conflict-free execution matrix with explicit ownership.
+
+## P0 Backend Workflow (W1) - In Progress
+
+- [x] DB enum migration added: `workflow_state`
+  - values: `DRAFT`, `READY`, `SUBMITTED`, `UNDER_REVIEW`, `CLARIFICATION`, `RESUBMITTED`, `APPROVED`, `REJECTED`
+- [x] DB table migration added: `document_states`
+  - fields: `document_id`, `state`, `previous_state`, `transition_by`, `updated_at`
+- [x] Service added: `transitionDocumentState(document_id, new_state, user_id)`
+  - file: `lib/services/document-state-service.ts`
+- [x] Transition validation implemented:
+  - only allowed transitions
+  - no skipped states
+  - explicit error for invalid transitions
+- [x] Business-rule validation implemented:
+  - `DRAFT -> READY`: required document types must exist for target credit
+  - `READY -> SUBMITTED`: manual trigger required
+  - `SUBMITTED -> UNDER_REVIEW`: reviewer assignment required
+  - `CLARIFICATION -> RESUBMITTED`: updated evidence flag required
+- [x] Server action added: `transitionDocumentStateAction(...)`
+  - file: `app/actions.ts`
+- [x] Logging implemented:
+  - every transition inserted into `document_states`
+  - transition also written to `document_activity_logs`
+- [x] Edit enforcement started:
+  - metadata edits blocked in `SUBMITTED` / `UNDER_REVIEW`
+  - metadata edits allowed in `DRAFT` / `CLARIFICATION`
+- [x] Remaining for W1:
+  - route existing review actions (`setDocumentStatusAction`, bulk review, resubmit) through workflow-state engine end-to-end.
+
+## P1 - BUILD & VERIFY (STRICT ORDER)
+
+### 1. Workflow Engine
+
+- [x] Create `workflow_state` enum.
+- [x] Create `document_states` table (with `previous_state`, `transition_by`).
+- [x] Implement API/service: `transitionDocumentState()`.
+- [x] Enforce allowed transitions (no skips).
+- [x] Enforce edit locking by state.
+- [x] Log every transition (activity + state table).
+- [x] Add role guardrails:
+  - only L3 can `APPROVE` / `REJECT`
+  - L0 cannot move beyond `READY`
+  - L1 cannot override decisions
+- [x] Remove remaining legacy bypass paths in bulk review/resubmit flows so all review transitions use workflow-state API only.
+
+### 2. Project -> Credit Mapping
+
+- [x] Ensure `credits` (master) + `project_credits` (instance) exist.
+- [x] Auto-create `project_credits` on project creation.
+- [x] Bind credits to project in UI.
+- [x] Display credit status correctly.
+- [x] Ensure no missing credits per project.
+
+### 3. Document -> Credit Linkage
+
+- [x] Enforce upload requires:
+  - `project_id`
+  - `project_credit_id`
+  - `document_type`
+- [x] Store file (Supabase Storage) + metadata (DB).
+- [x] Implement versioning:
+  - increment `version`
+  - set `is_latest`
+  - link `parent_document_id`
+- [x] Validate required docs per credit.
+
+### 4. Review Workflow
+
+- [x] Implement review queue (`SUBMITTED` / `UNDER_REVIEW`).
+- [x] Approve action -> `APPROVED`.
+- [x] Reject action -> `CLARIFICATION` / `REJECTED` (remarks mandatory).
+- [x] Implement clarification -> resubmission loop.
+- [x] Restrict transitions by role.
+
+### 5. RBAC Enforcement
+
+- [x] Enforce roles in API (L0-L5).
+- [x] Enforce UI restrictions (hide/disable actions).
+- [x] Validate:
+  - L0 cannot submit
+  - L1 cannot override
+  - L2 read-only
+  - L3 controls workflow
+- [x] Block unauthorized API calls.
+
+## P2 - STABILITY LAYER
+
+### 6. Dashboard
+
+- [ ] Compute counts (all states).
+- [ ] Calculate progress %.
+- [ ] Implement risk flags (basic rules).
+- [ ] Build API: dashboard aggregation.
+
+### 7. Export System
+
+- [ ] Include only `APPROVED` + `is_latest` documents.
+- [ ] XLSX generation.
+- [ ] PDF summary generation.
+- [ ] ZIP structured export.
+- [ ] Block export if mandatory credits not approved.
+
+### 8. Audit Logs
+
+- [x] Create `activity_logs` table.
+- [x] Log all actions:
+  - upload
+  - review
+  - transitions
+  - export
+- [ ] Build timeline UI.
+
 ## P0 UX Epics (Client Experience Vision, highest priority)
 
 - [x] Epic UX0.1 - One-screen executive clarity dashboard:
@@ -184,7 +718,7 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 ## Critical
 
-- [ ] Epic C1 - Workflow engine state machine:
+- [x] Epic C1 - Workflow engine state machine:
   replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
 - [ ] Epic C2 - Event-driven foundation:
   implement `events/event-bus.ts` with producers/consumers and retry/dead-letter behavior.
@@ -195,7 +729,7 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 ## High
 
-- [ ] Epic H1 - Dedicated review event model:
+- [x] Epic H1 - Dedicated review event model:
   add `document_reviews` trail table and wire all approvals/rejections through immutable review entries.
 - [ ] Epic H2 - Production-grade notification delivery:
   extend in-app notifications to email/WhatsApp channels with anti-spam rules and deep links.
@@ -206,7 +740,7 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 ## Medium
 
-- [ ] Epic M1 - Service layer extraction:
+- [x] Epic M1 - Service layer extraction:
   move core business logic from `app/actions.ts` into `lib/services/*` modules.
 - [ ] Epic M2 - Frontend real-time behavior:
   role-aware dynamic queue/alert updates via polling or realtime subscriptions.

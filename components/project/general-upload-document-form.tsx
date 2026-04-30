@@ -13,6 +13,8 @@ type UploadProject = {
   name: string;
   credits: {
     id: string;
+    project_credit_id: string;
+    status: string;
     credit_code: string;
     credit_name: string;
     doc_types: string[];
@@ -30,6 +32,7 @@ type PendingFile = {
   projectId: string;
   projectName: string;
   creditId: string;
+  projectCreditId: string;
   creditName: string;
   docType: string;
   requirementSlot: string;
@@ -132,6 +135,7 @@ export function GeneralUploadDocumentForm({
           const formData = new FormData();
           formData.set("project_id", pending.projectId);
           formData.set("credit_id", pending.creditId);
+          formData.set("project_credit_id", pending.projectCreditId);
           formData.set("doc_category", pending.docType);
           formData.set("requirement_slot", pending.requirementSlot);
           formData.set("notes", pending.notes);
@@ -199,7 +203,7 @@ export function GeneralUploadDocumentForm({
     const formData = new FormData(form);
     const files = selectedFiles.filter((entry) => entry.size > 0);
 
-    if (!files.length || !projectId || !creditId || !docType) {
+    if (!files.length || !projectId || !creditId || !docType || !currentCredit?.project_credit_id) {
       setError("Step 3 needs at least one file selected after credit and document type are set.");
       return;
     }
@@ -238,6 +242,7 @@ export function GeneralUploadDocumentForm({
       projectId,
       projectName: currentProject?.name ?? "Selected project",
       creditId,
+      projectCreditId: currentCredit?.project_credit_id ?? "",
       creditName: `${currentCredit?.credit_code ?? ""} - ${currentCredit?.credit_name ?? ""}`.trim(),
       docType,
       requirementSlot,

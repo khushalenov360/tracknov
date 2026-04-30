@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 export function UploadDocumentForm({
   projectId,
   creditId,
+  projectCreditId,
   docTypes,
   disabled,
 }: {
   projectId: string;
   creditId: string;
+  projectCreditId: string;
   docTypes: string[];
   disabled?: boolean;
 }) {
@@ -57,6 +59,7 @@ export function UploadDocumentForm({
     try {
       formData.set("project_id", projectId);
       formData.set("credit_id", creditId);
+      formData.set("project_credit_id", projectCreditId);
       formData.set("doc_category", docType);
       const result = await uploadDocumentAction(formData);
       if (!result.ok) {

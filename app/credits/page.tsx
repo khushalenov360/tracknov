@@ -8,9 +8,12 @@ import { categoryMeta } from "@/lib/constants";
 import { getDashboardProjects, getProjectWorkspace } from "@/lib/data";
 import { scoreIgbcCredits } from "@/lib/igbc-scoring";
 
+export const dynamic = "force-dynamic";
+
 export default async function CreditsPage() {
   const projects = await getDashboardProjects();
-  const workspaces = await Promise.all(projects.map((project) => getProjectWorkspace(project.id)));
+  const workspaces = (await Promise.all(projects.map((project) => getProjectWorkspace(project.id))))
+    .filter((w): w is NonNullable<typeof w> => w !== null);
 
   return (
     <Shell

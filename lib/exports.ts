@@ -5,6 +5,29 @@ import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { CreditWorkspace, ProjectWorkspace } from "@/lib/types";
 
+const fileSafeSegment = /[^a-z0-9._-]+/gi;
+
+export function sanitizePathSegment(value: string) {
+  return value
+    .trim()
+    .replace(fileSafeSegment, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "unknown";
+}
+
+export function buildSubmissionZipEntryPath(args: {
+  creditCode: string;
+  docCategory: string;
+  fileName: string;
+}) {
+  const creditFolder = sanitizePathSegment(args.creditCode);
+  const categoryFolder = sanitizePathSegment(args.docCategory);
+  const safeFileName = sanitizePathSegment(args.fileName.replace(/\.[^.]+$/, ""));
+  const extension = args.fileName.includes(".") ? args.fileName.slice(args.fileName.lastIndexOf(".")) : ".bin";
+  return `${creditFolder}/${categoryFolder}/${safeFileName}${extension}`;
+}
+
 export function isSubmissionExportReady(workspace: Pick<ProjectWorkspace, "credits">) {
   const mandatoryCredits = workspace.credits.filter((credit) => credit.is_mandatory);
   if (!mandatoryCredits.length) {
@@ -145,21 +168,22 @@ export async function buildSubmissionZip(workspace: ProjectWorkspace) {
   const approvedCredits = getApprovedSubmissionCredits(workspace);
   for (const credit of approvedCredits) {
     for (const document of credit.documents) {
-      const folder = zip.folder(`${credit.credit_code}/${document.doc_category}`);
-      if (!folder) {
-        continue;
-      }
+      const zipEntryPath = buildSubmissionZipEntryPath({
+        creditCode: credit.credit_code,
+        docCategory: document.doc_category,
+        fileName: document.file_name,
+      });
 
       if (client) {
         const { data, error } = await client.storage.from("project-documents").download(document.file_path);
         if (!error && data) {
           const bytes = Buffer.from(await data.arrayBuffer());
-          folder.file(document.file_name, bytes);
+          zip.file(zipEntryPath, bytes);
           continue;
         }
       }
 
-      folder.file(document.file_name, `Placeholder for ${document.file_name}`);
+      zip.file(zipEntryPath, `Placeholder for ${document.file_name}`);
     }
   }
 
