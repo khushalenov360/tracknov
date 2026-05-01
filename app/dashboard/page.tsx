@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createProjectAction, updateOnboardingChecklistAction } from "@/app/actions";
+import { createProjectAction, setDemoModeAction, updateOnboardingChecklistAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
+import { getRoiSnapshot } from "@/lib/services/roi-service";
 
 import { cookies } from "next/headers";
 
@@ -19,7 +20,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  cookies();
+  const cookieStore = cookies();
   const [user, projects, ownerQueue, insights] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
@@ -35,6 +36,7 @@ export default async function DashboardPage({
       limit: 80,
     }),
   ]);
+  const roi = await getRoiSnapshot();
   const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
   const clientMode = activeRole === "client";
@@ -43,6 +45,8 @@ export default async function DashboardPage({
   const checklist = onboarding?.checklist ?? null;
   const checklistDone = checklist ? Object.values(checklist).filter(Boolean).length : 0;
   const isOwner = activeRole === "owner";
+  const canControlDemo = ["super_user", "super_admin", "project_admin"].includes(activeRole);
+  const demoModeActive = cookieStore.get("tracknov_demo_mode")?.value === "1";
 
   const totals = {
     totalCredits: projects.reduce((sum, project) => sum + project.totalCredits, 0),
@@ -319,6 +323,57 @@ export default async function DashboardPage({
         </div>
       </section>
 
+      {(activeRole === "client" || activeRole === "super_user" || activeRole === "super_admin") ? (
+        <section className="surface-card mb-4 p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">ROI Intelligence</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Time and cost impact from workflow automation and reduced rework.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Projects analyzed</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.projects}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Time saved</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.timeSavedHours} hrs</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Cost saved</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">INR {roi.totals.costSavedInr}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Rejection reduction</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.rejectionReductionPct}%</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {canControlDemo ? (
+        <section className="surface-card mb-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Guided demo mode</h2>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Sandbox walkthrough for sales and onboarding sessions.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <form action={setDemoModeAction}>
+                <input type="hidden" name="enabled" value={demoModeActive ? "false" : "true"} />
+                <Button type="submit" variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                  {demoModeActive ? "Disable demo mode" : "Enable demo mode"}
+                </Button>
+              </form>
+              <Button asChild className="h-[30px] rounded-md px-3 text-[11px]">
+                <Link href="/demo">Open demo workspace</Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {clientMode ? (
         <section className="surface-card mb-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
@@ -420,6 +475,11 @@ export default async function DashboardPage({
                     <Link href={`/api/projects/${project.id}/summary`}>Export {project.name} PDF</Link>
                   </Button>
                 ))}
+                {projects[0] ? (
+                  <Button asChild variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                    <Link href={`/api/sales/case-study/${projects[0].id}?download=1`}>Export case study</Link>
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>

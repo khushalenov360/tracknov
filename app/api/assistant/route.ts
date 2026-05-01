@@ -7,6 +7,7 @@ import {
   type AssistantContext,
   type AssistantMessage,
 } from "@/lib/assistant";
+import { ragService } from "@/lib/services/rag-service";
 
 export const dynamic = "force-dynamic";
 
@@ -169,7 +170,7 @@ async function getWorkspaceSnapshot() {
   const projectIds = projects.map((project) => project.id);
 
   if (!projectIds.length) {
-    return { user, role: resolvedRole, snapshot: "No projects currently available in the workspace." };
+    return { user, role: resolvedRole, projectIds, snapshot: "No projects currently available in the workspace." };
   }
 
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
@@ -188,7 +189,7 @@ async function getWorkspaceSnapshot() {
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
-  return { user, role: resolvedRole, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
+  return { user, role: resolvedRole, projectIds, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
 }
 
 async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
@@ -308,10 +309,26 @@ export async function POST(request: Request) {
   }
 
   const latestPrompt = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
-  const { user, role, snapshot } = await getWorkspaceSnapshot();
+  const { user, role, snapshot, projectIds } = await getWorkspaceSnapshot();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  const ragMatches = await ragService.retrieveContext({
+    query: latestPrompt,
+    projectIds: projectIds ?? [],
+    limit: 6,
+  });
+  const ragSnapshot = ragMatches.length
+    ? ragMatches
+        .map((item, index) => {
+          const source = String(item.metadata?.source ?? "context");
+          const code = String(item.metadata?.credit_code ?? "");
+          return `RAG ${index + 1} [${source}${code ? `/${code}` : ""}] score=${item.score.toFixed(3)}: ${item.content}`;
+        })
+        .join("\n")
+    : "No RAG matches found for current query.";
+  const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot].join("\n");
 
   if (!env.geminiApiKey) {
     return createResponseStream(
@@ -320,7 +337,7 @@ export async function POST(request: Request) {
           buildFallbackAssistantReply(context, latestPrompt),
           "",
           "Workspace snapshot:",
-          snapshot,
+          combinedSnapshot,
         ].join("\n"),
       ),
     );
@@ -341,7 +358,7 @@ export async function POST(request: Request) {
         summary: context.summary,
       },
       messages,
-      snapshot,
+      combinedSnapshot,
     );
     if (geminiStream) {
       return createResponseStream(geminiStream);
@@ -356,7 +373,7 @@ export async function POST(request: Request) {
         buildFallbackAssistantReply(context, latestPrompt),
         "",
         "Workspace snapshot:",
-        snapshot,
+        combinedSnapshot,
       ].join("\n"),
     ),
   );

@@ -15,6 +15,18 @@ export class CreditService {
     action: "complete" | "blocked";
     blockedBy?: string;
   }) {
+    if (params.action === "complete") {
+      const { data: docs } = await this.admin
+        .from("documents")
+        .select("id, workflow_state")
+        .eq("credit_id", params.creditId);
+      const rows = docs ?? [];
+      const hasUnapproved = rows.some((document: any) => String(document.workflow_state ?? "").toUpperCase() !== "APPROVED");
+      if (hasUnapproved) {
+        throw new Error("Cannot mark credit complete until all linked documents are approved.");
+      }
+    }
+
     const payload: any = {
       status: params.action,
       blocked_by: params.action === "blocked" ? params.blockedBy : null,

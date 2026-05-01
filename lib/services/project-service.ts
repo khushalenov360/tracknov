@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { canCreateProjects, canDeleteProjects, canManageProject } from "@/lib/rbac";
 import { buildSeedCredits } from "@/lib/catalog";
 import { igbcRatingSystems } from "@/lib/constants";
+import { ragService } from "./rag-service";
 import type { CurrentUser, MemberRole } from "@/lib/types";
 
 const GREEN_INTERIORS_SYSTEM = "IGBC Green Interiors";
@@ -99,6 +100,9 @@ export class ProjectService {
           })),
         );
       }
+
+      // Prime RAG guidance context for newly created projects.
+      await ragService.ingestProjectGuidance(project.id);
     }
 
     // 3. Initialize default billing (Starter Plan)
@@ -139,6 +143,20 @@ export class ProjectService {
     const role = await this.getActorProjectRole(projectId, user);
     if (!canManageProject(role)) {
       throw new Error("Unauthorized: Insufficient permissions to update project.");
+    }
+
+    if (params.status === "completed") {
+      const { data: credits } = await this.admin
+        .from("credits")
+        .select("id, status")
+        .eq("project_id", projectId);
+      const hasOpenCredits = (credits ?? []).some((credit: any) => {
+        const status = String(credit.status ?? "").toLowerCase();
+        return !(status === "complete" || status === "closed");
+      });
+      if (hasOpenCredits) {
+        throw new Error("Cannot complete project: open credits still exist.");
+      }
     }
 
     const { error } = await this.admin

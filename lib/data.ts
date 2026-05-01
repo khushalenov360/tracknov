@@ -43,7 +43,7 @@ function normalizeRole(role: string): MemberRole {
   if (role === "admin") {
     return "super_admin";
   }
-  const supported = ["super_user", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
+  const supported = ["super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
   return supported.includes(role) ? (role as MemberRole) : "consultant";
 }
 
@@ -56,11 +56,93 @@ function normalizeProjectType(type?: string | null): ProjectType {
   return supported.includes(type ?? "") ? (type as ProjectType) : "commercial";
 }
 
+type WorkflowState =
+  | "DRAFT"
+  | "READY"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "CLARIFICATION"
+  | "RESUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
+
+function normalizeWorkflowState(state?: string | null, legacyStatus?: string | null): WorkflowState {
+  const raw = String(state ?? "").toUpperCase();
+  if (
+    raw === "DRAFT" ||
+    raw === "READY" ||
+    raw === "SUBMITTED" ||
+    raw === "UNDER_REVIEW" ||
+    raw === "CLARIFICATION" ||
+    raw === "RESUBMITTED" ||
+    raw === "APPROVED" ||
+    raw === "REJECTED"
+  ) {
+    return raw;
+  }
+
+  const legacy = String(legacyStatus ?? "").toLowerCase();
+  if (legacy === "owner_approved") return "UNDER_REVIEW";
+  if (legacy === "approved") return "APPROVED";
+  if (legacy === "rejected") return "REJECTED";
+  return "READY";
+}
+
+function workflowToLegacyStatus(state: WorkflowState): "uploaded" | "owner_approved" | "approved" | "rejected" {
+  if (state === "CLARIFICATION" || state === "REJECTED") return "rejected";
+  if (state === "UNDER_REVIEW") return "owner_approved";
+  if (state === "APPROVED") return "approved";
+  return "uploaded";
+}
+
+function deriveCreditLifecycleState(
+  credit: Record<string, any>,
+  documents: Array<Record<string, any>>,
+): { status: CreditWorkspace["status"]; completion_pct: number } {
+  const requiredTypes = new Set(
+    ((credit.documents_required ?? []) as DocumentRequirement[])
+      .filter((entry) => entry.required && entry.type)
+      .map((entry) => entry.type),
+  );
+  const states = documents.map((document) =>
+    normalizeWorkflowState(document.workflow_state, document.status),
+  );
+  const approvedTypes = new Set(
+    documents
+      .filter((document) => normalizeWorkflowState(document.workflow_state, document.status) === "APPROVED")
+      .map((document) => String(document.doc_category ?? "").trim())
+      .filter(Boolean),
+  );
+
+  const completionPct = requiredTypes.size
+    ? Math.round((Array.from(requiredTypes).filter((type) => approvedTypes.has(type)).length / requiredTypes.size) * 100)
+    : states.some((state) => state === "APPROVED")
+      ? 100
+      : states.length
+        ? 25
+        : 0;
+
+  let status: CreditWorkspace["status"] = "pending";
+  if (credit.blocked_by) {
+    status = "blocked";
+  } else if (completionPct >= 100) {
+    status = "complete";
+  } else if (states.some((state) => state === "REJECTED" || state === "CLARIFICATION")) {
+    status = "blocked";
+  } else if (states.length > 0) {
+    status = "in_progress";
+  }
+
+  return { status, completion_pct: completionPct };
+}
+
 function mapCredit(
   credit: Record<string, any>,
   documents: Record<string, any>[],
   remarks: Record<string, any>[],
 ): CreditWorkspace {
+  const creditDocuments = documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[];
+  const derived = deriveCreditLifecycleState(credit, creditDocuments as unknown as Record<string, any>[]);
   return {
     id: credit.id,
     project_credit_id: credit.project_credit_id ?? credit.id,
@@ -71,16 +153,16 @@ function mapCredit(
     responsible_role: credit.responsible_role ? normalizeRole(credit.responsible_role) : null,
     is_mandatory: credit.is_mandatory,
     documents_required: (credit.documents_required ?? []) as DocumentRequirement[],
-    status: credit.status,
+    status: derived.status,
     blocked_by: credit.blocked_by,
-    completion_pct: Number(credit.completion_pct ?? 0),
+    completion_pct: derived.completion_pct,
     documentation_summary: credit.documentation_summary,
     what_to_submit: credit.what_to_submit,
     sample_document_url: credit.sample_document_url,
     effort_level: credit.effort_level,
     effort_guidance: credit.effort_guidance,
     na: credit.na,
-    documents: documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[],
+    documents: creditDocuments,
     remarks: remarks.filter((remark) => remark.credit_id === credit.id) as RemarkRecord[],
   };
 }
@@ -153,9 +235,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   const { data: profile } = await client
     .from("profiles")
-    .select("global_role")
+    .select("global_role, disabled_at")
     .eq("user_id", user.id)
     .maybeSingle();
+  if (profile?.disabled_at) {
+    return null;
+  }
   if (profile?.global_role) {
     return { id: user.id, email: user.email ?? "", role: normalizeRole(profile.global_role) };
   }
@@ -220,20 +305,31 @@ export async function getDashboardProjects() {
         const usage = usageByProjectId.get(projectId);
         const { data: credits } = await admin
           .from("credits")
-          .select("id, is_mandatory, status, completion_pct")
+          .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
           .eq("project_id", projectId);
         const creditIds = (credits ?? []).map((credit: any) => credit.id);
-        const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }] = await Promise.all([
+        const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
           admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId),
           creditIds.length
             ? admin.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
             : Promise.resolve({ count: 0 }),
           admin.from("project_members").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "uploaded"),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "owner_approved"),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "rejected"),
+          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "SUBMITTED"),
+          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "UNDER_REVIEW"),
+          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("workflow_state", ["REJECTED", "CLARIFICATION"]),
+          admin.from("documents").select("credit_id, workflow_state, status, doc_category").eq("project_id", projectId),
         ]);
         const creditRows = credits ?? [];
+        const derivedCredits = creditRows.map((credit: any) => {
+          const documentsForCredit = (projectDocuments ?? []).filter(
+            (document: any) => document.credit_id === credit.id,
+          );
+          return deriveCreditLifecycleState(credit, documentsForCredit);
+        });
+        const overallCompletion =
+          derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
+          Math.max(derivedCredits.length, 1);
+        const mandatoryMet = creditRows.filter((credit: any, index: number) => credit.is_mandatory && derivedCredits[index]?.status === "complete").length;
 
         return {
           id: project.id,
@@ -248,14 +344,10 @@ export async function getDashboardProjects() {
           target_rating: project.target_rating,
           created_at: project.created_at,
           role: "super_user",
-          overallCompletion:
-            creditRows.reduce((sum: number, credit: any) => sum + Number(credit.completion_pct ?? 0), 0) /
-            Math.max(creditRows.length, 1),
+          overallCompletion,
           totalCredits: creditRows.length,
           uploadedDocs: docsCount ?? 0,
-          mandatoryCreditsMet: creditRows.filter(
-            (credit: any) => credit.is_mandatory && credit.status === "complete",
-          ).length,
+          mandatoryCreditsMet: mandatoryMet,
           openRemarks: remarksCount ?? 0,
           membersCount: membersCount ?? 0,
           planCode: usage?.plan_code ?? "starter",
@@ -303,20 +395,31 @@ export async function getDashboardProjects() {
       const usage = usageByProjectId.get(projectId);
       const { data: credits } = await client
         .from("credits")
-        .select("id, is_mandatory, status, completion_pct")
+        .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
         .eq("project_id", projectId);
       const creditIds = (credits ?? []).map((credit) => credit.id);
-      const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }] = await Promise.all([
+      const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
         client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId),
         creditIds.length
           ? client.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
           : Promise.resolve({ count: 0 }),
         client.from("project_members").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "uploaded"),
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "owner_approved"),
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "rejected"),
+        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "SUBMITTED"),
+        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "UNDER_REVIEW"),
+        client.from("documents").select("*", { count: "exact", head: true }).in("workflow_state", ["REJECTED", "CLARIFICATION"]),
+        client.from("documents").select("credit_id, workflow_state, status, doc_category").eq("project_id", projectId),
       ]);
       const creditRows = credits ?? [];
+      const derivedCredits = creditRows.map((credit: any) => {
+        const documentsForCredit = (projectDocuments ?? []).filter(
+          (document: any) => document.credit_id === credit.id,
+        );
+        return deriveCreditLifecycleState(credit, documentsForCredit);
+      });
+      const overallCompletion =
+        derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
+        Math.max(derivedCredits.length, 1);
+      const mandatoryMet = creditRows.filter((credit: any, index: number) => credit.is_mandatory && derivedCredits[index]?.status === "complete").length;
       const project = Array.isArray(membership.projects) ? membership.projects[0] : membership.projects;
 
       return {
@@ -332,14 +435,10 @@ export async function getDashboardProjects() {
         target_rating: project.target_rating,
         created_at: project.created_at,
         role: normalizeRole(membership.role),
-        overallCompletion:
-          creditRows.reduce((sum, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
-          Math.max(creditRows.length, 1),
+        overallCompletion,
         totalCredits: creditRows.length,
         uploadedDocs: docsCount ?? 0,
-        mandatoryCreditsMet: creditRows.filter(
-          (credit) => credit.is_mandatory && credit.status === "complete",
-        ).length,
+        mandatoryCreditsMet: mandatoryMet,
         openRemarks: remarksCount ?? 0,
         membersCount: membersCount ?? 0,
         planCode: usage?.plan_code ?? "starter",
@@ -391,7 +490,7 @@ export async function getProjectWorkspace(projectId: string) {
           .order("uploaded_at", { ascending: false }),
         admin
           .from("notifications")
-          .select("id, body, created_at, read_at")
+          .select("id, body, action_url, created_at, read_at")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .order("created_at", { ascending: false }),
@@ -447,7 +546,7 @@ export async function getProjectWorkspace(projectId: string) {
         .order("uploaded_at", { ascending: false }),
       client
         .from("notifications")
-        .select("id, body, created_at, read_at")
+        .select("id, body, action_url, created_at, read_at")
         .eq("user_id", user.id)
         .eq("project_id", projectId)
         .order("created_at", { ascending: false }),
@@ -1112,9 +1211,6 @@ export async function getDocumentLibrary(filters: {
   if (filters.project) {
     query = query.eq("project_id", filters.project);
   }
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
 
   const { data: documents } = await query;
   const rows = (documents ?? []) as DocumentRecord[];
@@ -1127,7 +1223,10 @@ export async function getDocumentLibrary(filters: {
       ? client.from("projects").select("id, name").in("id", projectIds)
       : Promise.resolve({ data: [] }),
     creditIds.length
-      ? client.from("credits").select("id, credit_code, credit_name").in("id", creditIds)
+      ? client
+          .from("credits")
+          .select("id, credit_code, credit_name, what_to_submit, sample_document_url")
+          .in("id", creditIds)
       : Promise.resolve({ data: [] }),
     uploadedByIds.length
       ? client.from("profiles").select("user_id, full_name, email").in("user_id", uploadedByIds)
@@ -1202,20 +1301,26 @@ export async function getDocumentLibrary(filters: {
     documentRoleView.map(({ document, projectRole, canViewLogs }) => {
       const project = projectsById.get(document.project_id);
       const credit = document.credit_id ? creditsById.get(document.credit_id) : null;
+      const workflowState = normalizeWorkflowState((document as any).workflow_state, document.status);
+      const normalizedStatus = workflowToLegacyStatus(workflowState);
       const canEditStatus = canEditDocumentStatusAtAnyStage(projectRole);
       const canEditMetadata =
         canEditStatus ||
         Boolean(
           document.uploaded_by &&
             document.uploaded_by === user.id &&
-            document.status === "uploaded" &&
+            (workflowState === "DRAFT" || workflowState === "READY" || workflowState === "CLARIFICATION") &&
             canEditOwnDocumentBeforeFinalApproval(projectRole),
         );
       return {
         ...document,
+        status: normalizedStatus,
+        workflow_state: workflowState,
         project_name: project?.name ?? "Untitled project",
         credit_code: credit?.credit_code ?? null,
         credit_name: credit?.credit_name ?? null,
+        credit_what_to_submit: (credit as any)?.what_to_submit ?? null,
+        credit_sample_document_url: (credit as any)?.sample_document_url ?? null,
         uploaded_by_name: document.uploaded_by ? uploadersById.get(document.uploaded_by) ?? null : null,
         project_role: projectRole,
         can_edit_metadata: canEditMetadata,
@@ -1338,7 +1443,9 @@ function filterDocuments(documents: DocumentLibraryRecord[], filters: { project?
   const search = filters.search?.trim().toLowerCase();
   return documents.filter((document) => {
     const projectOk = filters.project ? document.project_id === filters.project : true;
-    const statusOk = filters.status ? document.status === filters.status : true;
+    const statusOk = filters.status
+      ? document.status === filters.status || String((document as any).workflow_state ?? "").toLowerCase() === filters.status.toLowerCase()
+      : true;
     const searchOk = search
       ? [
           document.file_name,
@@ -1372,13 +1479,13 @@ export async function getTeamMembers() {
     const admin = createAdminClient();
     const { data: memberships } = await admin
       .from("project_members")
-      .select("id, user_id, role, created_at, projects(name)")
+      .select("id, project_id, user_id, role, created_at, projects(name)")
       .order("created_at", { ascending: false });
 
     const rows = memberships ?? [];
     const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
     const { data: profiles } = userIds.length
-      ? await admin.from("profiles").select("user_id, email, full_name, company, global_role").in("user_id", userIds)
+      ? await admin.from("profiles").select("user_id, email, full_name, company, global_role, disabled_at, disabled_reason").in("user_id", userIds)
       : { data: [] };
     const profilesByUser = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile]));
     const { data: wallets } = await admin
@@ -1395,6 +1502,9 @@ export async function getTeamMembers() {
         if (project?.name && !existing.project_names.includes(project.name)) {
           existing.project_names.push(project.name);
         }
+        if (row.project_id && !existing.project_ids?.includes(row.project_id)) {
+          existing.project_ids = [...(existing.project_ids ?? []), row.project_id];
+        }
         return;
       }
 
@@ -1406,11 +1516,14 @@ export async function getTeamMembers() {
         company: profile?.company ?? null,
         role: normalizeRole(profile?.global_role ?? row.role),
         project_names: project?.name ? [project.name] : [],
+        project_ids: row.project_id ? [row.project_id] : [],
         created_at: row.created_at,
         token_balance:
           normalizeRole(profile?.global_role ?? row.role) === "client"
             ? walletByClient.get(row.user_id) ?? 0
             : undefined,
+        disabled_at: profile?.disabled_at ?? null,
+        disabled_reason: profile?.disabled_reason ?? null,
       });
     });
 
@@ -1419,13 +1532,13 @@ export async function getTeamMembers() {
 
   const { data: memberships } = await client
     .from("project_members")
-    .select("id, user_id, role, created_at, projects(name)")
+    .select("id, project_id, user_id, role, created_at, projects(name)")
     .order("created_at", { ascending: false });
 
   const rows = memberships ?? [];
   const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
   const { data: profiles } = userIds.length
-    ? await client.from("profiles").select("user_id, email, full_name, company, global_role").in("user_id", userIds)
+    ? await client.from("profiles").select("user_id, email, full_name, company, global_role, disabled_at, disabled_reason").in("user_id", userIds)
     : { data: [] };
   const profilesByUser = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile]));
   const { data: wallets } = await client
@@ -1442,6 +1555,9 @@ export async function getTeamMembers() {
       if (project?.name) {
         existing.project_names.push(project.name);
       }
+      if (row.project_id && !existing.project_ids?.includes(row.project_id)) {
+        existing.project_ids = [...(existing.project_ids ?? []), row.project_id];
+      }
       return;
     }
 
@@ -1453,11 +1569,14 @@ export async function getTeamMembers() {
       company: profile?.company ?? null,
       role: normalizeRole(profile?.global_role ?? row.role),
       project_names: project?.name ? [project.name] : [],
+      project_ids: row.project_id ? [row.project_id] : [],
       created_at: row.created_at,
       token_balance:
         normalizeRole(profile?.global_role ?? row.role) === "client"
           ? walletByClient.get(row.user_id) ?? 0
           : undefined,
+      disabled_at: profile?.disabled_at ?? null,
+      disabled_reason: profile?.disabled_reason ?? null,
     });
   });
 
@@ -1630,7 +1749,7 @@ export async function getExecutiveInsights() {
       .in("project_id", projectIds),
     client
       .from("documents")
-      .select("id, project_id, credit_id, uploaded_by, status, rejection_reason")
+      .select("id, project_id, credit_id, uploaded_by, status, workflow_state, rejection_reason")
       .in("project_id", projectIds),
     client.from("profiles").select("user_id, full_name, email"),
   ]);
@@ -1650,8 +1769,14 @@ export async function getExecutiveInsights() {
       const creditDocuments = docsByCredit.get(credit.id) ?? [];
       const requiredDocs = ((credit.documents_required ?? []) as Array<any>).filter((item) => Boolean(item?.required));
       const missing = requiredDocs.find((item) => !creditDocuments.some((doc) => doc.doc_category === item.type));
-      const rejectedCount = creditDocuments.filter((doc) => doc.status === "rejected").length;
-      const pendingCount = creditDocuments.filter((doc) => doc.status === "uploaded" || doc.status === "owner_approved").length;
+      const rejectedCount = creditDocuments.filter((doc) => {
+        const state = normalizeWorkflowState(doc.workflow_state, doc.status);
+        return state === "REJECTED" || state === "CLARIFICATION";
+      }).length;
+      const pendingCount = creditDocuments.filter((doc) => {
+        const state = normalizeWorkflowState(doc.workflow_state, doc.status);
+        return state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "RESUBMITTED";
+      }).length;
       return {
         projectId: credit.project_id,
         projectName: projectById.get(credit.project_id)?.name ?? "Project",
@@ -1670,7 +1795,8 @@ export async function getExecutiveInsights() {
 
   const rejectionPatternsMap = new Map<string, number>();
   for (const document of documents ?? []) {
-    if (document.status !== "rejected") continue;
+    const state = normalizeWorkflowState(document.workflow_state, document.status);
+    if (!(state === "REJECTED" || state === "CLARIFICATION")) continue;
     const reason = String(document.rejection_reason ?? "Unspecified").trim();
     const bucket = reason ? reason.split(".")[0].slice(0, 90) : "Unspecified";
     rejectionPatternsMap.set(bucket, (rejectionPatternsMap.get(bucket) ?? 0) + 1);
@@ -1693,8 +1819,9 @@ export async function getExecutiveInsights() {
       rejected: 0,
     };
     existing.projects.add(document.project_id);
-    if (document.status === "approved") existing.approved += 1;
-    if (document.status === "rejected") existing.rejected += 1;
+    const state = normalizeWorkflowState(document.workflow_state, document.status);
+    if (state === "APPROVED") existing.approved += 1;
+    if (state === "REJECTED" || state === "CLARIFICATION") existing.rejected += 1;
     uploaderAgg.set(document.uploaded_by, existing);
   }
   const vendorStats = Array.from(uploaderAgg.values())
@@ -1811,6 +1938,78 @@ export async function getAuditTimeline(filters: {
   }));
 }
 
+export async function getMyRoleTasks() {
+  if (!env.isConfigured) {
+    return { role: "consultant" as MemberRole, summary: { total: 0, complete: 0, pending: 0 }, tasks: [] as Array<any> };
+  }
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return { role: "consultant" as MemberRole, summary: { total: 0, complete: 0, pending: 0 }, tasks: [] as Array<any> };
+  }
+
+  const scopedRoles: MemberRole[] = ["architect", "mep", "contractor"];
+  if (!scopedRoles.includes(currentUser.role)) {
+    return { role: currentUser.role, summary: { total: 0, complete: 0, pending: 0 }, tasks: [] as Array<any> };
+  }
+
+  const projects = await getDashboardProjects();
+  const projectIds = projects.map((project) => project.id);
+  if (!projectIds.length) {
+    return { role: currentUser.role, summary: { total: 0, complete: 0, pending: 0 }, tasks: [] as Array<any> };
+  }
+
+  const client = createClient();
+  const [{ data: credits }, { data: documents }, { data: projectRows }] = await Promise.all([
+    client
+      .from("credits")
+      .select("id, project_id, credit_code, credit_name, responsible_role, documents_required")
+      .in("project_id", projectIds)
+      .eq("responsible_role", currentUser.role),
+    client
+      .from("documents")
+      .select("id, credit_id, workflow_state, status, uploaded_at")
+      .in("project_id", projectIds),
+    client.from("projects").select("id, name").in("id", projectIds),
+  ]);
+
+  const projectById = new Map((projectRows ?? []).map((project: any) => [project.id, project.name]));
+  const docsByCredit = new Map<string, Array<any>>();
+  for (const document of documents ?? []) {
+    const existing = docsByCredit.get(document.credit_id) ?? [];
+    existing.push(document);
+    docsByCredit.set(document.credit_id, existing);
+  }
+
+  const tasks = (credits ?? []).map((credit: any) => {
+    const creditDocs = docsByCredit.get(credit.id) ?? [];
+    const derived = deriveCreditLifecycleState(credit, creditDocs);
+    const requiredDocCount = ((credit.documents_required ?? []) as DocumentRequirement[]).filter((doc) => doc.required).length;
+    const approvedCount = creditDocs.filter((document: any) => normalizeWorkflowState(document.workflow_state, document.status) === "APPROVED").length;
+    return {
+      id: credit.id,
+      project_id: credit.project_id,
+      project_name: projectById.get(credit.project_id) ?? "Project",
+      credit_name: credit.credit_name,
+      status: derived.status,
+      completion_pct: derived.completion_pct,
+      required_count: requiredDocCount,
+      approved_count: approvedCount,
+    };
+  });
+
+  const complete = tasks.filter((task) => task.status === "complete").length;
+  return {
+    role: currentUser.role,
+    summary: {
+      total: tasks.length,
+      complete,
+      pending: Math.max(tasks.length - complete, 0),
+    },
+    tasks,
+  };
+}
+
 export async function getSuperUserCommandCenter() {
   const currentUser = await getCurrentUser();
   if (currentUser?.role !== "super_user") {
@@ -1908,7 +2107,7 @@ export async function getSuperUserCommandCenter() {
 
   const uploadsToday = (uploadLogs ?? []).length;
   const failedTransactions = (transactions ?? []).filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("failed")).length;
-  const pendingReviews = (await admin.from("documents").select("*", { count: "exact", head: true }).in("status", ["uploaded", "owner_approved"])).count ?? 0;
+  const pendingReviews = (await admin.from("documents").select("*", { count: "exact", head: true }).in("workflow_state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])).count ?? 0;
   const activeUsers = (await admin.from("project_members").select("user_id")).data?.map((row: any) => row.user_id).filter(Boolean);
   const uniqueActiveUsers = Array.from(new Set(activeUsers ?? [])).length;
 
@@ -1926,6 +2125,25 @@ export async function getSuperUserCommandCenter() {
   }
 
   const revenueEstimateInr = totalTokensSold * 1;
+  const reconciliationRows = clientWalletRows.map((wallet) => {
+    const tx = (transactions ?? []).filter((row: any) => row.client_user_id === wallet.client_user_id);
+    const ledgerDelta = tx.reduce((sum: number, row: any) => sum + Number(row.tokens ?? 0), 0);
+    const baselineEstimate = wallet.balance - ledgerDelta;
+    const mismatch = Math.abs((baselineEstimate + ledgerDelta) - wallet.balance);
+    return {
+      client_user_id: wallet.client_user_id,
+      client_name: wallet.client_name,
+      wallet_balance: wallet.balance,
+      ledger_delta: ledgerDelta,
+      baseline_estimate: baselineEstimate,
+      mismatch,
+      status: mismatch > 0 ? "investigate" : "ok",
+    };
+  });
+  const anomalyCount = reconciliationRows.filter((row) => row.status === "investigate").length;
+  if (anomalyCount > 0) {
+    criticalAlerts.push(`Ledger reconciliation needs review for ${anomalyCount} client wallet(s).`);
+  }
 
   return {
     clients: clientRows.sort((a, b) => a.client_name.localeCompare(b.client_name)),
@@ -1954,5 +2172,6 @@ export async function getSuperUserCommandCenter() {
       reason: String(tx.reason ?? ""),
       created_at: tx.created_at,
     })),
+    reconciliation: reconciliationRows,
   };
 }

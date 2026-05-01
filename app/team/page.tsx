@@ -1,5 +1,11 @@
 import { Shell } from "@/components/shell";
-import { loadClientTokensAction } from "@/app/actions";
+import {
+  disableTeamMemberAction,
+  loadClientTokensAction,
+  reactivateTeamMemberAction,
+  reassignTeamMemberAction,
+  runNotificationDigestAction,
+} from "@/app/actions";
 import { TeamMemberCreateForm } from "@/components/team-member-create-form";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, getDashboardProjects, getSuperUserCommandCenter, getTeamMembers } from "@/lib/data";
@@ -13,6 +19,7 @@ export const revalidate = 0;
 
 const roleTone = {
   super_user: "border border-[#0b1f33] bg-[#0b1f33] text-white",
+  l4_reserved: "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]",
   super_admin: "border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white",
   project_admin: "border border-[var(--color-green)] bg-[var(--color-green)] text-white",
   consultant: "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]",
@@ -254,6 +261,52 @@ export default async function TeamPage() {
                   </tbody>
                 </table>
               </div>
+              <form action={runNotificationDigestAction} className="mt-3">
+                <button type="submit" className="h-[32px] rounded-md bg-[var(--color-blue)] px-3 text-[12px] font-medium text-white">
+                  Run weekly digest + reminders
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+            <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Token ledger reconciliation</p>
+            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+              Detect debit/refund anomalies by comparing wallet balance and ledger movement.
+            </p>
+            <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+              <table className="min-w-full border-collapse text-[11px]">
+                <thead className="bg-[var(--color-surface-2)]">
+                  <tr className="border-b border-[var(--color-border)]">
+                    {["Client", "Wallet", "Ledger Delta", "Baseline", "Status"].map((heading) => (
+                      <th key={heading} className="px-2 py-1.5 text-left text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(commandCenter.reconciliation ?? []).map((row: any) => (
+                    <tr key={row.client_user_id} className="border-b border-[var(--color-border)]">
+                      <td className="px-2 py-1.5">{row.client_name}</td>
+                      <td className="px-2 py-1.5 mono">{row.wallet_balance}</td>
+                      <td className="px-2 py-1.5 mono">{row.ledger_delta}</td>
+                      <td className="px-2 py-1.5 mono">{row.baseline_estimate}</td>
+                      <td className="px-2 py-1.5">
+                        <Badge
+                          className={
+                            row.status === "investigate"
+                              ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                              : "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                          }
+                        >
+                          {row.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -264,7 +317,7 @@ export default async function TeamPage() {
           <table className="min-w-full border-collapse text-[12px]">
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
-                {["Member", "Role", "Company", "Projects", "Joined"].map((heading) => (
+                {["Member", "Role", "Company", "Projects", "Joined", "Lifecycle"].map((heading) => (
                   <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
@@ -287,6 +340,11 @@ export default async function TeamPage() {
                       <div>
                         <p className="text-[13px] font-medium text-[var(--color-text-primary)]">{member.full_name}</p>
                         <p className="text-[11px] text-[var(--color-text-tertiary)]">{member.email}</p>
+                        {member.disabled_at ? (
+                          <p className="text-[10px] text-[var(--color-red)]">
+                            Disabled: {formatDateTimeIST(member.disabled_at)} ({member.disabled_reason || "No reason"})
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </td>
@@ -300,10 +358,63 @@ export default async function TeamPage() {
                   <td className="px-3 py-3 text-[var(--color-text-secondary)]">
                     {formatDateTimeIST(member.created_at)}
                   </td>
+                  <td className="px-3 py-3 align-top">
+                    {canCreateSystemProfiles || canCreatePlatformProfiles ? (
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        {member.disabled_at ? (
+                          <form action={reactivateTeamMemberAction}>
+                            <input type="hidden" name="user_id" value={member.user_id} />
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-[11px]">
+                              Reactivate
+                            </button>
+                          </form>
+                        ) : (
+                          <form action={disableTeamMemberAction} className="flex flex-col gap-1">
+                            <input type="hidden" name="user_id" value={member.user_id} />
+                            <input
+                              name="reason"
+                              placeholder="Disable reason"
+                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-text-primary)] outline-none"
+                              required
+                            />
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-red-light)] bg-[var(--color-red-light)] px-2 text-[11px] text-[var(--color-red)]">
+                              Disable
+                            </button>
+                          </form>
+                        )}
+                        {member.project_ids?.[0] ? (
+                          <form action={reassignTeamMemberAction} className="flex flex-col gap-1 border-t border-[var(--color-border)] pt-2">
+                            <input type="hidden" name="user_id" value={member.user_id} />
+                            <input type="hidden" name="from_project_id" value={member.project_ids[0]} />
+                            <input type="hidden" name="role" value={member.role} />
+                            <select
+                              name="to_project_id"
+                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-text-primary)] outline-none"
+                              required
+                            >
+                              <option value="">Reassign project</option>
+                              {projects
+                                .filter((project) => project.id !== member.project_ids?.[0])
+                                .map((project) => (
+                                  <option key={project.id} value={project.id}>
+                                    {project.name}
+                                  </option>
+                                ))}
+                            </select>
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-[11px]">
+                              Reassign
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-[var(--color-text-tertiary)]">View only</span>
+                    )}
+                  </td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={5} className="px-3 py-10 text-center text-[12px] text-[var(--color-text-tertiary)]">
+                  <td colSpan={6} className="px-3 py-10 text-center text-[12px] text-[var(--color-text-tertiary)]">
                     No team members found for your current workspace scope.
                   </td>
                 </tr>

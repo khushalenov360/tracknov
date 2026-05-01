@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { transitionDocumentState } from "./document-state-service";
+import { ragService } from "./rag-service";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 
@@ -27,6 +28,47 @@ export const rejectionTemplateLibrary: Record<string, string> = {
 export class ReviewService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
+
+  private async recordRejectionPattern(params: {
+    creditId?: string | null;
+    docCategory?: string | null;
+    rejectionReason: string;
+    suggestedFix?: string | null;
+    metadata?: Record<string, unknown>;
+  }) {
+    if (!params.creditId || !params.docCategory || !params.rejectionReason) return;
+
+    const { data: existing } = await this.admin
+      .from("rejection_patterns")
+      .select("id, occurrence_count")
+      .eq("credit_id", params.creditId)
+      .eq("doc_category", params.docCategory)
+      .eq("rejection_reason", params.rejectionReason)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      await this.admin
+        .from("rejection_patterns")
+        .update({
+          occurrence_count: Number(existing.occurrence_count ?? 0) + 1,
+          suggested_fix: params.suggestedFix ?? null,
+          metadata: params.metadata ?? {},
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      return;
+    }
+
+    await this.admin.from("rejection_patterns").insert({
+      credit_id: params.creditId,
+      doc_category: params.docCategory,
+      rejection_reason: params.rejectionReason,
+      suggested_fix: params.suggestedFix ?? null,
+      occurrence_count: 1,
+      metadata: params.metadata ?? {},
+    });
+  }
 
   async recordDocumentReviewEvent(input: ReviewEventInput) {
     await this.admin.from("document_reviews").insert({
@@ -62,9 +104,17 @@ export class ReviewService {
     manualSubmit?: boolean;
     updatedEvidence?: boolean;
     remarks?: string | null;
+    override?: boolean;
+    overrideReason?: string | null;
   }) {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole) throw new Error("Unauthorized.");
+
+    const { data: targetDocument } = await this.client
+      .from("documents")
+      .select("id, credit_id, doc_category, workflow_state")
+      .eq("id", params.documentId)
+      .maybeSingle();
 
     const result = await transitionDocumentState(this.admin, {
       documentId: params.documentId,
@@ -74,9 +124,15 @@ export class ReviewService {
       manualSubmit: params.manualSubmit,
       updatedEvidence: params.updatedEvidence,
       remarks: params.remarks,
+      override: params.override,
+      overrideReason: params.overrideReason,
     });
 
     if (!result.ok) throw new Error(result.error);
+
+    if (params.newState === "APPROVED") {
+      await ragService.ingestApprovedDocument(params.documentId);
+    }
     
     // Record immutable review event
     await this.recordDocumentReviewEvent({
@@ -103,6 +159,22 @@ export class ReviewService {
     });
 
     if (params.newState === "REJECTED" || params.newState === "CLARIFICATION") {
+      const rejectionReason = params.remarks?.trim() || "Rejected without explicit reason";
+      const maybeTemplate = rejectionReason.match(/^\[(.+?)\]\s*/)?.[1] ?? null;
+      const suggestedFix = maybeTemplate && rejectionTemplateLibrary[maybeTemplate]
+        ? rejectionTemplateLibrary[maybeTemplate]
+        : null;
+      await this.recordRejectionPattern({
+        creditId: targetDocument?.credit_id ?? null,
+        docCategory: targetDocument?.doc_category ?? null,
+        rejectionReason,
+        suggestedFix,
+        metadata: {
+          from_state: targetDocument?.workflow_state ?? null,
+          rejected_by_role: actorRole,
+        },
+      });
+
       await eventBus.emit({
         type: "DOCUMENT_REJECTED",
         payload: {
@@ -127,7 +199,7 @@ export class ReviewService {
     for (const documentId of params.documentIds) {
       const { data: document } = await this.client
         .from("documents")
-        .select("id, workflow_state, project_id, credit_id, uploaded_by, file_name")
+        .select("id, workflow_state, project_id, credit_id, uploaded_by, file_name, doc_category")
         .eq("id", documentId)
         .maybeSingle();
 
@@ -155,6 +227,9 @@ export class ReviewService {
         });
 
         if (transition.ok) {
+           if (nextState === "APPROVED") {
+             await ragService.ingestApprovedDocument(documentId);
+           }
            // Record immutable review event
            await this.recordDocumentReviewEvent({
              documentId,
@@ -219,6 +294,17 @@ export class ReviewService {
                body: formattedRemark,
              });
            }
+           await this.recordRejectionPattern({
+             creditId: document.credit_id ?? null,
+             docCategory: document.doc_category ?? null,
+             rejectionReason: formattedRemark,
+             suggestedFix: rejectionTemplateLibrary[params.rejectionType] ?? null,
+             metadata: {
+               from_state: document.workflow_state,
+               rejected_by_role: actorRole,
+               bulk_action: true,
+             },
+           });
            // Notify uploader
            if (document.uploaded_by) {
              await this.admin.from("notifications").insert({
@@ -263,4 +349,3 @@ export class ReviewService {
 
 export const reviewService = new ReviewService();
 export const recordDocumentReviewEvent = (input: ReviewEventInput) => reviewService.recordDocumentReviewEvent(input);
-

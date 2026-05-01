@@ -17,7 +17,7 @@ export const revalidate = 0;
 export default async function DocumentsPage({
   searchParams,
 }: {
-  searchParams?: { project?: string; status?: string; search?: string };
+  searchParams?: { project?: string; status?: string; search?: string; document?: string };
 }) {
   cookies(); // Explicitly call cookies to force dynamic behavior
   const [projects, documents, uploadProjects] = await Promise.all([
@@ -27,6 +27,7 @@ export default async function DocumentsPage({
   ]);
   const projectOptionsById = new Map(uploadProjects.map((project) => [project.id, project]));
   const activeRole = projects[0]?.role ?? "consultant";
+  const clientMode = activeRole === "client";
   const roleScopedSummary =
     activeRole === "architect" || activeRole === "mep" || activeRole === "contractor"
       ? (() => {
@@ -37,6 +38,10 @@ export default async function DocumentsPage({
           return { total, completed, rejected, incomplete };
         })()
       : null;
+  const focusedDocumentId = (searchParams?.document ?? "").trim();
+  const focusedRejectedDocument = focusedDocumentId
+    ? documents.find((document) => document.id === focusedDocumentId && document.status === "rejected")
+    : null;
 
   return (
     <Shell
@@ -123,6 +128,45 @@ export default async function DocumentsPage({
         </form>
       </section>
 
+      {!clientMode && focusedRejectedDocument ? (
+        <section className="mt-4 rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-4">
+          <h2 className="text-[13px] font-semibold text-[var(--color-text-primary)]">Action needed: rejected document</h2>
+          <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+            <strong>{focusedRejectedDocument.file_name}</strong> for{" "}
+            <strong>{focusedRejectedDocument.credit_code ?? "Credit mapping required"}</strong> was sent back.
+          </p>
+          <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+            <strong>Fix requested:</strong>{" "}
+            {focusedRejectedDocument.rejection_reason || "Reviewer comment was not provided."}
+          </p>
+          {focusedRejectedDocument.credit_what_to_submit ? (
+            <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+              <strong>What to submit:</strong> {focusedRejectedDocument.credit_what_to_submit}
+            </p>
+          ) : null}
+          {focusedRejectedDocument.credit_sample_document_url ? (
+            <p className="mt-2 text-[12px]">
+              <a
+                href={focusedRejectedDocument.credit_sample_document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+              >
+                Open sample reference document
+              </a>
+            </p>
+          ) : null}
+          <p className="mt-3 text-[12px]">
+            <a
+              href={`#doc-${focusedRejectedDocument.id}`}
+              className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+            >
+              Open this document row and resubmit
+            </a>
+          </p>
+        </section>
+      ) : null}
+
       <section className="mt-4 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-[12px]">
@@ -147,14 +191,20 @@ export default async function DocumentsPage({
                   : Array.from(new Set(creditOptions.flatMap((credit) => credit.doc_types)));
                 const canOpen = Boolean(document.file_path);
                 return (
-                  <tr key={document.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)]">
+                  <tr
+                    id={`doc-${document.id}`}
+                    key={document.id}
+                    className={`border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)] ${
+                      focusedDocumentId === document.id ? "bg-[var(--color-blue-soft)]" : ""
+                    }`}
+                  >
                     <td className="px-3 py-3">
                       <div className="flex min-w-[220px] items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                          {canOpen ? (
+                          {canOpen && !clientMode ? (
                             <a
                               href={`/api/documents/${document.id}`}
                               target="_blank"
@@ -194,10 +244,10 @@ export default async function DocumentsPage({
                       <Badge className={status.className}>{status.enovaitLabel}</Badge>
                     </td>
                     <td className="max-w-[260px] truncate px-3 py-3 text-[11px] text-[var(--color-text-secondary)]">
-                      {document.notes || document.rejection_reason || "No notes"}
+                      {clientMode ? "Restricted in client mode" : document.notes || document.rejection_reason || "No notes"}
                     </td>
                     <td className="px-3 py-3 align-top">
-                      {document.can_edit_metadata || document.can_edit_status || document.can_reject || document.can_delete ? (
+                      {!clientMode && (document.can_edit_metadata || document.can_edit_status || document.can_reject || document.can_delete) ? (
                         <details className="min-w-[260px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                           <summary className="cursor-pointer list-none text-[12px] font-medium text-[var(--color-text-primary)]">
                             Edit document

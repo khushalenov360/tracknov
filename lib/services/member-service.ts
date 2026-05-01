@@ -21,6 +21,116 @@ export class MemberService {
     if (error) throw error;
   }
 
+  async disableMember(user: CurrentUser, params: {
+    userId: string;
+    reason: string;
+  }) {
+    if (!["super_user", "super_admin"].includes(user.role)) {
+      throw new Error("Only Super User or Super Admin can disable users.");
+    }
+    const reason = params.reason.trim();
+    if (!reason) {
+      throw new Error("Disable reason is required.");
+    }
+
+    const { error } = await this.admin
+      .from("profiles")
+      .update({
+        disabled_at: new Date().toISOString(),
+        disabled_reason: reason,
+      })
+      .eq("user_id", params.userId);
+    if (error) throw error;
+
+    await logSystemActivity(this.admin, {
+      projectId: null,
+      entityType: "team",
+      entityId: params.userId,
+      action: "user_disabled",
+      actorId: user.id,
+      actorRole: user.role,
+      summary: `User account disabled.`,
+      details: {
+        target_user_id: params.userId,
+        reason,
+      },
+    });
+  }
+
+  async reactivateMember(user: CurrentUser, params: {
+    userId: string;
+  }) {
+    if (!["super_user", "super_admin"].includes(user.role)) {
+      throw new Error("Only Super User or Super Admin can reactivate users.");
+    }
+
+    const { error } = await this.admin
+      .from("profiles")
+      .update({
+        disabled_at: null,
+        disabled_reason: null,
+      })
+      .eq("user_id", params.userId);
+    if (error) throw error;
+
+    await logSystemActivity(this.admin, {
+      projectId: null,
+      entityType: "team",
+      entityId: params.userId,
+      action: "user_reactivated",
+      actorId: user.id,
+      actorRole: user.role,
+      summary: `User account reactivated.`,
+      details: {
+        target_user_id: params.userId,
+      },
+    });
+  }
+
+  async reassignMemberProject(user: CurrentUser, params: {
+    userId: string;
+    fromProjectId: string;
+    toProjectId: string;
+    role: string;
+  }) {
+    if (!["super_user", "super_admin", "project_admin"].includes(user.role)) {
+      throw new Error("You do not have permission to reassign users.");
+    }
+    if (!params.fromProjectId || !params.toProjectId || params.fromProjectId === params.toProjectId) {
+      throw new Error("Valid source and destination projects are required.");
+    }
+
+    const { error: removeError } = await this.admin
+      .from("project_members")
+      .delete()
+      .eq("project_id", params.fromProjectId)
+      .eq("user_id", params.userId);
+    if (removeError) throw removeError;
+
+    const { error: addError } = await this.admin.from("project_members").insert({
+      project_id: params.toProjectId,
+      user_id: params.userId,
+      role: params.role,
+    });
+    if (addError) throw addError;
+
+    await logSystemActivity(this.admin, {
+      projectId: params.toProjectId,
+      entityType: "team",
+      entityId: params.userId,
+      action: "member_reassigned",
+      actorId: user.id,
+      actorRole: user.role,
+      summary: `Reassigned team member to a different project.`,
+      details: {
+        target_user_id: params.userId,
+        from_project_id: params.fromProjectId,
+        to_project_id: params.toProjectId,
+        role: params.role,
+      },
+    });
+  }
+
   /**
    * Provisions a new user and assigns them to a project.
    */

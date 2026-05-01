@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import {
   createProjectForCurrentUser,
   deleteProjectForCurrentUser,
@@ -18,6 +19,7 @@ import { memberService } from "@/lib/services/member-service";
 import { documentService } from "@/lib/services/document-service";
 import { creditService } from "@/lib/services/credit-service";
 import { reviewService } from "@/lib/services/review-service";
+import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
 import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -241,7 +243,7 @@ export async function addRemarkAction(formData: FormData) {
   const projectId = String(formData.get("project_id"));
   const creditId = String(formData.get("credit_id"));
   const roleValue = String(formData.get("role") ?? "consultant");
-  const role = ["super_user", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"].includes(roleValue)
+  const role = ["super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"].includes(roleValue)
     ? roleValue
     : "consultant";
   const body = String(formData.get("body") ?? "").trim();
@@ -308,6 +310,8 @@ export async function transitionDocumentStateAction(
   const remarks = String(formData.get("remarks") ?? "").trim();
   const manualSubmit = String(formData.get("manual_submit") ?? "false") === "true";
   const updatedEvidence = String(formData.get("updated_evidence") ?? "false") === "true";
+  const override = String(formData.get("override") ?? "false") === "true";
+  const overrideReason = String(formData.get("override_reason") ?? "").trim();
 
   if (!documentId || !projectId) {
     return { ok: false, error: "Document and project are required." };
@@ -336,6 +340,8 @@ export async function transitionDocumentStateAction(
       manualSubmit,
       updatedEvidence,
       remarks: remarks || null,
+      override,
+      overrideReason: overrideReason || null,
     });
 
     revalidatePath("/documents");
@@ -655,4 +661,70 @@ export async function acceptProjectInviteAction(formData: FormData) {
   } catch (error) {
     redirect("/dashboard");
   }
+}
+
+export async function disableTeamMemberAction(formData: FormData) {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!userId || !reason) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  await memberService.disableMember(user, { userId, reason });
+  revalidatePath("/team");
+}
+
+export async function reactivateTeamMemberAction(formData: FormData) {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!userId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  await memberService.reactivateMember(user, { userId });
+  revalidatePath("/team");
+}
+
+export async function reassignTeamMemberAction(formData: FormData) {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const fromProjectId = String(formData.get("from_project_id") ?? "").trim();
+  const toProjectId = String(formData.get("to_project_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+  if (!userId || !fromProjectId || !toProjectId || !role) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  await memberService.reassignMemberProject(user, {
+    userId,
+    fromProjectId,
+    toProjectId,
+    role,
+  });
+  revalidatePath("/team");
+  revalidatePath("/projects");
+}
+
+export async function setDemoModeAction(formData: FormData) {
+  const enabled = String(formData.get("enabled") ?? "").trim() === "true";
+  const user = await getCurrentUser();
+  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) return;
+  const cookieStore = cookies();
+  cookieStore.set("tracknov_demo_mode", enabled ? "1" : "0", {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  revalidatePath("/dashboard");
+  revalidatePath("/demo");
+}
+
+export async function runNotificationDigestAction() {
+  const user = await getCurrentUser();
+  if (!user || !["super_user", "super_admin"].includes(user.role)) return;
+  await runNotificationDigestJobs();
+  revalidatePath("/dashboard");
+  revalidatePath("/team");
 }

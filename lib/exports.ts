@@ -40,7 +40,11 @@ export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "
   return workspace.credits
     .map((credit) => ({
       ...credit,
-      documents: credit.documents.filter((document) => document.status === "approved"),
+      documents: credit.documents.filter(
+        (document) =>
+          (document.workflow_state ?? "").toUpperCase() === "APPROVED" ||
+          (document.status === "approved" && document.is_latest !== false),
+      ),
     }))
     .filter((credit) => credit.documents.length > 0);
 }
@@ -168,22 +172,24 @@ export async function buildSubmissionZip(workspace: ProjectWorkspace) {
   const approvedCredits = getApprovedSubmissionCredits(workspace);
   for (const credit of approvedCredits) {
     for (const document of credit.documents) {
+      const stage = String((document as any).source_stage ?? "DESIGN").toUpperCase() === "CONSTRUCTION" ? "CONSTRUCTION" : "DESIGN";
       const zipEntryPath = buildSubmissionZipEntryPath({
         creditCode: credit.credit_code,
         docCategory: document.doc_category,
         fileName: document.file_name,
       });
+      const stagePath = `${stage}/${zipEntryPath}`;
 
       if (client) {
         const { data, error } = await client.storage.from("project-documents").download(document.file_path);
         if (!error && data) {
           const bytes = Buffer.from(await data.arrayBuffer());
-          zip.file(zipEntryPath, bytes);
+          zip.file(stagePath, bytes);
           continue;
         }
       }
 
-      zip.file(zipEntryPath, `Placeholder for ${document.file_name}`);
+      zip.file(stagePath, `Placeholder for ${document.file_name}`);
     }
   }
 

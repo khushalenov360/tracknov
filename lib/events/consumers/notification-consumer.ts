@@ -15,6 +15,7 @@ export function registerNotificationConsumers() {
           documentId,
           userIds: ownerIds,
           body: `New document uploaded. Pending your review.`,
+          actionUrl: `/review-queue?project=${projectId}&document=${documentId}`,
         });
         break;
       }
@@ -28,6 +29,7 @@ export function registerNotificationConsumers() {
                 documentId,
                 userIds: adminIds,
                 body: `Document moved to Project Admin review.`,
+                actionUrl: `/review-queue?project=${projectId}&document=${documentId}`,
             });
         }
         break;
@@ -42,6 +44,7 @@ export function registerNotificationConsumers() {
           documentId,
           userIds: ownerIds,
           body: `Document rejected: ${reason.substring(0, 50)}...`,
+          actionUrl: `/documents?project=${projectId}&document=${documentId}`,
         });
         break;
       }
@@ -53,6 +56,7 @@ export function registerNotificationConsumers() {
           projectId,
           userIds: ownerIds,
           body: `Tokens credited: ${amount} for ${reason}`,
+          actionUrl: `/team`,
         });
         break;
       }

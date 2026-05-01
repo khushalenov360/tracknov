@@ -9,5 +9,6 @@ export const env = {
   supabaseUrl: url,
   supabaseAnonKey: anonKey,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  demoModeEnabled: process.env.DEMO_MODE_ENABLED === "true",
   isConfigured: Boolean(url && anonKey),
 };

@@ -6,6 +6,7 @@ import { transitionDocumentState } from "./document-state-service";
 import { logDocumentActivity } from "./activity-service";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { recordDocumentReviewEvent } from "./review-service";
+import { aiService } from "./ai-service";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 
@@ -49,6 +50,19 @@ export class DocumentService {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
       throw new Error("Unauthorized: You do not have upload access for this project.");
+    }
+
+    const validation = await aiService.validateUploadCandidate({
+      projectId: params.projectId,
+      creditId: params.creditId,
+      projectCreditId: params.projectCreditId,
+      fileName: params.file.name,
+      fileType: params.file.type,
+      fileSize: params.file.size,
+      docCategory: params.docCategory,
+    });
+    if (!validation.ok) {
+      throw new Error(validation.errors.join(" "));
     }
 
     let projectCreditId = params.projectCreditId;
@@ -127,7 +141,13 @@ export class DocumentService {
     if (storageError) throw storageError;
 
     // DB Insert via RPC (Atomic with token consumption)
-    const mergedNotes = [params.notes, params.requirementSlot ? `Requirement slot: ${params.requirementSlot}` : ""].filter(Boolean).join("\n");
+    const mergedNotes = [
+      params.notes,
+      params.requirementSlot ? `Requirement slot: ${params.requirementSlot}` : "",
+      validation.warnings.length ? `AI precheck warnings: ${validation.warnings.join(" | ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
     const { data: documentId, error: dbError } = await this.admin.rpc("insert_document_and_consume_tokens", {
       p_project_id: params.projectId,
       p_credit_id: params.creditId,
@@ -184,7 +204,32 @@ export class DocumentService {
       documentId,
       userIds: ownerIds,
       body: `New upload received for owner review: ${params.file.name}`,
+      actionUrl: `/documents?project=${params.projectId}&document=${documentId}`,
     });
+
+    const { data: wallet } = await this.admin
+      .from("client_token_wallets")
+      .select("token_balance")
+      .eq("client_user_id", clientUserId)
+      .maybeSingle();
+    const balance = Number(wallet?.token_balance ?? 0);
+    if (balance <= 25) {
+      const escalationUsers = await getProjectMembersByRoles(this.admin, params.projectId, [
+        "project_admin",
+        "super_admin",
+        "super_user",
+        "owner",
+        "client",
+      ]);
+      await notifyUsers(this.admin, {
+        projectId: params.projectId,
+        creditId: params.creditId,
+        documentId,
+        userIds: escalationUsers,
+        body: `Low token warning: client wallet balance is ${balance}. Please load additional tokens to avoid upload interruption.`,
+        actionUrl: "/team",
+      });
+    }
     
     // Emit Event
     await eventBus.emit({

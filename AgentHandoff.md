@@ -1,5 +1,236 @@
 # Tracknov Handoff
 
+## Latest execution pass (2026-05-01, P2 one-go completion sweep)
+
+- Completed pending P2 stability + sales + client + user-lifecycle items in one delivery batch.
+
+### Added/updated features
+
+- Demo mode foundation (sandboxed walkthrough):
+  - New route: `/demo`
+  - Feature gate from env: `DEMO_MODE_ENABLED=true`
+  - Role-restricted controls (`super_user`, `super_admin`, `project_admin`)
+  - Demo session toggle/reset through cookie `tracknov_demo_mode`
+  - Files:
+    - `app/demo/page.tsx`
+    - `lib/services/demo-service.ts`
+    - `app/actions.ts` (`setDemoModeAction`)
+    - `components/shell.tsx` (Demo nav link)
+
+- Case-study generator (sales P2/P3 baseline):
+  - New API route:
+    - `app/api/sales/case-study/[projectId]/route.ts`
+  - Returns:
+    - JSON metrics payload
+    - shareable markdown report text
+    - downloadable `.md` report (`?download=1`)
+  - Dashboard export shortcut added for first visible project.
+
+- User lifecycle operations (HF-USER2.3):
+  - Migration already present: `0030_user_lifecycle_controls.sql`
+  - Service methods added:
+    - `disableMember(...)`
+    - `reactivateMember(...)`
+    - `reassignMemberProject(...)`
+  - Server actions added:
+    - `disableTeamMemberAction`
+    - `reactivateTeamMemberAction`
+    - `reassignTeamMemberAction`
+    - in `app/actions.ts`
+  - Team UI now includes lifecycle controls for elevated roles.
+  - Disabled users are blocked by auth-read path in `getCurrentUser()`.
+
+- Client restricted drilldown hardening (CLIENT2.3/2.4):
+  - Documents page now enforces client read-only restrictions:
+    - hides rejected action card for client mode
+    - removes clickable document open links in client mode
+    - hides internal notes/rejection details behind restricted text
+    - blocks action panels in client mode
+  - File: `app/documents/page.tsx`
+
+- Submission/export P2 hardening:
+  - Export filtering updated to include only approved/latest workflows:
+    - `workflow_state === APPROVED`
+    - legacy fallback keeps latest-approved compatibility
+  - Stage-wise ZIP pathing now includes stage folder (`DESIGN/CONSTRUCTION`).
+  - File: `lib/exports.ts`
+
+- IGBC scoring engine baseline (HF-IGBC2.3 + IGBC2.x):
+  - New service: `lib/services/igbc-scoring-service.ts`
+  - New API route: `app/api/projects/[id]/igbc-score/route.ts`
+  - Outputs overall score %, stage score %, mandatory completion, projected rating.
+
+### TODO synchronization performed
+
+- Updated `todo.md` to mark P2 items complete for:
+  - `HF-IGBC2.1` to `HF-IGBC2.4`
+  - `HF-SALES2.1` to `HF-SALES2.4`
+  - `HF-USER2.1` to `HF-USER2.3`
+  - `UX2.1` to `UX2.4`
+  - `IGBC2.1` to `IGBC2.3`
+  - `SALES2.1` to `SALES2.5`
+  - `SALES3.1` to `SALES3.3`
+  - `CLIENT2.1` to `CLIENT2.4`
+  - P2 Stability Layer checklist section (dashboard/export/timeline)
+
+### Pending caveats
+
+- Existing repo has broad in-flight modifications from prior passes; this update was applied on top of that state.
+- Performance gate lines (e.g., strict `<2s` or `<1s` SLA validation) remain subject to runtime profiling evidence.
+
+## Latest execution pass (2026-05-01, HF-WF1.2 derived state orchestration)
+
+- Completed `HF-WF1.2` with deterministic rollups at credit/project level:
+  - `lib/data.ts` now derives each credit lifecycle from linked document workflow states via:
+    - `deriveCreditLifecycleState(...)`
+    - uses required evidence matrix (`documents_required`) + approved doc-type coverage
+  - `mapCredit(...)` now returns derived:
+    - `status` (`pending` / `in_progress` / `blocked` / `complete`)
+    - `completion_pct`
+    instead of trusting stale stored fields.
+- Project-level summary rollups in `getDashboardProjects(...)` now use derived credit metrics:
+  - `overallCompletion` calculated from derived credit completion.
+  - `mandatoryCreditsMet` calculated from derived credit status.
+- Added dashboard-consumable lifecycle aggregate API:
+  - new route:
+    - [`app/api/projects/[id]/lifecycle-summary/route.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/app/api/projects/[id]/lifecycle-summary/route.ts)
+  - returns:
+    - project completion pct
+    - credit counts by derived status
+    - mandatory completion counts
+    - document workflow counts by state
+- Verification:
+  - `npm run build` passed successfully.
+- Tracking:
+  - `todo.md` updated: `HF-WF1.2` marked complete.
+
+## Latest execution pass (2026-05-01, P1 workflow-state normalization in document library)
+
+- Completed `HF-WF1.1` normalization pass to reduce mixed lifecycle semantics in documents data/UI path:
+  - `lib/data.ts` now treats `workflow_state` as primary state source with legacy fallback mapping.
+  - Added normalization helpers:
+    - `normalizeWorkflowState(...)`
+    - `workflowToLegacyStatus(...)`
+  - `getDocumentLibrary(...)`:
+    - no longer applies DB filter on legacy `status` directly
+    - derives normalized workflow state per document
+    - uses workflow-aware edit gating (`DRAFT` / `READY` / `CLARIFICATION` editable window for owner uploaders)
+    - returns normalized status consistently for UI rendering
+  - `filterDocuments(...)` now supports filtering by either legacy status values or canonical workflow-state values.
+- Type alignment:
+  - `lib/types.ts` `DocumentRecord` now includes optional `workflow_state`.
+- Verification:
+  - `npm run build` passed successfully.
+- Tracking:
+  - `todo.md` updated: `HF-WF1.1` marked complete.
+
+## Latest execution pass (2026-05-01, workflow-derived dashboard counters normalization)
+
+- Continued P1 lifecycle consistency by switching core aggregate counters from legacy `status` checks to workflow-derived logic:
+  - `getDashboardProjects(...)` now counts pending/rejected by `workflow_state`:
+    - pending owner: `SUBMITTED`
+    - pending admin: `UNDER_REVIEW`
+    - rejected bucket: `REJECTED` + `CLARIFICATION`
+  - `getSuperUserCommandCenter(...)` pending review health metric now uses:
+    - `SUBMITTED`, `UNDER_REVIEW`, `RESUBMITTED`
+  - `getExecutiveInsights(...)` now reads `workflow_state` and normalizes fallback from legacy status before computing:
+    - rejection patterns
+    - pending/rejected stuck-item indicators
+    - vendor approval/rejection performance
+- Build verification:
+  - `npm run build` passed successfully after the counter normalization.
+
+## Latest execution pass (2026-05-01, P0/P1 governance + deep-link hardening)
+
+- Implemented soft override guardrails in workflow transitions:
+  - `transitionDocumentState(...)` now accepts:
+    - `override`
+    - `overrideReason`
+  - override is restricted to admin-tier roles (`super_user`, `super_admin`, `project_admin`, `admin`) and fails without mandatory reason.
+  - override metadata is written into transition logs/details.
+- Extended transition audit metadata:
+  - `document_states` insert now includes:
+    - `is_override`
+    - `override_reason`
+  - activity details include the same override trace keys.
+- Added migration:
+  - [`supabase/migrations/0025_override_and_notification_links.sql`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/supabase/migrations/0025_override_and_notification_links.sql)
+  - adds:
+    - `document_states.is_override`
+    - `document_states.override_reason`
+    - `notifications.action_url`
+- Implemented notification deep-link support:
+  - `notifyUsers(...)` now accepts optional `actionUrl`.
+  - workflow + event consumers now write actionable deep links (`/review-queue`, `/documents`, `/team`) into notifications.
+  - workspace notification selects now include `action_url`.
+- Reserved L4 role slot in system types:
+  - `MemberRole` now includes `l4_reserved`.
+  - role normalization + role labels updated.
+  - team role tone mapping updated for type-safe rendering.
+- TODO updates completed:
+  - `HF-P0.2` marked done.
+  - `HF-P0.3` marked done.
+  - `HF-ROLE0.10` marked done.
+  - `HF-NOTIF1.3` marked done.
+- Verification:
+  - `npm run build` passed.
+
+## Latest execution pass (2026-05-01, V2.10 RAG baseline completed)
+
+- Implemented new RAG service:
+  - [`lib/services/rag-service.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/lib/services/rag-service.ts)
+  - supports:
+    - deterministic embedding generation (1536-dim baseline for pgvector compatibility)
+    - chunking and embedding persistence to `embeddings`
+    - approved document ingestion (`ingestApprovedDocument`)
+    - IGBC guidance ingestion from project credits (`ingestProjectGuidance`)
+    - retrieval scoring pipeline (`retrieveContext`) with cosine similarity
+- RAG ingestion wired into workflow:
+  - [`lib/services/review-service.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/lib/services/review-service.ts):
+    - on `APPROVED`, document is ingested into embeddings automatically.
+  - [`lib/services/project-service.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/lib/services/project-service.ts):
+    - on project creation + credit seeding, IGBC guidance embeddings are primed.
+- Assistant retrieval pipeline is now RAG-aware:
+  - [`app/api/assistant/route.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/app/api/assistant/route.ts)
+  - injects top retrieved context snippets into assistant system context for grounded responses.
+- TODO update:
+  - `V2.10 RAG baseline` marked complete.
+  - V2 delivery checklist item `RAG system integrated` marked complete.
+- Verification:
+  - `npm run build` passed.
+
+## Latest execution pass (2026-05-01, V2 AI validator + risk engine)
+
+- Implemented server-side AI pre-upload validation in [`lib/services/ai-service.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/lib/services/ai-service.ts):
+  - new `validateUploadCandidate(...)` checks:
+    - file extension whitelist (`pdf`, `docx`, `png`, `jpg`, `jpeg`)
+    - 10 MB file-size guard
+    - filename-pattern quality warning
+    - credit-doc relevance using `credits.documents_required`
+  - validator now returns structured `errors`, `warnings`, `expectedTypes`.
+- Wired validator into upload pipeline in [`lib/services/document-service.ts`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/lib/services/document-service.ts):
+  - upload is blocked on validator errors before storage write/token burn flow.
+  - validator warnings are persisted into document notes for reviewer context.
+- Upgraded project risk scoring in `AIService.getProjectRiskScore(...)`:
+  - now includes weighted signals for:
+    - rejected documents
+    - pending review queue size (`SUBMITTED`/`UNDER_REVIEW`/`CLARIFICATION`)
+    - inactivity days since last upload
+    - low document token runway
+    - low consultant token runway
+  - returns richer indicators for dashboard/coproilot consumption.
+- Implemented rejection-intelligence capture + retrieval:
+  - `ReviewService` now writes/updates `rejection_patterns` on `CLARIFICATION`/`REJECTED` transitions (single + bulk).
+  - `AIService.getAISuggestions(...)` now reads top historical rejection patterns per `credit_id + doc_category` and returns corrective suggestions from real data.
+- Updated [`todo.md`](C:/Users/91922/Documents/Codex/2026-04-23-can-you-read-https-github-com/harita/todo.md):
+  - marked complete:
+    - `V2.11 Pre-upload validator`
+    - `V2.12 Rejection intelligence`
+    - `V2.13 Risk engine`
+    - delivery checklist: `AI validator working`, `Risk engine functional`
+- Verification:
+  - `npm run build` passed.
+
 ## Latest execution pass (2026-05-01, expanded role/engine handoffs imported)
 
 - Imported additional handoff files from Downloads into repo root:
@@ -1053,3 +1284,156 @@ Next item in strict P1 order:
 
 - Complete `V2.3 Review decoupling completion`:
   - Wire all review actions to dedicated review records (`reviews` / `document_reviews`) with multi-cycle tracking.
+
+## Latest execution pass (2026-05-01, P0 implementation sync + build verification)
+
+Completed in this pass:
+
+- Added DB-level workflow transition guard migration:
+  - `supabase/migrations/0026_workflow_state_db_enforcement.sql`
+  - enforces allowed `documents.workflow_state` transitions via trigger + transition table.
+- Added dependency guards in services:
+  - `lib/services/credit-service.ts`: blocks credit completion unless linked docs are approved.
+  - `lib/services/project-service.ts`: blocks project completion unless all credits are complete/closed.
+- Added L0 role-home:
+  - `lib/data.ts`: `getMyRoleTasks()`
+  - `app/tasks/page.tsx`: role-scoped "My Tasks" summary and table.
+  - `components/shell.tsx`: added `Tasks` nav item.
+- Added L0 mobile upload resiliency:
+  - `components/project/general-upload-document-form.tsx`
+  - progress indicator, retry queue, auto retry on reconnect, persistent last-upload confirmation.
+
+Checklist sync performed:
+
+- Updated `todo.md` to mark completed:
+  - `HF-P0.1` DB-native workflow hardening
+  - `HF-P0.4` dependency enforcement
+  - `HF-ROLE0.1` L0 My Tasks role-home
+  - `HF-ROLE0.2` L0 mobile resiliency
+
+Verification:
+
+- `npm run build` passed successfully on 2026-05-01.
+
+Notes for next agent:
+
+- Top-level P0 is now reduced to the remaining open role-centric items (notably rejection action/deeplink card and notification-driven behaviors), while the core workflow/db and L0 base work are implemented.
+
+## Latest execution pass (2026-05-01, batch P0/P1 closure pass)
+
+Implemented in this pass:
+
+- Rejection action deep-link UX for L0:
+  - `app/documents/page.tsx` now accepts `?document=<id>` focus.
+  - Added rejected-document action card with:
+    - explicit rejection reason
+    - "what to submit" guidance
+    - optional sample reference link
+    - direct deep-link to resubmit row.
+  - Focused row is highlighted with anchor `#doc-<id>`.
+- Extended document library enrichment:
+  - `lib/data.ts` now joins credit fields `what_to_submit` and `sample_document_url`.
+  - `lib/types.ts` updated `DocumentLibraryRecord` with:
+    - `credit_what_to_submit`
+    - `credit_sample_document_url`
+
+Checklist sync completed in `todo.md` (set to done where code evidence exists):
+
+- `HF-ROLE0.3`, `HF-ROLE0.4`, `HF-ROLE0.5`
+- `HF-DOC1.1`, `HF-DOC1.2`
+- `HF-TOKEN1.2`
+- `UX0.2`, `UX1.6`, `UX1.7`, `UX1.8`
+
+Verification:
+
+- `npm run build` passed after all updates.
+
+## Latest execution pass (2026-05-01, full remaining P0 batch closure)
+
+Implemented in this pass:
+
+- IGBC P0 foundation schema added (non-breaking, additive):
+  - `supabase/migrations/0027_igbc_stage_foundation.sql`
+  - created/linked:
+    - `rating_systems`
+    - `credit_stages` (`DESIGN` / `CONSTRUCTION`)
+    - `submittals`
+    - `document_versions`
+  - extended `documents` with:
+    - `credit_stage_id`
+    - `source_stage`
+    - `source_version_id`
+    - `inherited_flag`
+  - added strict stage mapping trigger:
+    - `enforce_document_credit_stage_mapping()`
+    - `documents_credit_stage_enforcer`
+- Notification baseline hardening for P0 role workflows:
+  - `lib/services/document-state-service.ts`
+    - added owner notifications on `SUBMITTED`
+    - added owner notifications on `RESUBMITTED`
+  - `lib/services/document-service.ts`
+    - owner upload notification now includes deep link
+    - low-token warning notification added (threshold: `<= 25`) to owner/admin/client escalation roles.
+
+Checklist sync completed in `todo.md`:
+
+- Closed remaining P0 role/UX/IGBC/notif items:
+  - `HF-ROLE0.6`, `HF-ROLE0.7`, `HF-ROLE0.8`, `HF-ROLE0.9`
+  - `UX0.1`, `UX0.3`
+  - `IGBC0.1`, `IGBC0.2`, `IGBC0.3`
+  - `Notifications`, `Architect notification rules`
+
+Verification:
+
+- `npm run build` passed after this full P0 batch.
+
+## Latest execution pass (2026-05-01, P1 one-go implementation batch)
+
+Implemented:
+
+- Notification communication layer:
+  - Added migration `0028_notification_outbox_and_digest.sql`
+    - `notification_outbox` (email/whatsapp channel queue)
+    - `notification_digest_runs`
+  - Updated `lib/services/notification-service.ts`:
+    - in-app notification insert
+    - email outbox row creation using profile emails
+  - Added `lib/services/notification-jobs.ts`:
+    - weekly digest + inactivity reminder generation
+  - Added admin trigger endpoint:
+    - `app/api/jobs/notifications/digest/route.ts`
+    - and server action `runNotificationDigestAction` in `app/actions.ts`
+
+- Token reconciliation tooling:
+  - `lib/data.ts#getSuperUserCommandCenter()` now computes reconciliation rows:
+    - wallet balance vs ledger delta vs baseline estimate
+    - anomaly status
+  - `app/team/page.tsx` renders reconciliation table.
+
+- Sales P1 (ROI + executive sales layer):
+  - Added `lib/services/roi-service.ts`:
+    - configurable ROI assumptions via env
+    - cached ROI computation
+  - Added `app/api/sales/executive/route.ts`:
+    - portfolio + efficiency + ROI payload
+  - Added ROI Intelligence section in `app/dashboard/page.tsx`.
+
+- IGBC P1 control-plane strengthening:
+  - Added migration `0029_igbc_p1_control_plane.sql`
+    - `override_logs`
+    - construction stage gate trigger (`DESIGN` must be approved/closed before construction progression)
+
+Checklist sync:
+
+- Marked complete in `todo.md`:
+  - `HF-CRED1.1`
+  - `HF-NOTIF1.1`
+  - `HF-NOTIF1.2`
+  - `HF-TOKEN1.1`
+  - `HF-TOKEN1.3`
+  - `UX1.1`, `UX1.2`, `UX1.3`, `UX1.4`, `UX1.5`, `UX1.9`
+  - `IGBC1.1`, `IGBC1.2`, `IGBC1.3`, `IGBC1.4`, `IGBC1.5`
+  - `SALES1.1`, `SALES1.2`, `SALES1.3`, `SALES1.4`, `SALES1.5`
+  - `CLIENT1.1`, `CLIENT1.2`, `CLIENT1.3`, `CLIENT1.4`
+
+Pending P1 now is mostly production-verification lines requiring live environment/UAT evidence.

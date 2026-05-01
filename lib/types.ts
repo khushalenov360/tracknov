@@ -1,5 +1,6 @@
 export type MemberRole =
   | "super_user"
+  | "l4_reserved"
   | "owner"
   | "client"
   | "consultant"
@@ -49,6 +50,7 @@ export type DocumentRecord = {
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   status: DocumentStatus;
+  workflow_state?: string | null;
   version?: number;
   is_latest?: boolean;
   parent_document_id?: string | null;
@@ -192,6 +194,7 @@ export type ProjectWorkspace = {
   notifications: {
     id: string;
     body: string;
+    action_url?: string | null;
     created_at: string;
     read_at?: string | null;
   }[];
@@ -202,6 +205,8 @@ export type DocumentLibraryRecord = DocumentRecord & {
   project_name: string;
   credit_code?: string | null;
   credit_name?: string | null;
+  credit_what_to_submit?: string | null;
+  credit_sample_document_url?: string | null;
   uploaded_by_name?: string | null;
   project_role?: MemberRole;
   can_edit_metadata?: boolean;
@@ -220,8 +225,11 @@ export type TeamMemberRecord = {
   company?: string | null;
   role: MemberRole;
   project_names: string[];
+  project_ids?: string[];
   created_at: string;
   token_balance?: number;
+  disabled_at?: string | null;
+  disabled_reason?: string | null;
 };
 
 export type OnboardingChecklist = {

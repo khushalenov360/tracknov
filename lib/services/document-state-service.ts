@@ -126,6 +126,8 @@ export async function transitionDocumentState(
     manualSubmit = false,
     updatedEvidence = false,
     remarks = null,
+    override = false,
+    overrideReason = null,
   }: {
     documentId: string;
     newState: WorkflowState;
@@ -134,6 +136,8 @@ export async function transitionDocumentState(
     manualSubmit?: boolean;
     updatedEvidence?: boolean;
     remarks?: string | null;
+    override?: boolean;
+    overrideReason?: string | null;
   },
 ) {
   const { data: document } = await writer
@@ -147,6 +151,8 @@ export async function transitionDocumentState(
   }
 
   const currentState = (document.workflow_state ?? "DRAFT") as WorkflowState;
+  const isOverride = Boolean(override);
+  const normalizedOverrideReason = overrideReason?.trim() || null;
   
   // Role check
   const role = String(actorRole);
@@ -159,7 +165,7 @@ export async function transitionDocumentState(
 
   // 1. Validate transition
   const nextAllowed = allowedTransitions[currentState] ?? [];
-  const isAllowed = nextAllowed.includes(newState) || canStatusEditAtAnyStage;
+  const isAllowed = nextAllowed.includes(newState) || canStatusEditAtAnyStage || isOverride;
   
   if (!isAllowed && currentState !== newState) {
     return {
@@ -168,22 +174,32 @@ export async function transitionDocumentState(
     };
   }
 
-  if (l2Roles.includes(role) && newState !== currentState) {
+  if (isOverride) {
+    const canOverride = ["super_user", "super_admin", "project_admin", "admin"].includes(role);
+    if (!canOverride) {
+      return { ok: false as const, error: "Override is allowed only for admin roles." };
+    }
+    if (!normalizedOverrideReason) {
+      return { ok: false as const, error: "Override reason is mandatory." };
+    }
+  }
+
+  if (!isOverride && l2Roles.includes(role) && newState !== currentState) {
     return { ok: false as const, error: "L2 role is read-only and cannot change workflow state." };
   }
-  if (l0Roles.includes(role) && !["DRAFT", "READY"].includes(newState)) {
+  if (!isOverride && l0Roles.includes(role) && !["DRAFT", "READY"].includes(newState)) {
     return { ok: false as const, error: "L0 role cannot move document beyond READY." };
   }
-  if (l1Roles.includes(role) && !["UNDER_REVIEW", "CLARIFICATION", "REJECTED"].includes(newState)) {
+  if (!isOverride && l1Roles.includes(role) && !["UNDER_REVIEW", "CLARIFICATION", "REJECTED"].includes(newState)) {
     return { ok: false as const, error: "L1 role can only perform owner-stage review actions." };
   }
-  if (["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
+  if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
     // Note: L1 can reject, but only L3/L5 can approve.
     if (newState === "APPROVED") {
         return { ok: false as const, error: "Only L3 roles can approve documents." };
     }
   }
-  if (newState === "UNDER_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
+  if (!isOverride && newState === "UNDER_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
     return { ok: false as const, error: "Only L1 or L5 can move document into admin review." };
   }
 
@@ -256,6 +272,8 @@ export async function transitionDocumentState(
     state: newState,
     previous_state: currentState,
     transition_by: userId ?? null,
+    is_override: isOverride,
+    override_reason: normalizedOverrideReason,
   });
 
   // Determine Review Action
@@ -290,11 +308,13 @@ export async function transitionDocumentState(
     actorId: userId,
     actorRole,
     summary,
-    details: {
-      from_state: currentState,
-      to_state: newState,
-      remarks: remarks || null,
-    },
+      details: {
+        from_state: currentState,
+        to_state: newState,
+        remarks: remarks || null,
+        is_override: isOverride,
+        override_reason: normalizedOverrideReason,
+      },
   });
 
   // Notifications
@@ -306,6 +326,17 @@ export async function transitionDocumentState(
       documentId,
       userIds: admins,
       body: `A document (${document.file_name}) is ready for Project Admin review.`,
+      actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
+    });
+  } else if (newState === "SUBMITTED") {
+    const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
+    await notifyUsers(writer, {
+      projectId: document.project_id,
+      creditId: document.credit_id,
+      documentId,
+      userIds: owners,
+      body: `A document (${document.file_name}) is awaiting Project Owner review.`,
+      actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
   } else if (newState === "CLARIFICATION" || newState === "REJECTED") {
     const { data: docData } = await writer.from("documents").select("uploaded_by").eq("id", documentId).maybeSingle();
@@ -316,6 +347,7 @@ export async function transitionDocumentState(
             documentId,
             userIds: [docData.uploaded_by],
             body: `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
+            actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });
     }
     // Insert into remarks table for UI display
@@ -337,8 +369,19 @@ export async function transitionDocumentState(
             documentId,
             userIds: [docData.uploaded_by],
             body: `Your document (${document.file_name}) has been approved.`,
+            actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });
     }
+  } else if (newState === "RESUBMITTED") {
+    const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
+    await notifyUsers(writer, {
+      projectId: document.project_id,
+      creditId: document.credit_id,
+      documentId,
+      userIds: owners,
+      body: `A corrected document (${document.file_name}) was resubmitted and needs owner review.`,
+      actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
+    });
   }
 
   eventBus.emit({
@@ -359,4 +402,3 @@ export async function transitionDocumentState(
     creditId: document.credit_id,
   };
 }
-

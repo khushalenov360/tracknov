@@ -3,6 +3,178 @@
 Last updated: 2026-04-29 IST  
 Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
+## Master Consolidation - All Handoff Files Coverage
+
+Source files covered in this consolidation:
+- `Ai developerhandoff.md`
+- `UX_UI_developer_handoff.md`
+- `IGBC_Developer_Handoff.md`
+- `SAASsales_Developer_Handoff.md`
+- `Client_Developer_Handoff.md`
+- `Client_Developer_Handoff_Refined.md`
+- `ProjectOwner_Developer_Handoff.md`
+- `ProjectAdmin_Developer_Handoff.md`
+- `MEPCON_Developer_Handoff.md`
+- `Architect_Developer_Handoff.md`
+- `Contractor_Developer_Handoff.md`
+- `Workflow_Engine_Developer_Handoff.md`
+- `Documents_Engine_Developer_Handoff.md`
+- `Credits_Engine_Developer_Handoff.md`
+- `TokenEngine_Developer_Handoff.md`
+- `users_developerhandoff.md`
+- `DEVELOPER_HANDOFF_MVP.md`
+
+### P0 - Mandatory architecture enforcement from handoffs
+
+- [x] HF-P0.1 DB-native workflow hardening:
+  - enforce workflow enums at DB layer for project/credit/document state
+  - add DB transition-rule enforcement (no skipped transitions)
+  - block direct state mutation bypass paths
+- [x] HF-P0.2 DB audit safety:
+  - mandatory transition logs for each workflow mutation
+  - include override marker + override reason in audit trail
+- [x] HF-P0.3 Soft override guardrails:
+  - admin-only override path
+  - mandatory override reason
+  - override usage visible in audit timeline
+- [x] HF-P0.4 Dependency enforcement at state-transition layer:
+  - block credit approval when required docs are incomplete/unapproved
+  - block project completion when credits are incomplete/open
+
+### P0 - Role workflows (L0 to L5) gaps still required by handoffs
+
+- [x] HF-ROLE0.1 L0 "My Tasks" role-home:
+  - MEP/Architect/Contractor only see assigned credits/tasks
+  - plain-language credit names (hide IGBC code for L0)
+  - clear counter (e.g., `X of Y complete`)
+- [x] HF-ROLE0.2 L0 mobile resiliency:
+  - upload progress %
+  - offline/retry queue for unstable connectivity
+  - persistent upload confirmation state
+- [x] HF-ROLE0.3 L0 rejection action card:
+  - deep-link notification to rejected item
+  - reason + what to fix + example reference + one-click resubmit
+- [x] HF-ROLE0.4 L0 accidental-upload protection:
+  - pre-upload confirmation summary modal
+  - delete-before-review with automatic token refund
+  - suspicious filename mismatch warning (project mismatch)
+- [x] HF-ROLE0.5 Architect advanced mapping:
+  - multi-document slot completeness per credit
+  - move/remap document between credits before lock
+  - vendor-document reuse suggestions surfaced in UI
+- [x] HF-ROLE0.6 Project Owner throughput:
+  - centralized review queue with inline preview
+  - bulk approve/send-back workflow with templates
+  - pending aging/escalation reminders
+- [x] HF-ROLE0.7 Client executive mode lock:
+  - strict read-only decision dashboard
+  - no document-level/internal-review leakage
+  - one-click leadership summary export
+- [x] HF-ROLE0.8 Project Admin throughput:
+  - high-speed validation queue (<10s target per doc flow)
+  - reusable rejection templates
+  - one-click submission readiness + readiness gating
+- [x] HF-ROLE0.9 Super User command center finalization:
+  - multi-client wallet/usage visibility
+  - override and data-recovery controls
+  - critical health alerts only
+- [x] HF-ROLE0.10 Reserve L4 role slot in RBAC schema:
+  - role key reserved and non-breaking in hierarchy/configs
+
+### P1 - Workflow, review, and document engine completion
+
+- [x] HF-WF1.1 Unify review states and lifecycle naming:
+  - one canonical state vocabulary across DB, services, and UI
+  - remove legacy parallel status semantics
+- [x] HF-WF1.2 Project/Credit/Document derived state orchestration:
+  - ensure upstream/downstream state rollups are deterministic
+  - expose derived state in API for dashboards
+- [x] HF-DOC1.1 Document version lineage hardening:
+  - immutable versions
+  - `is_latest` guarantee
+  - explicit parent-child version chain
+- [x] HF-DOC1.2 Document preview-first approval UX:
+  - reviewer sees preview in approval workspace before decision
+  - hyperlinks open document in dedicated view route
+- [x] HF-CRED1.1 Credit engine constraint checks:
+  - required evidence matrix per credit/stage
+  - assignment + deadline awareness
+  - blockers surfaced in queue/dashboard
+
+### P1 - Notifications and communication layer
+
+- [x] HF-NOTIF1.1 Multi-channel notification engine:
+  - in-app + email (phase-1)
+  - optional WhatsApp (phase-2, configurable)
+- [x] HF-NOTIF1.2 Digest and reminder jobs:
+  - weekly digest by role
+  - inactivity reminders
+  - resubmission follow-ups
+- [x] HF-NOTIF1.3 Notification deep-link integrity:
+  - every notification routes to exact action target
+
+### P1 - Token engine and monetization controls
+
+- [x] HF-TOKEN1.1 Token ledger reconciliation tooling:
+  - detect debit/refund anomalies
+  - show correction trail in super-user console
+- [x] HF-TOKEN1.2 Token burn policy enforcement:
+  - deduct only after successful upload transaction
+  - auto-refund on pre-review delete or failed post-upload commit
+- [x] HF-TOKEN1.3 Wallet policy:
+  - Project Admin can load client wallet
+  - client wallet usage shared across client's projects
+
+### P2 - IGBC certification engine upgrades
+
+- [x] HF-IGBC2.1 Stage-aware credit model:
+  - DESIGN and CONSTRUCTION tracks per credit
+  - stage-specific submittals and lifecycle
+- [x] HF-IGBC2.2 Design->Construction inheritance:
+  - carry-forward approved narratives/calculations with trace links
+- [x] HF-IGBC2.3 Rule-based scoring engine:
+  - mandatory credits
+  - points aggregation
+  - rating threshold evaluation
+- [x] HF-IGBC2.4 Submission pack engine v2:
+  - stage-wise, credit-wise standardized packaging
+  - final naming/structure aligned to IGBC expected format
+
+### P2 - SaaS sales enablement scope
+
+- [x] HF-SALES2.1 ROI engine:
+  - configurable assumptions
+  - measurable savings outputs
+- [x] HF-SALES2.2 Executive sales dashboard:
+  - portfolio, risk, efficiency, ROI in decision-first cards
+- [x] HF-SALES2.3 Guided demo mode:
+  - sandboxed demo data
+  - resettable walkthrough flow
+- [x] HF-SALES2.4 Case-study generator:
+  - template-driven PDF and shareable report output
+
+### P2 - Users and onboarding engine
+
+- [x] HF-USER2.1 Invite-only onboarding flow finalization:
+  - one-link invite -> set password -> enter project
+- [x] HF-USER2.2 Team hierarchy management:
+  - enforce parent-child hierarchy constraints during assignment
+- [x] HF-USER2.3 Account lifecycle operations:
+  - disable/reactivate/reassign without data-loss
+
+### P3 - QA, compliance, and delivery evidence
+
+- [ ] HF-QA3.1 Full UAT matrix execution:
+  - all roles x all critical actions (create/upload/review/reject/resubmit/export/delete)
+- [ ] HF-QA3.2 Production migration verification:
+  - confirm all workflow/audit/ledger migrations applied in live Supabase
+- [ ] HF-QA3.3 Performance and reliability report:
+  - dashboard/load/upload latency snapshots
+  - error-rate report for top workflows
+- [ ] HF-QA3.4 Documentation and handover hygiene:
+  - keep `AgentHandoff.md` updated every delivery pass
+  - keep this `todo.md` status synchronized with actual code state
+
 ## Tracknov V2 TODO (Mapped to `Ai developerhandoff.md`)
 
 ### P0 - Foundation-critical (must complete first)
@@ -58,13 +230,13 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### P2 - AI intelligence layer
 
-- [ ] V2.10 RAG baseline:
+- [x] V2.10 RAG baseline:
   ingest approved docs + IGBC guidance into embeddings and retrieval pipeline.
-- [ ] V2.11 Pre-upload validator:
+- [x] V2.11 Pre-upload validator:
   file type, naming, and credit relevance checks before acceptance.
-- [ ] V2.12 Rejection intelligence:
+- [x] V2.12 Rejection intelligence:
   pattern capture and corrective suggestion pipeline per credit/document type.
-- [ ] V2.13 Risk engine:
+- [x] V2.13 Risk engine:
   project risk score using missing docs, rejection frequency, and delays.
 
 ### P3 - Frontend role UX and performance
@@ -87,9 +259,9 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 - [ ] Workflow state machine implemented
 - [ ] Token ledger active and tested
-- [ ] AI validator working
-- [ ] RAG system integrated
-- [ ] Risk engine functional
+- [x] AI validator working
+- [x] RAG system integrated
+- [x] Risk engine functional
 - [ ] RBAC enforced
 - [ ] Event system operational
 - [ ] APIs documented
@@ -98,50 +270,50 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### UX P0 - Product definition and navigation lock
 
-- [ ] UX0.1 Scope lock implementation:
+- [x] UX0.1 Scope lock implementation:
   remove/avoid UI language that implies ESG/carbon/tokenization product scope beyond certification workflow.
-- [ ] UX0.2 Global navigation lock:
+- [x] UX0.2 Global navigation lock:
   ensure top nav contains and consistently routes:
   - Dashboard
   - Projects
   - Credits
   - Documents
   - Tasks
-- [ ] UX0.3 Workflow-first navigation audit:
+- [x] UX0.3 Workflow-first navigation audit:
   remove duplicate navigation paths and dead-end routes.
 
 ### UX P1 - Primary screen coverage
 
-- [ ] UX1.1 Dashboard compliance:
+- [x] UX1.1 Dashboard compliance:
   show project list, completion %, pending credits, and risk flags with quick drilldowns.
-- [ ] UX1.2 Create Project screen:
+- [x] UX1.2 Create Project screen:
   include project name, rating system, location, and team assignment fields.
-- [ ] UX1.3 Project Overview screen:
+- [x] UX1.3 Project Overview screen:
   include progress %, credit summary, and activity log panel.
-- [ ] UX1.4 Credits List screen:
+- [x] UX1.4 Credits List screen:
   include filters, status, assignee, and deadline columns.
-- [ ] UX1.5 Credit Detail core workflow:
+- [x] UX1.5 Credit Detail core workflow:
   support upload, status update, assignment, comments, and submit actions with required evidence context.
-- [ ] UX1.6 Documents screen:
+- [x] UX1.6 Documents screen:
   ensure linked project, linked credit, version, and status are visible and filterable.
-- [ ] UX1.7 Tasks screen:
+- [x] UX1.7 Tasks screen:
   implement task CRUD with linked credit, assignee, due date.
-- [ ] UX1.8 Submission/Review screen:
+- [x] UX1.8 Submission/Review screen:
   implement submit/resubmit, reviewer comments, and timestamped trail.
-- [ ] UX1.9 User Management screen:
+- [x] UX1.9 User Management screen:
   support add/edit users and role assignment with clear permissions visibility.
 
 ### UX P2 - Role rendering and state-driven behavior
 
-- [ ] UX2.1 Consultant role mode:
+- [x] UX2.1 Consultant role mode:
   dense execution UI (tables/filters) with full workflow controls where authorized.
-- [ ] UX2.2 Client role mode:
+- [x] UX2.2 Client role mode:
   read-only visual dashboard mode; hide/disable credit/document edit actions.
-- [ ] UX2.3 State-driven controls:
+- [x] UX2.3 State-driven controls:
   - Approved -> lock all editing controls
   - Submitted -> lock edits except comments
   - Review Failed -> reopen allowed edits
-- [ ] UX2.4 Credit lifecycle UX mapping:
+- [x] UX2.4 Credit lifecycle UX mapping:
   reflect states:
   - Not Started
   - In Progress
@@ -175,7 +347,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### IGBC P0 - Certification engine foundation
 
-- [ ] IGBC0.1 Credit-stage relational model:
+- [x] IGBC0.1 Credit-stage relational model:
   implement stage-aware schema:
   - `rating_systems`
   - `credits`
@@ -183,25 +355,25 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   - `submittals`
   - `documents`
   - `document_versions`
-- [ ] IGBC0.2 Strict stage mapping:
+- [x] IGBC0.2 Strict stage mapping:
   ensure all submittals are bound to a single `credit_stage_id` and cannot float across stages.
-- [ ] IGBC0.3 Dual lifecycle readiness:
+- [x] IGBC0.3 Dual lifecycle readiness:
   add `DESIGN` and `CONSTRUCTION` stage lifecycle support in backend services.
 
 ### IGBC P1 - Workflow and control engines
 
-- [ ] IGBC1.1 Multi-level workflow engine:
+- [x] IGBC1.1 Multi-level workflow engine:
   enforce transitions at:
   - submittal level
   - derived credit level
   - derived project level
-- [ ] IGBC1.2 Stage gate rules:
+- [x] IGBC1.2 Stage gate rules:
   block construction lifecycle start unless design approval gate is met.
-- [ ] IGBC1.3 Override engine:
+- [x] IGBC1.3 Override engine:
   admin-controlled credit-stage overrides with reason-required logs (`override_logs`).
-- [ ] IGBC1.4 Immutable versioning:
+- [x] IGBC1.4 Immutable versioning:
   prevent document overwrite; all updates must create a new version row.
-- [ ] IGBC1.5 Inheritance engine:
+- [x] IGBC1.5 Inheritance engine:
   design-to-construction reference carry-forward using:
   - `source_stage`
   - `source_version_id`
@@ -209,11 +381,11 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### IGBC P2 - Scoring and submission engines
 
-- [ ] IGBC2.1 Rule-based scoring:
+- [x] IGBC2.1 Rule-based scoring:
   mandatory credit enforcement + points aggregation + threshold outcomes.
-- [ ] IGBC2.2 Stage score outputs:
+- [x] IGBC2.2 Stage score outputs:
   design provisional score + construction final score.
-- [ ] IGBC2.3 Submission pack generator:
+- [x] IGBC2.3 Submission pack generator:
   one-click stage-wise pack output:
   - credit-wise bundle
   - narratives
@@ -257,19 +429,19 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### Sales P1 (Immediate): ROI Engine + Executive Dashboard
 
-- [ ] SALES1.1 ROI intelligence service:
+- [x] SALES1.1 ROI intelligence service:
   build backend calculation service for:
   - time saved
   - cost saved
   - rejection reduction
   from configurable input constants.
-- [ ] SALES1.2 ROI config model:
+- [x] SALES1.2 ROI config model:
   add admin-editable assumptions (review time, hourly rate, rework reduction) with safe defaults.
-- [ ] SALES1.3 ROI caching:
+- [x] SALES1.3 ROI caching:
   cache aggregate ROI results for dashboard response speed.
-- [ ] SALES1.4 Executive sales dashboard API:
+- [x] SALES1.4 Executive sales dashboard API:
   build aggregated API for portfolio snapshot, risk indicators, efficiency metrics, and ROI widget.
-- [ ] SALES1.5 Executive dashboard UI:
+- [x] SALES1.5 Executive dashboard UI:
   card-based CXO view with RAG signals and low-click clarity.
 - [ ] SALES1.6 Performance targets (phase 1):
   verify:
@@ -278,24 +450,24 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### Sales P2: Demo Mode (Guided Walkthrough)
 
-- [ ] SALES2.1 Demo-mode feature flag:
+- [x] SALES2.1 Demo-mode feature flag:
   introduce `demo_mode` gate and sandbox isolation.
-- [ ] SALES2.2 Preloaded demo dataset:
+- [x] SALES2.2 Preloaded demo dataset:
   seeded demo projects/credits/docs/review outcomes isolated from production data.
-- [ ] SALES2.3 Guided walkthrough overlay:
+- [x] SALES2.3 Guided walkthrough overlay:
   step prompts for upload -> review -> dashboard insight.
-- [ ] SALES2.4 Demo reset mechanism:
+- [x] SALES2.4 Demo reset mechanism:
   one-click resettable demo state for repeated sales sessions.
-- [ ] SALES2.5 Demo security checks:
+- [x] SALES2.5 Demo security checks:
   enforce sandboxed data boundaries and role-safe visibility.
 
 ### Sales P3: Case Study Generator
 
-- [ ] SALES3.1 Case-study metrics service:
+- [x] SALES3.1 Case-study metrics service:
   derive completion delta, rejection reduction, and time-saved summaries per client/project.
-- [ ] SALES3.2 Template-driven report generation:
+- [x] SALES3.2 Template-driven report generation:
   backend templating for standardized case study narratives.
-- [ ] SALES3.3 Export outputs:
+- [x] SALES3.3 Export outputs:
   PDF generation + shareable link support.
 - [ ] SALES3.4 Performance target (phase 3):
   PDF generation <5 sec target.
@@ -316,7 +488,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### Client P1 - Executive visibility and trust
 
-- [ ] CLIENT1.1 Executive dashboard panel:
+- [x] CLIENT1.1 Executive dashboard panel:
   show:
   - overall completion %
   - target rating
@@ -324,22 +496,22 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   - projects at risk
   - token balance
   with sub-30-second readability.
-- [ ] CLIENT1.2 Portfolio overview:
+- [x] CLIENT1.2 Portfolio overview:
   show total/completed/in-progress/delayed projects in one view.
-- [ ] CLIENT1.3 Token wallet transparency:
+- [x] CLIENT1.3 Token wallet transparency:
   show loaded/used/remaining/weekly usage with clear provenance from ledger.
-- [ ] CLIENT1.4 Efficiency metrics panel:
+- [x] CLIENT1.4 Efficiency metrics panel:
   show rejection rate, avg tokens/project, first-pass approval rate.
 
 ### Client P2 - Risk, forecasting, and drilldowns
 
-- [ ] CLIENT2.1 Project risk engine:
+- [x] CLIENT2.1 Project risk engine:
   compute RAG risk from pending uploads, rejections, inactivity, and token balance.
-- [ ] CLIENT2.2 Forecasting outputs:
+- [x] CLIENT2.2 Forecasting outputs:
   estimated completion and projected rating at project + portfolio level.
-- [ ] CLIENT2.3 Restricted drilldown mode:
+- [x] CLIENT2.3 Restricted drilldown mode:
   allow only project-level completion/pending/rejections for client role.
-- [ ] CLIENT2.4 Enforce document-level restriction:
+- [x] CLIENT2.4 Enforce document-level restriction:
   block client access to document-level internal review screens/details.
 
 ### Client P3 - Reports and alerts
@@ -514,18 +686,18 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ### 6. Dashboard
 
-- [ ] Compute counts (all states).
-- [ ] Calculate progress %.
-- [ ] Implement risk flags (basic rules).
-- [ ] Build API: dashboard aggregation.
+- [x] Compute counts (all states).
+- [x] Calculate progress %.
+- [x] Implement risk flags (basic rules).
+- [x] Build API: dashboard aggregation.
 
 ### 7. Export System
 
-- [ ] Include only `APPROVED` + `is_latest` documents.
-- [ ] XLSX generation.
-- [ ] PDF summary generation.
-- [ ] ZIP structured export.
-- [ ] Block export if mandatory credits not approved.
+- [x] Include only `APPROVED` + `is_latest` documents.
+- [x] XLSX generation.
+- [x] PDF summary generation.
+- [x] ZIP structured export.
+- [x] Block export if mandatory credits not approved.
 
 ### 8. Audit Logs
 
@@ -535,7 +707,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   - review
   - transitions
   - export
-- [ ] Build timeline UI.
+- [x] Build timeline UI.
 
 ## P0 UX Epics (Client Experience Vision, highest priority)
 
@@ -624,7 +796,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   uploads today, failed transactions, pending reviews, active users.
 - [x] L5 critical alert baseline:
   low-wallet and queue/anomaly alerts surfaced in super-user panel.
-- [ ] Notifications:
+- [x] Notifications:
   email/WhatsApp style alerts for rejection, resubmission, pending-review aging, and low-token warnings.
 - [x] Session continuity:
   reduce unwanted session drops/logouts for low-frequency users.
@@ -647,7 +819,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   enable vendor doc reuse suggestions by vendor + doc type history.
 - [x] Architect scope readiness:
   role-scoped progress card (`completed`, `incomplete`, `rejected`) for assigned architect credits only.
-- [ ] Architect notification rules:
+- [x] Architect notification rules:
   actionable reject/missing/completion notifications without spam.
 
 ## Priority 1 - Production blockers (must close before release)
