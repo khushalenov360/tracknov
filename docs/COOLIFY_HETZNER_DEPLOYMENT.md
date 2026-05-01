@@ -53,9 +53,19 @@ Required Supabase values:
 
 Optional AI values:
 
-- `GEMINI_API_KEY`
-- `AI_PROVIDER=gemini`
-- `AI_MODEL=gemini-2.5-flash`
+- `AI_PROVIDER=auto`
+- `DOUBLEWORD_API_KEYS`
+- `DOUBLEWORD_MODEL=Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+- `GEMINI_API_KEYS`
+- `GEMINI_MODEL=gemini-2.5-flash`
+- `GROQ_API_KEYS`
+- `GROQ_MODEL=llama-3.3-70b-versatile`
+- `OPENROUTER_API_KEYS`
+- `OPENROUTER_MODEL=openai/gpt-4o-mini`
+
+AI keys can be comma-separated. Tracknov tries Doubleword first, then Gemini,
+then Groq, then OpenRouter. If one key or provider fails, the assistant tries
+the next configured option.
 
 ## 4. Coolify application
 

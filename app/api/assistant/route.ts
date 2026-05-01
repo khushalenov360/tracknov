@@ -16,11 +16,32 @@ type AssistantRequest = {
   messages?: AssistantMessage[];
 };
 
+type AiProvider = "doubleword" | "gemini" | "groq" | "openrouter";
+
+type ProviderAttempt = {
+  provider: AiProvider;
+  model: string;
+  apiKey: string;
+};
+
 function toGeminiContents(messages: AssistantMessage[]) {
   return messages.map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
     parts: [{ text: message.content }],
   }));
+}
+
+function toChatMessages(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
+  return [
+    {
+      role: "system",
+      content: buildAssistantSystemPrompt(context, workspaceSnapshot),
+    },
+    ...messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  ];
 }
 
 function extractText(responseData: any) {
@@ -53,6 +74,35 @@ function createResponseStream(textStream: ReadableStream<Uint8Array>) {
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+function buildProviderAttempts() {
+  const configuredOrder: AiProvider[] = ["doubleword", "gemini", "groq", "openrouter"];
+  const requestedProvider = env.aiProvider.toLowerCase();
+  const order = configuredOrder.includes(requestedProvider as AiProvider)
+    ? [requestedProvider as AiProvider, ...configuredOrder.filter((provider) => provider !== requestedProvider)]
+    : configuredOrder;
+
+  const keysByProvider: Record<AiProvider, string[]> = {
+    doubleword: env.doublewordApiKeys,
+    gemini: env.geminiApiKeys,
+    groq: env.groqApiKeys,
+    openrouter: env.openRouterApiKeys,
+  };
+  const modelByProvider: Record<AiProvider, string> = {
+    doubleword: env.doublewordModel,
+    gemini: env.geminiModel,
+    groq: env.groqModel,
+    openrouter: env.openRouterModel,
+  };
+
+  return order.flatMap((provider) =>
+    keysByProvider[provider].map((apiKey) => ({
+      provider,
+      model: modelByProvider[provider],
+      apiKey,
+    })),
+  );
 }
 
 type ProjectRow = {
@@ -192,12 +242,17 @@ async function getWorkspaceSnapshot() {
   return { user, role: resolvedRole, projectIds, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
 }
 
-async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:streamGenerateContent?alt=sse`, {
+async function createGeminiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+) {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-api-key": env.geminiApiKey,
+      "x-goog-api-key": attempt.apiKey,
     },
     body: JSON.stringify({
       systemInstruction: {
@@ -292,6 +347,138 @@ async function createGeminiStream(context: AssistantContext, messages: Assistant
   });
 }
 
+function openAiCompatibleEndpoint(provider: AiProvider) {
+  if (provider === "doubleword") {
+    return "https://api.doubleword.ai/v1/chat/completions";
+  }
+  if (provider === "groq") {
+    return "https://api.groq.com/openai/v1/chat/completions";
+  }
+  if (provider === "openrouter") {
+    return "https://openrouter.ai/api/v1/chat/completions";
+  }
+  throw new Error(`Unsupported OpenAI-compatible provider: ${provider}`);
+}
+
+async function createOpenAiCompatibleStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${attempt.apiKey}`,
+  };
+
+  if (attempt.provider === "openrouter") {
+    headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
+    headers["X-Title"] = "Tracknov";
+  }
+
+  const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: attempt.model,
+      messages: toChatMessages(context, messages, workspaceSnapshot),
+      temperature: 0.4,
+      max_tokens: 500,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = "";
+
+      const processEvent = (eventBlock: string) => {
+        const dataLines = eventBlock
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim());
+
+        for (const line of dataLines) {
+          if (!line || line === "[DONE]") {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(line) as any;
+            const text = parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? "";
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          } catch {
+            // Ignore malformed chunks and keep streaming.
+          }
+        }
+      };
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          let separatorIndex = buffer.indexOf("\n\n");
+          while (separatorIndex !== -1) {
+            const eventBlock = buffer.slice(0, separatorIndex).trim();
+            buffer = buffer.slice(separatorIndex + 2);
+            if (eventBlock) {
+              processEvent(eventBlock);
+            }
+            separatorIndex = buffer.indexOf("\n\n");
+          }
+        }
+
+        const tail = buffer.trim();
+        if (tail) {
+          processEvent(tail);
+        }
+
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+}
+
+async function createAiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
+  const attempts = buildProviderAttempts();
+
+  for (const attempt of attempts) {
+    try {
+      const stream =
+        attempt.provider === "gemini"
+          ? await createGeminiStream(context, messages, workspaceSnapshot, attempt)
+          : await createOpenAiCompatibleStream(context, messages, workspaceSnapshot, attempt);
+
+      if (stream) {
+        return stream;
+      }
+    } catch (error) {
+      console.warn(`[Assistant] ${attempt.provider} failed; trying next configured AI key/provider.`, error);
+    }
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   let body: AssistantRequest;
 
@@ -330,7 +517,7 @@ export async function POST(request: Request) {
     : "No RAG matches found for current query.";
   const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot].join("\n");
 
-  if (!env.geminiApiKey) {
+  if (!env.aiReady) {
     return createResponseStream(
       createTextStream(
         [
@@ -352,7 +539,7 @@ export async function POST(request: Request) {
         "Responses must be grounded in the workspace snapshot attached in system instructions.",
       ],
     };
-    const geminiStream = await createGeminiStream(
+    const aiStream = await createAiStream(
       {
         ...enrichedContext,
         summary: context.summary,
@@ -360,8 +547,8 @@ export async function POST(request: Request) {
       messages,
       combinedSnapshot,
     );
-    if (geminiStream) {
-      return createResponseStream(geminiStream);
+    if (aiStream) {
+      return createResponseStream(aiStream);
     }
   } catch {
     // Fall through to the local fallback.

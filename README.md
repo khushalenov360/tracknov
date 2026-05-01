@@ -88,9 +88,15 @@ Required Vercel environment variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `GEMINI_API_KEY` (if AI Copilot should be active in production)
-- `AI_PROVIDER` (default `gemini`)
-- `AI_MODEL` (default `gemini-2.5-flash`)
+- `AI_PROVIDER=auto`
+- `DOUBLEWORD_API_KEYS` for primary AI Copilot capacity
+- `GEMINI_API_KEYS` for fallback AI Copilot capacity
+- `GROQ_API_KEYS` for fallback AI Copilot capacity
+- `OPENROUTER_API_KEYS` for fallback AI Copilot capacity
+
+AI keys can be comma-separated. Tracknov tries providers in this order by default:
+Doubleword, Gemini, Groq, then OpenRouter. If one key or provider fails, the
+assistant automatically tries the next configured option.
 
 Recommended pre-deploy steps:
 
