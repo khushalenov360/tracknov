@@ -3,6 +3,7 @@ ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_hash TEXT;
 
 -- Index for fast lookup
 CREATE INDEX IF NOT EXISTS idx_documents_file_hash ON documents(file_hash);
+CREATE INDEX IF NOT EXISTS idx_token_transactions_project_id ON client_token_transactions(project_id);
 
 -- Update the RPC to include file_hash
 CREATE OR REPLACE FUNCTION insert_document_and_consume_tokens(
@@ -80,7 +81,7 @@ BEGIN
   END IF;
 
   -- Record transaction
-  INSERT INTO token_transactions (
+  INSERT INTO client_token_transactions (
     client_id,
     project_id,
     user_id,

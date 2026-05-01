@@ -10,7 +10,8 @@ create table if not exists public.rating_systems (
 );
 
 alter table public.credits
-  add column if not exists rating_system_id uuid references public.rating_systems(id) on delete set null;
+  add column if not exists rating_system_id uuid references public.rating_systems(id) on delete set null,
+  add column if not exists rating_system text;
 
 do $$
 begin

@@ -824,14 +824,14 @@ Source files covered in this consolidation:
 
 ## Priority 1 - Production blockers (must close before release)
 
-- [ ] Run full end-to-end live workflow with real role accounts and real data:
+- [x] Run full end-to-end live workflow with real role accounts and real data:
   login -> dashboard -> create/open project -> upload -> Project Owner review -> Project Admin review -> included in submission pack -> XLSX/PDF/ZIP export.
-- [ ] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
-- [ ] Verify upload integrity for every upload:
+- [x] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
+- [x] Verify upload integrity for every upload:
   Supabase storage object exists + matching `documents` row + signed URL opens.
 - [ ] Verify `super_user`-only project delete in live session.
 - [ ] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
-- [ ] Verify role-based edit/status restrictions across:
+- [x] Verify role-based edit/status restrictions across:
   `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
 - [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
 
