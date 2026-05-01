@@ -1,7 +1,56 @@
 # Tracknov TODO (Pending Items Only)
 
-Last updated: 2026-05-01 IST  
-Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
+Last updated: 2026-05-02 IST  
+Baseline: `tracknov-project-plan.md` + `TechLead_Developer_Handoff.md`
+
+## Final Alignment - TechLead Handoff (V3 Hardening)
+
+### DB Schema Hardening
+- [x] **Table Name Standardization**: Align with TechLead Charter (singular names):
+  - Rename `rating_systems` -> `rating_system`
+  - Rename `credit_categories` -> `credit_category`
+  - Rename `credit_templates` -> `credit_template`
+  - Rename `documents` -> `project_document`
+- [x] **Field Name Standardization**: Use `state` instead of `status` across all entities:
+  - `project.state` (Done)
+  - `project_credit.state` (Done)
+  - `project_document.state` (Done)
+- [x] **Core Mapping Strictness**:
+  - Ensure `project_credit` has mandatory `credit_template_id`, `credit_code`, `category_name`, `max_points`, `is_review_required`.
+  - Ensure `project_document` has mandatory `project_credit_id` and tracks `version_number`, `is_latest`.
+- [x] **Audit Consolidation**:
+  - Consolidate all activity/state logs into `workflow_logs`.
+  - Add `is_override` and `override_reason` to `workflow_logs`.
+
+### UI Flow & Screen Mapping
+- [x] **Project Creation**: Select rating system -> Auto-create `project_credit` instances from templates.
+- [x] **Credit Module**: Grouping by category in UI.
+- [x] **Analytics**: Implement category contribution charts and credit recommendations.
+- [x] **Locking**: Post-submission read-only enforcement with Admin override logic.
+
+### Critical Rules Enforcement
+- [x] **No Direct Template Usage**: Block direct references to `credit_template` in production flows.
+- [x] **No Floating Documents**: Block any document upload without a valid `project_credit_id`.
+- [x] **No Manual Credits**: Block manual creation of credits; must be instantiated via rating system templates.
+- [x] **Workflow Integrity**: Final pass to ensure all state transitions are DB-enforced.
+
+## Final Charter - TechLead Layer (V3 Hardening)
+
+- [x] HF-TL1.0 IGBC Master Library layer:
+  - Rating Systems table with versioning (`rating_systems`)
+  - Standardized Credit Templates (`credit_templates`)
+  - Automated project credit instantiation from templates
+- [x] HF-TL1.1 Workflow State Hardening:
+  - Deterministic state machine (`DRAFT`, `ASSIGNED`, `IN_PROGRESS`, `SUBMITTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `CLOSED`)
+  - State integrity guards in `CreditService`
+- [x] HF-TL1.2 Dependency & Lock Rules:
+  - Document revised -> Credit flagged `REVIEW_REQUIRED`
+  - Approved credit -> revert to `UNDER_REVIEW` if new evidence added
+  - Approved docs immutable (block delete/edit)
+  - Trigger: `SUBMITTED_TO_IGBC` -> Full project lock
+- [x] HF-TL1.3 Legacy Backfill & Migration:
+  - Map existing `credits` to new `rating_systems` via migration
+  - Sync workflow states for historical data
 
 ## Master Consolidation - All Handoff Files Coverage
 
@@ -23,6 +72,8 @@ Source files covered in this consolidation:
 - `TokenEngine_Developer_Handoff.md`
 - `users_developerhandoff.md`
 - `DEVELOPER_HANDOFF_MVP.md`
+- `Demo_mode_developer_handoff.md`
+- `PM_Developer_Handoff.md`
 
 ### P0 - Mandatory architecture enforcement from handoffs
 
@@ -926,4 +977,137 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 - [x] Weeks 1-3 (Foundation): close `C1`, `C4`, `H1`.
 - [x] Weeks 4-6 (AI Foundation): close `C3` baseline and capture rejection patterns.
 - [x] Weeks 7-9 (Intelligence): close `H4`, `M3`, and client/admin forecast widgets.
-- [x] Weeks 10-12 (Scale): close `C2`, `M2`, and performance/observability hardening.
+
+---
+
+## Tracknov Copilot V2 - Adaptive Intelligence Engine (COMPLETE)
+
+Mapped to `Ai developerhandoff.md` V2 Update.
+
+### Copilot V2 - Foundation & Greeting
+- [x] V2.COP1.1 Implementation of `/api/me` for personal identity retrieval.
+- [x] V2.COP1.2 Personalized Greeting Engine: migrate from role-based ("Hi Super User") to name-based ("Hi Khush").
+- [x] V2.COP1.3 Fallback greeting logic ("Hi there 👋") when name is unavailable.
+
+### Copilot V2 - Adaptive Tone Engine (ATE)
+- [x] V2.COP2.1 User Behavior Tracking: capture query length, session frequency, rejection rate, and interaction patterns.
+- [x] V2.COP2.2 DB Schema: implement `user_behavior` table for usage scores and error rates.
+- [x] V2.COP2.3 Tone Mode Logic: implement "Executive", "Operator", and "Power" mode selection based on behavior/role.
+- [x] V2.COP2.4 UI Controls: add tone override selector (Executive | Guided | Fast) in the Copilot panel.
+
+### Copilot V2 - System & Live Data Awareness
+- [x] V2.COP3.1 Strict System Awareness: inject platform rules, workflow definitions, and token logic into prompt context.
+- [x] V2.COP3.2 Live Data Integration: connect Copilot function calling to `/api/wallet`, `/api/projects`, `/api/documents`, and `/api/reviews`.
+- [x] V2.COP3.3 Standardized Response Format: enforce "Hi [Name] -> Answer -> Data -> Recommendation" structure.
+
+### Copilot V2 - Document Intelligence Integration
+- [x] V2.COP4.1 Pre-submission Document Summary: automated summary generation for uploaded files.
+- [x] V2.COP4.2 Relevance & Completeness Check: AI-driven validation against credit requirements.
+- [x] V2.COP4.3 Risk Flagging: detect missing elements or low-relevance uploads before final submission.
+
+### Copilot V2 - Performance & Security
+- [x] V2.COP5.1 Response Time Hardening: ensure <2s response for non-heavy processing.
+- [x] V2.COP5.2 RBAC Enforcement: ensure Copilot respects role-based data isolation during data fetching.
+- [x] V2.COP5.3 Cross-project leakage prevention: strict project-context isolation for retrieval queries.
+
+---
+
+## Tracknov Copilot V3 - Product Expert + Secure AI Engine (COMPLETE)
+
+Mapped to `Ai developerhandoff.md` V3 Final.
+
+### Copilot V3 - Knowledge & Logic
+- [x] V3.COP1.1 Centralized Tracknov Knowledge Base (Features, Workflows, Billing).
+- [x] V3.COP1.2 Intent Classification Layer (billing, workflow, feature_explanation, etc.).
+- [x] V3.COP1.3 Deterministic Routing Engine: prioritizing system rules and live data over AI reasoning.
+- [x] V3.COP1.4 System Rules Injection: hard-coding token costs and workflow steps.
+
+### Copilot V3 - Security & Compliance
+- [x] V3.COP2.1 Non-Disclosure Layer: blocking source code, schema, and API leaks.
+- [x] V3.COP2.2 RAG Usage Policy: restricting RAG to IGBC documentation only.
+- [x] V3.COP2.3 Failsafe Logic: bypass LLM when system rules exist or API data is available.
+
+---
+
+---
+
+## Demo Mode V2 - Guided Experience (V3 Hardening) (COMPLETE)
+
+### Foundation & Dataset
+- [x] **Demo Landing Modal**: Implement "Start Guided Demo?" modal for `demo@enov360.com` on login.
+- [x] **Demo Dataset Seeding**:
+  - [x] 15–20 credits across various categories.
+  - [x] 40–60 documents in mixed states.
+  - [x] 8–10 structured rejections with specific reasons.
+  - [x] 3 credits in "Delay Risk" or "Critical" state.
+- [x] **One-Click Reset**: Implement "Reset Demo" button to restore dataset to baseline.
+
+### 8-Step Guided Walkthrough (Tooltip Engine)
+- [x] **Tooltip Engine**: Position-aware overlays with arrows and Next/Back/Skip controls.
+- [x] **Step 1: Portfolio Dashboard**: Highlight completion % and risk indicators.
+- [x] **Step 2: Project Detail**: Highlight credit status grid.
+- [x] **Step 3: Pending Work**: Highlight filtered pending credits list.
+- [x] **Step 4: Simulated Upload**: Guided interaction for document upload.
+- [x] **Step 5: Review Workflow**: Highlight Approve/Reject action buttons.
+- [x] **Step 6: Rejection Insight**: Highlight rejection reasons and corrective guidance.
+- [x] **Step 7: Executive Dashboard**: Highlight portfolio-wide risk/completion cards.
+- [x] **Step 8: Token/Cost View**: Highlight token usage and burn rate.
+
+### Interaction & Control
+- [x] **Demo Control Panel**: Fixed top-right widget (Exit, Restart, Progress Step X/8).
+- [x] **Action Restrictions**: Disable destructive actions (Delete Project, Permanent Edits) during demo.
+- [x] **Semi-Guided Navigation**: Allow exploration while keeping "Next Step" visible.
+
+### Performance & Security
+- [x] **Performance Hardening**:
+  - [x] Step transition < 300ms.
+  - [x] Tooltip rendering: Instant.
+- [x] **Context Isolation**: Ensure demo user is strictly isolated from production client data.
+
+---
+
+## Security & Access Control - Demo Mode Hardening (COMPLETE)
+
+### Demo Mode Restriction
+- [x] DMC1.1 Identity-based gating: Restricted "Demo Mode" and walkthroughs exclusively to `demo@enov360.com`.
+- [x] DMC1.2 Global UI cleanup: Removed "Guided demo mode" and "Demo" navigation links from all other authorized roles.
+- [x] DMC1.3 Server-side action hardening: Updated `setDemoModeAction` to block unauthorized users.
+- [x] DMC1.4 Identity verification: Resolved login issues and provisioned the `demo@enov360.com` account with appropriate permissions.
+
+---
+
+---
+
+## Project Assignment & Access System (PM Handoff)
+
+### DB & Identity
+- [ ] **Project Identity**: Implement `project_code` field in `projects` table (UNIQUE, format `TN-{PROJECT}-{001}`).
+- [ ] **Membership Schema**: Ensure `project_users` (or `project_members`) table matches handoff:
+  - `user_id`, `project_id`, `role` (L0-L5).
+  - UNIQUE constraint on `(user_id, project_id)`.
+  - Proper indexing on `user_id` and `project_id`.
+
+### APIs & Access Gating
+- [ ] **Invite API**: Implement `POST /api/project/invite` (Project ID, Email, Role).
+- [ ] **Join API**: Implement `POST /api/project/join` (using `project_code`).
+- [ ] **My Projects**: Implement `GET /api/my-projects` for user-specific project list.
+- [ ] **Access Gate Hardening**:
+  - [ ] Validate project membership on ALL action paths.
+  - [ ] Enforce role-based action guards (e.g., L0 can move DRAFT -> READY).
+  - [ ] Block unauthorized cross-project data access.
+
+### UI & Workflow
+- [ ] **Join Experience**: UI for joining a project via human-readable code.
+- [ ] **Management UI**:
+  - [ ] Invite User modal/form.
+  - [ ] My Projects dashboard/list.
+- [ ] **Audit Logs**: Ensure invite, join, and role assignment actions are logged in `activity_logs`.
+
+### Acceptance Verification
+- [ ] Verify user joins via code -> appears in `project_users`.
+- [ ] Verify role enforcement (e.g., L2 cannot upload/submit).
+- [ ] Verify token deduction blocked for invalid membership.
+
+---
+
+**End of TODO**

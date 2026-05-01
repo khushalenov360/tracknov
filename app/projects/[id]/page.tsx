@@ -194,7 +194,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       role={workspace.userRole}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
-      <section className="mb-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+      <section id="pending-list" className="mb-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
         {categoryProgress.map((item) => {
           const meta = categoryMeta[item.key as keyof typeof categoryMeta];
           return (
@@ -339,7 +339,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           </div>
         </aside>
 
-        <section className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <section id="credit-grid" className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="flex flex-col gap-3 border-b border-[var(--color-border)] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Credit tracker</h2>

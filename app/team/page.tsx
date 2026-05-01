@@ -100,7 +100,7 @@ export default async function TeamPage() {
             Multi-client control, token economy, system health, and override actions.
           </p>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div id="token-usage" className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens sold</p>
               <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.totalTokensSold}</p>

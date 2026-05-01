@@ -13,18 +13,19 @@ export const revalidate = 0;
 
 export default async function DemoPage() {
   const [user, projects] = await Promise.all([getCurrentUser(), getDashboardProjects()]);
-  const canControlDemo = ["super_user", "super_admin", "project_admin"].includes(user?.role ?? "");
+  const canControlDemo = user?.email?.toLowerCase() === "demo@enov360.com";
   const cookieStore = cookies();
   const demoOn = cookieStore.get("tracknov_demo_mode")?.value === "1";
   const steps = getDemoWalkthrough();
   const summary = getDemoDatasetSummary();
 
-  if (!canControlDemo || !env.demoModeEnabled) {
+  if (!canControlDemo) {
     return (
       <Shell
         title="Demo Mode"
         description="Guided walkthrough workspace."
         role={user?.role ?? "consultant"}
+        email={user?.email}
         notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
       >
         <section className="surface-card p-4">
@@ -41,6 +42,7 @@ export default async function DemoPage() {
       title="Demo Mode"
       description="Sandbox walkthrough for sales demos and onboarding."
       role={user?.role ?? "consultant"}
+      email={user?.email}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
       <section className="surface-card p-4">

@@ -7,6 +7,7 @@ import { logDocumentActivity } from "./activity-service";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { recordDocumentReviewEvent } from "./review-service";
 import { aiService } from "./ai-service";
+import { documentIntelligenceService } from "./document-intelligence-service";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 
@@ -17,7 +18,7 @@ export class DocumentService {
   private async getActorProjectRole(projectId: string, user: CurrentUser) {
     if (user.role === "super_user") return "super_user";
     const { data: membership } = await this.client
-      .from("project_members")
+      .from("project_users")
       .select("role")
       .eq("project_id", projectId)
       .eq("user_id", user.id)
@@ -28,7 +29,7 @@ export class DocumentService {
 
   private async getClientUserForProject(projectId: string) {
     const { data } = await this.admin
-      .from("project_members")
+      .from("project_users")
       .select("user_id")
       .eq("project_id", projectId)
       .eq("role", "client")
@@ -100,13 +101,13 @@ export class DocumentService {
 
     // Duplicate check
     const { data: duplicate } = await this.admin
-      .from("documents")
+      .from("project_document")
       .select("id")
       .eq("project_id", params.projectId)
       .eq("project_credit_id", projectCreditId)
       .eq("doc_category", params.docCategory)
       .ilike("file_name", params.file.name)
-      .in("status", ["uploaded", "owner_approved", "approved"])
+      .in("state", ["READY", "SUBMITTED", "UNDER_REVIEW", "APPROVED"])
       .limit(1)
       .maybeSingle();
 
@@ -116,7 +117,7 @@ export class DocumentService {
 
     // Versioning
     const { data: latestVersion } = await this.admin
-      .from("documents")
+      .from("project_document")
       .select("id, version")
       .eq("project_id", params.projectId)
       .eq("project_credit_id", projectCreditId)
@@ -158,7 +159,7 @@ export class DocumentService {
       p_file_type: extension,
       p_doc_category: params.docCategory,
       p_notes: mergedNotes,
-      p_status: "uploaded",
+      p_state: "DRAFT",
       p_version: nextVersion,
       p_is_latest: true,
       p_parent_document_id: latestVersion?.id ?? null,
@@ -231,6 +232,11 @@ export class DocumentService {
         actionUrl: "/team",
       });
     }
+
+    // Trigger Document Intelligence Analysis (V2 Update)
+    void documentIntelligenceService.analyzeDocument(documentId).catch((err) => {
+      console.error("Failed to trigger document intelligence", err);
+    });
     
     // Emit Event
     await eventBus.emit({
@@ -256,7 +262,7 @@ export class DocumentService {
     if (!actorRole) throw new Error("Unauthorized.");
 
     const { data: document } = await this.client
-      .from("documents")
+      .from("project_document")
       .select("*")
       .eq("id", params.documentId)
       .maybeSingle();
@@ -266,8 +272,8 @@ export class DocumentService {
     }
 
     const workflowState = String(document.workflow_state ?? "DRAFT").toUpperCase();
-    if (workflowState === "SUBMITTED" || workflowState === "UNDER_REVIEW") {
-      throw new Error("Document is locked for review.");
+    if (workflowState === "SUBMITTED" || workflowState === "UNDER_REVIEW" || workflowState === "APPROVED") {
+      throw new Error("Document is locked and cannot be modified.");
     }
 
     const editWindowState = workflowState === "DRAFT" || workflowState === "CLARIFICATION";
@@ -279,9 +285,9 @@ export class DocumentService {
     }
 
     const { error } = await this.admin
-      .from("documents")
+      .from("project_document")
       .update({
-        credit_id: params.creditId,
+        project_credit_id: params.creditId,
         doc_category: params.docCategory,
         notes: params.notes,
       })
@@ -321,7 +327,7 @@ export class DocumentService {
     if (!actorRole) throw new Error("Unauthorized.");
 
     const { data: document } = await this.client
-      .from("documents")
+      .from("project_document")
       .select("*")
       .eq("id", params.documentId)
       .maybeSingle();
@@ -330,8 +336,13 @@ export class DocumentService {
       throw new Error("Document not found.");
     }
 
+    const workflowState = String(document.workflow_state ?? "DRAFT").toUpperCase();
+    if (workflowState === "APPROVED" && !["super_user", "super_admin"].includes(actorRole)) {
+      throw new Error("Approved documents can only be deleted by Super Users.");
+    }
+
     const canAdminDelete = ["super_user", "super_admin", "project_admin"].includes(actorRole);
-    const canOwnWithdraw = document.uploaded_by === user.id && document.status === "uploaded" && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
+    const canOwnWithdraw = document.uploaded_by === user.id && document.state === "DRAFT" && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
 
     if (!canAdminDelete && !canOwnWithdraw) {
       throw new Error("Unauthorized: Insufficient permissions to delete document.");
@@ -360,7 +371,7 @@ export class DocumentService {
       summary: `Deleted document ${document.file_name}.`,
     });
 
-    const { error } = await this.admin.from("documents").delete().eq("id", params.documentId);
+    const { error } = await this.admin.from("project_document").delete().eq("id", params.documentId);
     if (error) throw error;
 
     // Emit Event
@@ -384,12 +395,12 @@ export class DocumentService {
     if (!actorRole) throw new Error("Unauthorized.");
 
     const { data: document } = await this.client
-      .from("documents")
+      .from("project_document")
       .select("*")
       .eq("id", params.documentId)
       .maybeSingle();
 
-    if (!document || document.project_id !== params.projectId || document.workflow_state !== "CLARIFICATION") {
+    if (!document || document.project_id !== params.projectId || document.state !== "CLARIFICATION") {
       throw new Error("Document cannot be resubmitted at this stage.");
     }
 
@@ -413,7 +424,7 @@ export class DocumentService {
     if (!transition.ok) throw new Error(transition.error);
 
     const nextNotes = [document.notes ?? "", params.resubmitNote ? `Resubmission note: ${params.resubmitNote}` : ""].filter(Boolean).join("\n\n");
-    await this.admin.from("documents").update({ notes: nextNotes }).eq("id", params.documentId);
+    await this.admin.from("project_document").update({ notes: nextNotes }).eq("id", params.documentId);
   }
 }
 

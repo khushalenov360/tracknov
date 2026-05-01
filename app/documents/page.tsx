@@ -51,7 +51,9 @@ export default async function DocumentsPage({
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
       {uploadProjects.length ? (
-        <GeneralUploadDocumentForm projects={uploadProjects} />
+        <div id="upload-zone">
+          <GeneralUploadDocumentForm projects={uploadProjects} />
+        </div>
       ) : (
         <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">No project access</h2>
@@ -129,7 +131,7 @@ export default async function DocumentsPage({
       </section>
 
       {!clientMode && focusedRejectedDocument ? (
-        <section className="mt-4 rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-4">
+        <section id="rejection-card" className="mt-4 rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-4">
           <h2 className="text-[13px] font-semibold text-[var(--color-text-primary)]">Action needed: rejected document</h2>
           <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
             <strong>{focusedRejectedDocument.file_name}</strong> for{" "}

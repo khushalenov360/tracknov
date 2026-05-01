@@ -113,8 +113,8 @@ export class ReviewService {
     if (!actorRole) throw new Error("Unauthorized.");
 
     const { data: targetDocument } = await this.client
-      .from("documents")
-      .select("id, credit_id, doc_category, workflow_state")
+      .from("project_document")
+      .select("id, project_credit_id, doc_category, state")
       .eq("id", params.documentId)
       .maybeSingle();
 
@@ -167,12 +167,12 @@ export class ReviewService {
         ? rejectionTemplateLibrary[maybeTemplate]
         : null;
       await this.recordRejectionPattern({
-        creditId: targetDocument?.credit_id ?? null,
+        creditId: targetDocument?.project_credit_id ?? null,
         docCategory: targetDocument?.doc_category ?? null,
         rejectionReason,
         suggestedFix,
         metadata: {
-          from_state: targetDocument?.workflow_state ?? null,
+          from_state: targetDocument?.state ?? null,
           rejected_by_role: actorRole,
         },
       });
@@ -200,8 +200,8 @@ export class ReviewService {
     const results = [];
     for (const documentId of params.documentIds) {
       const { data: document } = await this.client
-        .from("documents")
-        .select("id, workflow_state, project_id, credit_id, uploaded_by, file_name, doc_category")
+        .from("project_document")
+        .select("id, state, project_id, project_credit_id, uploaded_by, file_name, doc_category")
         .eq("id", documentId)
         .maybeSingle();
 
@@ -217,8 +217,8 @@ export class ReviewService {
 
       if (params.action === "approve") {
         const nextState = canOwnerReview ? "UNDER_REVIEW" : "APPROVED";
-        if (canOwnerReview && document.workflow_state !== "SUBMITTED") continue;
-        if (canFinalReview && document.workflow_state !== "UNDER_REVIEW") continue;
+        if (canOwnerReview && document.state !== "SUBMITTED") continue;
+        if (canFinalReview && document.state !== "UNDER_REVIEW") continue;
 
         const transition = await transitionDocumentState(this.admin, {
           documentId,
@@ -257,8 +257,8 @@ export class ReviewService {
         }
       } else {
         // Reject
-        if (canOwnerReview && document.workflow_state !== "SUBMITTED") continue;
-        if (canFinalReview && document.workflow_state !== "UNDER_REVIEW") continue;
+        if (canOwnerReview && document.state !== "SUBMITTED") continue;
+        if (canFinalReview && document.state !== "UNDER_REVIEW") continue;
 
         const templateMessage = params.rejectionType ? rejectionTemplateLibrary[params.rejectionType] ?? "" : "";
         const baseMessage = params.remark || templateMessage;
@@ -287,9 +287,9 @@ export class ReviewService {
            });
 
            // Additional side effects for rejection
-           if (document.credit_id) {
+           if (document.project_credit_id) {
              await this.admin.from("remarks").insert({
-               credit_id: document.credit_id,
+               credit_id: document.project_credit_id,
                document_id: documentId,
                author_id: user.id,
                role: actorRole,
@@ -297,12 +297,12 @@ export class ReviewService {
              });
            }
            await this.recordRejectionPattern({
-             creditId: document.credit_id ?? null,
+             creditId: document.project_credit_id ?? null,
              docCategory: document.doc_category ?? null,
              rejectionReason: formattedRemark,
              suggestedFix: rejectionTemplateLibrary[params.rejectionType] ?? null,
              metadata: {
-               from_state: document.workflow_state,
+               from_state: document.state,
                rejected_by_role: actorRole,
                bulk_action: true,
              },
@@ -311,7 +311,7 @@ export class ReviewService {
            if (document.uploaded_by) {
              await this.admin.from("notifications").insert({
                project_id: document.project_id,
-               credit_id: document.credit_id,
+               project_credit_id: document.project_credit_id,
                document_id: documentId,
                user_id: document.uploaded_by,
                body: `Document sent back: ${formattedRemark}`,
@@ -357,15 +357,15 @@ export class ReviewService {
 
     const { error } = await this.admin
       .from("projects")
-      .update({ status: "submitted", updated_at: new Date().toISOString() })
+      .update({ state: "SUBMITTED", updated_at: new Date().toISOString() })
       .eq("id", projectId);
 
     if (error) throw error;
 
     await eventBus.emit({
-      type: "REVIEW_COMPLETED", // Reusing for project level status change or define new
+      type: "REVIEW_COMPLETED", 
       payload: {
-        documentId: "", // Dummy for now
+        documentId: "",
         projectId,
         status: "SUBMITTED_FOR_CERTIFICATION",
         userId: user.id,
@@ -378,7 +378,7 @@ export class ReviewService {
   private async getActorProjectRole(projectId: string, user: CurrentUser) {
     if (user.role === "super_user") return "super_user";
     const { data: membership } = await this.client
-      .from("project_members")
+      .from("project_users")
       .select("role")
       .eq("project_id", projectId)
       .eq("user_id", user.id)

@@ -3,17 +3,19 @@ import {
   createProjectTopupInvoiceAction,
   createProjectAction,
   deleteProjectAction,
+  joinProjectAction,
   logConsultantSessionAction,
   updateProjectAction,
   updateProjectPlanSettingsAction,
 } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
+import { DemoLandingModal } from "@/components/demo/demo-landing-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { igbcRatingSystemGroups, projectStatuses, projectTypes, roleLabels } from "@/lib/constants";
-import { getActiveSubscriptionPlans, getCurrentUser, getDashboardProjects } from "@/lib/data";
+import { getActiveSubscriptionPlans, getCurrentUser, getDashboardProjects, getRatingSystems } from "@/lib/data";
 import { canCreateProjects, canDeleteProjects, canManageProject } from "@/lib/rbac";
 import { pct } from "@/lib/utils";
 
@@ -24,7 +26,12 @@ export const revalidate = 0;
 
 export default async function ProjectsPage() {
   cookies();
-  const [user, projects, plans] = await Promise.all([getCurrentUser(), getDashboardProjects(), getActiveSubscriptionPlans()]);
+  const [user, projects, plans, ratingSystems] = await Promise.all([
+    getCurrentUser(),
+    getDashboardProjects(),
+    getActiveSubscriptionPlans(),
+    getRatingSystems(),
+  ]);
   const canCreateProject = canCreateProjects(user?.role);
   const canDeleteAnyProject = canDeleteProjects(user?.role);
   const activeRole = user?.role ?? projects[0]?.role ?? "consultant";
@@ -47,6 +54,7 @@ export default async function ProjectsPage() {
       role={activeRole}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
+      <DemoLandingModal userEmail={user?.email ?? ""} />
       {isL3OrAbove ? (
         <section className="surface-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -107,33 +115,46 @@ export default async function ProjectsPage() {
       ) : null}
 
       {canCreateProject ? (
-      <section className="surface-card mt-4 p-4">
-        <form action={createProjectAction} className="grid gap-3 xl:grid-cols-[minmax(260px,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_180px_auto]">
-          <select name="rating_system" defaultValue="IGBC Green Interiors" required className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]">
-            {igbcRatingSystemGroups.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.systems.map((system) => (
-                  <option key={system} value={system}>
-                    {system}
+        <section className="surface-card mt-4 p-4">
+          <div className="max-w-md">
+            <h3 className="text-[12px] font-medium mb-3">Create new project</h3>
+            <form action={createProjectAction} className="grid gap-3">
+              <select name="rating_system_id" required className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]">
+                <option value="">Select Rating System</option>
+                {ratingSystems.map((rs) => (
+                  <option key={rs.id} value={rs.id}>
+                    {rs.name} {rs.version}
                   </option>
                 ))}
-              </optgroup>
-            ))}
-          </select>
-          <Input name="name" placeholder="Project name" required />
-          <Input name="client" placeholder="Client" required />
-          <Input name="location" placeholder="Location" required />
-          <Button type="submit" className="h-[34px] rounded-md px-4">
-            New project
-          </Button>
-          <input type="hidden" name="project_type" value="commercial" />
-          <input type="hidden" name="status" value="active" />
-          <input type="hidden" name="green_certification" value="IGBC" />
-          <input type="hidden" name="igbc_variant" value="new" />
-          <input type="hidden" name="target_rating" value="Certified" />
-        </form>
-      </section>
+              </select>
+              <Input name="name" placeholder="Project name" required />
+              <div className="grid grid-cols-2 gap-3">
+                <Input name="client" placeholder="Client" required />
+                <Input name="location" placeholder="Location" required />
+              </div>
+              <Button type="submit" className="h-[34px] rounded-md px-4">
+                New project
+              </Button>
+              <input type="hidden" name="project_type" value="commercial" />
+              <input type="hidden" name="status" value="active" />
+              <input type="hidden" name="green_certification" value="IGBC" />
+              <input type="hidden" name="igbc_variant" value="new" />
+              <input type="hidden" name="target_rating" value="Certified" />
+            </form>
+          </div>
+        </section>
       ) : null}
+
+      <section className="surface-card mt-4 p-4">
+        <div className="max-w-md">
+          <h3 className="text-[12px] font-medium mb-3">Join with project code</h3>
+          <p className="text-[11px] text-[var(--color-text-secondary)] mb-4">Enter the human-readable project code (e.g. TN-DEMO-MUM-001) provided by your project admin.</p>
+          <form action={joinProjectAction} className="flex gap-2">
+            <Input name="projectCode" placeholder="TN-XXXX-XXX-000" className="uppercase" required />
+            <Button type="submit" variant="secondary" className="h-[34px]">Join</Button>
+          </form>
+        </div>
+      </section>
 
       <section className="mt-4 surface-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -167,7 +188,7 @@ export default async function ProjectsPage() {
         </div>
       </section>
 
-      <section className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+      <section id="portfolio-overview" className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
         {projects.length ? projects.map((project) => (
           <article key={project.id} className="surface-card overflow-hidden">
             <div className="h-1 bg-[var(--color-green)]" />
@@ -219,6 +240,10 @@ export default async function ProjectsPage() {
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
                   <p className="dense-label">Documents</p>
                   <p className="mono mt-1">{project.uploadedDocs}</p>
+                </div>
+                <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
+                  <p className="dense-label">Project Code</p>
+                  <p className="mono mt-1 font-bold text-[var(--color-green)]">{project.projectCode}</p>
                 </div>
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
                   <p className="dense-label">Members</p>

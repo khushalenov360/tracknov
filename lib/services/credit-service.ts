@@ -12,42 +12,42 @@ export class CreditService {
   async setCreditState(user: CurrentUser, params: {
     projectId: string;
     creditId: string;
-    action: "complete" | "blocked";
-    blockedBy?: string;
+    state: "DRAFT" | "ASSIGNED" | "IN_PROGRESS" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "CLOSED";
+    remarks?: string;
   }) {
-    if (params.action === "complete") {
+    if (params.state === "APPROVED") {
       const { data: docs } = await this.admin
-        .from("documents")
-        .select("id, workflow_state")
-        .eq("credit_id", params.creditId);
+        .from("project_document")
+        .select("id, state")
+        .eq("project_credit_id", params.creditId);
       const rows = docs ?? [];
-      const hasUnapproved = rows.some((document: any) => String(document.workflow_state ?? "").toUpperCase() !== "APPROVED");
+      const hasUnapproved = rows.some((document: any) => String(document.state ?? "").toUpperCase() !== "APPROVED");
       if (hasUnapproved) {
-        throw new Error("Cannot mark credit complete until all linked documents are approved.");
+        throw new Error("Cannot approve credit until all linked documents are approved.");
       }
     }
 
-    const payload: any = {
-      status: params.action,
-      blocked_by: params.action === "blocked" ? params.blockedBy : null,
-    };
+    // Update project_credits (the critical layer)
 
-    const { error } = await this.admin
-      .from("credits")
-      .update(payload)
-      .eq("id", params.creditId);
+    const { error: pcError } = await this.admin
+      .from("project_credits")
+      .update({ 
+        state: params.state,
+        updated_at: new Date().toISOString()
+      })
+      .eq("credit_id", params.creditId);
 
-    if (error) throw error;
+    if (pcError) throw pcError;
 
     await logSystemActivity(this.admin, {
       projectId: params.projectId,
       entityType: "credit",
       entityId: params.creditId,
-      action: params.action === "complete" ? "status_complete" : "status_blocked",
+      action: `state_${params.state.toLowerCase()}`,
       actorId: user.id,
       actorRole: user.role,
-      summary: `Marked credit as ${params.action}.`,
-      details: params.action === "blocked" ? { blocked_by: params.blockedBy } : {},
+      summary: `Transitioned credit to ${params.state}.`,
+      details: params.remarks ? { remarks: params.remarks } : {},
     });
   }
 
@@ -62,7 +62,7 @@ export class CreditService {
     }
 
     const { data: credit } = await this.client
-      .from("credits")
+      .from("project_credits")
       .select("documents_required")
       .eq("id", params.creditId)
       .maybeSingle();
@@ -80,7 +80,7 @@ export class CreditService {
     });
 
     const { error } = await this.admin
-      .from("credits")
+      .from("project_credits")
       .update({ documents_required: nextRequirements })
       .eq("id", params.creditId);
 
@@ -113,7 +113,7 @@ export class CreditService {
     const safeEffortLevel = ["easy", "moderate", "hard"].includes(params.effortLevel) ? params.effortLevel : "moderate";
 
     const { error } = await this.admin
-      .from("credits")
+      .from("project_credits")
       .update({
         what_to_submit: params.whatToSubmit,
         effort_level: safeEffortLevel,

@@ -51,25 +51,28 @@ export async function createProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const clientName = String(formData.get("client") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
-  const ratingSystem = String(formData.get("rating_system") ?? "").trim();
-  const projectType = String(formData.get("project_type") ?? "commercial");
-  const status = String(formData.get("status") ?? "active");
-  const greenCertification = String(formData.get("green_certification") ?? "IGBC");
-  const igbcVariant = String(formData.get("igbc_variant") ?? "new");
-  const targetRating = String(formData.get("target_rating") ?? "Certified");
+  const ratingSystemId = String(formData.get("rating_system_id") ?? "").trim();
+  const ratingSystemName = String(formData.get("rating_system") ?? "").trim();
 
   const user = await getCurrentUser();
   if (!user) return;
 
+  const targetRating = String(formData.get("target_rating") ?? "Certified").trim();
+  const projectType = String(formData.get("project_type") ?? "commercial").trim();
+  const status = String(formData.get("status") ?? "active").trim();
+  const greenCertification = String(formData.get("green_certification") ?? "IGBC").trim();
+  const igbcVariant = String(formData.get("igbc_variant") ?? "new").trim();
+
   try {
     const project = await projectService.createProject(user, {
       name,
-      ratingSystem,
+      ratingSystemId: ratingSystemId || undefined,
+      ratingSystemName: ratingSystemName || undefined,
       targetRating,
       clientName,
       location,
       projectType,
-      status,
+      state: status, // Map status to state in DB
       greenCertification,
       igbcVariant,
     });
@@ -81,6 +84,23 @@ export async function createProjectAction(formData: FormData) {
     redirect(`/projects/${project.id}`);
   } catch (error) {
     // Handle error
+  }
+}
+
+export async function joinProjectAction(formData: FormData) {
+  const projectCode = String(formData.get("projectCode") ?? "").trim().toUpperCase();
+  if (!projectCode) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    const project = await projectService.joinProjectByCode(user, projectCode);
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    redirect(`/projects/${project.id}`);
+  } catch (error) {
+    redirect("/projects?error=invalid_code");
   }
 }
 
@@ -743,7 +763,7 @@ export async function reassignTeamMemberAction(formData: FormData) {
 export async function setDemoModeAction(formData: FormData) {
   const enabled = String(formData.get("enabled") ?? "").trim() === "true";
   const user = await getCurrentUser();
-  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) return;
+  if (!user || user.email?.toLowerCase() !== "demo@enov360.com") return;
   const cookieStore = cookies();
   cookieStore.set("tracknov_demo_mode", enabled ? "1" : "0", {
     httpOnly: false,

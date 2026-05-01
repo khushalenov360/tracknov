@@ -79,21 +79,30 @@ const allowedTransitions: Record<WorkflowState, WorkflowState[]> = {
 
 async function hasReviewerAssigned(writer: SupabaseClient, projectId: string) {
   const { data } = await writer
-    .from("project_members")
+    .from("project_users")
     .select("id")
     .eq("project_id", projectId)
-    .in("role", ["owner", "project_admin", "super_admin", "super_user", "admin"])
+    .in("role", ["owner", "project_admin", "super_admin", "super_user"])
     .limit(1);
   return Boolean(data?.length);
 }
 
 async function hasAllRequiredDocsForCredit(writer: SupabaseClient, creditId: string) {
   const { data: credit } = await writer
-    .from("credits")
-    .select("documents_required")
+    .from("project_credits")
+    .select("credit_template_id")
     .eq("id", creditId)
     .maybeSingle();
-  const requirements = ((credit?.documents_required ?? []) as Array<{ type?: string; required?: boolean }>).filter(
+
+  if (!credit?.credit_template_id) return true;
+
+  const { data: template } = await writer
+    .from("credit_template")
+    .select("documents_required")
+    .eq("id", credit.credit_template_id)
+    .maybeSingle();
+
+  const requirements = ((template?.documents_required ?? []) as Array<{ type?: string; required?: boolean }>).filter(
     (entry) => Boolean(entry.type) && Boolean(entry.required),
   );
   if (!requirements.length) {
@@ -102,10 +111,10 @@ async function hasAllRequiredDocsForCredit(writer: SupabaseClient, creditId: str
 
   const requiredTypes = new Set(requirements.map((entry) => String(entry.type)));
   const { data: docs } = await writer
-    .from("documents")
+    .from("project_document")
     .select("doc_category")
-    .eq("credit_id", creditId)
-    .in("workflow_state", ["READY", "SUBMITTED", "UNDER_REVIEW", "RESUBMITTED", "APPROVED"]);
+    .eq("project_credit_id", creditId)
+    .in("state", ["READY", "SUBMITTED", "UNDER_REVIEW", "RESUBMITTED", "APPROVED"]);
   const presentTypes = new Set((docs ?? []).map((item: { doc_category: string }) => item.doc_category));
 
   for (const type of requiredTypes) {
@@ -141,8 +150,8 @@ export async function transitionDocumentState(
   },
 ) {
   const { data: document } = await writer
-    .from("documents")
-    .select("id, project_id, credit_id, workflow_state, status, file_name, rejection_reason")
+    .from("project_document")
+    .select("id, project_id, project_credit_id, state, file_name, rejection_reason")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -150,7 +159,7 @@ export async function transitionDocumentState(
     return { ok: false as const, error: "Document not found." };
   }
 
-  const currentState = (document.workflow_state ?? "DRAFT") as WorkflowState;
+  const currentState = (document.state ?? "DRAFT") as WorkflowState;
   const isOverride = Boolean(override);
   const normalizedOverrideReason = overrideReason?.trim() || null;
   
@@ -158,7 +167,7 @@ export async function transitionDocumentState(
   const role = String(actorRole);
   const l0Roles = ["consultant", "architect", "mep", "contractor"];
   const l1Roles = ["owner"];
-  const l2Roles = ["client"];
+  const l2Roles = ["client", "l2_reserved"];
   const l3Roles = ["project_admin", "super_admin"];
   const l5Roles = ["super_user"];
   const canStatusEditAtAnyStage = canEditDocumentStatusAtAnyStage(role as any);
@@ -175,7 +184,7 @@ export async function transitionDocumentState(
   }
 
   if (isOverride) {
-    const canOverride = ["super_user", "super_admin", "project_admin", "admin"].includes(role);
+    const canOverride = ["super_user", "super_admin", "project_admin"].includes(role);
     if (!canOverride) {
       return { ok: false as const, error: "Override is allowed only for admin roles." };
     }
@@ -194,7 +203,6 @@ export async function transitionDocumentState(
     return { ok: false as const, error: "L1 role can only perform owner-stage review actions." };
   }
   if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
-    // Note: L1 can reject, but only L3/L5 can approve.
     if (newState === "APPROVED") {
         return { ok: false as const, error: "Only L3 roles can approve documents." };
     }
@@ -205,7 +213,7 @@ export async function transitionDocumentState(
 
   // Business rules
   if (currentState === "DRAFT" && newState === "READY") {
-    const ready = await hasAllRequiredDocsForCredit(writer, document.credit_id);
+    const ready = await hasAllRequiredDocsForCredit(writer, document.project_credit_id);
     if (!ready) {
       return { ok: false as const, error: "Cannot mark READY until all required document types exist for this credit." };
     }
@@ -226,19 +234,9 @@ export async function transitionDocumentState(
     return { ok: false as const, error: "Cannot resubmit without updated evidence." };
   }
 
-  const mappedLegacyStatus =
-    newState === "APPROVED"
-      ? "approved"
-      : newState === "REJECTED"
-        ? "rejected"
-        : newState === "UNDER_REVIEW"
-          ? "owner_approved"
-          : "uploaded";
-
   // 2. Perform Update
   const payload: any = {
-    workflow_state: newState,
-    status: mappedLegacyStatus,
+    state: newState,
   };
 
   if (remarks) {
@@ -256,7 +254,7 @@ export async function transitionDocumentState(
   }
 
   const { error: updateError } = await writer
-    .from("documents")
+    .from("project_document")
     .update(payload)
     .eq("id", documentId);
 
@@ -267,11 +265,13 @@ export async function transitionDocumentState(
   // 3. Side Effects (Logging, Review Recording, Notifications)
   
   // State history
-  await writer.from("document_states").insert({
-    document_id: documentId,
+  await writer.from("workflow_logs").insert({
+    project_id: document.project_id,
+    entity_type: "document",
+    entity_id: documentId,
     state: newState,
     previous_state: currentState,
-    transition_by: userId ?? null,
+    actor_id: userId ?? null,
     is_override: isOverride,
     override_reason: normalizedOverrideReason,
   });
@@ -288,6 +288,7 @@ export async function transitionDocumentState(
 
   // Record Review Event
   if (["owner_forward", "admin_approve", "owner_reject", "admin_reject", "resubmit"].includes(reviewAction) || canStatusEditAtAnyStage) {
+    const mappedLegacyStatus = toCanonicalReviewState(newState);
     await recordDocumentReviewEvent({
         documentId,
         projectId: document.project_id,
@@ -339,7 +340,7 @@ export async function transitionDocumentState(
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
   } else if (newState === "CLARIFICATION" || newState === "REJECTED") {
-    const { data: docData } = await writer.from("documents").select("uploaded_by").eq("id", documentId).maybeSingle();
+    const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     if (docData?.uploaded_by) {
         await notifyUsers(writer, {
             projectId: document.project_id,
@@ -361,7 +362,7 @@ export async function transitionDocumentState(
         });
     }
   } else if (newState === "APPROVED") {
-    const { data: docData } = await writer.from("documents").select("uploaded_by").eq("id", documentId).maybeSingle();
+    const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     if (docData?.uploaded_by) {
         await notifyUsers(writer, {
             projectId: document.project_id,

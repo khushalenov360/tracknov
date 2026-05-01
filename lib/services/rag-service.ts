@@ -95,18 +95,18 @@ export class RAGService {
 
   async ingestApprovedDocument(documentId: string) {
     const { data: document } = await this.admin
-      .from("documents")
-      .select("id, project_id, credit_id, file_name, doc_category, notes, status")
+      .from("project_document")
+      .select("id, project_id, project_credit_id, file_name, doc_category, notes, state")
       .eq("id", documentId)
-      .eq("status", "approved")
+      .eq("state", "APPROVED")
       .maybeSingle();
 
     if (!document) return;
 
     const { data: credit } = await this.admin
-      .from("credits")
+      .from("project_credits")
       .select("credit_code, credit_name, documentation_summary, what_to_submit")
-      .eq("id", document.credit_id)
+      .eq("id", document.project_credit_id)
       .maybeSingle();
 
     const baseText = [
@@ -125,7 +125,7 @@ export class RAGService {
       metadata: {
         source: "approved_document",
         project_id: document.project_id,
-        credit_id: document.credit_id,
+        project_credit_id: document.project_credit_id,
         document_id: document.id,
         doc_category: document.doc_category,
         file_name: document.file_name,
@@ -138,14 +138,13 @@ export class RAGService {
   async ingestProjectGuidance(projectId: string) {
     const { data: credits } = await this.admin
       .from("project_credits")
-      .select("project_id, credit:credits(id, credit_code, credit_name, what_to_submit, documentation_summary)")
+      .select("project_id, id, credit_code, credit_name, what_to_submit, documentation_summary")
       .eq("project_id", projectId);
 
     if (!credits?.length) return;
 
     const guidanceChunks: RAGChunk[] = [];
-    for (const row of credits) {
-      const credit = (row as any).credit;
+    for (const credit of credits) {
       if (!credit) continue;
       const text = [
         `Credit: ${credit.credit_code} ${credit.credit_name}`,
@@ -160,7 +159,7 @@ export class RAGService {
           metadata: {
             source: "igbc_guidance",
             project_id: projectId,
-            credit_id: credit.id,
+            project_credit_id: credit.id,
             credit_code: credit.credit_code,
           },
         });

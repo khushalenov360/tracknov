@@ -8,12 +8,14 @@ import {
   type AssistantMessage,
 } from "@/lib/assistant";
 import { ragService } from "@/lib/services/rag-service";
+import { toneService, type AssistantTone } from "@/lib/services/tone-service";
 
 export const dynamic = "force-dynamic";
 
 type AssistantRequest = {
   context?: AssistantContext;
   messages?: AssistantMessage[];
+  tone?: "Executive" | "Guided" | "Fast";
 };
 
 function toGeminiContents(messages: AssistantMessage[]) {
@@ -68,7 +70,7 @@ type CreditRow = {
   id: string;
   project_id: string;
   credit_code: string;
-  status: string;
+  state: string;
 };
 
 type DocumentRow = {
@@ -76,7 +78,7 @@ type DocumentRow = {
   project_id: string;
   file_name: string;
   doc_category: string;
-  status: string;
+  state: string;
   uploaded_at: string;
 };
 
@@ -106,27 +108,27 @@ function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], do
   for (const project of projects.slice(0, 12)) {
     const projectCredits = creditsByProject.get(project.id) ?? [];
     const projectDocs = docsByProject.get(project.id) ?? [];
-    const completeCredits = projectCredits.filter((credit) => credit.status === "complete").length;
-    const blockedCredits = projectCredits.filter((credit) => credit.status === "blocked").length;
-    const uploadedCount = projectDocs.filter((doc) => doc.status === "uploaded").length;
-    const ownerReviewCount = projectDocs.filter((doc) => doc.status === "owner_approved").length;
-    const approvedCount = projectDocs.filter((doc) => doc.status === "approved").length;
-    const rejectedCount = projectDocs.filter((doc) => doc.status === "rejected").length;
+    const completeCredits = projectCredits.filter((credit) => credit.state === "APPROVED" || credit.state === "complete").length;
+    const blockedCredits = projectCredits.filter((credit) => credit.state === "blocked").length;
+    const uploadedCount = projectDocs.filter((doc) => doc.state === "READY" || doc.state === "uploaded").length;
+    const ownerReviewCount = projectDocs.filter((doc) => doc.state === "SUBMITTED").length;
+    const approvedCount = projectDocs.filter((doc) => doc.state === "APPROVED").length;
+    const rejectedCount = projectDocs.filter((doc) => doc.state === "REJECTED" || doc.state === "CLARIFICATION").length;
     const recentFiles = projectDocs
       .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
       .slice(0, 5)
       .map((doc) =>
-        role === "client" ? `${doc.doc_category}/${doc.status}` : `${doc.file_name} [${doc.doc_category}/${doc.status}]`,
+        role === "client" ? `${doc.doc_category}/${doc.state}` : `${doc.file_name} [${doc.doc_category}/${doc.state}]`,
       )
       .join("; ");
     const topPendingCredits = projectCredits
-      .filter((credit) => credit.status !== "complete")
+      .filter((credit) => credit.state !== "APPROVED" && credit.state !== "complete")
       .slice(0, 5)
-      .map((credit) => `${credit.credit_code}:${credit.status}`)
+      .map((credit) => `${credit.credit_code}:${credit.state}`)
       .join(", ");
 
     lines.push(
-      `Project ${project.name} | status=${project.status ?? "unknown"} | certification=${project.certification_type ?? "n/a"} | client=${project.client ?? "n/a"} | location=${project.location ?? "n/a"}`,
+      `Project ${project.name} | state=${project.status ?? "unknown"} | certification=${project.certification_type ?? "n/a"} | client=${project.client ?? "n/a"} | location=${project.location ?? "n/a"}`,
     );
     lines.push(
       `Credits: total=${projectCredits.length}, complete=${completeCredits}, blocked=${blockedCredits}. Documents: uploaded=${uploadedCount}, owner_review=${ownerReviewCount}, approved=${approvedCount}, rejected=${rejectedCount}.`,
@@ -175,13 +177,13 @@ async function getWorkspaceSnapshot() {
 
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
     reader
-      .from("credits")
-      .select("id, project_id, credit_code, status")
+      .from("project_credits")
+      .select("id, project_id, credit_code, state")
       .in("project_id", projectIds)
       .order("credit_code"),
     reader
-      .from("documents")
-      .select("id, project_id, file_name, doc_category, status, uploaded_at")
+      .from("project_document")
+      .select("id, project_id, file_name, doc_category, state, uploaded_at")
       .in("project_id", projectIds)
       .order("uploaded_at", { ascending: false })
       .limit(400),
@@ -189,10 +191,185 @@ async function getWorkspaceSnapshot() {
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
-  return { user, role: resolvedRole, projectIds, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
+
+  // Fetch recent intelligence for these documents
+  const { data: intelligence } = await reader
+    .from("document_intelligence")
+    .select("*")
+    .in("document_id", documents.slice(0, 5).map(d => d.id));
+
+  let snapshot = buildWorkspaceSnapshot(projects, credits, documents, resolvedRole);
+  
+  if (intelligence?.length) {
+    snapshot += "\n\nRecent Document Intelligence:\n";
+    for (const intel of intelligence) {
+      const doc = documents.find(d => d.id === intel.document_id);
+      snapshot += `- ${doc?.file_name}: ${intel.summary} [Relevance: ${intel.relevance_score}%] Risks: ${intel.risks?.join(", ") || "None"}\n`;
+    }
+  }
+
+  return { user, role: resolvedRole, projectIds, snapshot };
 }
 
-async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
+async function handleToolCall(name: string, args: any, user: any) {
+  const supabase = createClient();
+  
+  switch (name) {
+    case "get_wallet_balance": {
+      const { data: wallet } = await supabase
+        .from("wallets")
+        .select("document_credits, consultant_credits")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return wallet || { document_credits: 0, consultant_credits: 0 };
+    }
+    case "get_project_status": {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", args.projectId)
+        .maybeSingle();
+      return project || { error: "Project not found" };
+    }
+    case "get_document_reviews": {
+      const { data: reviews } = await supabase
+        .from("document_reviews")
+        .select("*")
+        .eq("document_id", args.documentId)
+        .order("created_at", { ascending: false });
+      return reviews || [];
+    }
+    case "get_credit_guidance": {
+      const { data: guidance } = await supabase
+        .from("project_credits")
+        .select("credit_code, what_to_submit, sample_document_url")
+        .eq("credit_code", args.creditCode)
+        .limit(1)
+        .maybeSingle();
+      return guidance || { error: "Guidance not found" };
+    }
+    default:
+      return { error: "Unknown tool" };
+  }
+}
+
+function classifyIntent(query: string) {
+  const q = query.toLowerCase();
+  if (q.includes("token") || q.includes("credit cost") || q.includes("session cost") || q.includes("wallet") || q.includes("balance")) {
+    return "billing";
+  }
+  if (q.includes("next step") || q.includes("what should i do") || q.includes("priority") || q.includes("todo") || q.includes("task")) {
+    return "workflow";
+  }
+  if (q.includes("upload") || q.includes("document") || q.includes("file") || q.includes("rejection") || q.includes("review")) {
+    return "document_analysis";
+  }
+  if (q.includes("credit") || q.includes("igbc") || q.includes("what to submit") || q.includes("guidance")) {
+    return "credit_guidance";
+  }
+  return "general";
+}
+
+const SYSTEM_RULES = {
+  token_per_upload: 1,
+  consulting_tokens: 50,
+};
+
+function formatDirectResponse(name: string, answer: string, data: string[], recommendation: string) {
+  return `Hi ${name} 👋\n\nAnswer:\n${answer}\n\nData:\n${data.map(d => `- ${d}`).join("\n")}\n\nRecommendation:\n${recommendation}`;
+}
+
+const assistantTools = [
+  {
+    function_declarations: [
+      {
+        name: "get_wallet_balance",
+        description: "Fetch the user's current token credits (document and consultant credits).",
+      },
+      {
+        name: "get_project_status",
+        description: "Fetch detailed status and metrics for a specific project.",
+        parameters: {
+          type: "object",
+          properties: {
+            projectId: { type: "string", description: "The UUID of the project." },
+          },
+          required: ["projectId"],
+        },
+      },
+      {
+        name: "get_document_reviews",
+        description: "Fetch the review history and rejection reasons for a specific document.",
+        parameters: {
+          type: "object",
+          properties: {
+            documentId: { type: "string", description: "The UUID of the document." },
+          },
+          required: ["documentId"],
+        },
+      },
+      {
+        name: "get_credit_guidance",
+        description: "Fetch 'What to Submit' guidance and sample document info for a specific credit code.",
+        parameters: {
+          type: "object",
+          properties: {
+            creditCode: { type: "string", description: "The code of the credit (e.g., 'SSp1')." },
+          },
+          required: ["creditCode"],
+        },
+      },
+    ],
+  },
+];
+
+async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string, user: any) {
+  let contents = toGeminiContents(messages);
+  const systemInstruction = {
+    parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
+  };
+
+  // First pass: Check for tool calls
+  const initialResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": env.geminiApiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction,
+      contents,
+      tools: assistantTools,
+      generationConfig: {
+        temperature: 0.2, // Lower temp for tool calling
+        maxOutputTokens: 1000,
+      },
+    }),
+  });
+
+  if (!initialResponse.ok) return null;
+  const initialData = await initialResponse.json();
+  const firstCandidate = initialData.candidates?.[0];
+  const toolCalls = firstCandidate?.content?.parts?.filter((p: any) => p.functionCall);
+
+  if (toolCalls && toolCalls.length > 0) {
+    const toolResults = [];
+    for (const call of toolCalls) {
+      const result = await handleToolCall(call.functionCall.name, call.functionCall.args, user);
+      toolResults.push({
+        functionResponse: {
+          name: call.functionCall.name,
+          response: { name: call.functionCall.name, content: result },
+        },
+      });
+    }
+
+    // Add model's call and our results to history
+    contents.push(firstCandidate.content);
+    contents.push({ role: "function", parts: toolResults });
+  }
+
+  // Final pass: Stream the result
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: {
@@ -200,15 +377,14 @@ async function createGeminiStream(context: AssistantContext, messages: Assistant
       "x-goog-api-key": env.geminiApiKey,
     },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
-      },
-      contents: toGeminiContents(messages),
+      systemInstruction,
+      contents,
+      tools: assistantTools,
       generationConfig: {
         temperature: 0.4,
         topP: 0.9,
         topK: 40,
-        maxOutputTokens: 500,
+        maxOutputTokens: 800,
       },
     }),
   });
@@ -314,6 +490,15 @@ export async function POST(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Fetch user name for personalized prompt context
+  const supabase = createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const userName = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "there";
+
   const ragMatches = await ragService.retrieveContext({
     query: latestPrompt,
     projectIds: projectIds ?? [],
@@ -330,6 +515,46 @@ export async function POST(request: Request) {
     : "No RAG matches found for current query.";
   const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot].join("\n");
 
+  // Determine tone
+  let resolvedTone: AssistantTone;
+  if (body.tone) {
+    resolvedTone = body.tone === "Guided" ? "Operator" : (body.tone === "Fast" ? "Power" : "Executive");
+  } else {
+    resolvedTone = await toneService.getUserTone(user.id, role);
+  }
+
+  // --- START V2 ROUTER LOGIC ---
+  const intent = classifyIntent(latestPrompt);
+
+  if (intent === "billing") {
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("document_credits, consultant_credits")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    const docCredits = wallet?.document_credits ?? 0;
+    const consCredits = wallet?.consultant_credits ?? 0;
+
+    return createResponseStream(createTextStream(formatDirectResponse(
+      userName,
+      `1 document upload consumes ${SYSTEM_RULES.token_per_upload} credit. 1 consulting session consumes ${SYSTEM_RULES.consulting_tokens} credits.`,
+      [`Document credits: ${docCredits}`, `Consultant credits: ${consCredits}`],
+      docCredits > 0 ? "You can safely upload your documents." : "Please top up your wallet to continue."
+    )));
+  }
+
+  if (intent === "workflow") {
+    const leadStep = context.nextSteps[0] || "No immediate steps found.";
+    return createResponseStream(createTextStream(formatDirectResponse(
+      userName,
+      `Your current priority is: ${leadStep}`,
+      [`Accessible projects: ${projectIds?.length ?? 0}`, ...context.nextSteps.slice(0, 3)],
+      "Complete the lead step to unlock the next workflow stage."
+    )));
+  }
+  // --- END V2 ROUTER LOGIC ---
+
   if (!env.geminiApiKey) {
     return createResponseStream(
       createTextStream(
@@ -344,21 +569,26 @@ export async function POST(request: Request) {
   }
 
   try {
+    const toneInstructions = toneService.getToneInstructions(resolvedTone);
+
     const enrichedContext: AssistantContext = {
       ...context,
       facts: [
         ...context.facts,
         `Resolved role: ${role}`,
+        `User Name: ${userName}`,
+        `Current Tone: ${resolvedTone}`,
         "Responses must be grounded in the workspace snapshot attached in system instructions.",
       ],
     };
     const geminiStream = await createGeminiStream(
       {
         ...enrichedContext,
-        summary: context.summary,
+        summary: context.summary + "\n\n" + toneInstructions,
       },
       messages,
       combinedSnapshot,
+      user,
     );
     if (geminiStream) {
       return createResponseStream(geminiStream);

@@ -22,14 +22,14 @@ export async function runNotificationDigestJobs() {
     const [{ data: projects }, { data: pendingDocs }, { data: inactiveDocs }] = await Promise.all([
       admin.from("projects").select("id, name"),
       admin
-        .from("documents")
-        .select("id, project_id, workflow_state, uploaded_at")
-        .in("workflow_state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])
+        .from("project_document")
+        .select("id, project_id, state, uploaded_at")
+        .in("state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])
         .gte("uploaded_at", sevenDaysAgo),
       admin
-        .from("documents")
-        .select("id, project_id, workflow_state, uploaded_at")
-        .in("workflow_state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])
+        .from("project_document")
+        .select("id, project_id, state, uploaded_at")
+        .in("state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])
         .lt("uploaded_at", fiveDaysAgo),
     ]);
 
@@ -42,7 +42,7 @@ export async function runNotificationDigestJobs() {
     let created = 0;
     for (const [projectId, count] of groupedByProject.entries()) {
       const targetUsers = await admin
-        .from("project_members")
+        .from("project_users")
         .select("user_id")
         .eq("project_id", projectId)
         .in("role", ["owner", "project_admin", "super_admin", "super_user"]);
@@ -59,7 +59,7 @@ export async function runNotificationDigestJobs() {
 
     for (const doc of inactiveDocs ?? []) {
       const targetUsers = await admin
-        .from("project_members")
+        .from("project_users")
         .select("user_id")
         .eq("project_id", doc.project_id)
         .in("role", ["owner", "project_admin", "super_admin", "super_user"]);

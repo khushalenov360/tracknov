@@ -32,7 +32,7 @@ export async function GET(request: Request, context: Context) {
 
   const reader = isSuperUser ? createAdminClient() : client;
   const { data: document } = await reader
-    .from("documents")
+    .from("project_document")
     .select("id, project_id, file_path")
     .eq("id", id)
     .maybeSingle();
@@ -43,7 +43,7 @@ export async function GET(request: Request, context: Context) {
 
   if (!isSuperUser) {
     const { data: membership } = await client
-      .from("project_members")
+      .from("project_users")
       .select("id")
       .eq("project_id", document.project_id)
       .eq("user_id", user.id)

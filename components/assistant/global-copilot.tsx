@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, ChevronLeft, ChevronRight, Send, Sparkles } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, Send, Sparkles, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/assistant";
 import type { MemberRole } from "@/lib/types";
+
+type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
 
 type GlobalCopilotProps = {
   enabled: boolean;
@@ -84,21 +86,34 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     [description, pathname, role, surface, title],
   );
 
-  const defaultMessage = useMemo<AssistantMessage[]>(
-    () => [
-      {
-        role: "assistant",
-        content: `I am always available in this tab. Ask for next steps, blockers, or validation guidance for ${title}.`,
-      },
-    ],
-    [title],
-  );
-
   const [collapsed, setCollapsed] = useState(false);
-  const [messages, setMessages] = useState<AssistantMessage[]>(defaultMessage);
+  const [userName, setUserName] = useState<string>("");
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const response = await fetch("/api/me");
+        if (response.ok) {
+          const data = await response.json();
+          setUserName(data.name);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user profile", err);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  const personalizedGreeting = useMemo(() => {
+    const greeting = userName ? `Hi ${userName} 👋` : "Hi there 👋";
+    return `${greeting} I am always available in this tab. Ask for next steps, blockers, or validation guidance for ${title}.`;
+  }, [userName, title]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -115,8 +130,13 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   }, [collapsed]);
 
   useEffect(() => {
-    setMessages(loadMessages(storageKey, defaultMessage));
-  }, [defaultMessage, storageKey]);
+    const history = loadMessages(storageKey, []);
+    if (history.length === 0) {
+      setMessages([{ role: "assistant", content: personalizedGreeting }]);
+    } else {
+      setMessages(history);
+    }
+  }, [personalizedGreeting, storageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -164,6 +184,16 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     setError("");
     setLoading(true);
 
+    // Track interaction
+    void fetch("/api/assistant/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "query",
+        metadata: { query: text, surface, title },
+      }),
+    }).catch(() => {});
+
     const nextMessages: AssistantMessage[] = [
       ...messages,
       { role: "user", content: text },
@@ -179,6 +209,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         body: JSON.stringify({
           context,
           messages: nextMessages.slice(0, -1),
+          tone: selectedTone !== "Auto" ? selectedTone : undefined,
         }),
       });
 
@@ -238,18 +269,52 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           </span>
           <div className="min-w-0">
             <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)]">Tracknov Copilot</p>
-            <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? "Gemini ready" : "Fallback guidance mode"}</p>
+            <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed(true)}
-          className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-          aria-label="Collapse Copilot"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            className={`rounded-md p-1 hover:bg-[var(--color-surface)] ${showSettings ? "text-[var(--color-blue)]" : "text-[var(--color-text-tertiary)]"}`}
+            title="Copilot Settings"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+            aria-label="Collapse Copilot"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      {showSettings && (
+        <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 animate-in fade-in slide-in-from-top-1">
+          <p className="mb-2 text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Response Tone</p>
+          <div className="flex gap-1">
+            {(["Auto", "Executive", "Guided", "Fast"] as AssistantTone[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setSelectedTone(t);
+                  setShowSettings(false);
+                }}
+                className={`flex-1 rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                  selectedTone === t 
+                    ? "bg-[var(--color-blue-light)] text-[var(--color-blue)]" 
+                    : "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex h-[calc(100%-49px)] flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">

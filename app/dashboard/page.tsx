@@ -47,7 +47,7 @@ export default async function DashboardPage({
   const checklist = onboarding?.checklist ?? null;
   const checklistDone = checklist ? Object.values(checklist).filter(Boolean).length : 0;
   const isOwner = activeRole === "owner";
-  const canControlDemo = ["super_user", "super_admin", "project_admin"].includes(activeRole);
+  const canControlDemo = user?.email?.toLowerCase() === "demo@enov360.com";
   const demoModeActive = cookieStore.get("tracknov_demo_mode")?.value === "1";
 
   const totals = {
@@ -156,6 +156,7 @@ export default async function DashboardPage({
           : "Overview of active projects, documentation progress, and review status."
       }
       role={activeRole}
+      email={user?.email}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
       <RefreshTrigger intervalMs={60000} />
@@ -380,7 +381,7 @@ export default async function DashboardPage({
             30-second status for certification progress, portfolio risk, and token usage.
           </p>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div id="executive-cards" className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
               { label: "Overall status", value: atRiskCount > 0 ? "Attention needed" : "On Track", meta: `${atRiskCount} at risk` },
               { label: "Projected rating", value: projectedRating, meta: `${overallCompletionPct}% complete` },

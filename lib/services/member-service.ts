@@ -13,7 +13,7 @@ export class MemberService {
     userId: string;
   }) {
     const { error } = await this.admin
-      .from("project_members")
+      .from("project_users")
       .delete()
       .eq("project_id", params.projectId)
       .eq("user_id", params.userId);
@@ -101,13 +101,13 @@ export class MemberService {
     }
 
     const { error: removeError } = await this.admin
-      .from("project_members")
+      .from("project_users")
       .delete()
       .eq("project_id", params.fromProjectId)
       .eq("user_id", params.userId);
     if (removeError) throw removeError;
 
-    const { error: addError } = await this.admin.from("project_members").insert({
+    const { error: addError } = await this.admin.from("project_users").insert({
       project_id: params.toProjectId,
       user_id: params.userId,
       role: params.role,
@@ -192,7 +192,7 @@ export class MemberService {
 
     // 3. Optional Project Membership
     if (params.projectId) {
-      const { error: membershipError } = await this.admin.from("project_members").insert({
+      const { error: membershipError } = await this.admin.from("project_users").insert({
         project_id: params.projectId,
         user_id: authData.user.id,
         role: normalizedRole,
@@ -233,7 +233,7 @@ export class MemberService {
 
     if (!invite.accepted_at) {
       const { data: existingMembership } = await this.client
-        .from("project_members")
+        .from("project_users")
         .select("id")
         .eq("project_id", invite.project_id)
         .eq("user_id", user.id)
@@ -241,7 +241,7 @@ export class MemberService {
         .maybeSingle();
 
       if (!existingMembership) {
-        await this.admin.from("project_members").insert({
+        await this.admin.from("project_users").insert({
           project_id: invite.project_id,
           user_id: user.id,
           role: invite.role,

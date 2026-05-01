@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { WalkthroughOverlay } from "@/components/demo/walkthrough-overlay";
 
 export const metadata: Metadata = {
   title: "Tracknov",
@@ -13,7 +14,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-[var(--color-bg)] text-[13px] text-[var(--color-text-primary)] antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <WalkthroughOverlay />
+        </Providers>
       </body>
     </html>
   );

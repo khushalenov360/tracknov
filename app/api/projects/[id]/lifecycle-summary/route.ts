@@ -45,26 +45,26 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         draft: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.workflow_state === "DRAFT").length,
+            credit.documents.filter((document) => document.state === "DRAFT").length,
           0,
         ),
         ready: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.workflow_state === "READY").length,
+            credit.documents.filter((document) => document.state === "READY").length,
           0,
         ),
         submitted: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.workflow_state === "SUBMITTED").length,
+            credit.documents.filter((document) => document.state === "SUBMITTED").length,
           0,
         ),
         under_review: credits.reduce(
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.workflow_state === "UNDER_REVIEW",
+              (document) => document.state === "UNDER_REVIEW",
             ).length,
           0,
         ),
@@ -72,7 +72,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.workflow_state === "CLARIFICATION",
+              (document) => document.state === "CLARIFICATION",
             ).length,
           0,
         ),
@@ -80,20 +80,20 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.workflow_state === "RESUBMITTED",
+              (document) => document.state === "RESUBMITTED",
             ).length,
           0,
         ),
         approved: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.workflow_state === "APPROVED").length,
+            credit.documents.filter((document) => document.state === "APPROVED").length,
           0,
         ),
         rejected: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.workflow_state === "REJECTED").length,
+            credit.documents.filter((document) => document.state === "REJECTED").length,
           0,
         ),
       },

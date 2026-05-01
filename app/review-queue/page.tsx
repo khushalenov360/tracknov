@@ -50,7 +50,7 @@ export default async function ReviewQueuePage() {
         ) : null}
 
         <form action={bulkReviewDocumentsAction}>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div id="action-buttons" className="mb-3 flex flex-wrap items-center gap-2">
             <Button type="submit" name="bulk_action" value="approve" className="h-[32px] rounded-md px-3 text-[12px]">
               Approve Selected
             </Button>

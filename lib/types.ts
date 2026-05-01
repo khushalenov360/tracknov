@@ -15,6 +15,13 @@ export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
 export type ProjectType = "residential" | "commercial" | "industrial" | "infrastructure" | "mixed_use";
 export type IgbcVariant = "new" | "existing";
 
+export type ProjectRatingSystem = {
+  id: string;
+  name: string;
+  version: string;
+  description?: string | null;
+};
+
 export type DocumentRequirement = {
   type: string;
   label: string;
@@ -49,7 +56,7 @@ export type DocumentRecord = {
   owner_reviewed_at?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
-  status: DocumentStatus;
+  state: DocumentStatus;
   workflow_state?: string | null;
   version?: number;
   is_latest?: boolean;
@@ -105,7 +112,7 @@ export type CreditWorkspace = {
   responsible_role?: MemberRole | null;
   is_mandatory: boolean;
   documents_required: DocumentRequirement[];
-  status: CreditStatus;
+  state: CreditStatus;
   blocked_by?: string | null;
   completion_pct: number;
   documentation_summary?: string | null;
@@ -124,7 +131,7 @@ export type ProjectSummary = {
   client: string;
   location: string;
   project_type: ProjectType;
-  status: ProjectStatus;
+  state: ProjectStatus;
   green_certification: string;
   igbc_variant: IgbcVariant;
   certification_type: string;
@@ -149,6 +156,12 @@ export type ProjectSummary = {
   pendingReviewsCount?: number;
   rejectedCount?: number;
   statusFlag?: "green" | "amber" | "red";
+  projectCode: string;
+  ratingSystemId?: string | null;
+  projectState?: string;
+  submissionFlag?: boolean;
+  lockFlag?: boolean;
+  projectCode?: string;
 };
 
 export type ProjectInviteRecord = {
@@ -179,13 +192,18 @@ export type ProjectWorkspace = {
     client: string;
     location: string;
     project_type: ProjectType;
-    status: ProjectStatus;
+    state: ProjectStatus;
     green_certification: string;
     igbc_variant: IgbcVariant;
     certification_type: string;
     target_rating: string;
     created_at: string;
     created_by?: string | null;
+    rating_system_id?: string | null;
+    state?: string;
+    submission_flag?: boolean;
+    lock_flag?: boolean;
+    project_code?: string;
   };
   userRole: MemberRole;
   credits: CreditWorkspace[];

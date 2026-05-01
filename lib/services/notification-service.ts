@@ -63,7 +63,7 @@ export async function getProjectMembersByRoles(
   roles: string[],
 ) {
   const { data } = await writer
-    .from("project_members")
+    .from("project_users")
     .select("user_id")
     .eq("project_id", projectId)
     .in("role", roles);

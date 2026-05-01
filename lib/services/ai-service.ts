@@ -45,7 +45,7 @@ export class AIService {
     }
 
     const { data: credit, error: creditError } = await this.admin
-      .from("credits")
+      .from("project_credits")
       .select("credit_name, documents_required, what_to_submit")
       .eq("id", input.creditId)
       .maybeSingle();
@@ -81,8 +81,8 @@ export class AIService {
 
   async getAISuggestions(documentId: string) {
     const { data: document } = await this.client
-      .from("documents")
-      .select("doc_category, credit_id")
+      .from("project_document")
+      .select("doc_category, project_credit_id")
       .eq("id", documentId)
       .maybeSingle();
 
@@ -91,7 +91,7 @@ export class AIService {
     const { data: patterns } = await this.client
       .from("rejection_patterns")
       .select("rejection_reason, suggested_fix, occurrence_count")
-      .eq("credit_id", document.credit_id)
+      .eq("credit_id", document.project_credit_id)
       .eq("doc_category", document.doc_category)
       .order("occurrence_count", { ascending: false })
       .limit(3);
@@ -116,8 +116,8 @@ export class AIService {
 
   async getProjectRiskScore(projectId: string) {
     const { data: docs } = await this.client
-      .from("documents")
-      .select("status, workflow_state, uploaded_at")
+      .from("project_document")
+      .select("state, uploaded_at")
       .eq("project_id", projectId);
 
     const { data: usage } = await this.client
@@ -126,9 +126,9 @@ export class AIService {
       .eq("project_id", projectId)
       .maybeSingle();
 
-    const rejections = docs?.filter((d) => d.status === "rejected").length ?? 0;
+    const rejections = docs?.filter((d) => d.state === "REJECTED").length ?? 0;
     const pendingReview = docs?.filter((d) => {
-      const state = String(d.workflow_state ?? "").toUpperCase();
+      const state = String(d.state ?? "").toUpperCase();
       return state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "CLARIFICATION";
     }).length ?? 0;
 

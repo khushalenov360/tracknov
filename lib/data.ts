@@ -105,11 +105,11 @@ function deriveCreditLifecycleState(
       .map((entry) => entry.type),
   );
   const states = documents.map((document) =>
-    normalizeWorkflowState(document.workflow_state, document.status),
+    normalizeWorkflowState(document.state, document.status),
   );
   const approvedTypes = new Set(
     documents
-      .filter((document) => normalizeWorkflowState(document.workflow_state, document.status) === "APPROVED")
+      .filter((document) => normalizeWorkflowState(document.state, document.status) === "APPROVED")
       .map((document) => String(document.doc_category ?? "").trim())
       .filter(Boolean),
   );
@@ -177,7 +177,7 @@ async function getProjectMembers(
   projectId: string,
 ): Promise<ProjectMemberRecord[]> {
   const { data: memberships } = await client
-    .from("project_members")
+    .from("project_users")
     .select("id, project_id, user_id, role, created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -258,7 +258,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   const { data: elevatedMembership } = await client
-    .from("project_members")
+    .from("project_users")
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["super_user", "super_admin", "project_admin", "admin"])
@@ -288,7 +288,7 @@ export async function getDashboardProjects() {
     const admin = createAdminClient();
     const { data: projects } = await admin
       .from("projects")
-      .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at")
+      .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code")
       .order("created_at", { ascending: false });
     const projectIds = (projects ?? []).map((project: any) => project.id);
     const { data: usageRows } = projectIds.length
@@ -304,20 +304,20 @@ export async function getDashboardProjects() {
         const projectId = project.id;
         const usage = usageByProjectId.get(projectId);
         const { data: credits } = await admin
-          .from("credits")
+          .from("project_credits")
           .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
           .eq("project_id", projectId);
         const creditIds = (credits ?? []).map((credit: any) => credit.id);
         const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
           creditIds.length
             ? admin.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
             : Promise.resolve({ count: 0 }),
-          admin.from("project_members").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "SUBMITTED"),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "UNDER_REVIEW"),
-          admin.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("workflow_state", ["REJECTED", "CLARIFICATION"]),
-          admin.from("documents").select("credit_id, workflow_state, status, doc_category").eq("project_id", projectId),
+          admin.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
+          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
+          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("state", ["REJECTED", "CLARIFICATION"]),
+          admin.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
         ]);
         const creditRows = credits ?? [];
         const derivedCredits = creditRows.map((credit: any) => {
@@ -343,6 +343,7 @@ export async function getDashboardProjects() {
           certification_type: project.certification_type,
           target_rating: project.target_rating,
           created_at: project.created_at,
+          projectCode: project.project_code || "N/A",
           role: "super_user",
           overallCompletion,
           totalCredits: creditRows.length,
@@ -375,8 +376,8 @@ export async function getDashboardProjects() {
   }
 
   const { data: memberships } = await client
-    .from("project_members")
-    .select("project_id, role, projects(id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at)")
+    .from("project_users")
+    .select("project_id, role, projects(id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code)")
     .eq("user_id", user.id);
 
   const projects = memberships ?? [];
@@ -394,20 +395,20 @@ export async function getDashboardProjects() {
       const projectId = membership.project_id;
       const usage = usageByProjectId.get(projectId);
       const { data: credits } = await client
-        .from("credits")
+        .from("project_credits")
         .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
         .eq("project_id", projectId);
       const creditIds = (credits ?? []).map((credit) => credit.id);
       const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
         creditIds.length
           ? client.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
           : Promise.resolve({ count: 0 }),
-        client.from("project_members").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "SUBMITTED"),
-        client.from("documents").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("workflow_state", "UNDER_REVIEW"),
-        client.from("documents").select("*", { count: "exact", head: true }).in("workflow_state", ["REJECTED", "CLARIFICATION"]),
-        client.from("documents").select("credit_id, workflow_state, status, doc_category").eq("project_id", projectId),
+        client.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
+        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
+        client.from("project_document").select("*", { count: "exact", head: true }).in("state", ["REJECTED", "CLARIFICATION"]),
+        client.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
       ]);
       const creditRows = credits ?? [];
       const derivedCredits = creditRows.map((credit: any) => {
@@ -434,6 +435,7 @@ export async function getDashboardProjects() {
         certification_type: project.certification_type,
         target_rating: project.target_rating,
         created_at: project.created_at,
+        projectCode: project.project_code || "N/A",
         role: normalizeRole(membership.role),
         overallCompletion,
         totalCredits: creditRows.length,
@@ -482,9 +484,9 @@ export async function getProjectWorkspace(projectId: string) {
     const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
       await Promise.all([
         admin.from("projects").select("*").eq("id", projectId).single(),
-        admin.from("credits").select("*").eq("project_id", projectId).order("credit_code"),
+        admin.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
         admin
-          .from("documents")
+          .from("project_document")
           .select("*")
           .eq("project_id", projectId)
           .order("uploaded_at", { ascending: false }),
@@ -525,7 +527,7 @@ export async function getProjectWorkspace(projectId: string) {
   }
 
   const { data: membership } = await client
-    .from("project_members")
+    .from("project_users")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", user.id)
@@ -538,9 +540,9 @@ export async function getProjectWorkspace(projectId: string) {
   const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
     await Promise.all([
       client.from("projects").select("*").eq("id", projectId).single(),
-      client.from("credits").select("*").eq("project_id", projectId).order("credit_code"),
+      client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
       client
-        .from("documents")
+        .from("project_document")
         .select("*")
         .eq("project_id", projectId)
         .order("uploaded_at", { ascending: false }),
@@ -597,7 +599,7 @@ export async function getProjectWorkspaceForApi(projectId: string): Promise<Proj
   }
 
   const { data: membership } = await client
-    .from("project_members")
+    .from("project_users")
     .select("id")
     .eq("project_id", projectId)
     .eq("user_id", user.id)
@@ -702,7 +704,7 @@ export async function createProjectForCurrentUser({
     throw projectError ?? new Error("Could not create project");
   }
 
-  const membershipError = await elevatedClient.from("project_members").insert({
+  const membershipError = await elevatedClient.from("project_users").insert({
     project_id: project.id,
     user_id: user.id,
     role: currentUser?.role === "super_user" ? "super_user" : "super_admin",
@@ -714,7 +716,7 @@ export async function createProjectForCurrentUser({
 
   if (safeRatingSystem === greenInteriorsSystem) {
     const { data: createdCredits, error: creditsError } = await elevatedClient
-      .from("credits")
+      .from("project_credits")
       .insert(buildSeedCredits(project.id))
       .select("id, project_id");
     if (creditsError) {
@@ -871,7 +873,7 @@ export async function updateOnboardingChecklistForCurrentUser(projectId: string,
 
 async function getMembershipRoleForProject(client: SupabaseClient, userId: string, projectId: string) {
   const { data: membership } = await client
-    .from("project_members")
+    .from("project_users")
     .select("role")
     .eq("user_id", userId)
     .eq("project_id", projectId)
@@ -1207,7 +1209,7 @@ export async function getDocumentLibrary(filters: {
   }
   const currentUser = await getCurrentUser();
 
-  let query = client.from("documents").select("*").order("uploaded_at", { ascending: false });
+  let query = client.from("project_document").select("*").order("uploaded_at", { ascending: false });
   if (filters.project) {
     query = query.eq("project_id", filters.project);
   }
@@ -1224,7 +1226,7 @@ export async function getDocumentLibrary(filters: {
       : Promise.resolve({ data: [] }),
     creditIds.length
       ? client
-          .from("credits")
+          .from("project_credits")
           .select("id, credit_code, credit_name, what_to_submit, sample_document_url")
           .in("id", creditIds)
       : Promise.resolve({ data: [] }),
@@ -1235,7 +1237,7 @@ export async function getDocumentLibrary(filters: {
       ? Promise.resolve({ data: [] })
       : projectIds.length
         ? client
-            .from("project_members")
+            .from("project_users")
             .select("project_id, role")
             .eq("user_id", user.id)
             .in("project_id", projectIds)
@@ -1301,7 +1303,7 @@ export async function getDocumentLibrary(filters: {
     documentRoleView.map(({ document, projectRole, canViewLogs }) => {
       const project = projectsById.get(document.project_id);
       const credit = document.credit_id ? creditsById.get(document.credit_id) : null;
-      const workflowState = normalizeWorkflowState((document as any).workflow_state, document.status);
+      const workflowState = normalizeWorkflowState((document as any).state, document.status);
       const normalizedStatus = workflowToLegacyStatus(workflowState);
       const canEditStatus = canEditDocumentStatusAtAnyStage(projectRole);
       const canEditMetadata =
@@ -1315,7 +1317,7 @@ export async function getDocumentLibrary(filters: {
       return {
         ...document,
         status: normalizedStatus,
-        workflow_state: workflowState,
+        state: workflowState,
         project_name: project?.name ?? "Untitled project",
         credit_code: credit?.credit_code ?? null,
         credit_name: credit?.credit_name ?? null,
@@ -1356,7 +1358,7 @@ export async function getDocumentUploadOptions() {
       .order("created_at"),
     user
       ? client
-          .from("documents")
+          .from("project_document")
           .select("credit_id, doc_category, file_name, status, uploaded_by")
           .eq("uploaded_by", user.id)
           .eq("status", "approved")
@@ -1444,7 +1446,7 @@ function filterDocuments(documents: DocumentLibraryRecord[], filters: { project?
   return documents.filter((document) => {
     const projectOk = filters.project ? document.project_id === filters.project : true;
     const statusOk = filters.status
-      ? document.status === filters.status || String((document as any).workflow_state ?? "").toLowerCase() === filters.status.toLowerCase()
+      ? document.status === filters.status || String((document as any).state ?? "").toLowerCase() === filters.status.toLowerCase()
       : true;
     const searchOk = search
       ? [
@@ -1478,7 +1480,7 @@ export async function getTeamMembers() {
   if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
     const { data: memberships } = await admin
-      .from("project_members")
+      .from("project_users")
       .select("id, project_id, user_id, role, created_at, projects(name)")
       .order("created_at", { ascending: false });
 
@@ -1531,7 +1533,7 @@ export async function getTeamMembers() {
   }
 
   const { data: memberships } = await client
-    .from("project_members")
+    .from("project_users")
     .select("id, project_id, user_id, role, created_at, projects(name)")
     .order("created_at", { ascending: false });
 
@@ -1604,7 +1606,7 @@ export async function getOwnerReviewQueue() {
     userRole === "super_user"
       ? []
       : (await client
-          .from("project_members")
+          .from("project_users")
           .select("project_id, role")
           .eq("user_id", user.id)).data ?? [];
   const ownedProjectIds =
@@ -1618,10 +1620,10 @@ export async function getOwnerReviewQueue() {
   }
 
   const { data: docs } = await client
-    .from("documents")
-    .select("id, project_id, credit_id, uploaded_by, file_name, uploaded_at, notes, status, workflow_state")
+    .from("project_document")
+    .select("id, project_id, credit_id, uploaded_by, file_name, uploaded_at, notes, state")
     .in("project_id", ownedProjectIds)
-    .in("workflow_state", reviewWorkflowStates)
+    .in("state", reviewWorkflowStates)
     .order("uploaded_at", { ascending: true });
   const rows = docs ?? [];
   if (!rows.length) {
@@ -1634,7 +1636,7 @@ export async function getOwnerReviewQueue() {
 
   const [{ data: projects }, { data: credits }, { data: profiles }] = await Promise.all([
     client.from("projects").select("id, name").in("id", projectIds),
-    creditIds.length ? client.from("credits").select("id, credit_name").in("id", creditIds) : Promise.resolve({ data: [] }),
+    creditIds.length ? client.from("project_credits").select("id, credit_name").in("id", creditIds) : Promise.resolve({ data: [] }),
     userIds.length ? client.from("profiles").select("user_id, full_name, email").in("user_id", userIds) : Promise.resolve({ data: [] }),
   ]);
 
@@ -1744,12 +1746,12 @@ export async function getExecutiveInsights() {
   const projectIds = projects.map((project) => project.id);
   const [{ data: credits }, { data: documents }, { data: profiles }] = await Promise.all([
     client
-      .from("credits")
+      .from("project_credits")
       .select("id, project_id, credit_code, credit_name, responsible_role, documents_required")
       .in("project_id", projectIds),
     client
-      .from("documents")
-      .select("id, project_id, credit_id, uploaded_by, status, workflow_state, rejection_reason")
+      .from("project_document")
+      .select("id, project_id, credit_id, uploaded_by, state, rejection_reason")
       .in("project_id", projectIds),
     client.from("profiles").select("user_id, full_name, email"),
   ]);
@@ -1770,11 +1772,11 @@ export async function getExecutiveInsights() {
       const requiredDocs = ((credit.documents_required ?? []) as Array<any>).filter((item) => Boolean(item?.required));
       const missing = requiredDocs.find((item) => !creditDocuments.some((doc) => doc.doc_category === item.type));
       const rejectedCount = creditDocuments.filter((doc) => {
-        const state = normalizeWorkflowState(doc.workflow_state, doc.status);
+        const state = normalizeWorkflowState(doc.state, doc.status);
         return state === "REJECTED" || state === "CLARIFICATION";
       }).length;
       const pendingCount = creditDocuments.filter((doc) => {
-        const state = normalizeWorkflowState(doc.workflow_state, doc.status);
+        const state = normalizeWorkflowState(doc.state, doc.status);
         return state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "RESUBMITTED";
       }).length;
       return {
@@ -1795,7 +1797,7 @@ export async function getExecutiveInsights() {
 
   const rejectionPatternsMap = new Map<string, number>();
   for (const document of documents ?? []) {
-    const state = normalizeWorkflowState(document.workflow_state, document.status);
+    const state = normalizeWorkflowState(document.state, document.status);
     if (!(state === "REJECTED" || state === "CLARIFICATION")) continue;
     const reason = String(document.rejection_reason ?? "Unspecified").trim();
     const bucket = reason ? reason.split(".")[0].slice(0, 90) : "Unspecified";
@@ -1819,7 +1821,7 @@ export async function getExecutiveInsights() {
       rejected: 0,
     };
     existing.projects.add(document.project_id);
-    const state = normalizeWorkflowState(document.workflow_state, document.status);
+    const state = normalizeWorkflowState(document.state, document.status);
     if (state === "APPROVED") existing.approved += 1;
     if (state === "REJECTED" || state === "CLARIFICATION") existing.rejected += 1;
     uploaderAgg.set(document.uploaded_by, existing);
@@ -1962,13 +1964,13 @@ export async function getMyRoleTasks() {
   const client = createClient();
   const [{ data: credits }, { data: documents }, { data: projectRows }] = await Promise.all([
     client
-      .from("credits")
+      .from("project_credits")
       .select("id, project_id, credit_code, credit_name, responsible_role, documents_required")
       .in("project_id", projectIds)
       .eq("responsible_role", currentUser.role),
     client
-      .from("documents")
-      .select("id, credit_id, workflow_state, status, uploaded_at")
+      .from("project_document")
+      .select("id, credit_id, state, uploaded_at")
       .in("project_id", projectIds),
     client.from("projects").select("id, name").in("id", projectIds),
   ]);
@@ -1985,7 +1987,7 @@ export async function getMyRoleTasks() {
     const creditDocs = docsByCredit.get(credit.id) ?? [];
     const derived = deriveCreditLifecycleState(credit, creditDocs);
     const requiredDocCount = ((credit.documents_required ?? []) as DocumentRequirement[]).filter((doc) => doc.required).length;
-    const approvedCount = creditDocs.filter((document: any) => normalizeWorkflowState(document.workflow_state, document.status) === "APPROVED").length;
+    const approvedCount = creditDocs.filter((document: any) => normalizeWorkflowState(document.state, document.status) === "APPROVED").length;
     return {
       id: credit.id,
       project_id: credit.project_id,
@@ -2107,8 +2109,8 @@ export async function getSuperUserCommandCenter() {
 
   const uploadsToday = (uploadLogs ?? []).length;
   const failedTransactions = (transactions ?? []).filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("failed")).length;
-  const pendingReviews = (await admin.from("documents").select("*", { count: "exact", head: true }).in("workflow_state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])).count ?? 0;
-  const activeUsers = (await admin.from("project_members").select("user_id")).data?.map((row: any) => row.user_id).filter(Boolean);
+  const pendingReviews = (await admin.from("project_document").select("*", { count: "exact", head: true }).in("state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])).count ?? 0;
+  const activeUsers = (await admin.from("project_users").select("user_id")).data?.map((row: any) => row.user_id).filter(Boolean);
   const uniqueActiveUsers = Array.from(new Set(activeUsers ?? [])).length;
 
   const criticalAlerts: string[] = [];
@@ -2221,11 +2223,11 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
     }
 
     const { data: clarifications } = await client
-      .from('documents')
-      .select('id, file_name, credit:credits(credit_code), notes, workflow_state')
+      .from('project_document')
+      .select('id, file_name, project_credits(credit_code), notes, state')
       .eq('project_id', project.id)
       .eq('uploaded_by', user.id)
-      .eq('workflow_state', 'CLARIFICATION')
+      .eq('state', 'CLARIFICATION')
       .limit(10);
 
     for (const doc of clarifications ?? []) {
@@ -2297,8 +2299,8 @@ export async function getBurnRateForecast(projectId: string) {
 export async function getVendorIntelligence() {
   const client = createClient();
   const { data: stats } = await client
-    .from('documents')
-    .select('uploaded_by, workflow_state, project_id');
+    .from('project_document')
+    .select('uploaded_by, state, project_id');
 
   const vendorMap = new Map<string, any>();
   for (const doc of stats ?? []) {
@@ -2309,8 +2311,8 @@ export async function getVendorIntelligence() {
     const v = vendorMap.get(vendor);
     v.uploads++;
     v.projects.add(doc.project_id);
-    if (doc.workflow_state === 'APPROVED') v.approvals++;
-    if (doc.workflow_state === 'REJECTED' || doc.workflow_state === 'CLARIFICATION') v.rejections++;
+    if (doc.state === 'APPROVED') v.approvals++;
+    if (doc.state === 'REJECTED' || doc.state === 'CLARIFICATION') v.rejections++;
   }
 
   return Array.from(vendorMap.entries()).map(([vendor, v]) => ({
@@ -2320,4 +2322,14 @@ export async function getVendorIntelligence() {
     projectCount: v.projects.size,
     efficiencyScore: Math.max(0, 100 - (v.rejections / Math.max(v.uploads, 1)) * 100),
   })).sort((a, b) => b.efficiencyScore - a.efficiencyScore);
+}
+
+
+export async function getRatingSystems(): Promise<ProjectRatingSystem[]> {
+  const client = createClient();
+  const { data } = await client
+    .from('rating_system')
+    .select('id, name, version, description')
+    .order('name', { ascending: true });
+  return (data ?? []) as ProjectRatingSystem[];
 }

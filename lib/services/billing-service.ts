@@ -54,7 +54,7 @@ export class BillingService {
     notes: string;
   }) {
     const { data: membership } = await this.client
-      .from("project_members")
+      .from("project_users")
       .select("user_id")
       .eq("project_id", params.projectId)
       .eq("role", "client")
@@ -231,7 +231,7 @@ export class BillingService {
     const { data: transactions } = await this.admin
       .from("token_transactions")
       .select("amount")
-      .eq("client_id", (await this.admin.from("project_members").select("client_id").eq("user_id", clientUserId).limit(1).maybeSingle()).data?.client_id);
+      .eq("client_id", (await this.admin.from("project_users").select("client_id").eq("user_id", clientUserId).limit(1).maybeSingle()).data?.client_id);
 
     const calculatedBalance = transactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0;
 

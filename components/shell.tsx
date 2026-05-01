@@ -12,12 +12,14 @@ export function Shell({
   title,
   description,
   role,
+  email,
   notificationCount,
   children,
 }: {
   title: string;
   description: string;
   role?: MemberRole;
+  email?: string;
   notificationCount?: number;
   children: React.ReactNode;
 }) {
@@ -31,7 +33,7 @@ export function Shell({
     ...(["owner", "project_admin", "super_admin", "super_user"].includes(role ?? "")
       ? [{ href: "/review-queue", label: "Review Queue", icon: Inbox }]
       : []),
-    ...(env.demoModeEnabled && ["project_admin", "super_admin", "super_user"].includes(role ?? "")
+    ...(email?.toLowerCase() === "demo@enov360.com"
       ? [{ href: "/demo", label: "Demo", icon: Presentation }]
       : []),
   ];
