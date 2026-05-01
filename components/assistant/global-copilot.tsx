@@ -60,7 +60,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
 export function GlobalCopilot({ enabled, role, title, description }: GlobalCopilotProps) {
   const pathname = usePathname();
   const surface = mapSurface(pathname);
-  const storageKey = `tracknov-global-copilot:${pathname}`;
+  const storageKey = "tracknov-global-copilot:history";
   const collapseKey = "tracknov-global-copilot-collapsed";
   const bottomRef = useRef<HTMLDivElement | null>(null);
 

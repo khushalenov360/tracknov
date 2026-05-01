@@ -38,6 +38,7 @@ type PendingFile = {
   requirementSlot: string;
   notes: string;
   file: File;
+  fileHash?: string;
 };
 
 export function GeneralUploadDocumentForm({
@@ -108,6 +109,53 @@ export function GeneralUploadDocumentForm({
     setRequirementSlot(slot);
   }, [matchingRequirement, docType]);
 
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  const compressImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith("image/") || file.size < 1 * 1024 * 1024) {
+      return file;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1600;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg" }));
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.8,
+        );
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const normalizeFiles = useCallback((incomingFiles: File[]) => {
     const deduped = new Map<string, File>();
     for (const file of incomingFiles) {
@@ -147,6 +195,7 @@ export function GeneralUploadDocumentForm({
           formData.set("doc_category", pending.docType);
           formData.set("requirement_slot", pending.requirementSlot);
           formData.set("notes", pending.notes);
+          formData.set("file_hash", pending.fileHash ?? "");
           formData.set("file", pending.file);
           const result = await uploadDocumentAction(formData);
           if (!result.ok) {
@@ -268,19 +317,34 @@ export function GeneralUploadDocumentForm({
 
     setError("");
     setSuccessMessage("");
-    const notes = String(formData.get("notes") ?? "").trim();
-    const pendingItems: PendingFile[] = files.map((file) => ({
-      projectId,
-      projectName: currentProject?.name ?? "Selected project",
-      creditId,
-      projectCreditId: currentCredit?.project_credit_id ?? "",
-      creditName: `${currentCredit?.credit_code ?? ""} - ${currentCredit?.credit_name ?? ""}`.trim(),
-      docType,
-      requirementSlot,
-      notes,
-      file,
-    }));
-    setPendingQueue(pendingItems);
+    setLoading(true); // Start loading during compression/hashing
+    
+    try {
+      const notes = String(formData.get("notes") ?? "").trim();
+      const processedItems: PendingFile[] = [];
+      
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        const hash = await calculateFileHash(compressed);
+        processedItems.push({
+          projectId,
+          projectName: currentProject?.name ?? "Selected project",
+          creditId,
+          projectCreditId: currentCredit?.project_credit_id ?? "",
+          creditName: `${currentCredit?.credit_code ?? ""} - ${currentCredit?.credit_name ?? ""}`.trim(),
+          docType,
+          requirementSlot,
+          notes,
+          file: compressed,
+          fileHash: hash,
+        });
+      }
+      
+      setPendingQueue(processedItems);
+    } catch (err) {
+      setError("Failed to process files for upload.");
+      setLoading(false);
+    }
   }
 
   return (

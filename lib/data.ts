@@ -2175,3 +2175,149 @@ export async function getSuperUserCommandCenter() {
     reconciliation: reconciliationRows,
   };
 }
+
+export type RoleTask = {
+  id: string;
+  type: 'upload_pending' | 'clarification_needed' | 'review_pending' | 'milestone';
+  title: string;
+  subtitle: string;
+  projectId: string;
+  projectName: string;
+  actionUrl: string;
+  priority: 'high' | 'medium' | 'low';
+  dueDate?: string;
+};
+
+export async function getRoleTasks(): Promise<RoleTask[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const client = createClient();
+  const projects = await getDashboardProjects();
+  const tasks: RoleTask[] = [];
+
+  for (const project of projects) {
+    const role = project.role as MemberRole;
+
+    if (['architect', 'mep', 'contractor', 'consultant'].includes(role)) {
+      const workspace = await getProjectWorkspace(project.id); if (!workspace) continue;
+      const myCredits = workspace.credits.filter(c => c.responsible_role === role && c.status !== 'complete');
+      
+      for (const credit of myCredits) {
+        const missingCount = credit.documents_required.filter(r => r.required && !credit.documents.some(d => d.doc_category === r.type && d.status === 'approved')).length;
+        if (missingCount > 0) {
+          tasks.push({
+            id: 'upload-' + credit.id,
+            type: 'upload_pending',
+            title: 'Upload ' + missingCount + ' document(s)',
+            subtitle: credit.credit_code + ': ' + credit.credit_name,
+            projectId: project.id,
+            projectName: project.name,
+            actionUrl: '/projects/' + project.id + '?credit=' + credit.id + '&action=upload',
+            priority: credit.is_mandatory ? 'high' : 'medium',
+          });
+        }
+      }
+    }
+
+    const { data: clarifications } = await client
+      .from('documents')
+      .select('id, file_name, credit:credits(credit_code), notes, workflow_state')
+      .eq('project_id', project.id)
+      .eq('uploaded_by', user.id)
+      .eq('workflow_state', 'CLARIFICATION')
+      .limit(10);
+
+    for (const doc of clarifications ?? []) {
+      tasks.push({
+        id: 'clarify-' + doc.id,
+        type: 'clarification_needed',
+        title: 'Clarification required',
+        subtitle: ((doc as any).credit?.credit_code || 'Doc') + ': ' + doc.file_name,
+        projectId: project.id,
+        projectName: project.name,
+        actionUrl: '/documents?project=' + project.id + '&document=' + doc.id,
+        priority: 'high',
+      });
+    }
+
+    if (['owner', 'project_admin', 'super_admin', 'super_user'].includes(role)) {
+      const queue = (await getOwnerReviewQueue()).filter(item => item.project_id === project.id);
+      if (queue.length > 0) {
+        tasks.push({
+          id: 'review-' + project.id,
+          type: 'review_pending',
+          title: queue.length + ' items to review',
+          subtitle: 'Project ' + project.name + ' queue',
+          projectId: project.id,
+          projectName: project.name,
+          actionUrl: role === 'owner' ? '/projects/' + project.id + '/review' : '/review-queue',
+          priority: 'medium',
+        });
+      }
+    }
+  }
+
+  return tasks.sort((a, b) => (a.priority === 'high' ? -1 : 1));
+}
+
+
+// Advanced Intelligence & Monetization (M3/M4)
+export async function getBurnRateForecast(projectId: string) {
+  const client = createClient();
+  const now = new Date();
+  const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+
+  const { data: transactions } = await client
+    .from('token_transactions')
+    .select('amount, created_at')
+    .eq('project_id', projectId)
+    .gte('created_at', fourWeeksAgo.toISOString());
+
+  const totalBurned = (transactions ?? []).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const weeklyBurn = totalBurned / 4;
+
+  const { data: wallet } = await client
+    .from('wallets')
+    .select('balance')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  const balance = wallet?.balance ?? 0;
+  const weeksRemaining = weeklyBurn > 0 ? Math.floor(balance / weeklyBurn) : Infinity;
+
+  return {
+    weeklyBurn,
+    balance,
+    weeksRemaining,
+    isCritical: weeksRemaining <= 2,
+  };
+}
+
+export async function getVendorIntelligence() {
+  const client = createClient();
+  const { data: stats } = await client
+    .from('documents')
+    .select('uploaded_by, workflow_state, project_id');
+
+  const vendorMap = new Map<string, any>();
+  for (const doc of stats ?? []) {
+    const vendor = doc.uploaded_by || 'Unknown';
+    if (!vendorMap.has(vendor)) {
+      vendorMap.set(vendor, { uploads: 0, approvals: 0, rejections: 0, projects: new Set() });
+    }
+    const v = vendorMap.get(vendor);
+    v.uploads++;
+    v.projects.add(doc.project_id);
+    if (doc.workflow_state === 'APPROVED') v.approvals++;
+    if (doc.workflow_state === 'REJECTED' || doc.workflow_state === 'CLARIFICATION') v.rejections++;
+  }
+
+  return Array.from(vendorMap.entries()).map(([vendor, v]) => ({
+    vendor,
+    uploadCount: v.uploads,
+    approvalRate: v.uploads > 0 ? Math.round((v.approvals / v.uploads) * 100) : 0,
+    projectCount: v.projects.size,
+    efficiencyScore: Math.max(0, 100 - (v.rejections / Math.max(v.uploads, 1)) * 100),
+  })).sort((a, b) => b.efficiencyScore - a.efficiencyScore);
+}

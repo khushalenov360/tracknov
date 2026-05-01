@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getRoleTasks } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { getRoiSnapshot } from "@/lib/services/roi-service";
+import { RefreshTrigger } from "@/components/refresh-trigger";
 
 import { cookies } from "next/headers";
 
@@ -21,11 +22,12 @@ export default async function DashboardPage({
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
   const cookieStore = cookies();
-  const [user, projects, ownerQueue, insights] = await Promise.all([
+  const [user, projects, ownerQueue, insights, roleTasks] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
     getExecutiveInsights(),
+    getRoleTasks(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
@@ -139,42 +141,7 @@ export default async function DashboardPage({
       risk,
     };
   });
-  const nextBestActions = (() => {
-    const stuckTop = insights.stuckItems[0];
-    if (activeRole === "owner") {
-      return [
-        `Clear your review queue (${ownerQueue.length} pending) to keep vendor submissions moving.`,
-        stuckTop
-          ? `Escalate ${stuckTop.projectName} / ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
-          : "No major blocker detected. Continue daily owner-review sweeps.",
-        "Use precise send-back remarks so L0 users can resubmit without calls.",
-      ];
-    }
-    if (activeRole === "project_admin" || activeRole === "super_admin") {
-      const highRisk = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
-      return [
-        `Prioritize ${highRisk} at-risk project(s) first in validation queue.`,
-        stuckTop
-          ? `Resolve top blocker: ${stuckTop.projectName} / ${stuckTop.creditCode} (${stuckTop.responsibleRole}).`
-          : "No blocker cluster detected. Push owner-approved documents to final decision.",
-        "Close repeated rejection reasons with template-based corrective guidance.",
-      ];
-    }
-    if (activeRole === "client") {
-      return [
-        `Review ${atRiskCount} at-risk location(s) and escalate delayed vendors.`,
-        `Token runway is ${exhaustionWeeks} week(s); plan top-up before freeze.`,
-        "Use project comparison board to prioritize leadership reviews this week.",
-      ];
-    }
-    return [
-      "Complete mapped uploads for your assigned credits first.",
-      stuckTop
-        ? `Focus on ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
-        : "No blocking alert found. Continue checklist closure.",
-      "Resubmit rejected files with explicit correction notes to speed approval.",
-    ];
-  })();
+
 
   const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
   const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
@@ -191,6 +158,7 @@ export default async function DashboardPage({
       role={activeRole}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
+      <RefreshTrigger intervalMs={60000} />
       {primaryProjectId && checklist ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -310,16 +278,47 @@ export default async function DashboardPage({
       ) : null}
 
       <section className="surface-card mb-4 p-4">
-        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Next best actions</h2>
+        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My Priority Tasks</h2>
         <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-          Role-guided actions based on live backlog, blockers, and project risk.
+          Real-time backlog for your project role: {roleLabels[activeRole] || activeRole}.
         </p>
         <div className="mt-3 grid gap-2">
-          {nextBestActions.map((action) => (
-            <div key={action} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] text-[var(--color-text-primary)]">
-              {action}
-            </div>
-          ))}
+          {roleTasks.length > 0 ? (
+            roleTasks.map((task) => (
+              <Link
+                key={task.id}
+                href={task.actionUrl}
+                className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 transition-colors hover:border-[var(--color-border-strong)]"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-text-primary)]">
+                    {task.priority === "high" && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-red)]" />
+                    )}
+                    {task.title}
+                  </p>
+                  <p className="truncate text-[11px] text-[var(--color-text-secondary)]">
+                    {task.projectName} • {task.subtitle}
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    task.type === "clarification_needed"
+                      ? "bg-[var(--color-amber-soft)] text-[var(--color-amber)]"
+                      : task.type === "review_pending"
+                        ? "bg-[var(--color-blue-soft)] text-[var(--color-blue)]"
+                        : "bg-[var(--color-surface)] text-[var(--color-text-tertiary)]"
+                  }
+                >
+                  {task.type.replace("_", " ")}
+                </Badge>
+              </Link>
+            ))
+          ) : (
+            <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center text-[11px] text-[var(--color-text-tertiary)]">
+              All caught up! No pending tasks for your role right now.
+            </p>
+          )}
         </div>
       </section>
 
@@ -374,7 +373,7 @@ export default async function DashboardPage({
         </section>
       ) : null}
 
-      {clientMode ? (
+      {clientMode || isOwner || canControlDemo ? (
         <section className="surface-card mb-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
           <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">

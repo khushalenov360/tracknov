@@ -395,6 +395,7 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
   const docCategory = String(formData.get("doc_category") ?? "").trim();
   const requirementSlot = String(formData.get("requirement_slot") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
+  const fileHash = String(formData.get("file_hash") ?? "").trim();
   const file = formData.get("file");
 
   if (!projectId || !creditId || !docCategory || !(file instanceof File)) {
@@ -423,7 +424,8 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
       requirementSlot,
       notes,
       file,
-    });
+      fileHash: fileHash || null,
+    } as any);
 
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -483,6 +485,38 @@ export async function updateDocumentMetadataAction(formData: FormData) {
     pathFor(projectId).forEach((path) => revalidatePath(path));
   } catch (error) {
     // Handle or log error
+  }
+}
+
+export async function moveDocumentAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  if (!env.isConfigured) return { ok: false, error: "Not configured." };
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+
+  if (!documentId || !projectId || !creditId || !docCategory) {
+    return { ok: false, error: "Missing document, project, or target mapping." };
+  }
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Session expired." };
+
+  try {
+    await documentService.updateMetadata(user, {
+      documentId,
+      projectId,
+      creditId,
+      docCategory,
+      notes: "Moved mapping to another credit.",
+    });
+
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message || "Move failed." };
   }
 }
 

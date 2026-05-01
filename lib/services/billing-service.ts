@@ -217,6 +217,53 @@ export class BillingService {
     if (error) throw error;
     return data || [];
   }
+
+  /**
+   * Reconciles the client wallet balance against transaction history.
+   * Ensures 100% accuracy (Token Engine 9).
+   */
+  async reconcileClientWallet(user: CurrentUser, clientUserId: string) {
+    const role = await projectService.getActorProjectRole("", user);
+    if (!(role === "super_user" || role === "super_admin")) {
+      throw new Error("Unauthorized: Only Super Admin can run reconciliation.");
+    }
+
+    const { data: transactions } = await this.admin
+      .from("token_transactions")
+      .select("amount")
+      .eq("client_id", (await this.admin.from("project_members").select("client_id").eq("user_id", clientUserId).limit(1).maybeSingle()).data?.client_id);
+
+    const calculatedBalance = transactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0;
+
+    const { data: wallet } = await this.admin
+      .from("client_token_wallets")
+      .select("token_balance")
+      .eq("client_user_id", clientUserId)
+      .maybeSingle();
+
+    const currentBalance = Number(wallet?.token_balance ?? 0);
+    const mismatch = calculatedBalance !== currentBalance;
+
+    if (mismatch) {
+      await this.admin
+        .from("client_token_wallets")
+        .update({ token_balance: calculatedBalance, updated_at: new Date().toISOString() })
+        .eq("client_user_id", clientUserId);
+
+      await logSystemActivity(this.admin, {
+        projectId: "",
+        entityType: "billing",
+        entityId: clientUserId,
+        action: "wallet_reconciled",
+        actorId: user.id,
+        actorRole: role,
+        summary: `Reconciled wallet balance from ${currentBalance} to ${calculatedBalance}.`,
+        details: { previous: currentBalance, reconciled: calculatedBalance },
+      });
+    }
+
+    return { reconciled: mismatch, previous: currentBalance, current: calculatedBalance };
+  }
 }
 
 export const billingService = new BillingService();

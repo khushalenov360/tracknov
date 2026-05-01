@@ -4,6 +4,8 @@ import { env } from "@/lib/env";
 import { transitionDocumentState } from "./document-state-service";
 import { ragService } from "./rag-service";
 import { eventBus } from "@/lib/events/event-bus";
+import { computeIgbcScore } from "./igbc-scoring-service";
+import { getProjectWorkspace } from "@/lib/data";
 import type { CurrentUser } from "@/lib/types";
 
 export type ReviewEventInput = {
@@ -332,6 +334,45 @@ export class ReviewService {
       }
     }
     return results;
+  }
+
+  async canSubmitProject(projectId: string) {
+    const workspace = await getProjectWorkspace(projectId);
+    if (!workspace) throw new Error("Project not found.");
+    
+    const score = computeIgbcScore(workspace);
+    return {
+      canSubmit: score.mandatory.complete,
+      missingMandatory: score.mandatory.total - score.mandatory.approved,
+      scorePct: score.overall.scorePct,
+      projectedRating: score.overall.projectedRating
+    };
+  }
+
+  async submitProject(user: CurrentUser, projectId: string) {
+    const { canSubmit, missingMandatory } = await this.canSubmitProject(projectId);
+    if (!canSubmit) {
+      throw new Error(`Cannot submit: ${missingMandatory} mandatory credits are not approved.`);
+    }
+
+    const { error } = await this.admin
+      .from("projects")
+      .update({ status: "submitted", updated_at: new Date().toISOString() })
+      .eq("id", projectId);
+
+    if (error) throw error;
+
+    await eventBus.emit({
+      type: "REVIEW_COMPLETED", // Reusing for project level status change or define new
+      payload: {
+        documentId: "", // Dummy for now
+        projectId,
+        status: "SUBMITTED_FOR_CERTIFICATION",
+        userId: user.id,
+      }
+    });
+
+    return { ok: true };
   }
 
   private async getActorProjectRole(projectId: string, user: CurrentUser) {

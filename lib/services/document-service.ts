@@ -173,6 +173,7 @@ export class DocumentService {
         project_credit_id: projectCreditId,
         version: nextVersion,
       },
+      p_file_hash: (params as any).fileHash || null,
     });
 
     if (dbError || !documentId) {

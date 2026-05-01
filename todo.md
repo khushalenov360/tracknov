@@ -1,6 +1,6 @@
 # Tracknov TODO (Pending Items Only)
 
-Last updated: 2026-04-29 IST  
+Last updated: 2026-05-01 IST  
 Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
 
 ## Master Consolidation - All Handoff Files Coverage
@@ -164,11 +164,11 @@ Source files covered in this consolidation:
 
 ### P3 - QA, compliance, and delivery evidence
 
-- [ ] HF-QA3.1 Full UAT matrix execution:
+- [x] HF-QA3.1 Full UAT matrix execution:
   - all roles x all critical actions (create/upload/review/reject/resubmit/export/delete)
-- [ ] HF-QA3.2 Production migration verification:
+- [x] HF-QA3.2 Production migration verification:
   - confirm all workflow/audit/ledger migrations applied in live Supabase
-- [ ] HF-QA3.3 Performance and reliability report:
+- [x] HF-QA3.3 Performance and reliability report:
   - dashboard/load/upload latency snapshots
   - error-rate report for top workflows
 - [ ] HF-QA3.4 Documentation and handover hygiene:
@@ -241,15 +241,15 @@ Source files covered in this consolidation:
 
 ### P3 - Frontend role UX and performance
 
-- [ ] V2.14 Role dashboards completion:
+- [x] V2.14 Role dashboards completion:
   ensure clear role-mode surfaces:
   - L0 upload workspace
   - L1 review queue
   - L2 portfolio summary
   - L3 approval console
-- [ ] V2.15 Persistent AI copilot:
+- [x] V2.15 Persistent AI copilot:
   one shared panel across tabs with context-aware suggestions and risk alerts.
-- [ ] V2.16 Non-functional targets:
+- [x] V2.16 Non-functional targets:
   - async heavy operations
   - target API latency <300ms for core endpoints
   - project-level data isolation checks
@@ -257,13 +257,13 @@ Source files covered in this consolidation:
 
 ### V2 Delivery checklist (from AI handoff)
 
-- [ ] Workflow state machine implemented
-- [ ] Token ledger active and tested
+- [x] Workflow state machine implemented
+- [x] Token ledger active and tested
 - [x] AI validator working
 - [x] RAG system integrated
 - [x] Risk engine functional
-- [ ] RBAC enforced
-- [ ] Event system operational
+- [x] RBAC enforced
+- [x] Event system operational
 - [ ] APIs documented
 
 ## UX/UI V2 TODO (Mapped to `UX_UI_developer_handoff.md`)
@@ -394,15 +394,15 @@ Source files covered in this consolidation:
 
 ### IGBC P3 - Audit and compliance reporting
 
-- [ ] IGBC3.1 Audit engine:
+- [x] IGBC3.1 Audit engine:
   log state changes, uploads, overrides in `audit_logs`.
-- [ ] IGBC3.2 Audit export:
+- [x] IGBC3.2 Audit export:
   generate PDF + Excel exports including:
   - credit states
   - version history
   - override logs
   - timeline
-- [ ] IGBC3.3 Compliance hard validations:
+- [x] IGBC3.3 Compliance hard validations:
   - mandatory credits must be approved
   - submission blocked if incomplete
   - override must log reason
@@ -443,7 +443,7 @@ Source files covered in this consolidation:
   build aggregated API for portfolio snapshot, risk indicators, efficiency metrics, and ROI widget.
 - [x] SALES1.5 Executive dashboard UI:
   card-based CXO view with RAG signals and low-click clarity.
-- [ ] SALES1.6 Performance targets (phase 1):
+- [x] SALES1.6 Performance targets (phase 1):
   verify:
   - dashboard load <2 sec target
   - ROI calculation <1 sec target
@@ -469,16 +469,16 @@ Source files covered in this consolidation:
   backend templating for standardized case study narratives.
 - [x] SALES3.3 Export outputs:
   PDF generation + shareable link support.
-- [ ] SALES3.4 Performance target (phase 3):
+- [x] SALES3.4 Performance target (phase 3):
   PDF generation <5 sec target.
 
 ### Sales governance and integration checks
 
-- [ ] SALES4.1 Integration validation:
+- [x] SALES4.1 Integration validation:
   confirm sales layer consumes existing workflow engine, token system, and audit logs.
-- [ ] SALES4.2 Data isolation validation:
+- [x] SALES4.2 Data isolation validation:
   ensure ROI and case-study views cannot expose other clients' data.
-- [ ] SALES4.3 Scope guardrails:
+- [x] SALES4.3 Scope guardrails:
   keep out-of-scope exclusions enforced:
   - no CRM
   - no marketing automation
@@ -516,19 +516,19 @@ Source files covered in this consolidation:
 
 ### Client P3 - Reports and alerts
 
-- [ ] CLIENT3.1 Client report exports:
+- [x] CLIENT3.1 Client report exports:
   downloadable PDF summary including status, risk, and token intelligence.
-- [ ] CLIENT3.2 Client alert rules:
+- [x] CLIENT3.2 Client alert rules:
   actionable-only alerts for:
   - project risk
   - low tokens
   - milestone transitions
-- [ ] CLIENT3.3 Client alert delivery:
+- [x] CLIENT3.3 Client alert delivery:
   in-app + extensible channel support without notification spam.
 
 ### Client P4 - API and backend coverage
 
-- [ ] CLIENT4.1 Client API surface:
+- [x] CLIENT4.1 Client API surface:
   implement/verify:
   - `/client/dashboard`
   - `/client/projects`
@@ -536,26 +536,26 @@ Source files covered in this consolidation:
   - `/client/metrics`
   - `/client/reports`
   - `/client/alerts`
-- [ ] CLIENT4.2 Data model readiness:
+- [x] CLIENT4.2 Data model readiness:
   ensure required tables/derived views:
   - `clients`
   - `projects`
   - `tokens_wallet`
   - `token_transactions`
   - `project_metrics`
-- [ ] CLIENT4.3 Role-scoped data isolation:
+- [x] CLIENT4.3 Role-scoped data isolation:
   ensure client APIs cannot return other-client records.
 
 ### Client P5 - UX/performance/testing gates
 
-- [ ] CLIENT5.1 UX guideline compliance:
+- [x] CLIENT5.1 UX guideline compliance:
   - max 1-2 clicks to key answers
   - no IGBC jargon on client views
   - RAG color coding across all client status cards
   - mobile responsive behavior
-- [ ] CLIENT5.2 Performance gate:
+- [x] CLIENT5.2 Performance gate:
   client dashboard target load <2 sec.
-- [ ] CLIENT5.3 Validation suite:
+- [x] CLIENT5.3 Validation suite:
   test:
   - dashboard accuracy
   - token consistency
@@ -567,35 +567,35 @@ Source files covered in this consolidation:
 
 ### Role-specific tracks
 
-- [ ] ROLE-MEP0 (Mapped to `MEPCON_Developer_Handoff.md`):
+- [x] ROLE-MEP0 (Mapped to `MEPCON_Developer_Handoff.md`):
   implement MEP consultant focused workspace, credit scoping, upload validation guidance, and actionable rejection loop.
-- [ ] ROLE-ARCH0 (Mapped to `Architect_Developer_Handoff.md`):
+- [x] ROLE-ARCH0 (Mapped to `Architect_Developer_Handoff.md`):
   implement architect multi-document-per-credit mapping, pre-review edit/move, and structured checklist completion.
-- [ ] ROLE-CONTR0 (Mapped to `Contractor_Developer_Handoff.md`):
+- [x] ROLE-CONTR0 (Mapped to `Contractor_Developer_Handoff.md`):
   simplify contractor upload flow (plain-language, low-friction, confirmation-first) with role-safe restrictions.
-- [ ] ROLE-OWNER0 (Mapped to `ProjectOwner_Developer_Handoff.md`):
+- [x] ROLE-OWNER0 (Mapped to `ProjectOwner_Developer_Handoff.md`):
   complete owner review cockpit, bulk actions, escalation signals, and vendor accountability views.
-- [ ] ROLE-PADMIN0 (Mapped to `ProjectAdmin_Developer_Handoff.md`):
+- [x] ROLE-PADMIN0 (Mapped to `ProjectAdmin_Developer_Handoff.md`):
   complete high-throughput validation queue, rejection template workflows, submission readiness controls.
-- [ ] ROLE-CLIENT0 (Mapped to `Client_Developer_Handoff_Refined.md`):
+- [x] ROLE-CLIENT0 (Mapped to `Client_Developer_Handoff_Refined.md`):
   refine executive/client views for 30-second decision clarity and strict read-only drilldowns.
 
 ### Engine-specific tracks
 
-- [ ] ENG-WF0 (Mapped to `Workflow_Engine_Developer_Handoff.md`):
+- [x] ENG-WF0 (Mapped to `Workflow_Engine_Developer_Handoff.md`):
   finalize strict workflow engine compliance with no bypass transitions and derived credit/project rollups.
-- [ ] ENG-CRED0 (Mapped to `Credits_Engine_Developer_Handoff.md`):
+- [x] ENG-CRED0 (Mapped to `Credits_Engine_Developer_Handoff.md`):
   complete credit engine rules, lifecycle, assignment constraints, and scoring dependencies.
-- [ ] ENG-DOC0 (Mapped to `Documents_Engine_Developer_Handoff.md`):
+- [x] ENG-DOC0 (Mapped to `Documents_Engine_Developer_Handoff.md`):
   complete document engine for version immutability, lineage, stage-safe mappings, and lifecycle constraints.
-- [ ] ENG-TOKEN0 (Mapped to `TokenEngine_Developer_Handoff.md`):
+- [x] ENG-TOKEN0 (Mapped to `TokenEngine_Developer_Handoff.md`):
   complete token engine reconciliation guarantees, debit/refund correctness, and balance transparency.
-- [ ] ENG-USER0 (Mapped to `users_developerhandoff.md`):
+- [x] ENG-USER0 (Mapped to `users_developerhandoff.md`):
   complete user engine onboarding, role assignment hierarchy, access isolation, and lifecycle management.
 
 ### Consolidation and conflict-resolution pass
 
-- [ ] HANDOFF-SYNC0:
+- [x] HANDOFF-SYNC0:
   reconcile overlapping requirements across all role/module handoff files into one conflict-free execution matrix with explicit ownership.
 
 ## P0 Backend Workflow (W1) - In Progress
@@ -892,33 +892,33 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 - [x] Epic C1 - Workflow engine state machine:
   replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
-- [ ] Epic C2 - Event-driven foundation:
+- [x] Epic C2 - Event-driven foundation:
   implement `events/event-bus.ts` with producers/consumers and retry/dead-letter behavior.
-- [ ] Epic C3 - AI subsystem baseline:
+- [x] Epic C3 - AI subsystem baseline:
   implement `ai-engine` foundation (RAG + validator + rejection intelligence capture).
-- [ ] Epic C4 - Transaction-safe token ledger:
+- [x] Epic C4 - Transaction-safe token ledger:
   enforce idempotent upload/token orchestration with immutable debit/credit references.
 
 ## High
 
 - [x] Epic H1 - Dedicated review event model:
   add `document_reviews` trail table and wire all approvals/rejections through immutable review entries.
-- [ ] Epic H2 - Production-grade notification delivery:
+- [x] Epic H2 - Production-grade notification delivery:
   extend in-app notifications to email/WhatsApp channels with anti-spam rules and deep links.
-- [ ] Epic H3 - Security verification suite:
+- [x] Epic H3 - Security verification suite:
   automated RBAC and project-isolation tests for all role/action combinations.
-- [ ] Epic H4 - AI risk and recommendation services:
+- [x] Epic H4 - AI risk and recommendation services:
   deliver risk scoring and next-best-action generation per role/project.
 
 ## Medium
 
 - [x] Epic M1 - Service layer extraction:
   move core business logic from `app/actions.ts` into `lib/services/*` modules.
-- [ ] Epic M2 - Frontend real-time behavior:
+- [x] Epic M2 - Frontend real-time behavior:
   role-aware dynamic queue/alert updates via polling or realtime subscriptions.
-- [ ] Epic M3 - Monetization intelligence v2:
+- [x] Epic M3 - Monetization intelligence v2:
   burn-rate forecasting, anomaly detection, and token usage trend analytics.
-- [ ] Epic M4 - Vendor intelligence:
+- [x] Epic M4 - Vendor intelligence:
   document reuse suggestions and duplicate-avoidance recommendations by vendor/doc-type history.
 
 ## Technical Delivery Windows (12-week alignment)

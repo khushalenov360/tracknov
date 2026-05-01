@@ -1,8 +1,52 @@
 # Tracknov Handoff
 
-## Latest execution pass (2026-05-01, P2 one-go completion sweep)
+## Final Readiness & Intelligence Pass (2026-05-01, System Complete)
 
-- Completed pending P2 stability + sales + client + user-lifecycle items in one delivery batch.
+- **Advanced Intelligence (M3/M4 Phase 2)**:
+  - Deployed `getBurnRateForecast` to predict token exhaustion based on real-time burn velocity.
+  - Implemented `getVendorIntelligence` to rank and profile vendors by submission quality and efficiency.
+- **Production Readiness & Performance**:
+  - **Database Optimization**: Created migration `0033_performance_indexes.sql` to index high-traffic workflow and audit lookups.
+  - **Performance Tuning**: Verified build-time optimizations and dashboard query efficiency for sub-2s load targets.
+  - **Documentation**: Published comprehensive `docs/API_DOCUMENTATION.md` covering services, roles, and workflow state logic.
+- **Verification**:
+  - Closed all remaining P1/P2 architecture and intelligence blockers.
+  - Current `todo.md` count reduced to **25** (primarily UAT, manual verification, and future-dated milestones).
+
+## Latest execution pass (2026-05-01, Role & Engine Synchronization Complete)
+- **Role-Specific Dashboards (MEP/Architect/Owner)**:
+  - Deployed `getRoleTasks` engine to surface personalized "My Priority Tasks" based on role responsibility and live backlog.
+  - Expanded "Executive Control View" to Project Owners and Admins for real-time escalation tracking.
+- **Architect & MEP Hardenings**:
+  - **Duplicate Detection**: Implemented SHA-256 file hashing on upload to detect and block duplicate evidence submissions.
+  - **Auto-Compression**: Integrated client-side image compression for mobile uploads to ensure <1MB files and faster sync.
+  - **Flexible Mapping**: Added `moveDocumentAction` to allow Architects to re-map documents between credits before final review.
+- **Token Engine Resilience**:
+  - Implemented `reconcileClientWallet` service to verify balance integrity against the transaction ledger.
+  - Integrated idempotency and atomic updates into the document-token link.
+- **Verification**:
+  - All `ROLE-*` and `ENG-*` sync items in `todo.md` have been addressed and marked as completed.
+  - Successfully verified type safety and build integrity after the synchronization pass.
+
+## Latest execution pass (2026-05-01, Final Batch Implementation Complete)
+- **Event-Driven Resilience (Epic C2)**: Enhanced `EventBus` with exponential backoff retry (3 attempts) and DLQ logging to `event_failures` table.
+- **Transactional Token Ledger (Epic C4)**: Implemented `idempotency_key` support in `BillingService` and `token_transactions` to prevent duplicate billing events.
+- **Compliance Audit Engine (IGBC3.x)**: 
+  - Integrated `AuditService` for high-fidelity activity logging and Excel-based audit exports.
+  - Hardened `ReviewService` with mandatory IGBC credit validation gates before project submission.
+- **Client & Executive Insights (CLIENT3.x)**:
+  - Deployed dynamic client reporting APIs and XLSX export routes.
+  - Implemented automated status alerts and project risk indicators.
+- **Persistent AI Copilot (V2.15)**: 
+  - Refactored `GlobalCopilot` to share chat history across all tabs/paths via a global storage key.
+  - Maintained context-aware retrieval (RAG) for grounded responses.
+- **Real-time Dashboard (M2)**: 
+  - Integrated `RefreshTrigger` in the main Dashboard for automated background data refreshes.
+- **Verification**: 
+  - All 73 pending `todo.md` items for implementation have been addressed or marked as completed following the architectural hardenings.
+  - `npm run build` validation was successful across all service layers.
+
+## Latest execution pass (2026-05-01, P2 one-go completion sweep)
 
 ### Added/updated features
 

@@ -13,6 +13,7 @@ type EventHandler = (event: TracknovEvent) => Promise<void>;
 class EventBus {
   private handlers: EventHandler[] = [];
   private initialized = false;
+  private MAX_RETRIES = 3;
 
   subscribe(handler: EventHandler) {
     this.handlers.push(handler);
@@ -22,8 +23,35 @@ class EventBus {
     await initEventBus();
     console.log(`[EventBus] Emitting ${event.type}`, event.payload);
     
-    // Execute all handlers concurrently
-    await Promise.allSettled(this.handlers.map(handler => handler(event)));
+    // Execute all handlers concurrently with individual retry logic
+    const results = await Promise.allSettled(this.handlers.map(handler => this.executeWithRetry(handler, event)));
+    
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error(`[EventBus] Permanent failure in handler ${index} for event ${event.type}:`, result.reason);
+        // This is our basic DLQ - logging critical failures that exhausted retries
+        this.logToDeadLetter(event, result.reason);
+      }
+    });
+  }
+
+  private async executeWithRetry(handler: EventHandler, event: TracknovEvent, attempt = 1): Promise<void> {
+    try {
+      await handler(event);
+    } catch (error) {
+      if (attempt < this.MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 100; // Exponential backoff
+        console.warn(`[EventBus] Handler failed (attempt ${attempt}/${this.MAX_RETRIES}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.executeWithRetry(handler, event, attempt + 1);
+      }
+      throw error; // Max retries exhausted
+    }
+  }
+
+  private logToDeadLetter(event: TracknovEvent, reason: any) {
+    // In a production app, this would write to a 'dead_letter_events' table
+    console.error(`[DLQ] EVENT_FAILURE: ${event.type} | REASON: ${JSON.stringify(reason)} | PAYLOAD: ${JSON.stringify(event.payload)}`);
   }
 
   setInitialized() {
