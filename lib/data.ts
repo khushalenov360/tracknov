@@ -2326,10 +2326,16 @@ export async function getVendorIntelligence() {
 
 
 export async function getRatingSystems(): Promise<ProjectRatingSystem[]> {
-  const client = createClient();
-  const { data } = await client
+  if (!env.isConfigured) return [];
+  // Use admin client to bypass RLS on the master library table –
+  // rating systems are public reference data that every authenticated user needs to see.
+  const client = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const { data, error } = await client
     .from('rating_system')
     .select('id, name, version, description')
     .order('name', { ascending: true });
+  if (error) {
+    console.error('[getRatingSystems] error:', error.message);
+  }
   return (data ?? []) as ProjectRatingSystem[];
 }
