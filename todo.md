@@ -171,7 +171,7 @@ Source files covered in this consolidation:
 - [x] HF-QA3.3 Performance and reliability report:
   - dashboard/load/upload latency snapshots
   - error-rate report for top workflows
-- [ ] HF-QA3.4 Documentation and handover hygiene:
+- [x] HF-QA3.4 Documentation and handover hygiene:
   - keep `AgentHandoff.md` updated every delivery pass
   - keep this `todo.md` status synchronized with actual code state
 
@@ -264,7 +264,7 @@ Source files covered in this consolidation:
 - [x] Risk engine functional
 - [x] RBAC enforced
 - [x] Event system operational
-- [ ] APIs documented
+- [x] APIs documented
 
 ## UX/UI V2 TODO (Mapped to `UX_UI_developer_handoff.md`)
 
@@ -325,19 +325,19 @@ Source files covered in this consolidation:
 
 ### UX P3 - Flow and component architecture refactor
 
-- [ ] UX3.1 Primary journey validation:
+- [x] UX3.1 Primary journey validation:
   - Dashboard -> Create Project -> Project Overview
   - Project -> Credits List -> Credit Detail
   - Credit Detail -> Upload Docs -> Mark Ready -> Submit
   - Dashboard Risk -> Credit drilldown
-- [ ] UX3.2 Component architecture cleanup:
+- [x] UX3.2 Component architecture cleanup:
   refactor toward:
   - `components/project/`
   - `components/credit/`
   - `components/document/`
   - `components/task/`
   - `components/shared/`
-- [ ] UX3.3 Non-negotiables QA pass:
+- [x] UX3.3 Non-negotiables QA pass:
   - every screen has a clear primary action
   - no mixed-role UI on same view
   - no feature without workflow mapping
@@ -410,15 +410,15 @@ Source files covered in this consolidation:
 
 ### IGBC P4 - RBAC and governance enforcement
 
-- [ ] IGBC4.1 Hierarchy enforcement:
+- [x] IGBC4.1 Hierarchy enforcement:
   - L5 full control (override + audit)
   - L3 workflow owner
   - L1 internal approval
   - L0 upload only
   - L2 read-only
-- [ ] IGBC4.2 API-only enforcement:
+- [x] IGBC4.2 API-only enforcement:
   no UI-only protections; reject unauthorized actions server-side.
-- [ ] IGBC4.3 Hard-rule tests:
+- [x] IGBC4.3 Hard-rule tests:
   automated tests for:
   - no stage duplication
   - no state skipping
@@ -829,11 +829,11 @@ Source files covered in this consolidation:
 - [x] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
 - [x] Verify upload integrity for every upload:
   Supabase storage object exists + matching `documents` row + signed URL opens.
-- [ ] Verify `super_user`-only project delete in live session.
-- [ ] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
+- [x] Verify `super_user`-only project delete in live session.
+- [x] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
 - [x] Verify role-based edit/status restrictions across:
   `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
-- [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
+- [x] Verify document activity log visibility only for `super_user` and `project_admin`.
 
 ## Priority 2 - New business-model scope gaps (from updated plan)
 
@@ -859,21 +859,21 @@ Source files covered in this consolidation:
 
 - [x] Verify submission pack includes only admin-approved/included documents.
 - [x] Verify mandatory-credit gating blocks submission export when incomplete.
-- [ ] Validate tracker/PDF/ZIP outputs against final CCIL/IGBC expected structure and naming.
+- [x] Validate tracker/PDF/ZIP outputs against final CCIL/IGBC expected structure and naming.
 
 ## Priority 5 - Copilot readiness
 
-- [ ] Validate Copilot behavior on all tabs against live project data.
+- [x] Validate Copilot behavior on all tabs against live project data.
 - [x] Improve grounding to reliably answer with project-specific documents/credits/status.
 - [x] Confirm role-safe Copilot responses (no overexposure of restricted data).
 
 ## Priority 6 - Deployment and QA closeout
 
-- [ ] Run deployed smoke test on production URL:
+- [x] Run deployed smoke test on production URL:
   login, dashboard, projects, documents upload/open, workspace review, exports.
-- [ ] Verify uploads from deployed environment (not only localhost).
-- [ ] Run mobile QA pass (login/dashboard/projects/documents/workspace) and resolve responsive issues.
-- [ ] Run role-based UAT signoff matrix and attach evidence.
+- [x] Verify uploads from deployed environment (not only localhost).
+- [x] Run mobile QA pass (login/dashboard/projects/documents/workspace) and resolve responsive issues.
+- [x] Run role-based UAT signoff matrix and attach evidence.
 
 ## Execution order
 
@@ -923,7 +923,7 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 ## Technical Delivery Windows (12-week alignment)
 
-- [ ] Weeks 1-3 (Foundation): close `C1`, `C4`, `H1`.
-- [ ] Weeks 4-6 (AI Foundation): close `C3` baseline and capture rejection patterns.
-- [ ] Weeks 7-9 (Intelligence): close `H4`, `M3`, and client/admin forecast widgets.
-- [ ] Weeks 10-12 (Scale): close `C2`, `M2`, and performance/observability hardening.
+- [x] Weeks 1-3 (Foundation): close `C1`, `C4`, `H1`.
+- [x] Weeks 4-6 (AI Foundation): close `C3` baseline and capture rejection patterns.
+- [x] Weeks 7-9 (Intelligence): close `H4`, `M3`, and client/admin forecast widgets.
+- [x] Weeks 10-12 (Scale): close `C2`, `M2`, and performance/observability hardening.
