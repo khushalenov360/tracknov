@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
@@ -30,9 +31,7 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const nextPath = safeNextPath(searchParams.get("next"));
   const authError = searchParams.get("error");
 
@@ -45,7 +44,6 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
 
     setLoading(true);
     setError("");
-    setMessage("");
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
@@ -59,37 +57,6 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
     router.refresh();
   }
 
-  async function onResetPassword() {
-    if (disabled) {
-      setError("Password recovery is unavailable until the live workspace is configured.");
-      return;
-    }
-
-    if (!email.trim()) {
-      setError("Enter your email first so we know where to send the reset link.");
-      return;
-    }
-
-    setResettingPassword(true);
-    setError("");
-    setMessage("");
-    const supabase = createClient();
-    const redirectTo = new URL("/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", "/reset-password");
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: redirectTo.toString(),
-    });
-
-    setResettingPassword(false);
-
-    if (resetError) {
-      setError(resetError.message || "Could not send the password reset email.");
-      return;
-    }
-
-    setMessage("Password reset email sent. Open the link in your email to choose a new password.");
-  }
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {authError ? (
@@ -126,19 +93,12 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
         />
       </div>
       {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
-      {message ? <p className="text-[11px] text-[var(--color-green)]">{message}</p> : null}
-      {!disabled ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-auto justify-start rounded-none py-0 text-[11px]"
-          disabled={resettingPassword || loading}
-          onClick={() => void onResetPassword()}
-        >
-          {resettingPassword ? "Sending reset link..." : "Forgot password?"}
-        </Button>
-      ) : null}
-      <Button type="submit" className="h-8 w-full rounded-md" disabled={loading || resettingPassword}>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/forgot-password" className="text-[11px] font-medium text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+          Forgot password?
+        </Link>
+      </div>
+      <Button type="submit" className="h-9 w-full rounded-md" disabled={loading || disabled}>
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Sign in
       </Button>

@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next");
@@ -12,10 +13,11 @@ export async function GET(request: NextRequest) {
 
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = safeNext;
+  redirectUrl.searchParams.delete("code");
   redirectUrl.searchParams.delete("token_hash");
   redirectUrl.searchParams.delete("type");
 
-  if (!token_hash || !type || !env.isConfigured) {
+  if ((!code && (!token_hash || !type)) || !env.isConfigured) {
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("error", "missing-token");
     return NextResponse.redirect(redirectUrl);
@@ -37,7 +39,9 @@ export async function GET(request: NextRequest) {
       },
     },
   });
-  const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: token_hash as string });
 
   if (error) {
     redirectUrl.pathname = "/login";
