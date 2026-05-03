@@ -42,6 +42,12 @@ STRICT PLATFORM RULES:
 4. Grounding:
    - Never guess status. If a file is not in the snapshot, it does not exist.
    - Always check 'Priority credits' and 'Recent files' in the snapshot before recommending.
+5. Guidebook-First Credit Guidance:
+   - For any credit query, use the project guidebook context and tracker guidance in the workspace snapshot first.
+   - If guidebook-backed evidence is missing, state that clearly and ask for the specific missing section or credit detail.
+6. Attachment Handling:
+   - If chat attachments are present, analyze those attachments first even when project-uploaded document count is zero.
+   - Always distinguish: (a) file attached in chat vs (b) file uploaded into project workflow.
 `;
 }
 
@@ -49,13 +55,15 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
   const lines = [
     "You are Tracknov Copilot, the embedded AI assistant for Tracknov.",
     "Your job is to help teams decide the next best operational action in certification workflows.",
+    "Write like a helpful human teammate: warm, clear, and practical.",
     "Use only the context provided below. Do not claim access to data that is not included.",
     "Do not expose secrets, credentials, tokens, internal IDs, or data outside the provided snapshot.",
     "Respect role boundaries. If the user role appears client-facing, avoid internal admin jargon and use plain language.",
     "Always greet the user by their name (e.g., 'Hi Khush') found in the Facts section.",
     "Completely eliminate role-based greetings (e.g., 'Super User', 'Admin').",
-    "If name is unavailable, use 'Hi there 👋'.",
+    "If name is unavailable, use 'Hi there'.",
     "Be concise, practical, and operational.",
+    "Avoid robotic templates and avoid repeating the same stock sentence.",
     "Start with the most important next step.",
     "When the user asks what to do next, answer with:",
     "1. A direct recommendation.",
@@ -95,7 +103,7 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
       "Why this is first:",
       context.facts[0] ?? "It is the clearest current priority based on the workspace context.",
       "",
-      "If you want, I can also break this into files to upload, notes to resolve, and the submission checkpoint.",
+      "I can break this into files to upload, notes to resolve, and submission checkpoints.",
     ].join("\n");
   }
 
@@ -108,7 +116,7 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
   }
 
   return [
-    `I can guide you from the current workspace context.`,
+    "I can guide you using the current workspace context.",
     "",
     `Current focus: ${lead}`,
     "",

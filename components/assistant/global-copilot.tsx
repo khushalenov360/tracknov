@@ -15,6 +15,7 @@ type CopilotAttachment = {
   size: number;
   base64: string;
 };
+type CopilotCreditOption = { id: string; code: string; name: string };
 type FormFieldMeta = {
   key: string;
   label: string;
@@ -108,7 +109,37 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
   const [showSettings, setShowSettings] = useState(false);
   const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [fillingForm, setFillingForm] = useState(false);
+  const [analysisSummary, setAnalysisSummary] = useState("");
+  const [availableCredits, setAvailableCredits] = useState<CopilotCreditOption[]>([]);
+  const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
+
+  const canManageGuidebookTracker = ["super_user", "project_admin"].includes(role ?? "");
+  const docCategories = ["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing", "Calculation & Tables", "Invoice", "Pic/Video"];
+
+  function parseUploadIntentFromChat(text: string) {
+    const lower = text.toLowerCase();
+    const mode: "document" | "guidebook" | "tracker" =
+      lower.includes("guidebook") && canManageGuidebookTracker
+        ? "guidebook"
+        : lower.includes("tracker") && canManageGuidebookTracker
+          ? "tracker"
+          : "document";
+
+    const pickedDocCategory =
+      docCategories.find((category) => lower.includes(category.toLowerCase())) ?? "Narrative";
+
+    const credit =
+      availableCredits.find((candidate) => lower.includes(candidate.code.toLowerCase())) ??
+      availableCredits.find((candidate) => lower.includes(candidate.name.toLowerCase()));
+
+    return {
+      mode,
+      creditId: credit?.id ?? "",
+      docCategory: pickedDocCategory,
+    };
+  }
 
   useEffect(() => {
     async function fetchProfile() {
@@ -127,7 +158,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
 
   const personalizedGreeting = useMemo(() => {
     const greeting = userName ? `Hi ${userName} 👋` : "Hi there 👋";
-    return `${greeting} I am always available in this tab. Ask for next steps, blockers, or validation guidance for ${title}.`;
+    return `${greeting}. I can help you work through ${title} step by step.`;
   }, [userName, title]);
 
   useEffect(() => {
@@ -401,11 +432,6 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
     if (!file) {
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File too large. Please upload files up to 10 MB in Copilot.");
-      event.target.value = "";
-      return;
-    }
     try {
       const bytes = await file.arrayBuffer();
       let binary = "";
@@ -419,11 +445,133 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         size: file.size,
         base64: btoa(binary),
       });
+      setAttachmentFile(file);
       setError("");
+
+      const match = pathname.match(/^\/projects\/([^/]+)/);
+      const projectId = match?.[1];
+      if (projectId) {
+        const creditsResponse = await fetch(`/api/assistant/project-upload?project_id=${encodeURIComponent(projectId)}`);
+        if (creditsResponse.ok) {
+          const creditsPayload = (await creditsResponse.json()) as { credits?: CopilotCreditOption[] };
+          setAvailableCredits(creditsPayload.credits ?? []);
+        }
+      }
+
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (extension === "xlsx" || extension === "xls") {
+        setUploadMode("tracker");
+      } else if (extension === "pdf" && canManageGuidebookTracker) {
+        setUploadMode("guidebook");
+      } else {
+        setUploadMode("document");
+      }
+
+      const analysisPrompt = `You are helping a user after they attached a file in Tracknov.
+Write a natural, human response (not a rigid template) with:
+- detected document type
+- most important data points found
+- likely credit matches (with confidence wording)
+
+Important:
+- be explicit this is analysis of the attached chat file.
+- do not claim this file is already uploaded to project workflow.
+- end with one clear follow-up question asking where the user wants to map this file.`;
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context,
+          messages: [{ role: "user", content: analysisPrompt }],
+          tone: "Guided",
+          attachments: [{
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+            base64: btoa(binary),
+          }],
+        }),
+      });
+      if (response.ok) {
+        const summary = await response.text();
+        const trimmed = summary.trim();
+        if (trimmed) {
+          setAnalysisSummary(trimmed);
+          setMessages((current) => [...current, { role: "assistant", content: trimmed }]);
+        }
+      }
     } catch {
       setError("Could not read the selected file.");
     } finally {
       event.target.value = "";
+    }
+  }
+
+  async function uploadAttachmentToProject() {
+    if (!attachmentFile) {
+      setError("Attach a file first.");
+      return;
+    }
+    const match = pathname.match(/^\/projects\/([^/]+)/);
+    const projectId = match?.[1];
+    if (!projectId) {
+      setError("Open a project workspace to upload this file to project context.");
+      return;
+    }
+
+    const intentSource =
+      input.trim() ||
+      [...messages].reverse().find((message) => message.role === "user")?.content ||
+      "";
+    const intent = parseUploadIntentFromChat(intentSource);
+    const effectiveMode = uploadMode === "document" ? intent.mode : uploadMode;
+
+    if (effectiveMode === "document" && !intent.creditId) {
+      setError("Tell Copilot where to map this file, e.g. 'Map to EDA C1 as Drawing and upload'.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("project_id", projectId);
+      formData.append("file", attachmentFile);
+      formData.append("title", attachmentFile.name.replace(/\.[^.]+$/, ""));
+      formData.append("mode", effectiveMode);
+      if (effectiveMode === "document") {
+        formData.append("credit_id", intent.creditId);
+        formData.append("doc_category", intent.docCategory);
+      }
+
+      const response = await fetch("/api/assistant/project-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; mode?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? "Upload failed.");
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            payload.mode === "guidebook"
+              ? "Guidebook uploaded successfully. Workspace instantiation has been triggered."
+              : payload.mode === "tracker"
+                ? "Tracker baseline uploaded successfully and mapped to project credits."
+                : "Document uploaded and mapped from your chat instruction. It has entered the workflow review queue.",
+        },
+      ]);
+      setAttachment(null);
+      setAttachmentFile(null);
+      setAnalysisSummary("");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -534,16 +682,25 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
                   type="button"
                   variant="ghost"
                   className="h-8 rounded-md"
-                  onClick={() => (window.location.href = "/projects")}
+                  onClick={() => void uploadAttachmentToProject()}
                 >
                   Upload To Project
                 </Button>
               </div>
-              {attachment ? (
+            {attachment ? (
                 <p className="text-[10px] text-[var(--color-text-tertiary)]">
                   Attached to Copilot: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
                 </p>
               ) : null}
+              {analysisSummary ? (
+                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2 text-[10px] text-[var(--color-text-secondary)] max-h-28 overflow-y-auto">
+                  {analysisSummary}
+                </div>
+              ) : null}
+              <p className="text-[10px] text-[var(--color-text-secondary)]">
+                Confirm mapping in chat and Copilot will upload to the workflow.
+                {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
+              </p>
             </div>
             <Textarea
               value={input}

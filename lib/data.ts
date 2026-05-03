@@ -97,12 +97,26 @@ function workflowToLegacyStatus(state: WorkflowState): "uploaded" | "owner_appro
   return "uploaded";
 }
 
+function normalizeDocumentsRequired(value: unknown): DocumentRequirement[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === "object")
+    .map((item: any) => ({
+      type: typeof item.type === "string" ? item.type : "",
+      label: typeof item.label === "string" ? item.label : (typeof item.type === "string" ? item.type : "Document"),
+      requirement: typeof item.requirement === "string" ? item.requirement : (item.required ? "Required" : "NA"),
+      required: Boolean(item.required),
+    }))
+    .filter((item) => Boolean(item.type));
+}
+
 function deriveCreditLifecycleState(
   credit: Record<string, any>,
   documents: Array<Record<string, any>>,
 ): { status: CreditStatus; completion_pct: number } {
+  const normalizedRequirements = normalizeDocumentsRequired(credit.documents_required);
   const requiredTypes = new Set(
-    ((credit.documents_required ?? []) as DocumentRequirement[])
+    normalizedRequirements
       .filter((entry) => entry.required && entry.type)
       .map((entry) => entry.type),
   );
@@ -145,6 +159,7 @@ function mapCredit(
 ): CreditWorkspace {
   const creditDocuments = documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[];
   const derived = deriveCreditLifecycleState(credit, creditDocuments as unknown as Record<string, any>[]);
+  const normalizedRequirements = normalizeDocumentsRequired(credit.documents_required);
   return {
     id: credit.id,
     project_credit_id: credit.project_credit_id ?? credit.id,
@@ -154,7 +169,7 @@ function mapCredit(
     credit_name: credit.credit_name,
     responsible_role: credit.responsible_role ? normalizeRole(credit.responsible_role) : null,
     is_mandatory: credit.is_mandatory,
-    documents_required: (credit.documents_required ?? []) as DocumentRequirement[],
+    documents_required: normalizedRequirements,
     state: derived.status,
     status: derived.status,
     blocked_by: credit.blocked_by,
@@ -322,7 +337,10 @@ export async function getDashboardProjects() {
   }
 
   const currentUser = await getCurrentUser();
-  if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
+  const elevatedPortfolioRole =
+    currentUser?.role === "super_user" || currentUser?.role === "super_admin" || currentUser?.role === "project_admin";
+
+  if (elevatedPortfolioRole && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
     const { data: projects } = await admin
       .from("projects")
@@ -383,7 +401,7 @@ export async function getDashboardProjects() {
           target_rating: project.target_rating,
           created_at: project.created_at,
           projectCode: project.project_code || "N/A",
-          role: "super_user",
+          role: normalizeRole(currentUser?.role ?? "project_admin"),
           overallCompletion,
           totalCredits: creditRows.length,
           uploadedDocs: docsCount ?? 0,
@@ -419,17 +437,30 @@ export async function getDashboardProjects() {
     .select("project_id, role")
     .eq("user_id", user.id);
 
-  const projectMemberships = (memberships ?? []).filter((membership: any) => membership?.project_id);
+  const fallbackMemberships =
+    (!memberships || memberships.length === 0) && env.supabaseServiceRoleKey
+      ? (
+          await createAdminClient()
+            .from("project_users")
+            .select("project_id, role")
+            .eq("user_id", user.id)
+        ).data
+      : null;
+
+  const projectMemberships = ((memberships ?? fallbackMemberships ?? []) as any[]).filter(
+    (membership: any) => membership?.project_id,
+  );
   const projectIds = Array.from(new Set(projectMemberships.map((membership: any) => membership.project_id)));
+  const summaryClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const { data: projectRows } = projectIds.length
-    ? await client
+    ? await summaryClient
         .from("projects")
         .select("id, name, client, location, project_type, state, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code")
         .in("id", projectIds)
     : { data: [] };
   const projectById = new Map((projectRows ?? []).map((project: any) => [project.id, project]));
   const { data: usageRows } = projectIds.length
-    ? await client
+    ? await summaryClient
         .from("project_usage_summary")
         .select("project_id, plan_code, plan_name, monthly_price_inr, document_credit_limit, consultant_credit_limit, documents_used, consultant_sessions_used, documents_remaining, consultant_credits_remaining")
         .in("project_id", projectIds)
@@ -444,21 +475,21 @@ export async function getDashboardProjects() {
         return null;
       }
       const usage = usageByProjectId.get(projectId);
-      const { data: credits } = await client
+      const { data: credits } = await summaryClient
         .from("project_credits")
         .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
         .eq("project_id", projectId);
       const creditIds = (credits ?? []).map((credit) => credit.id);
       const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
-        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
         creditIds.length
-          ? client.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
+          ? summaryClient.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
           : Promise.resolve({ count: 0 }),
-        client.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
-        client.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
-        client.from("project_document").select("*", { count: "exact", head: true }).in("state", ["REJECTED", "CLARIFICATION"]),
-        client.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
+        summaryClient.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
+        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
+        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("state", ["REJECTED", "CLARIFICATION"]),
+        summaryClient.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
       ]);
       const creditRows = credits ?? [];
       const derivedCredits = creditRows.map((credit: any) => {
@@ -1502,7 +1533,7 @@ export async function getDocumentUploadOptions() {
       credit_code: credit.credit_code,
       credit_name: credit.credit_name,
       what_to_submit: String((credit as any).what_to_submit ?? "").trim(),
-      requirements: ((credit.documents_required ?? []) as DocumentRequirement[])
+      requirements: normalizeDocumentsRequired(credit.documents_required)
         .filter((doc) => doc.type)
         .map((doc) => ({
           type: doc.type,
@@ -1511,14 +1542,14 @@ export async function getDocumentUploadOptions() {
         })),
       doc_types: Array.from(
         new Set(
-          ((credit.documents_required ?? []) as DocumentRequirement[])
+          normalizeDocumentsRequired(credit.documents_required)
             .filter((doc) => doc.type)
             .map((doc) => doc.type),
         ),
       ),
       prior_examples_by_type: Array.from(
         new Set(
-          ((credit.documents_required ?? []) as DocumentRequirement[])
+          normalizeDocumentsRequired(credit.documents_required)
             .filter((doc) => doc.type)
             .map((doc) => doc.type),
         ),
@@ -1650,7 +1681,7 @@ export async function getTeamMembers() {
     const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
     const existing = grouped.get(row.user_id);
     if (existing) {
-      if (project?.name) {
+      if (project?.name && !existing.project_names.includes(project.name)) {
         existing.project_names.push(project.name);
       }
       if (row.project_id && !existing.project_ids?.includes(row.project_id)) {
@@ -1865,7 +1896,7 @@ export async function getExecutiveInsights() {
   const stuckItems = (credits ?? [])
     .map((credit: any) => {
       const creditDocuments = docsByCredit.get(credit.id) ?? [];
-      const requiredDocs = ((credit.documents_required ?? []) as Array<any>).filter((item) => Boolean(item?.required));
+      const requiredDocs = normalizeDocumentsRequired(credit.documents_required).filter((item) => Boolean(item?.required));
       const missing = requiredDocs.find((item) => !creditDocuments.some((doc) => doc.doc_category === item.type));
       const rejectedCount = creditDocuments.filter((doc) => {
         const state = normalizeWorkflowState(doc.state, doc.status);
@@ -2082,7 +2113,7 @@ export async function getMyRoleTasks() {
   const tasks = (credits ?? []).map((credit: any) => {
     const creditDocs = docsByCredit.get(credit.id) ?? [];
     const derived = deriveCreditLifecycleState(credit, creditDocs);
-    const requiredDocCount = ((credit.documents_required ?? []) as DocumentRequirement[]).filter((doc) => doc.required).length;
+    const requiredDocCount = normalizeDocumentsRequired(credit.documents_required).filter((doc) => doc.required).length;
     const approvedCount = creditDocs.filter((document: any) => normalizeWorkflowState(document.state, document.status) === "APPROVED").length;
     return {
       id: credit.id,
@@ -2302,7 +2333,9 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
       const myCredits = workspace.credits.filter(c => c.responsible_role === role && c.status !== 'complete');
       
       for (const credit of myCredits) {
-        const missingCount = credit.documents_required.filter(r => r.required && !credit.documents.some(d => d.doc_category === r.type && d.status === 'approved')).length;
+        const missingCount = normalizeDocumentsRequired(credit.documents_required).filter(
+          (r) => r.required && !credit.documents.some((d) => d.doc_category === r.type && d.status === "approved"),
+        ).length;
         if (missingCount > 0) {
           tasks.push({
             id: 'upload-' + credit.id,
