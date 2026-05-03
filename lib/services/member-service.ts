@@ -12,6 +12,10 @@ export class MemberService {
     projectId: string;
     userId: string;
   }) {
+    if (user.role !== "super_user") {
+      throw new Error("Only Super User can remove users.");
+    }
+
     const { error } = await this.admin
       .from("project_users")
       .delete()
@@ -25,8 +29,8 @@ export class MemberService {
     userId: string;
     reason: string;
   }) {
-    if (!["super_user", "super_admin"].includes(user.role)) {
-      throw new Error("Only Super User or Super Admin can disable users.");
+    if (user.role !== "super_user") {
+      throw new Error("Only Super User can disable users.");
     }
     const reason = params.reason.trim();
     if (!reason) {
@@ -60,8 +64,8 @@ export class MemberService {
   async reactivateMember(user: CurrentUser, params: {
     userId: string;
   }) {
-    if (!["super_user", "super_admin"].includes(user.role)) {
-      throw new Error("Only Super User or Super Admin can reactivate users.");
+    if (user.role !== "super_user") {
+      throw new Error("Only Super User can reactivate users.");
     }
 
     const { error } = await this.admin
@@ -93,8 +97,8 @@ export class MemberService {
     toProjectId: string;
     role: string;
   }) {
-    if (!["super_user", "super_admin", "project_admin"].includes(user.role)) {
-      throw new Error("You do not have permission to reassign users.");
+    if (user.role !== "super_user") {
+      throw new Error("Only Super User can reassign users.");
     }
     if (!params.fromProjectId || !params.toProjectId || params.fromProjectId === params.toProjectId) {
       throw new Error("Valid source and destination projects are required.");
@@ -142,24 +146,10 @@ export class MemberService {
     password?: string;
     projectId?: string;
   }) {
-    // RBAC
-    const actorRole = user.role;
-    const allowedBySuperUser = ["super_admin", "project_admin", "client", "owner", "consultant", "architect", "mep", "contractor"];
-    const allowedBySuperAdmin = ["client", "owner", "consultant", "architect", "mep", "contractor"];
-    const allowedByProjectAdmin = ["client", "owner", "consultant"];
-    const allowedByClient = ["owner"];
-    const allowedByOwner = ["architect", "mep", "contractor"];
-
-    const actingAsSuperUser = actorRole === "super_user";
-    const actingAsSuperAdmin = actorRole === "super_admin";
-    const actingAsProjectAdmin = actorRole === "project_admin";
-    const actingAsClient = actorRole === "client";
-    const actingAsOwner = actorRole === "owner";
-
     const normalizedRole = params.role === "admin" ? "project_admin" : params.role;
 
-    if (!actingAsSuperUser && !actingAsSuperAdmin && !actingAsProjectAdmin && !actingAsClient && !actingAsOwner) {
-      throw new Error("You do not have permission to create new logins.");
+    if (user.role !== "super_user") {
+      throw new Error("Only Super User can create new logins.");
     }
 
     if (!env.supabaseServiceRoleKey) {

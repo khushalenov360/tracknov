@@ -151,7 +151,7 @@ export async function transitionDocumentState(
 ) {
   const { data: document } = await writer
     .from("project_document")
-    .select("id, project_id, project_credit_id, state, file_name, rejection_reason")
+    .select("id, project_id, project_credit_id, credit_id, state, file_name, rejection_reason")
     .eq("id", documentId)
     .maybeSingle();
 

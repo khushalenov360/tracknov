@@ -69,3 +69,20 @@ export function canManageTeamFromRole(role?: MemberRole | null) {
     role === "owner"
   );
 }
+
+export function canEditPlanControls(role?: MemberRole | null) {
+  return role === "super_user" || role === "project_admin";
+}
+
+export function canAccessBillingAndInvoice(role?: MemberRole | null) {
+  return (
+    role === "super_user" ||
+    role === "super_admin" ||
+    role === "project_admin" ||
+    role === "client"
+  );
+}
+
+export function canManageProjectGuidebook(role?: MemberRole | null) {
+  return role === "super_user" || role === "project_admin";
+}

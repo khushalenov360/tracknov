@@ -4,7 +4,7 @@ import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
 
 export async function POST() {
   const user = await getCurrentUser();
-  if (!user || !["super_user", "super_admin"].includes(user.role)) {
+  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
 

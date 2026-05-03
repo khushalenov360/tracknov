@@ -10,7 +10,6 @@ import { TeamMemberCreateForm } from "@/components/team-member-create-form";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, getDashboardProjects, getSuperUserCommandCenter, getTeamMembers } from "@/lib/data";
 import { roleLabels } from "@/lib/constants";
-import { canManageTeamFromRole } from "@/lib/rbac";
 import { formatDateTimeIST } from "@/lib/utils";
 import { cookies } from "next/headers";
 
@@ -40,32 +39,12 @@ export default async function TeamPage() {
   ]);
   const activeRole = currentUser?.role ?? projects[0]?.role ?? "consultant";
   const canCreateSystemProfiles = activeRole === "super_user";
-  const canCreatePlatformProfiles = activeRole === "super_admin";
-  const canCreateProjectMembers = activeRole === "project_admin";
-  const canCreateClientProfiles = activeRole === "client";
-  const canCreateOwnerProfiles = activeRole === "owner";
   const allowedRoles = canCreateSystemProfiles
     ? (["super_admin", "project_admin", "client", "owner", "consultant", "architect", "mep", "contractor"] as const)
-    : canCreatePlatformProfiles
-      ? (["client", "owner", "consultant", "architect", "mep", "contractor"] as const)
-      : canCreateProjectMembers
-        ? (["client", "owner", "consultant"] as const)
-        : canCreateClientProfiles
-          ? (["owner"] as const)
-          : canCreateOwnerProfiles
-            ? (["architect", "mep", "contractor"] as const)
-        : [];
+    : [];
   const teamDescription = canCreateSystemProfiles
-    ? "Super User is the apex role with full control over platform, project, and client-side hierarchy."
-    : canCreatePlatformProfiles
-      ? "Super Admin provisions project-side and client-side roles under Super User governance."
-      : canCreateProjectMembers
-        ? "Project Admin manages assigned project coordination roles, including Client, Project Owner, and Consultant."
-        : canCreateClientProfiles
-          ? "Client is the highest position on the client side and can assign the Project Owner."
-          : canCreateOwnerProfiles
-            ? "Project Owner can assign Architect, MEP Consultant, and Contractor for execution and document collection."
-        : "Project team members and assigned roles for the selected workspaces.";
+    ? "Super User is the apex role with full control over platform users and hierarchy."
+    : "User profiles are managed from Super User Control Panel. Other roles have view-only access.";
 
   return (
     <Shell
@@ -74,21 +53,19 @@ export default async function TeamPage() {
       role={activeRole}
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
-      {canManageTeamFromRole(activeRole) && allowedRoles.length ? (
+      {canCreateSystemProfiles && allowedRoles.length ? (
         <section className="surface-card p-4">
-          {canCreateSystemProfiles ? (
-            <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-              <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Super User Control Panel</p>
-              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                Create Super Admins, Project Admins, and the full client-side reporting hierarchy.
-              </p>
-            </div>
-          ) : null}
+          <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+            <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Super User Control Panel</p>
+            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+              Create and disable user logins. Use login name for identity and keep email as contact.
+            </p>
+          </div>
           <TeamMemberCreateForm
             allowedRoles={[...allowedRoles]}
             projects={projects.map((project) => ({ id: project.id, name: project.name }))}
             canCreateSystemProfiles={canCreateSystemProfiles}
-            canCreateProjectAdmins={canCreatePlatformProfiles}
+            canCreateProjectAdmins={false}
           />
         </section>
       ) : null}
@@ -317,7 +294,7 @@ export default async function TeamPage() {
           <table className="min-w-full border-collapse text-[12px]">
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
-                {["Member", "Role", "Company", "Projects", "Joined", "Lifecycle"].map((heading) => (
+                {["Login Name", "Role", "Company", "Projects", "Joined", "Lifecycle"].map((heading) => (
                   <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
@@ -339,7 +316,7 @@ export default async function TeamPage() {
                       </div>
                       <div>
                         <p className="text-[13px] font-medium text-[var(--color-text-primary)]">{member.full_name}</p>
-                        <p className="text-[11px] text-[var(--color-text-tertiary)]">{member.email}</p>
+                        <p className="text-[11px] text-[var(--color-text-tertiary)]">Email contact: {member.email}</p>
                         {member.disabled_at ? (
                           <p className="text-[10px] text-[var(--color-red)]">
                             Disabled: {formatDateTimeIST(member.disabled_at)} ({member.disabled_reason || "No reason"})
@@ -359,7 +336,7 @@ export default async function TeamPage() {
                     {formatDateTimeIST(member.created_at)}
                   </td>
                   <td className="px-3 py-3 align-top">
-                    {canCreateSystemProfiles || canCreatePlatformProfiles ? (
+                    {canCreateSystemProfiles ? (
                       <div className="flex min-w-[220px] flex-col gap-2">
                         {member.disabled_at ? (
                           <form action={reactivateTeamMemberAction}>

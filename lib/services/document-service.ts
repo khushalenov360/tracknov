@@ -99,20 +99,50 @@ export class DocumentService {
       throw new Error("Document credit limit reached for this project plan.");
     }
 
-    // Duplicate check
-    const { data: duplicate } = await this.admin
-      .from("project_document")
+    // Submittal Management (Execution Unit)
+    const { data: activeSubmittal, error: subError } = await this.admin
+      .from("submittals")
       .select("id")
       .eq("project_id", params.projectId)
-      .eq("project_credit_id", projectCreditId)
-      .eq("doc_category", params.docCategory)
-      .ilike("file_name", params.file.name)
-      .in("state", ["READY", "SUBMITTED", "UNDER_REVIEW", "APPROVED"])
+      .eq("credit_id", params.creditId)
+      .in("state", ["DRAFT", "READY", "CLARIFICATION"])
+      .order("iteration", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (duplicate) {
-      throw new Error("Possible duplicate file already exists for this credit/doc type.");
+    let submittalId = activeSubmittal?.id;
+
+    if (!submittalId) {
+      // Create a new submittal round if none are active
+      const { data: newSubmittal, error: createSubError } = await this.admin
+        .from("submittals")
+        .insert({
+          project_id: params.projectId,
+          credit_id: params.creditId,
+          name: "Active Work Round",
+          state: "DRAFT",
+          created_by: user.id
+        })
+        .select("id")
+        .single();
+      
+      if (createSubError) throw createSubError;
+      submittalId = newSubmittal.id;
+    }
+
+    // Duplicate check (Prevent overwriting - mandatory versioning)
+    const { data: existing } = await this.admin
+      .from("project_document")
+      .select("id, version")
+      .eq("project_id", params.projectId)
+      .eq("project_credit_id", projectCreditId)
+      .eq("doc_category", params.docCategory)
+      .eq("is_latest", true)
+      .maybeSingle();
+
+    if (existing) {
+      // If file exists, we mark it as SUPERSEDED in the next step, but block exact name duplicates if needed
+      console.log(`[DocumentService] Existing version found (v${existing.version}). Preparing version update.`);
     }
 
     // Versioning
@@ -368,10 +398,19 @@ export class DocumentService {
       action: "deleted",
       actorId: user.id,
       actorRole,
-      summary: `Deleted document ${document.file_name}.`,
+      summary: `Archived document ${document.file_name} (No-Deletion Policy).`,
     });
 
-    const { error } = await this.admin.from("project_document").delete().eq("id", params.documentId);
+    // PM RULE: NO DELETION. Instead, we move to a 'REMOVED' or 'REJECTED' state
+    const { error } = await this.admin
+      .from("project_document")
+      .update({ 
+        state: "REJECTED", 
+        is_latest: false,
+        notes: (document.notes ?? "") + `\n[System] Withdrawn by ${user.email} at ${new Date().toISOString()}`
+      })
+      .eq("id", params.documentId);
+    
     if (error) throw error;
 
     // Emit Event

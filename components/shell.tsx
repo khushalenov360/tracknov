@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, FileText, FolderKanban, Medal, Users, Inbox, ListChecks, Presentation } from "lucide-react";
+import { Bell, FileText, FolderKanban, Medal, Users, Inbox, ListChecks } from "lucide-react";
 import { GlobalCopilot } from "@/components/assistant/global-copilot";
 import { SessionHeartbeat } from "@/components/session-heartbeat";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ export function Shell({
   title,
   description,
   role,
-  email,
+  email: _email,
   notificationCount,
   children,
 }: {
@@ -32,9 +32,6 @@ export function Shell({
     { href: "/team", label: "Team", icon: Users },
     ...(["owner", "project_admin", "super_admin", "super_user"].includes(role ?? "")
       ? [{ href: "/review-queue", label: "Review Queue", icon: Inbox }]
-      : []),
-    ...(email?.toLowerCase() === "demo@enov360.com"
-      ? [{ href: "/demo", label: "Demo", icon: Presentation }]
       : []),
   ];
 

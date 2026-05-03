@@ -14,6 +14,17 @@ import { cookies } from "next/headers";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function toLegacyDocumentStatus(rawState: string | undefined): keyof typeof documentStatuses {
+  if (!rawState) return "uploaded";
+  const normalized = rawState.toLowerCase();
+  if (normalized === "draft" || normalized === "ready" || normalized === "tagged") return "uploaded";
+  if (normalized === "submitted" || normalized === "under_review" || normalized === "resubmitted") return "owner_approved";
+  if (normalized === "approved") return "approved";
+  if (normalized === "clarification" || normalized === "rejected") return "rejected";
+  if (normalized in documentStatuses) return normalized as keyof typeof documentStatuses;
+  return "uploaded";
+}
+
 export default async function DocumentsPage({
   searchParams,
 }: {
@@ -32,15 +43,15 @@ export default async function DocumentsPage({
     activeRole === "architect" || activeRole === "mep" || activeRole === "contractor"
       ? (() => {
           const total = documents.length;
-          const completed = documents.filter((document) => document.status === "approved").length;
-          const rejected = documents.filter((document) => document.status === "rejected").length;
+          const completed = documents.filter((document) => (document.state ?? document.status) === "approved").length;
+          const rejected = documents.filter((document) => (document.state ?? document.status) === "rejected").length;
           const incomplete = Math.max(total - completed - rejected, 0);
           return { total, completed, rejected, incomplete };
         })()
       : null;
   const focusedDocumentId = (searchParams?.document ?? "").trim();
   const focusedRejectedDocument = focusedDocumentId
-    ? documents.find((document) => document.id === focusedDocumentId && document.status === "rejected")
+    ? documents.find((document) => document.id === focusedDocumentId && (document.state ?? document.status) === "rejected")
     : null;
 
   return (
@@ -183,7 +194,8 @@ export default async function DocumentsPage({
             </thead>
             <tbody>
               {documents.map((document) => {
-                const status = documentStatuses[document.status];
+                const statusKey = toLegacyDocumentStatus(document.state ?? document.status);
+                const status = documentStatuses[statusKey];
                 const projectOptions = projectOptionsById.get(document.project_id);
                 const creditOptions = projectOptions?.credits ?? [];
                 const selectedCredit =

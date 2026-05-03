@@ -10,7 +10,19 @@ export type MemberRole =
   | "project_admin"
   | "super_admin";
 export type CreditStatus = "pending" | "in_progress" | "blocked" | "complete";
-export type DocumentStatus = "uploaded" | "owner_approved" | "approved" | "rejected";
+export type DocumentStatus =
+  | "uploaded"
+  | "owner_approved"
+  | "approved"
+  | "rejected"
+  | "DRAFT"
+  | "READY"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "CLARIFICATION"
+  | "RESUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
 export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
 export type ProjectType = "residential" | "commercial" | "industrial" | "infrastructure" | "mixed_use";
 export type IgbcVariant = "new" | "existing";
@@ -57,6 +69,7 @@ export type DocumentRecord = {
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   state: DocumentStatus;
+  status?: DocumentStatus;
   workflow_state?: string | null;
   version?: number;
   is_latest?: boolean;
@@ -113,6 +126,7 @@ export type CreditWorkspace = {
   is_mandatory: boolean;
   documents_required: DocumentRequirement[];
   state: CreditStatus;
+  status?: CreditStatus;
   blocked_by?: string | null;
   completion_pct: number;
   documentation_summary?: string | null;
@@ -132,6 +146,7 @@ export type ProjectSummary = {
   location: string;
   project_type: ProjectType;
   state: ProjectStatus;
+  status?: ProjectStatus;
   green_certification: string;
   igbc_variant: IgbcVariant;
   certification_type: string;
@@ -161,7 +176,6 @@ export type ProjectSummary = {
   projectState?: string;
   submissionFlag?: boolean;
   lockFlag?: boolean;
-  projectCode?: string;
 };
 
 export type ProjectInviteRecord = {
@@ -200,7 +214,6 @@ export type ProjectWorkspace = {
     created_at: string;
     created_by?: string | null;
     rating_system_id?: string | null;
-    state?: string;
     submission_flag?: boolean;
     lock_flag?: boolean;
     project_code?: string;
@@ -217,6 +230,15 @@ export type ProjectWorkspace = {
     read_at?: string | null;
   }[];
   activityLogs?: SystemActivityLog[];
+  guidebooks?: {
+    id: string;
+    title: string;
+    file_name: string;
+    file_path: string;
+    signed_url?: string | null;
+    uploaded_by?: string | null;
+    created_at: string;
+  }[];
 };
 
 export type DocumentLibraryRecord = DocumentRecord & {

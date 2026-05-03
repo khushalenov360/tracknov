@@ -25,6 +25,17 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Never block public routes (login/auth/assets) on an auth roundtrip.
+  if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
+  }
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -54,8 +65,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users away from protected routes
   if (!user && isProtectedRoute(pathname)) {

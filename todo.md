@@ -1,7 +1,27 @@
 # Tracknov TODO (Pending Items Only)
 
 Last updated: 2026-05-02 IST  
-Baseline: `tracknov-project-plan.md` + `TechLead_Developer_Handoff.md`
+Baseline: `tracknov-project-plan.md` + `TechLead_Developer_Handoff.md` + `SQL_Expert_Handoff.md`
+
+## P0 - PM Workflow Enforcement (Core Engine)
+- [ ] **Submittal-Centric Execution**:
+    - [ ] Create `submittals` table (linked to credits) to act as the workflow container.
+    - [ ] Update `ReviewService` to manage state at the submittal level, not individual documents.
+- [ ] **Immutable Versioning System**:
+    - [ ] Update `DocumentService.upload` to automatically version files instead of updating.
+    - [ ] Implement `SUPERSEDED` flag for old versions.
+- [ ] **Submission Pack Export**:
+    - [ ] Build the export filter to group only the latest `APPROVED` documents by credit.
+
+## P0 - V3 SQL Hardening (Critical Workflow Enforcement)
+- [ ] **Submittal Execution Layer**: 
+    - [ ] Create `submittals` table to group document iterations.
+    - [ ] Refactor `DocumentService` to link files to submittals instead of credits.
+- [ ] **State Machine Integrity**:
+    - [ ] Align `workflow_state` Enum with 8-step expert list.
+    - [ ] Implement DB-level triggers to prevent invalid state skipping.
+- [ ] **Audit Trail Hardening**:
+    - [ ] Ensure `document_states` captures every transition with actor metadata.
 
 ## Final Alignment - TechLead Handoff (V3 Hardening)
 
@@ -21,6 +41,7 @@ Baseline: `tracknov-project-plan.md` + `TechLead_Developer_Handoff.md`
 - [x] **Audit Consolidation**:
   - Consolidate all activity/state logs into `workflow_logs`.
   - Add `is_override` and `override_reason` to `workflow_logs`.
+- [x] **V3 Stabilization**: Resolved schema mismatches (plural vs singular), fixed NEXT_REDIRECT glitch, and enabled human-readable project codes.
 
 ### UI Flow & Screen Mapping
 - [x] **Project Creation**: Select rating system -> Auto-create `project_credit` instances from templates.
@@ -183,10 +204,10 @@ Source files covered in this consolidation:
   - stage-specific submittals and lifecycle
 - [x] HF-IGBC2.2 Design->Construction inheritance:
   - carry-forward approved narratives/calculations with trace links
-- [x] HF-IGBC2.3 Rule-based scoring engine:
+- [x] HF-IGBC2.3 Rule-based scoring engine baseline:
   - mandatory credits
   - points aggregation
-  - rating threshold evaluation
+  - [x] Populated all 32 IGBC rating systems in remote DB
 - [x] HF-IGBC2.4 Submission pack engine v2:
   - stage-wise, credit-wise standardized packaging
   - final naming/structure aligned to IGBC expected format
@@ -475,6 +496,24 @@ Source files covered in this consolidation:
   - no state skipping
   - no overwrite
   - no incomplete submission
+
+## IGBC V3 Certification Engine (Final Implementation Grade)
+
+### P1 - Core Certification Engine (Must complete for correctness)
+
+- [ ] V3.1 Schema: `0046_igbc_certification_engine.sql` (applicability rules, prerequisites, dependencies, clarification_cycles)
+- [ ] V3.2 Scoring: Refactor `lib/igbc-scoring.ts` to use DB-driven `rating_thresholds` instead of hardcoded EDA/WC/EE weights.
+- [ ] V3.3 Activation: `CreditActivationService` to evaluate applicability rules on project creation/update.
+- [ ] V3.4 Guards: Prerequisite + Dependency guards in `CreditService` (block approval if prereq rejected).
+- [ ] V3.5 Gate: Submission eligibility gate in `ProjectService` (block `SUBMITTED_TO_IGBC` if mandatory/prereqs fail).
+- [ ] V3.6 Cycles: Clarification cycle tracking in `ReviewService` with history persistence.
+
+### P2 - Operational & Risk Layers
+
+- [ ] V3.7 Submittals: `0047_submittal_variants.sql` + `SubmittalService` for dynamic document requirements by project type.
+- [ ] V3.8 Tasks: `0048_tasks.sql` + `TaskService` for assigned role-based tracking and due dates.
+- [ ] V3.9 Risk: `RiskService` for compute-on-the-fly risk flags (`missing_mandatory`, `low_score_projection`, `delay`).
+- [ ] V3.10 Exports: Standardize `exports.ts` folder hierarchy (`credit_code/submittals/documents/summary`).
 
 ## SaaS Sales Enablement TODO (Mapped to `SAASsales_Developer_Handoff.md`)
 
@@ -1078,35 +1117,56 @@ Mapped to `Ai developerhandoff.md` V3 Final.
 
 ---
 
-## Project Assignment & Access System (PM Handoff)
+## Project Assignment & Access System (PM Handoff) (COMPLETE)
 
 ### DB & Identity
-- [ ] **Project Identity**: Implement `project_code` field in `projects` table (UNIQUE, format `TN-{PROJECT}-{001}`).
-- [ ] **Membership Schema**: Ensure `project_users` (or `project_members`) table matches handoff:
+- [x] **Project Identity**: Implement `project_code` field in `projects` table (UNIQUE, format `TN-{PROJECT}-{001}`).
+- [x] **Membership Schema**: Ensure `project_users` (or `project_members`) table matches handoff:
   - `user_id`, `project_id`, `role` (L0-L5).
   - UNIQUE constraint on `(user_id, project_id)`.
   - Proper indexing on `user_id` and `project_id`.
 
 ### APIs & Access Gating
-- [ ] **Invite API**: Implement `POST /api/project/invite` (Project ID, Email, Role).
-- [ ] **Join API**: Implement `POST /api/project/join` (using `project_code`).
-- [ ] **My Projects**: Implement `GET /api/my-projects` for user-specific project list.
-- [ ] **Access Gate Hardening**:
-  - [ ] Validate project membership on ALL action paths.
-  - [ ] Enforce role-based action guards (e.g., L0 can move DRAFT -> READY).
-  - [ ] Block unauthorized cross-project data access.
+- [x] **Invite API**: Covered by `MemberService` and `addTeamMemberAction`.
+- [x] **Join API**: Implement `POST /api/project/join` (using `project_code`) -> `joinProjectByCodeAction`.
+- [x] **My Projects**: Implement `GET /api/my-projects` for user-specific project list.
+- [x] **Access Gate Hardening**:
+  - [x] Validate project membership on ALL action paths.
+  - [x] Enforce role-based action guards (e.g., L0 can move DRAFT -> READY).
+  - [x] Block unauthorized cross-project data access.
 
 ### UI & Workflow
-- [ ] **Join Experience**: UI for joining a project via human-readable code.
-- [ ] **Management UI**:
-  - [ ] Invite User modal/form.
-  - [ ] My Projects dashboard/list.
-- [ ] **Audit Logs**: Ensure invite, join, and role assignment actions are logged in `activity_logs`.
+- [x] **Join Experience**: UI for joining a project via human-readable code.
+- [x] **Management UI**:
+  - [x] Invite User modal/form.
+  - [x] My Projects dashboard/list.
+- [x] **Audit Logs**: Ensure invite, join, and role assignment actions are logged in `activity_logs`.
 
 ### Acceptance Verification
-- [ ] Verify user joins via code -> appears in `project_users`.
-- [ ] Verify role enforcement (e.g., L2 cannot upload/submit).
-- [ ] Verify token deduction blocked for invalid membership.
+- [x] Verify user joins via code -> appears in `project_users`.
+- [x] Verify role enforcement (e.g., L2 cannot upload/submit).
+- [x] Verify token deduction blocked for invalid membership.
+
+---
+
+## Latest execution sync (2026-05-03)
+
+### Copilot usability updates
+- [x] Remove quick suggestion chips from Copilot UI.
+- [x] Add explicit `Attach File` button in Copilot (global + panel).
+- [x] Add explicit `Upload To Project` shortcut from Copilot.
+- [x] Show attachment confirmation text in Copilot.
+- [x] Add `Fill Form With Copilot` action to assist form entry.
+- [x] Pass Copilot attachments to `/api/assistant` and include in assistant context.
+
+### Join project reliability
+- [x] Fix joined project visibility by replacing nested membership->project relation dependency.
+- [x] Harden project list resolver to fetch project IDs from membership and project rows directly.
+- [x] Build/type verification after join fix and Copilot updates.
+
+### Open follow-up items
+- [ ] Add integration test for `joinProjectAction` to assert membership insert + project list visibility in `getDashboardProjects`.
+- [ ] Add optional toast on successful `Join Project` (explicit user feedback before redirect).
 
 ---
 

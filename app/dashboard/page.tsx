@@ -1,17 +1,15 @@
 import Link from "next/link";
-import { createProjectAction, setDemoModeAction, updateOnboardingChecklistAction } from "@/app/actions";
+import { createProjectAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getRoleTasks } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOwnerReviewQueue, getRoleTasks } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { getRoiSnapshot } from "@/lib/services/roi-service";
 import { RefreshTrigger } from "@/components/refresh-trigger";
-
-import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,7 +19,6 @@ export default async function DashboardPage({
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  const cookieStore = cookies();
   const [user, projects, ownerQueue, insights, roleTasks] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
@@ -43,33 +40,28 @@ export default async function DashboardPage({
   const activeRole = user?.role ?? "consultant";
   const clientMode = activeRole === "client";
   const primaryProjectId = projects[0]?.id ?? null;
-  const onboarding = primaryProjectId ? await getOrCreateOnboardingChecklist(primaryProjectId) : null;
-  const checklist = onboarding?.checklist ?? null;
-  const checklistDone = checklist ? Object.values(checklist).filter(Boolean).length : 0;
   const isOwner = activeRole === "owner";
-  const canControlDemo = user?.email?.toLowerCase() === "demo@enov360.com";
-  const demoModeActive = cookieStore.get("tracknov_demo_mode")?.value === "1";
 
   const totals = {
-    totalCredits: projects.reduce((sum, project) => sum + project.totalCredits, 0),
-    uploadedDocs: projects.reduce((sum, project) => sum + project.uploadedDocs, 0),
-    mandatoryCreditsMet: projects.reduce((sum, project) => sum + project.mandatoryCreditsMet, 0),
-    openRemarks: projects.reduce((sum, project) => sum + project.openRemarks, 0),
+    totalCredits: projects.reduce((sum, project) => sum + (project.totalCredits || 0), 0),
+    uploadedDocs: projects.reduce((sum, project) => sum + (project.uploadedDocs || 0), 0),
+    mandatoryCreditsMet: projects.reduce((sum, project) => sum + (project.mandatoryCreditsMet || 0), 0),
+    openRemarks: projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0),
   };
 
   const totalTokensLoaded = projects.reduce((sum, project) => {
-    const used = Math.max(project.documentCreditsUsed ?? 0, 0);
-    const remaining = Math.max(project.documentCreditsRemaining ?? 0, 0);
+    const used = Math.max(project.documentCreditsUsed || 0, 0);
+    const remaining = Math.max(project.documentCreditsRemaining || 0, 0);
     return sum + used + remaining;
   }, 0);
-  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
-  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
+  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
+  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
   const weeklyTokenBurn = Math.max(
     1,
     Math.round(
       projects.reduce((sum, project) => {
-        const docs = Math.max(project.documentCreditsUsed ?? 0, 0);
-        const consult = Math.max(project.consultantCreditsUsed ?? 0, 0);
+        const docs = Math.max(project.documentCreditsUsed || 0, 0);
+        const consult = Math.max(project.consultantCreditsUsed || 0, 0);
         return sum + docs + consult;
       }, 0) / 4,
     ),
@@ -80,7 +72,7 @@ export default async function DashboardPage({
   const portfolioInProgress = Math.max(projects.length - portfolioCompleted, 0);
   const atRiskCount = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
   const overallCompletionPct = projects.length
-    ? Math.round(projects.reduce((sum, project) => sum + project.overallCompletion, 0) / projects.length)
+    ? Math.round(projects.reduce((sum, project) => sum + (project.overallCompletion || 0), 0) / projects.length)
     : 0;
   const projectedRating = overallCompletionPct >= 80 ? "Gold" : overallCompletionPct >= 60 ? "Silver" : "Certified";
   const projectedOutcome =
@@ -90,10 +82,10 @@ export default async function DashboardPage({
         ? "Moderate confidence: needs steady weekly closure."
         : "At risk: improve upload and review velocity.";
   const approvalBase = projects.reduce(
-    (sum, project) => sum + Math.max((project.pendingReviewsCount ?? 0) + (project.rejectedCount ?? 0), 0),
+    (sum, project) => sum + Math.max((project.pendingReviewsCount || 0) + (project.rejectedCount || 0), 0),
     0,
   );
-  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount ?? 0, 0), 0);
+  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount || 0, 0), 0);
   const rejectionRate = approvalBase > 0 ? Math.round((rejectionTotal / approvalBase) * 100) : 0;
   const firstTimeApprovalRate = Math.max(100 - rejectionRate, 0);
   const avgTokensPerProject = projects.length ? Math.round(totalTokensUsed / projects.length) : 0;
@@ -143,9 +135,9 @@ export default async function DashboardPage({
   });
 
 
-  const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
-  const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
-  const weeklyUsage = projects.reduce((sum, project) => sum + Math.max(project.consultantCreditsUsed ?? 0, 0), 0);
+  const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
+  const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
+  const weeklyUsage = projects.reduce((sum, project) => sum + Math.max(project.consultantCreditsUsed || 0, 0), 0);
 
   return (
     <Shell
@@ -157,50 +149,9 @@ export default async function DashboardPage({
       }
       role={activeRole}
       email={user?.email}
-      notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
+      notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
       <RefreshTrigger intervalMs={60000} />
-      {primaryProjectId && checklist ? (
-        <section className="surface-card mb-4 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Onboarding checklist</h2>
-              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                {checklistDone}/4 completed for your active project.
-              </p>
-            </div>
-            <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
-              {checklistDone === 4 ? "Completed" : "In progress"}
-            </Badge>
-          </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {[
-              ["profile_completed", "Confirm profile details"],
-              ["project_scope_confirmed", "Confirm project scope"],
-              ["first_document_uploaded", "Upload first mapped document"],
-              ["first_review_completed", "Complete first review handoff"],
-            ].map(([key, label]) => {
-              const checked = Boolean((checklist as any)[key]);
-              return (
-                <form
-                  key={key}
-                  action={updateOnboardingChecklistAction}
-                  className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
-                >
-                  <input type="hidden" name="project_id" value={primaryProjectId} />
-                  <input type="hidden" name="key" value={key} />
-                  <input type="hidden" name="value" value={checked ? "false" : "true"} />
-                  <span className="text-[12px] text-[var(--color-text-primary)]">{label}</span>
-                  <Button type="submit" variant={checked ? "secondary" : "default"} className="h-[28px] rounded-md px-2.5 text-[11px]">
-                    {checked ? "Done" : "Mark done"}
-                  </Button>
-                </form>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
       {isOwner ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -350,31 +301,7 @@ export default async function DashboardPage({
         </section>
       ) : null}
 
-      {canControlDemo ? (
-        <section className="surface-card mb-4 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Guided demo mode</h2>
-              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                Sandbox walkthrough for sales and onboarding sessions.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <form action={setDemoModeAction}>
-                <input type="hidden" name="enabled" value={demoModeActive ? "false" : "true"} />
-                <Button type="submit" variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
-                  {demoModeActive ? "Disable demo mode" : "Enable demo mode"}
-                </Button>
-              </form>
-              <Button asChild className="h-[30px] rounded-md px-3 text-[11px]">
-                <Link href="/demo">Open demo workspace</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {clientMode || isOwner || canControlDemo ? (
+      {clientMode || isOwner ? (
         <section className="surface-card mb-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
           <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">

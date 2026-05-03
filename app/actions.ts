@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import {
   createProjectForCurrentUser,
   deleteProjectForCurrentUser,
@@ -25,6 +24,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import {
+  canAccessBillingAndInvoice,
+  canEditPlanControls,
   canCreateProjects,
   canDeleteProjects,
 } from "@/lib/rbac";
@@ -55,7 +56,9 @@ export async function createProjectAction(formData: FormData) {
   const ratingSystemName = String(formData.get("rating_system") ?? "").trim();
 
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user) {
+    redirect("/login?next=/projects");
+  }
 
   const targetRating = String(formData.get("target_rating") ?? "Certified").trim();
   const projectType = String(formData.get("project_type") ?? "commercial").trim();
@@ -63,6 +66,7 @@ export async function createProjectAction(formData: FormData) {
   const greenCertification = String(formData.get("green_certification") ?? "IGBC").trim();
   const igbcVariant = String(formData.get("igbc_variant") ?? "new").trim();
 
+  let newProjectId: string | undefined;
   try {
     const project = await projectService.createProject(user, {
       name,
@@ -81,9 +85,15 @@ export async function createProjectAction(formData: FormData) {
     revalidatePath("/projects");
     revalidatePath("/documents");
     revalidatePath("/credits");
-    redirect(`/projects/${project.id}`);
-  } catch (error) {
-    // Handle error
+    
+    newProjectId = project.id;
+  } catch (err: any) {
+    console.error("Project creation failed:", err);
+    redirect(`/projects?error=${err.message}`);
+  }
+
+  if (newProjectId) {
+    redirect(`/projects/${newProjectId}`);
   }
 }
 
@@ -94,13 +104,38 @@ export async function joinProjectAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) return;
 
+  let project;
   try {
-    const project = await projectService.joinProjectByCode(user, projectCode);
+    project = await projectService.joinProjectByCode(user, projectCode);
     revalidatePath("/projects");
     revalidatePath("/dashboard");
+  } catch (error: any) {
+    console.error("[Actions] Join project failed:", error);
+    redirect(`/projects?error=${encodeURIComponent(error.message || "invalid_code")}`);
+  }
+
+  if (project) {
     redirect(`/projects/${project.id}`);
-  } catch (error) {
-    redirect("/projects?error=invalid_code");
+  }
+}
+
+export async function leaveProjectAction(formData: FormData) {
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  if (!projectId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await memberService.removeMember(user, {
+      projectId,
+      userId: user.id,
+    });
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+  } catch (error: any) {
+    console.error("[Actions] Leave project failed:", error);
+    // You could redirect with an error message here if needed
   }
 }
 
@@ -123,7 +158,7 @@ export async function updateProjectAction(formData: FormData) {
       clientName,
       location,
       ratingSystem,
-      status,
+      state: status,
     });
 
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -148,6 +183,7 @@ export async function updateProjectPlanSettingsAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
+  if (!canEditPlanControls(user.role)) return;
 
   await billingService.updateBillingSettings(user, {
     projectId,
@@ -174,6 +210,7 @@ export async function logConsultantSessionAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
+  if (!canAccessBillingAndInvoice(user.role)) return;
 
   await billingService.consumeConsultantTokens(user, {
     projectId,
@@ -198,6 +235,7 @@ export async function createProjectTopupInvoiceAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
+  if (!canAccessBillingAndInvoice(user.role)) return;
 
   await billingService.createTopupInvoice(user, {
     projectId,
@@ -389,12 +427,35 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
   if (!user) return;
 
   try {
-    await reviewService.bulkReview(user, {
-      action,
-      documentIds,
-      rejectionType,
-      remark,
-    });
+    const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+    const { data: docs } = await reader
+      .from("project_document")
+      .select("id, project_id")
+      .in("id", documentIds);
+
+    for (const doc of docs ?? []) {
+      const projectId = String((doc as any).project_id ?? "").trim();
+      if (!projectId) continue;
+
+      const newState =
+        action === "approve"
+          ? "APPROVED"
+          : (remark ? "CLARIFICATION" : "REJECTED");
+
+      const formattedRemark =
+        action === "reject" && rejectionType && remark
+          ? `[${rejectionType}] ${remark}`
+          : remark;
+
+      await reviewService.transitionDocument(user, {
+        documentId: String((doc as any).id),
+        projectId,
+        newState,
+        manualSubmit: true,
+        updatedEvidence: action === "reject" && Boolean(remark),
+        remarks: action === "reject" ? (formattedRemark || null) : null,
+      });
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/documents");
@@ -594,12 +655,67 @@ export async function setCreditStateAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
+  if (user.role !== "super_user") return;
 
   try {
-    await creditService.setCreditState(user, { projectId, creditId, action, blockedBy });
+    const state = action === "complete" ? "CLOSED" : "REJECTED";
+    await creditService.setCreditState(user, {
+      projectId,
+      creditId,
+      state,
+      remarks: blockedBy || undefined,
+    });
     pathFor(projectId).forEach((path) => revalidatePath(path));
   } catch (error) {
     // Handle error
+  }
+}
+
+export async function uploadProjectGuidebookAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const file = formData.get("guidebook");
+
+  if (!projectId || !(file instanceof File)) {
+    return;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  try {
+    await projectService.uploadProjectGuidebook(user, {
+      projectId,
+      file,
+      title: title || undefined,
+    });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+  } catch (error: any) {
+    return;
+  }
+}
+
+export async function importProjectTrackerBaselineAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const file = formData.get("tracker_file");
+  if (!projectId || !(file instanceof File)) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await projectService.importTrackerBaseline(user, {
+      projectId,
+      file,
+    });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+    revalidatePath("/credits");
+  } catch {
+    return;
   }
 }
 
@@ -760,24 +876,9 @@ export async function reassignTeamMemberAction(formData: FormData) {
   revalidatePath("/projects");
 }
 
-export async function setDemoModeAction(formData: FormData) {
-  const enabled = String(formData.get("enabled") ?? "").trim() === "true";
-  const user = await getCurrentUser();
-  if (!user || user.email?.toLowerCase() !== "demo@enov360.com") return;
-  const cookieStore = cookies();
-  cookieStore.set("tracknov_demo_mode", enabled ? "1" : "0", {
-    httpOnly: false,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
-  revalidatePath("/dashboard");
-  revalidatePath("/demo");
-}
-
 export async function runNotificationDigestAction() {
   const user = await getCurrentUser();
-  if (!user || !["super_user", "super_admin"].includes(user.role)) return;
+  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) return;
   await runNotificationDigestJobs();
   revalidatePath("/dashboard");
   revalidatePath("/team");

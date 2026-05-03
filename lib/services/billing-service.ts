@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { canManageProject } from "@/lib/rbac";
+import { canAccessBillingAndInvoice, canEditPlanControls } from "@/lib/rbac";
 import type { CurrentUser } from "@/lib/types";
 import { projectService } from "./project-service";
 import { logSystemActivity } from "./activity-service";
@@ -24,7 +24,7 @@ export class BillingService {
     topupConsultantCredits: number;
   }) {
     const role = await projectService.getActorProjectRole(params.projectId, user);
-    if (!canManageProject(role)) {
+    if (!canEditPlanControls(role)) {
       throw new Error("Unauthorized: Insufficient permissions to update billing settings.");
     }
 
@@ -53,6 +53,11 @@ export class BillingService {
     source: string;
     notes: string;
   }) {
+    const role = await projectService.getActorProjectRole(params.projectId, user);
+    if (!canAccessBillingAndInvoice(role)) {
+      throw new Error("Unauthorized: Insufficient permissions for billing actions.");
+    }
+
     const { data: membership } = await this.client
       .from("project_users")
       .select("user_id")
@@ -117,6 +122,11 @@ export class BillingService {
     amountInr: number;
     notes?: string;
   }) {
+    const role = await projectService.getActorProjectRole(params.projectId, user);
+    if (!canAccessBillingAndInvoice(role)) {
+      throw new Error("Unauthorized: Insufficient permissions for billing and invoice.");
+    }
+
     const { error } = await this.admin.from("billing_invoices").insert({
       project_id: params.projectId,
       document_credits: params.documentCredits,
@@ -151,15 +161,15 @@ export class BillingService {
     reason: string;
   }) {
     const role = await projectService.getActorProjectRole(params.projectId, user);
-    if (!(role === "project_admin" || role === "super_admin" || role === "super_user")) {
-      throw new Error("Unauthorized: Insufficient permissions to load tokens.");
+    if (role !== "super_user") {
+      throw new Error("Only Super User can load client tokens.");
     }
 
     const { error } = await this.admin.rpc("credit_client_tokens", {
       p_client_user_id: params.clientUserId,
       p_project_id: params.projectId,
       p_tokens: Math.trunc(params.tokens),
-      p_reason: params.reason || "Project Admin top-up",
+      p_reason: params.reason || "Super User top-up",
       p_actor_id: user.id,
       p_meta: { loaded_by_role: role },
     });

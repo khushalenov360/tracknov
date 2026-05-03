@@ -26,7 +26,7 @@ export default async function CreditsPage() {
         {workspaces.length ? workspaces.map((workspace) => {
           const score = scoreIgbcCredits(workspace.credits, workspace.project.igbc_variant);
           const mandatory = workspace.credits.filter((credit) => credit.is_mandatory);
-          const mandatoryComplete = mandatory.filter((credit) => credit.status === "complete").length;
+          const mandatoryComplete = mandatory.filter((credit) => credit.state === "complete").length;
           return (
             <article key={workspace.project.id} className="surface-card overflow-hidden">
               <div className="grid gap-4 p-5 xl:grid-cols-[240px_minmax(0,1fr)_220px]">

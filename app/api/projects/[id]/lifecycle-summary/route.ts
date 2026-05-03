@@ -12,10 +12,10 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const credits = workspace.credits ?? [];
   const totalCredits = credits.length;
   const byStatus = {
-    pending: credits.filter((credit) => credit.status === "pending").length,
-    in_progress: credits.filter((credit) => credit.status === "in_progress").length,
-    blocked: credits.filter((credit) => credit.status === "blocked").length,
-    complete: credits.filter((credit) => credit.status === "complete").length,
+    pending: credits.filter((credit) => credit.state === "pending").length,
+    in_progress: credits.filter((credit) => credit.state === "in_progress").length,
+    blocked: credits.filter((credit) => credit.state === "blocked").length,
+    complete: credits.filter((credit) => credit.state === "complete").length,
   };
   const completionPct = totalCredits
     ? Math.round(
@@ -28,7 +28,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     project: {
       id: workspace.project.id,
       name: workspace.project.name,
-      status: workspace.project.status,
+      status: workspace.project.state,
       completion_pct: completionPct,
     },
     credits: {
@@ -36,7 +36,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       by_status: byStatus,
       mandatory_total: credits.filter((credit) => credit.is_mandatory).length,
       mandatory_complete: credits.filter(
-        (credit) => credit.is_mandatory && credit.status === "complete",
+        (credit) => credit.is_mandatory && credit.state === "complete",
       ).length,
     },
     documents: {
@@ -45,26 +45,26 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         draft: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.state === "DRAFT").length,
+            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "DRAFT").length,
           0,
         ),
         ready: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.state === "READY").length,
+            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "READY").length,
           0,
         ),
         submitted: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.state === "SUBMITTED").length,
+            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "SUBMITTED").length,
           0,
         ),
         under_review: credits.reduce(
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.state === "UNDER_REVIEW",
+              (document) => String((document as any).state ?? "").toUpperCase() === "UNDER_REVIEW",
             ).length,
           0,
         ),
@@ -72,7 +72,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.state === "CLARIFICATION",
+              (document) => String((document as any).state ?? "").toUpperCase() === "CLARIFICATION",
             ).length,
           0,
         ),
@@ -80,24 +80,23 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           (sum, credit) =>
             sum +
             credit.documents.filter(
-              (document) => document.state === "RESUBMITTED",
+              (document) => String((document as any).state ?? "").toUpperCase() === "RESUBMITTED",
             ).length,
           0,
         ),
         approved: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.state === "APPROVED").length,
+            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "APPROVED").length,
           0,
         ),
         rejected: credits.reduce(
           (sum, credit) =>
             sum +
-            credit.documents.filter((document) => document.state === "REJECTED").length,
+            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "REJECTED").length,
           0,
         ),
       },
     },
   });
 }
-

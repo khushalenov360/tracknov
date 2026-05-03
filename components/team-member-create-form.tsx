@@ -54,10 +54,10 @@ export function TeamMemberCreateForm({
     <form action={formAction} className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_180px_180px_auto]">
       <Input
         name="full_name"
-        placeholder={canCreateSystemProfiles ? "User name" : canCreateProjectAdmins ? "Project Admin name" : "Full name"}
+        placeholder={canCreateSystemProfiles ? "Login name" : canCreateProjectAdmins ? "Project Admin login name" : "Login name"}
         required
       />
-      <Input name="email" type="email" placeholder="email@company.com" required />
+      <Input name="email" type="email" placeholder="Email contact (email@company.com)" required />
       <Input name="company" placeholder="Company" />
       <select
         name="role"

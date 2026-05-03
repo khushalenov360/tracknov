@@ -2,8 +2,10 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Circle, Download, FileWarning, ShieldCheck } from "lucide-react";
 import {
   addRemarkAction,
+  importProjectTrackerBaselineAction,
   setCreditStateAction,
   setDocumentStatusAction,
+  uploadProjectGuidebookAction,
   updateCreditGuidanceAction,
   updateCreditDocumentRequirementsAction,
 } from "@/app/actions";
@@ -18,7 +20,7 @@ import type { AssistantContext } from "@/lib/assistant";
 import { categoryMeta, creditStatuses } from "@/lib/constants";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
-import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
+import { canManageProjectGuidebook, canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { cookies } from "next/headers";
 
@@ -44,6 +46,49 @@ const docAbbreviations: Record<string, string> = {
   "Pic/Video": "PHOTO",
 };
 
+const trackerColumns = [
+  { label: "Narrative", aliases: ["Narrative"] },
+  { label: "Tech Specs", aliases: ["Tech Spec", "Tech Specs"] },
+  { label: "Certificates/ Declaration", aliases: ["Certificate/Declaration", "Certificates/ Declaration"] },
+  { label: "Drawings", aliases: ["Drawing", "Drawings"] },
+  { label: "Calculations & Tables", aliases: ["Calculation & Tables", "Calculations & Tables"] },
+  { label: "Invoices", aliases: ["Invoice", "Invoices"] },
+  { label: "Pic/Video", aliases: ["Pic/Video"] },
+] as const;
+
+function resolveTrackerCellStatus(credit: any, aliases: readonly string[]) {
+  const requiredSlots = (credit.documents_required ?? []).filter((doc: any) => aliases.includes(doc.type) || aliases.includes(doc.label));
+  if (!requiredSlots.length || requiredSlots.every((doc: any) => !doc.required)) {
+    return "NA";
+  }
+
+  const linkedDocs = (credit.documents ?? []).filter((doc: any) =>
+    requiredSlots.some((slot: any) => slot.type === doc.doc_category || slot.label === doc.doc_category),
+  );
+
+  if (!linkedDocs.length) return "Required";
+
+  const states = linkedDocs.map((doc: any) => String(doc.state ?? doc.status ?? "").toUpperCase());
+  if (states.some((state: string) => state === "REJECTED" || state === "CLARIFICATION")) return "Clarification";
+  if (states.some((state: string) => state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "READY" || state === "UPLOADED")) return "Under Review";
+  return "Received";
+}
+
+function toLegacyCreditStatus(rawState: string | undefined): keyof typeof creditStatuses {
+  if (!rawState) return "pending";
+  const normalized = rawState.toLowerCase();
+  if (normalized === "complete" || normalized === "approved" || normalized === "closed") return "complete";
+  if (normalized === "blocked" || normalized === "rejected") return "blocked";
+  if (normalized === "in_progress" || normalized === "under_review" || normalized === "submitted" || normalized === "resubmitted") {
+    return "in_progress";
+  }
+  if (normalized === "draft" || normalized === "assigned" || normalized === "not_started" || normalized === "pending" || normalized === "clarification" || normalized === "ready") {
+    return "pending";
+  }
+  if (normalized in creditStatuses) return normalized as keyof typeof creditStatuses;
+  return "pending";
+}
+
 function queryString(params: Record<string, string | undefined>) {
   const nextParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -64,7 +109,8 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
-  cookies();
+  console.log(">>> LOADING DASHBOARD FOR PROJECT:", params.id);
+  const cookieStore = cookies();
   const workspace = await getProjectWorkspace(params.id);
   if (!workspace) {
     return (
@@ -87,22 +133,48 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const stats = creditStats(roleScopedCredits);
   const selectedCredit =
     roleScopedCredits.find((credit) => credit.id === searchParams?.credit) ?? roleScopedCredits[0];
+
+  if (!selectedCredit) {
+    return (
+      <Shell
+        title={workspace.project.name}
+        description={`${workspace.project.certification_type} / ${workspace.project.client || "Client TBD"}`}
+        role={workspace.userRole}
+        notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
+      >
+        <section className="surface-card px-5 py-8">
+          <p className="text-[15px] font-medium text-[var(--color-text-primary)]">Project Workspace Ready</p>
+          <p className="mt-2 max-w-[720px] text-[13px] leading-6 text-[var(--color-text-secondary)]">
+            This project has been created successfully. The credit tracker will appear here once the 
+            credits are instantiated from the {workspace.project.certification_type} template.
+          </p>
+          <div className="mt-6">
+            <Link href="/projects">
+              <Button variant="secondary">Back to Projects</Button>
+            </Link>
+          </div>
+        </section>
+      </Shell>
+    );
+  }
+
   const filteredCredits = roleScopedCredits.filter((credit) => {
     const categoryOk = searchParams?.category ? credit.category === searchParams.category : true;
-    const statusOk = searchParams?.status ? credit.status === searchParams.status : true;
+    const statusOk = searchParams?.status ? toLegacyCreditStatus(credit.state ?? credit.status) === searchParams.status : true;
     return categoryOk && statusOk;
   });
   const mandatoryCredits = roleScopedCredits.filter((credit) => credit.is_mandatory);
-  const mandatoryComplete = mandatoryCredits.filter((credit) => credit.status === "complete").length;
+  const mandatoryComplete = mandatoryCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "complete").length;
   const canReview = canReviewProjectDocuments(workspace.userRole);
   const canUpload = canUploadProjectDocuments(workspace.userRole);
+  const canManageGuidebook = canManageProjectGuidebook(workspace.userRole);
   const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
   const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
   const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
-  const reviewableDocuments = selectedCredit.documents.filter((document) =>
+  const reviewableDocuments = (selectedCredit.documents || []).filter((document: any) =>
     canOwnerReview ? document.status === "uploaded" : canFinalReview ? document.status === "owner_approved" : false,
   );
-  const selectedReviewDocument = reviewableDocuments[0] ?? selectedCredit.documents[0] ?? null;
+  const selectedReviewDocument = reviewableDocuments[0] ?? selectedCredit.documents?.[0] ?? null;
   const aiFacts = [
     `Selected credit: ${mandatoryCode(selectedCredit.credit_code, selectedCredit.is_mandatory)} ${selectedCredit.credit_name}.`,
     `Required document types: ${
@@ -114,6 +186,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     `Current user role: ${workspace.userRole}.`,
     `What to submit guidance: ${selectedCredit.what_to_submit || selectedCredit.documentation_summary || "Not set"}.`,
     `Effort profile: ${selectedCredit.effort_level ?? "moderate"}; guidance: ${selectedCredit.effort_guidance ?? "Not set"}.`,
+    workspace.guidebooks?.[0]
+      ? `Project guidebook in force: ${workspace.guidebooks[0].file_name} (uploaded ${formatDateTimeIST(workspace.guidebooks[0].created_at)}).`
+      : "No project guidebook uploaded yet.",
     canFinalReview
       ? "Project Admin final approval is required before a document can be included in the submission pack."
       : canOwnerReview
@@ -149,9 +224,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   };
   const categoryProgress = stats.categories.map((item) => {
     const categoryCredits = roleScopedCredits.filter((credit) => credit.category === item.key);
-    const completed = categoryCredits.filter((credit) => credit.status === "complete").length;
-    const inProgress = categoryCredits.filter((credit) => credit.status === "in_progress").length;
-    const blocked = categoryCredits.filter((credit) => credit.status === "blocked").length;
+    const completed = categoryCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "complete").length;
+    const inProgress = categoryCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "in_progress").length;
+    const blocked = categoryCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "blocked").length;
     const avgCompletion = categoryCredits.length
       ? Math.round(
           categoryCredits.reduce((sum, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
@@ -167,25 +242,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     };
   });
 
-  if (!selectedCredit) {
-    return (
-      <Shell
-        title={workspace.project.name}
-        description={`${workspace.project.certification_type} / ${workspace.project.client || "Client TBD"}`}
-        role={workspace.userRole}
-        notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
-      >
-        <section className="surface-card px-5 py-8">
-          <p className="text-[15px] font-medium text-[var(--color-text-primary)]">Rating system selected</p>
-          <p className="mt-2 max-w-[720px] text-[13px] leading-6 text-[var(--color-text-secondary)]">
-            This project is set up under {workspace.project.certification_type}. A detailed credit catalogue has
-            not been loaded for this rating system yet, so the workspace is ready for project documents and team setup
-            while the rating-specific tracker is configured.
-          </p>
-        </section>
-      </Shell>
-    );
-  }
 
   return (
     <Shell
@@ -194,6 +250,71 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       role={workspace.userRole}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
+      <section className="mb-4 surface-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-medium text-[var(--color-text-primary)]">Project Guidebook (IGBC Reference)</p>
+            <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+              This is the governing reference for credit expectations, evidence quality, and review decisions.
+            </p>
+          </div>
+          {canManageGuidebook ? (
+            <div className="flex flex-col gap-2">
+              <form action={uploadProjectGuidebookAction} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="project_id" value={params.id} />
+                <input
+                  name="title"
+                  placeholder="Guidebook title (optional)"
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                />
+                <input
+                  name="guidebook"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  required
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                />
+                <button type="submit" className="h-[34px] rounded-md bg-[var(--color-green)] px-3 text-[12px] font-medium text-white">
+                  Upload Guidebook
+                </button>
+              </form>
+              <form action={importProjectTrackerBaselineAction} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="project_id" value={params.id} />
+                <input
+                  name="tracker_file"
+                  type="file"
+                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  required
+                  className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                />
+                <button type="submit" className="h-[34px] rounded-md bg-[var(--color-blue)] px-3 text-[12px] font-medium text-white">
+                  Import Tracker Baseline
+                </button>
+              </form>
+            </div>
+          ) : null}
+        </div>
+        {workspace.guidebooks?.length ? (
+          <div className="mt-3 flex flex-col gap-2">
+            {workspace.guidebooks.slice(0, 3).map((guide) => (
+              <div key={guide.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px]">
+                <div>
+                  <p className="font-medium text-[var(--color-text-primary)]">{guide.title}</p>
+                  <p className="text-[11px] text-[var(--color-text-secondary)]">{guide.file_name} · {formatDateTimeIST(guide.created_at)}</p>
+                </div>
+                {guide.signed_url ? (
+                  <a href={guide.signed_url} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-[var(--color-blue)]">
+                    Open guidebook
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">No guidebook uploaded yet for this project.</p>
+        )}
+      </section>
+
       <section id="pending-list" className="mb-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
         {categoryProgress.map((item) => {
           const meta = categoryMeta[item.key as keyof typeof categoryMeta];
@@ -312,7 +433,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     }`}
                   >
                     <span>{status.replace("_", " ")}</span>
-                    <Badge className={classes}>{roleScopedCredits.filter((credit) => credit.status === status).length}</Badge>
+                    <Badge className={classes}>{roleScopedCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === status).length}</Badge>
                   </Link>
                 );
               })}
@@ -323,7 +444,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
               <p className="text-[11px] font-medium text-[var(--color-text-primary)]">My tasks</p>
               <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                {roleScopedCredits.filter((credit) => credit.status === "complete").length} of {roleScopedCredits.length} credits complete
+                {roleScopedCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "complete").length} of {roleScopedCredits.length} credits complete
               </p>
             </div>
           ) : null}
@@ -367,19 +488,22 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <table className="min-w-full border-collapse text-[12px]">
               <thead className="sticky top-0 z-10 bg-[var(--color-surface-2)]">
                 <tr className="border-b border-[var(--color-border)]">
-                  {!isL0Contributor ? (
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                      Credit code
-                    </th>
-                  ) : null}
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Criteria
+                  </th>
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Credit name
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Doc types
-                  </th>
+                  {trackerColumns.map((column) => (
+                    <th key={column.label} className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                      {column.label}
+                    </th>
+                  ))}
                   <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     % complete
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Documents received
                   </th>
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Status
@@ -387,11 +511,21 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Remark
                   </th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Responsible
+                  </th>
+                  <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Available points
+                  </th>
+                  <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Achievable points
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCredits.map((credit) => {
                   const selected = credit.id === selectedCredit.id;
+                  const creditStatus = toLegacyCreditStatus(credit.state ?? credit.status);
                   const category = categoryMeta[credit.category as keyof typeof categoryMeta];
                   const displayCode = mandatoryCode(credit.credit_code, credit.is_mandatory);
                   const preview = credit.remarks[0]?.body ?? credit.documentation_summary ?? "No remarks yet";
@@ -404,22 +538,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                           : "hover:bg-[var(--color-surface-2)]"
                       }`}
                     >
-                      {!isL0Contributor ? (
-                        <td className="px-3 py-2 align-middle">
-                          <Link
-                            href={`/projects/${params.id}${queryString({
-                              category: searchParams?.category,
-                              status: searchParams?.status,
-                              credit: credit.id,
-                            })}`}
-                            className={`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${
-                              credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color
-                            }`}
-                          >
-                            {displayCode}
-                          </Link>
-                        </td>
-                      ) : null}
+                      <td className="px-3 py-2 align-middle">
+                        <Link
+                          href={`/projects/${params.id}${queryString({
+                            category: searchParams?.category,
+                            status: searchParams?.status,
+                            credit: credit.id,
+                          })}`}
+                          className={`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${
+                            credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color
+                          }`}
+                        >
+                          {displayCode}
+                        </Link>
+                      </td>
                       <td className="max-w-[200px] truncate px-3 py-2 align-middle text-[13px] text-[var(--color-text-primary)]">
                         <Link
                           href={`/projects/${params.id}${queryString({
@@ -432,27 +564,39 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                           {credit.credit_name}
                         </Link>
                       </td>
-                      <td className="px-3 py-2 align-middle">
-                        <div className="flex flex-wrap gap-1">
-                          {credit.documents_required.map((doc) => (
-                            <span
-                              key={doc.type}
-                              className={`inline-flex rounded-[3px] px-[5px] py-[2px] text-[9px] ${
-                                doc.required
-                                  ? "border border-[var(--color-green)] bg-[var(--color-green-light)] text-[var(--color-green)]"
-                                  : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-60"
-                              }`}
-                            >
-                              {docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase()}
+                      {trackerColumns.map((column) => {
+                        const cell = resolveTrackerCellStatus(credit, column.aliases);
+                        const tone =
+                          cell === "Received"
+                            ? "border border-[var(--color-green)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                            : cell === "Under Review"
+                              ? "border border-[var(--color-blue)] bg-[var(--color-blue-light)] text-[var(--color-blue)]"
+                              : cell === "Clarification"
+                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                : cell === "Required"
+                                  ? "border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]"
+                                  : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-70";
+                        return (
+                          <td key={`${credit.id}-${column.label}`} className="px-2 py-2 align-middle">
+                            <span className={`inline-flex rounded-[3px] px-[6px] py-[2px] text-[9px] ${tone}`}>
+                              {cell}
                             </span>
-                          ))}
-                        </div>
-                      </td>
+                          </td>
+                        );
+                      })}
                       <td className="mono px-3 py-2 text-right align-middle text-[12px] text-[var(--color-text-secondary)]">
                         {pct(credit.completion_pct)}
                       </td>
+                      <td className="max-w-[240px] truncate px-3 py-2 align-middle text-[11px] text-[var(--color-text-secondary)]">
+                        {credit.documents.length
+                          ? `${credit.documents.length} file(s): ${credit.documents
+                              .slice(0, 2)
+                              .map((doc) => doc.file_name)
+                              .join(", ")}${credit.documents.length > 2 ? "..." : ""}`
+                          : "None"}
+                      </td>
                       <td className="px-3 py-2 align-middle">
-                        <Badge className={creditStatuses[credit.status]}>{credit.status.replace("_", " ")}</Badge>
+                        <Badge className={creditStatuses[creditStatus]}>{creditStatus.replace("_", " ")}</Badge>
                       </td>
                       <td
                         className={`max-w-[260px] truncate px-3 py-2 align-middle text-[11px] ${
@@ -462,6 +606,15 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                         }`}
                       >
                         {preview}
+                      </td>
+                      <td className="px-3 py-2 align-middle text-[11px] text-[var(--color-text-secondary)]">
+                        {credit.responsible_role ? String(credit.responsible_role).replace("_", " ") : "Unassigned"}
+                      </td>
+                      <td className="mono px-3 py-2 text-right align-middle text-[12px] text-[var(--color-text-secondary)]">
+                        {Number((credit as any).max_points ?? (credit as any).available_points ?? 0).toFixed(1)}
+                      </td>
+                      <td className="mono px-3 py-2 text-right align-middle text-[12px] text-[var(--color-text-secondary)]">
+                        {Number(((credit as any).achievable_points ?? ((credit as any).max_points ?? 0) * ((credit.completion_pct ?? 0) / 100))).toFixed(1)}
                       </td>
                     </tr>
                   );
@@ -482,14 +635,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   {selectedCredit.category} / {mandatoryCode(selectedCredit.credit_code, selectedCredit.is_mandatory)}
                 </p>
               </div>
-              <Badge className={creditStatuses[selectedCredit.status]}>
-                {selectedCredit.status.replace("_", " ")}
+              <Badge className={creditStatuses[toLegacyCreditStatus(selectedCredit.state ?? selectedCredit.status)]}>
+                {toLegacyCreditStatus(selectedCredit.state ?? selectedCredit.status).replace("_", " ")}
               </Badge>
             </div>
           </div>
 
           <div className="space-y-4 px-4 py-4">
-            {selectedCredit.status === "blocked" ? (
+            {toLegacyCreditStatus(selectedCredit.state ?? selectedCredit.status) === "blocked" ? (
               <div className="rounded-lg border border-[var(--color-red-light)] bg-[var(--color-red-light)] p-3 text-[11px] text-[var(--color-red)]">
                 <div className="flex items-center gap-2 font-medium">
                   <FileWarning className="h-3.5 w-3.5" />

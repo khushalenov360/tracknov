@@ -191,149 +191,46 @@ export class ReviewService {
     return result;
   }
 
-  async bulkReview(user: CurrentUser, params: {
-    action: "approve" | "reject";
-    documentIds: string[];
-    rejectionType?: string;
-    remark?: string;
+  async transitionSubmittal(user: CurrentUser, params: {
+    submittalId: string;
+    projectId: string;
+    newState: string;
+    remarks?: string | null;
   }) {
-    const results = [];
-    for (const documentId of params.documentIds) {
-      const { data: document } = await this.client
-        .from("project_document")
-        .select("id, state, project_id, project_credit_id, uploaded_by, file_name, doc_category")
-        .eq("id", documentId)
-        .maybeSingle();
+    const actorRole = await this.getActorProjectRole(params.projectId, user);
+    if (!actorRole) throw new Error("Unauthorized.");
 
-      if (!document) continue;
+    // Transition the submittal itself
+    const { error: subError } = await this.admin
+      .from("submittals")
+      .update({ 
+        state: params.newState, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq("id", params.submittalId);
+    
+    if (subError) throw subError;
 
-      const actorRole = await this.getActorProjectRole(document.project_id, user);
-      if (!actorRole) continue;
-
-      const canOwnerReview = actorRole === "owner";
-      const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(actorRole);
-
-      if (!canOwnerReview && !canFinalReview) continue;
-
-      if (params.action === "approve") {
-        const nextState = canOwnerReview ? "UNDER_REVIEW" : "APPROVED";
-        if (canOwnerReview && document.state !== "SUBMITTED") continue;
-        if (canFinalReview && document.state !== "UNDER_REVIEW") continue;
-
-        const transition = await transitionDocumentState(this.admin, {
-          documentId,
-          newState: nextState as any,
+    // Transition all documents within this submittal to the matching state
+    const { data: docs } = await this.admin
+      .from("project_document")
+      .select("id")
+      .eq("submittal_id", params.submittalId);
+    
+    if (docs && docs.length > 0) {
+      for (const doc of docs) {
+        await transitionDocumentState(this.admin, {
+          documentId: doc.id,
+          newState: params.newState as any,
           userId: user.id,
           actorRole,
-          manualSubmit: true,
+          remarks: params.remarks,
+          manualSubmit: true
         });
-
-        if (transition.ok) {
-           if (nextState === "APPROVED") {
-             await ragService.ingestApprovedDocument(documentId);
-           }
-           // Record immutable review event
-           await this.recordDocumentReviewEvent({
-             documentId,
-             projectId: document.project_id,
-             reviewerId: user.id,
-             reviewerRole: actorRole,
-             action: canOwnerReview ? "owner_forward" : "admin_approve",
-             statusAfter: nextState,
-           });
-
-           results.push({ documentId, ok: true });
-           
-           // Emit Event
-           await eventBus.emit({
-             type: "REVIEW_COMPLETED",
-             payload: {
-               documentId,
-               projectId: document.project_id,
-               status: nextState,
-               userId: user.id,
-             }
-           });
-        }
-      } else {
-        // Reject
-        if (canOwnerReview && document.state !== "SUBMITTED") continue;
-        if (canFinalReview && document.state !== "UNDER_REVIEW") continue;
-
-        const templateMessage = params.rejectionType ? rejectionTemplateLibrary[params.rejectionType] ?? "" : "";
-        const baseMessage = params.remark || templateMessage;
-        if (!baseMessage || baseMessage.length < 20 || !params.rejectionType) continue;
-
-        const formattedRemark = `[${params.rejectionType}] ${baseMessage}`;
-        const transition = await transitionDocumentState(this.admin, {
-          documentId,
-          newState: "CLARIFICATION",
-          userId: user.id,
-          actorRole,
-          manualSubmit: true,
-          remarks: formattedRemark,
-        });
-
-        if (transition.ok) {
-           // Record immutable review event
-           await this.recordDocumentReviewEvent({
-             documentId,
-             projectId: document.project_id,
-             reviewerId: user.id,
-             reviewerRole: actorRole,
-             action: canOwnerReview ? "owner_reject" : "admin_reject",
-             statusAfter: "CLARIFICATION",
-             remarks: formattedRemark,
-           });
-
-           // Additional side effects for rejection
-           if (document.project_credit_id) {
-             await this.admin.from("remarks").insert({
-               credit_id: document.project_credit_id,
-               document_id: documentId,
-               author_id: user.id,
-               role: actorRole,
-               body: formattedRemark,
-             });
-           }
-           await this.recordRejectionPattern({
-             creditId: document.project_credit_id ?? null,
-             docCategory: document.doc_category ?? null,
-             rejectionReason: formattedRemark,
-             suggestedFix: rejectionTemplateLibrary[params.rejectionType] ?? null,
-             metadata: {
-               from_state: document.state,
-               rejected_by_role: actorRole,
-               bulk_action: true,
-             },
-           });
-           // Notify uploader
-           if (document.uploaded_by) {
-             await this.admin.from("notifications").insert({
-               project_id: document.project_id,
-               project_credit_id: document.project_credit_id,
-               document_id: documentId,
-               user_id: document.uploaded_by,
-               body: `Document sent back: ${formattedRemark}`,
-             });
-           }
-           
-           // Emit Event
-           await eventBus.emit({
-             type: "DOCUMENT_REJECTED",
-             payload: {
-               documentId,
-               projectId: document.project_id,
-               userId: user.id,
-               reason: formattedRemark,
-             }
-           });
-           
-           results.push({ documentId, ok: true });
-        }
       }
     }
-    return results;
+
+    return { ok: true };
   }
 
   async canSubmitProject(projectId: string) {

@@ -16,6 +16,12 @@ type AssistantRequest = {
   context?: AssistantContext;
   messages?: AssistantMessage[];
   tone?: "Executive" | "Guided" | "Fast";
+  attachments?: Array<{
+    name: string;
+    mimeType: string;
+    size: number;
+    base64: string;
+  }>;
 };
 
 function toGeminiContents(messages: AssistantMessage[]) {
@@ -70,6 +76,9 @@ type CreditRow = {
   id: string;
   project_id: string;
   credit_code: string;
+  credit_name?: string;
+  documents_required?: Array<{ type: string; label: string; required: boolean }>;
+  what_to_submit?: string | null;
   state: string;
 };
 
@@ -82,7 +91,13 @@ type DocumentRow = {
   uploaded_at: string;
 };
 
-function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], documents: DocumentRow[], role: string) {
+function buildWorkspaceSnapshot(
+  projects: ProjectRow[],
+  credits: CreditRow[],
+  documents: DocumentRow[],
+  role: string,
+  guidebooks: Array<{ project_id: string; title: string; file_name: string }>,
+) {
   if (!projects.length) {
     return "No accessible projects were found for this user.";
   }
@@ -133,6 +148,18 @@ function buildWorkspaceSnapshot(projects: ProjectRow[], credits: CreditRow[], do
     lines.push(
       `Credits: total=${projectCredits.length}, complete=${completeCredits}, blocked=${blockedCredits}. Documents: uploaded=${uploadedCount}, owner_review=${ownerReviewCount}, approved=${approvedCount}, rejected=${rejectedCount}.`,
     );
+    const projectGuidebooks = guidebooks.filter((book) => book.project_id === project.id);
+    lines.push(
+      `Guidebook: ${projectGuidebooks.length ? projectGuidebooks.map((book) => `${book.title} (${book.file_name})`).join("; ") : "none uploaded"}`,
+    );
+    const trackerPreview = projectCredits
+      .slice(0, 5)
+      .map((credit) => {
+        const req = (credit.documents_required ?? []).filter((d) => d.required).map((d) => d.label).slice(0, 3).join(", ");
+        return `${credit.credit_code}${credit.credit_name ? ` ${credit.credit_name}` : ""} -> required: ${req || "not set"}`;
+      })
+      .join(" | ");
+    lines.push(`Tracker rows preview: ${trackerPreview || "none"}`);
     lines.push(`Recent files: ${recentFiles || "none"}`);
     lines.push(`Priority credits: ${topPendingCredits || "none"}`);
   }
@@ -178,7 +205,7 @@ async function getWorkspaceSnapshot() {
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
     reader
       .from("project_credits")
-      .select("id, project_id, credit_code, state")
+      .select("id, project_id, credit_code, credit_name, documents_required, what_to_submit, state")
       .in("project_id", projectIds)
       .order("credit_code"),
     reader
@@ -188,9 +215,15 @@ async function getWorkspaceSnapshot() {
       .order("uploaded_at", { ascending: false })
       .limit(400),
   ]);
+  const { data: guidebooksData } = await reader
+    .from("project_guidebooks")
+    .select("project_id, title, file_name")
+    .in("project_id", projectIds)
+    .order("created_at", { ascending: false });
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
+  const guidebooks = (guidebooksData ?? []) as Array<{ project_id: string; title: string; file_name: string }>;
 
   // Fetch recent intelligence for these documents
   const { data: intelligence } = await reader
@@ -198,7 +231,7 @@ async function getWorkspaceSnapshot() {
     .select("*")
     .in("document_id", documents.slice(0, 5).map(d => d.id));
 
-  let snapshot = buildWorkspaceSnapshot(projects, credits, documents, resolvedRole);
+  let snapshot = buildWorkspaceSnapshot(projects, credits, documents, resolvedRole, guidebooks);
   
   if (intelligence?.length) {
     snapshot += "\n\nRecent Document Intelligence:\n";
@@ -324,7 +357,7 @@ const assistantTools = [
 ];
 
 async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string, user: any) {
-  let contents = toGeminiContents(messages);
+  const contents: any[] = toGeminiContents(messages);
   const systemInstruction = {
     parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
   };
@@ -479,6 +512,7 @@ export async function POST(request: Request) {
 
   const context = body.context;
   const messages = body.messages ?? [];
+  const attachments = (body.attachments ?? []).slice(0, 3);
 
   if (!context || !context.title || !context.summary) {
     return new Response("Missing assistant context.", { status: 400 });
@@ -513,7 +547,16 @@ export async function POST(request: Request) {
         })
         .join("\n")
     : "No RAG matches found for current query.";
-  const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot].join("\n");
+  const attachmentSummary = attachments.length
+    ? [
+        "Uploaded attachments:",
+        ...attachments.map((file, index) => {
+          const kb = Math.max(1, Math.round((file.size ?? 0) / 1024));
+          return `${index + 1}. ${file.name} (${file.mimeType}, ${kb} KB)`;
+        }),
+      ].join("\n")
+    : "Uploaded attachments: none";
+  const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n");
 
   // Determine tone
   let resolvedTone: AssistantTone;
@@ -581,6 +624,25 @@ export async function POST(request: Request) {
         "Responses must be grounded in the workspace snapshot attached in system instructions.",
       ],
     };
+    if (attachments.length > 0) {
+      const lastUserIndex = [...messages]
+        .map((message, index) => ({ message, index }))
+        .reverse()
+        .find((entry) => entry.message.role === "user")?.index;
+      if (typeof lastUserIndex === "number") {
+        const attachmentNote =
+          "\n\nAttached files for this question:\n" +
+          attachments
+            .map((file, index) => `- ${index + 1}. ${file.name} (${file.mimeType})`)
+            .join("\n") +
+          "\nUse these attachments with workspace context before answering.";
+        messages[lastUserIndex] = {
+          ...messages[lastUserIndex],
+          content: `${messages[lastUserIndex].content}${attachmentNote}`,
+        };
+      }
+    }
+
     const geminiStream = await createGeminiStream(
       {
         ...enrichedContext,

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { buildSeedCredits } from "@/lib/catalog";
+import { buildProjectCreditSeedRows, buildSeedCredits } from "@/lib/catalog";
 import { categoryMeta, igbcRatingSystems } from "@/lib/constants";
 import { env } from "@/lib/env";
 import {
@@ -24,6 +24,7 @@ import type {
   OnboardingChecklist,
   ProjectInviteRecord,
   ProjectMemberRecord,
+  ProjectRatingSystem,
   ProjectStatus,
   ProjectSummary,
   ProjectType,
@@ -31,6 +32,7 @@ import type {
   RemarkRecord,
   SystemActivityLog,
   TeamMemberRecord,
+  CreditStatus,
 } from "@/lib/types";
 
 type SupabaseClient = ReturnType<typeof createClient>;
@@ -98,7 +100,7 @@ function workflowToLegacyStatus(state: WorkflowState): "uploaded" | "owner_appro
 function deriveCreditLifecycleState(
   credit: Record<string, any>,
   documents: Array<Record<string, any>>,
-): { status: CreditWorkspace["status"]; completion_pct: number } {
+): { status: CreditStatus; completion_pct: number } {
   const requiredTypes = new Set(
     ((credit.documents_required ?? []) as DocumentRequirement[])
       .filter((entry) => entry.required && entry.type)
@@ -122,7 +124,7 @@ function deriveCreditLifecycleState(
         ? 25
         : 0;
 
-  let status: CreditWorkspace["status"] = "pending";
+  let status: CreditStatus = "pending";
   if (credit.blocked_by) {
     status = "blocked";
   } else if (completionPct >= 100) {
@@ -153,6 +155,7 @@ function mapCredit(
     responsible_role: credit.responsible_role ? normalizeRole(credit.responsible_role) : null,
     is_mandatory: credit.is_mandatory,
     documents_required: (credit.documents_required ?? []) as DocumentRequirement[],
+    state: derived.status,
     status: derived.status,
     blocked_by: credit.blocked_by,
     completion_pct: derived.completion_pct,
@@ -165,6 +168,23 @@ function mapCredit(
     documents: creditDocuments,
     remarks: remarks.filter((remark) => remark.credit_id === credit.id) as RemarkRecord[],
   };
+}
+
+async function mapProjectGuidebooksWithSignedUrls(
+  signer: any,
+  guidebooks: Array<any>,
+) {
+  return Promise.all(
+    (guidebooks ?? []).map(async (guide) => {
+      const { data: signed } = await signer.storage
+        .from("project-documents")
+        .createSignedUrl(guide.file_path, 60 * 30);
+      return {
+        ...guide,
+        signed_url: signed?.signedUrl ?? null,
+      };
+    }),
+  );
 }
 
 async function getSupabaseUser(client: SupabaseClient) {
@@ -241,6 +261,24 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (profile?.disabled_at) {
     return null;
   }
+
+  // Resolve active workspace role from project membership first.
+  // This prevents stale global roles from forcing the wrong workspace shell.
+  const { data: membershipRoleRow } = await client
+    .from("project_users")
+    .select("role")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (membershipRoleRow?.role) {
+    return {
+      id: user.id,
+      email: user.email ?? "",
+      role: normalizeRole(membershipRoleRow.role),
+    };
+  }
+
   if (profile?.global_role) {
     return { id: user.id, email: user.email ?? "", role: normalizeRole(profile.global_role) };
   }
@@ -337,7 +375,8 @@ export async function getDashboardProjects() {
           client: project.client ?? "",
           location: project.location ?? "",
           project_type: normalizeProjectType(project.project_type),
-          status: normalizeProjectStatus(project.status),
+          state: normalizeProjectStatus(project.state ?? project.status),
+          status: normalizeProjectStatus(project.state ?? project.status),
           green_certification: project.green_certification ?? "IGBC",
           igbc_variant: project.igbc_variant === "existing" ? "existing" : "new",
           certification_type: project.certification_type,
@@ -377,11 +416,18 @@ export async function getDashboardProjects() {
 
   const { data: memberships } = await client
     .from("project_users")
-    .select("project_id, role, projects(id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code)")
+    .select("project_id, role")
     .eq("user_id", user.id);
 
-  const projects = memberships ?? [];
-  const projectIds = projects.map((membership) => membership.project_id);
+  const projectMemberships = (memberships ?? []).filter((membership: any) => membership?.project_id);
+  const projectIds = Array.from(new Set(projectMemberships.map((membership: any) => membership.project_id)));
+  const { data: projectRows } = projectIds.length
+    ? await client
+        .from("projects")
+        .select("id, name, client, location, project_type, state, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code")
+        .in("id", projectIds)
+    : { data: [] };
+  const projectById = new Map((projectRows ?? []).map((project: any) => [project.id, project]));
   const { data: usageRows } = projectIds.length
     ? await client
         .from("project_usage_summary")
@@ -391,8 +437,12 @@ export async function getDashboardProjects() {
   const usageByProjectId = new Map((usageRows ?? []).map((row: any) => [row.project_id, row]));
 
   const summaries = await Promise.all(
-    projects.map(async (membership) => {
+    projectMemberships.map(async (membership: any) => {
       const projectId = membership.project_id;
+      const project = projectById.get(projectId);
+      if (!project) {
+        return null;
+      }
       const usage = usageByProjectId.get(projectId);
       const { data: credits } = await client
         .from("project_credits")
@@ -421,15 +471,14 @@ export async function getDashboardProjects() {
         derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
         Math.max(derivedCredits.length, 1);
       const mandatoryMet = creditRows.filter((credit: any, index: number) => credit.is_mandatory && derivedCredits[index]?.status === "complete").length;
-      const project = Array.isArray(membership.projects) ? membership.projects[0] : membership.projects;
-
       return {
         id: project.id,
         name: project.name,
         client: project.client ?? "",
         location: project.location ?? "",
         project_type: normalizeProjectType(project.project_type),
-        status: normalizeProjectStatus(project.status),
+        state: normalizeProjectStatus(project.state ?? project.status),
+        status: normalizeProjectStatus(project.state ?? project.status),
         green_certification: project.green_certification ?? "IGBC",
         igbc_variant: project.igbc_variant === "existing" ? "existing" : "new",
         certification_type: project.certification_type,
@@ -464,7 +513,7 @@ export async function getDashboardProjects() {
     }),
   );
 
-  return summaries;
+  return summaries.filter(Boolean) as ProjectSummary[];
 }
 
 export async function getProjectWorkspace(projectId: string) {
@@ -481,7 +530,7 @@ export async function getProjectWorkspace(projectId: string) {
   const currentUser = await getCurrentUser();
   if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
-    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
+    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, members, invites] =
       await Promise.all([
         admin.from("projects").select("*").eq("id", projectId).single(),
         admin.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -502,20 +551,43 @@ export async function getProjectWorkspace(projectId: string) {
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
           .limit(25),
+        admin
+          .from("project_guidebooks")
+          .select("id, title, file_name, file_path, uploaded_by, created_at")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false }),
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
-    const creditIds = (credits ?? []).map((credit: any) => credit.id);
+    let effectiveCredits = (credits ?? []) as Array<any>;
+    if (effectiveCredits.length === 0) {
+      const fallbackCredits = buildProjectCreditSeedRows(projectId);
+      if (fallbackCredits.length > 0) {
+        const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
+        if (seedError) {
+          console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+        }
+        const { data: refreshedCredits } = await admin
+          .from("project_credits")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("credit_code");
+        effectiveCredits = (refreshedCredits ?? []) as Array<any>;
+      }
+    }
+    const creditIds = effectiveCredits.map((credit: any) => credit.id);
     const { data: remarks } = creditIds.length
       ? await admin.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
       : { data: [] };
 
-    const mappedCredits = (credits ?? []).map((credit: any) => mapCredit(credit, documents ?? [], remarks ?? []));
+    const mappedCredits = effectiveCredits.map((credit: any) => mapCredit(credit, documents ?? [], remarks ?? []));
+    const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
 
     return {
       project,
       userRole: "super_user",
       credits: mappedCredits,
+      guidebooks: mappedGuidebooks,
       members,
       invites,
       notifications: notifications ?? [],
@@ -526,7 +598,8 @@ export async function getProjectWorkspace(projectId: string) {
     } satisfies ProjectWorkspace;
   }
 
-  const { data: membership } = await client
+  const admin = createAdminClient();
+  const { data: membership, error: memberError } = await admin
     .from("project_users")
     .select("role")
     .eq("project_id", projectId)
@@ -537,7 +610,7 @@ export async function getProjectWorkspace(projectId: string) {
     return null;
   }
 
-  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
+  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, members, invites] =
     await Promise.all([
       client.from("projects").select("*").eq("id", projectId).single(),
       client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -558,20 +631,43 @@ export async function getProjectWorkspace(projectId: string) {
         .eq("project_id", projectId)
         .order("created_at", { ascending: false })
         .limit(25),
+      client
+        .from("project_guidebooks")
+        .select("id, title, file_name, file_path, uploaded_by, created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
       getProjectMembers(client, projectId),
       getProjectInvites(client, projectId),
     ]);
-  const creditIds = (credits ?? []).map((credit) => credit.id);
+  let effectiveCredits = (credits ?? []) as Array<any>;
+  if (effectiveCredits.length === 0) {
+    const fallbackCredits = buildProjectCreditSeedRows(projectId);
+    if (fallbackCredits.length > 0) {
+      const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
+      if (seedError) {
+        console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+      }
+      const { data: refreshedCredits } = await client
+        .from("project_credits")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("credit_code");
+      effectiveCredits = (refreshedCredits ?? []) as Array<any>;
+    }
+  }
+  const creditIds = effectiveCredits.map((credit) => credit.id);
   const { data: remarks } = creditIds.length
     ? await client.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
     : { data: [] };
 
-  const mappedCredits = (credits ?? []).map((credit) => mapCredit(credit, documents ?? [], remarks ?? []));
+  const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, documents ?? [], remarks ?? []));
+  const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
 
   return {
     project,
     userRole: normalizeRole(membership.role),
     credits: mappedCredits,
+    guidebooks: mappedGuidebooks,
     members,
     invites,
     notifications: notifications ?? [],
@@ -1797,7 +1893,7 @@ export async function getExecutiveInsights() {
 
   const rejectionPatternsMap = new Map<string, number>();
   for (const document of documents ?? []) {
-    const state = normalizeWorkflowState(document.state, document.status);
+    const state = normalizeWorkflowState(document.state, (document as any).status);
     if (!(state === "REJECTED" || state === "CLARIFICATION")) continue;
     const reason = String(document.rejection_reason ?? "Unspecified").trim();
     const bucket = reason ? reason.split(".")[0].slice(0, 90) : "Unspecified";
@@ -1821,7 +1917,7 @@ export async function getExecutiveInsights() {
       rejected: 0,
     };
     existing.projects.add(document.project_id);
-    const state = normalizeWorkflowState(document.state, document.status);
+    const state = normalizeWorkflowState(document.state, (document as any).status);
     if (state === "APPROVED") existing.approved += 1;
     if (state === "REJECTED" || state === "CLARIFICATION") existing.rejected += 1;
     uploaderAgg.set(document.uploaded_by, existing);
@@ -2330,12 +2426,21 @@ export async function getRatingSystems(): Promise<ProjectRatingSystem[]> {
   // Use admin client to bypass RLS on the master library table –
   // rating systems are public reference data that every authenticated user needs to see.
   const client = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  // The table is `rating_systems` on the remote DB (migration 0043 rename to
+  // `rating_system` has not been applied remotely yet). Try both names gracefully.
   const { data, error } = await client
-    .from('rating_system')
-    .select('id, name, version, description')
+    .from('rating_systems')
+    .select('id, name')
     .order('name', { ascending: true });
   if (error) {
     console.error('[getRatingSystems] error:', error.message);
+    return [];
   }
-  return (data ?? []) as ProjectRatingSystem[];
+  // Map to ProjectRatingSystem shape – version/description may not exist on the older schema
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    version: row.version ?? null,
+    description: row.description ?? null,
+  })) as ProjectRatingSystem[];
 }

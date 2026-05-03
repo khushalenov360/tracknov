@@ -9,6 +9,18 @@ import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib
 import type { MemberRole } from "@/lib/types";
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
+type CopilotAttachment = {
+  name: string;
+  mimeType: string;
+  size: number;
+  base64: string;
+};
+type FormFieldMeta = {
+  key: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+};
 
 type GlobalCopilotProps = {
   enabled: boolean;
@@ -65,6 +77,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const storageKey = "tracknov-global-copilot:history";
   const collapseKey = "tracknov-global-copilot-collapsed";
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const context = useMemo<AssistantContext>(
     () => ({
@@ -94,6 +107,8 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const [loading, setLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
   const [showSettings, setShowSettings] = useState(false);
+  const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [fillingForm, setFillingForm] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -210,6 +225,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           context,
           messages: nextMessages.slice(0, -1),
           tone: selectedTone !== "Auto" ? selectedTone : undefined,
+          attachments: attachment ? [attachment] : [],
         }),
       });
 
@@ -227,6 +243,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           return copy;
         });
       });
+      setAttachment(null);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
       setMessages((current) => current.slice(0, -1));
@@ -235,16 +252,180 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     }
   }
 
+  function collectVisibleFormFields(): FormFieldMeta[] {
+    const controls = Array.from(document.querySelectorAll("input, textarea, select")) as Array<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >;
+    const fields: FormFieldMeta[] = [];
+
+    for (const control of controls) {
+      if (control.disabled) {
+        continue;
+      }
+      const rect = control.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        continue;
+      }
+      const type = control instanceof HTMLSelectElement ? "select" : control.type || control.tagName.toLowerCase();
+      if (type === "hidden" || type === "password" || type === "file") {
+        continue;
+      }
+      const idKey = control.getAttribute("name") || control.getAttribute("id") || control.getAttribute("aria-label");
+      if (!idKey) {
+        continue;
+      }
+      const linkedLabel =
+        (control.getAttribute("id") && document.querySelector(`label[for="${control.getAttribute("id")}"]`)?.textContent) ||
+        control.closest("label")?.textContent ||
+        control.getAttribute("aria-label") ||
+        control.getAttribute("placeholder") ||
+        idKey;
+      fields.push({
+        key: idKey.trim(),
+        label: linkedLabel.trim(),
+        type,
+        placeholder: "placeholder" in control ? control.placeholder : undefined,
+      });
+    }
+
+    return fields.slice(0, 40);
+  }
+
+  function parseJsonObject(text: string): Record<string, string> | null {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+      const values: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "string" && value.trim()) {
+          values[key] = value.trim();
+        }
+      }
+      return values;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyFormValues(values: Record<string, string>) {
+    let applied = 0;
+    for (const [fieldKey, value] of Object.entries(values)) {
+      const selector = `[name="${fieldKey}"], #${CSS.escape(fieldKey)}, [aria-label="${fieldKey}"]`;
+      const target = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (!target || target.disabled) {
+        continue;
+      }
+      if (target instanceof HTMLSelectElement) {
+        const option = Array.from(target.options).find((opt) => opt.value === value || opt.text.trim().toLowerCase() === value.toLowerCase());
+        if (option) {
+          target.value = option.value;
+          target.dispatchEvent(new Event("change", { bubbles: true }));
+          applied += 1;
+        }
+        continue;
+      }
+      target.value = value;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+      applied += 1;
+    }
+    return applied;
+  }
+
+  async function assistFormFill() {
+    if (loading || fillingForm) {
+      return;
+    }
+    const fields = collectVisibleFormFields();
+    if (!fields.length) {
+      setError("No editable form fields found on this page.");
+      return;
+    }
+    const userGoal = input.trim() || "Fill this form with sensible values based on current page context.";
+    setFillingForm(true);
+    setError("");
+    try {
+      const assistPrompt = `${userGoal}
+
+You are helping fill a web form.
+Return ONLY a JSON object mapping field keys to values.
+Do not include markdown or explanation.
+Only include fields you are confident about.
+
+Form fields:
+${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${field.type}" placeholder="${field.placeholder ?? ""}"`).join("\n")}`;
+
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context,
+          messages: [{ role: "user", content: assistPrompt }],
+          tone: "Guided",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Copilot could not generate form suggestions.");
+      }
+      const raw = await response.text();
+      const parsed = parseJsonObject(raw);
+      if (!parsed || Object.keys(parsed).length === 0) {
+        throw new Error("Copilot returned no usable form suggestions.");
+      }
+      const count = applyFormValues(parsed);
+      if (count === 0) {
+        throw new Error("No matching form fields were updated.");
+      }
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: `I filled ${count} form fields for you. Please review before submitting.` },
+      ]);
+    } catch (formError) {
+      setError(formError instanceof Error ? formError.message : "Could not assist with form filling.");
+    } finally {
+      setFillingForm(false);
+    }
+  }
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void sendPrompt(input);
   }
 
-  const quickPrompts = [
-    "What is the next best action in this tab?",
-    "What blockers should I clear first?",
-    "Give me a short review checklist for this page.",
-  ];
+  async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File too large. Please upload files up to 10 MB in Copilot.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      const bytes = await file.arrayBuffer();
+      let binary = "";
+      const view = new Uint8Array(bytes);
+      for (let i = 0; i < view.length; i += 1) {
+        binary += String.fromCharCode(view[i]);
+      }
+      setAttachment({
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        base64: btoa(binary),
+      });
+      setError("");
+    } catch {
+      setError("Could not read the selected file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
 
   if (collapsed) {
     return (
@@ -337,20 +518,33 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         </div>
 
         <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3">
-          <div className="flex flex-wrap gap-2">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => void sendPrompt(prompt)}
-                disabled={loading}
-                className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 py-1 text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
           <form onSubmit={onSubmit} className="space-y-2">
+            <div className="space-y-2">
+              <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-8 rounded-md"
+                  onClick={() => uploadInputRef.current?.click()}
+                >
+                  Attach File
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 rounded-md"
+                  onClick={() => (window.location.href = "/projects")}
+                >
+                  Upload To Project
+                </Button>
+              </div>
+              {attachment ? (
+                <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                  Attached to Copilot: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+                </p>
+              ) : null}
+            </div>
             <Textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -358,6 +552,9 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
               className="min-h-[84px] resize-none"
             />
             {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+            <Button type="button" variant="secondary" className="h-8 w-full rounded-md" disabled={loading || fillingForm} onClick={() => void assistFormFill()}>
+              {fillingForm ? "Filling form..." : "Fill Form With Copilot"}
+            </Button>
             <Button type="submit" className="h-8 w-full rounded-md" disabled={!input.trim() || loading}>
               <Send className="mr-2 h-3.5 w-3.5" />
               Ask Copilot
