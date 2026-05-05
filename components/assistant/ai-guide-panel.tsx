@@ -86,6 +86,7 @@ export function AiGuidePanel({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [fillingForm, setFillingForm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -333,11 +334,6 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
     if (!file) {
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File too large. Please upload files up to 10 MB in Copilot.");
-      event.target.value = "";
-      return;
-    }
     try {
       const bytes = await file.arrayBuffer();
       let binary = "";
@@ -351,11 +347,58 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         size: file.size,
         base64: btoa(binary),
       });
+      setAttachmentFile(file);
       setError("");
     } catch {
       setError("Could not read the selected file.");
     } finally {
       event.target.value = "";
+    }
+  }
+
+  async function uploadAttachmentToProject() {
+    if (!attachmentFile) {
+      setError("Attach a file first.");
+      return;
+    }
+    const match = window.location.pathname.match(/^\/projects\/([^/]+)/);
+    const projectId = match?.[1];
+    if (!projectId) {
+      setError("Open a project workspace to upload this file to project context.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("project_id", projectId);
+      formData.append("file", attachmentFile);
+      formData.append("title", attachmentFile.name.replace(/\.[^.]+$/, ""));
+      const response = await fetch("/api/assistant/project-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; mode?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? "Upload failed.");
+      }
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            payload.mode === "guidebook"
+              ? "Guidebook uploaded successfully. Workspace instantiation has been triggered."
+              : "Tracker baseline uploaded successfully and mapped to project credits.",
+        },
+      ]);
+      setAttachment(null);
+      setAttachmentFile(null);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -443,7 +486,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
                 type="button"
                 variant="ghost"
                 className="h-8 rounded-md"
-                onClick={() => (window.location.href = "/projects")}
+                onClick={() => void uploadAttachmentToProject()}
               >
                 Upload To Project
               </Button>

@@ -198,6 +198,9 @@ export function GeneralUploadDocumentForm({
           formData.set("file_hash", pending.fileHash ?? "");
           formData.set("file", pending.file);
           const result = await uploadDocumentAction(formData);
+          if (!result || typeof result.ok !== "boolean") {
+            throw new Error(`Upload action returned an invalid response for ${pending.file.name}.`);
+          }
           if (!result.ok) {
             throw new Error(result.error ?? `Upload failed for ${pending.file.name}`);
           }

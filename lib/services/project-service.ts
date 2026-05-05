@@ -23,6 +23,112 @@ export class ProjectService {
     return `TN-${key}-${rand}`;
   }
 
+  private async instantiateLegacyCreditBridge(projectId: string): Promise<number> {
+    const seedCredits = buildSeedCredits(projectId);
+    if (!seedCredits.length) return 0;
+
+    // Seed legacy credits table first.
+    const { error: creditInsertError } = await this.admin.from("credits").insert(seedCredits);
+    if (creditInsertError && creditInsertError.code !== "23505") {
+      throw creditInsertError;
+    }
+
+    const { data: legacyCredits, error: legacyCreditsError } = await this.admin
+      .from("credits")
+      .select("id, credit_code, credit_name, is_mandatory, documents_required, documentation_summary")
+      .eq("project_id", projectId);
+    if (legacyCreditsError) throw legacyCreditsError;
+    if (!legacyCredits?.length) return 0;
+
+    const bridgeRows = legacyCredits.map((credit: any) => ({
+      project_id: projectId,
+      credit_id: credit.id,
+      credit_code: credit.credit_code,
+      credit_name: credit.credit_name,
+      is_mandatory: Boolean(credit.is_mandatory),
+      documents_required: credit.documents_required ?? [],
+      documentation_summary: credit.documentation_summary ?? null,
+      status: "DRAFT",
+    }));
+
+    const { error: bridgeError } = await this.admin.from("project_credits").insert(bridgeRows);
+    if (bridgeError && bridgeError.code !== "23505") {
+      throw bridgeError;
+    }
+
+    return bridgeRows.length;
+  }
+
+  private async instantiateProjectCreditsIfMissing(projectId: string, ratingSystemId?: string | null): Promise<number> {
+    const { count } = await this.admin
+      .from("project_credits")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId);
+
+    if (Number(count ?? 0) > 0) {
+      return Number(count ?? 0);
+    }
+
+    let seeded = 0;
+
+    if (ratingSystemId) {
+      const { data: templates } = await this.admin
+        .from("credit_templates")
+        .select("*, category:credit_categories(name)")
+        .eq("rating_system_id", ratingSystemId);
+
+      if (templates && templates.length > 0) {
+        const projectCreditsToInsert = templates.map((template: any) => ({
+          project_id: projectId,
+          credit_template_id: template.id,
+          credit_code: template.code,
+          credit_name: template.name,
+          category_id: template.category_id,
+          category_name: template.category?.name,
+          max_points: template.max_points || 0,
+          status: "DRAFT",
+        }));
+
+        const { error: insertTemplateCreditsError } = await this.admin
+          .from("project_credits")
+          .insert(projectCreditsToInsert);
+        if (insertTemplateCreditsError) {
+          throw insertTemplateCreditsError;
+        }
+
+        seeded = projectCreditsToInsert.length;
+      }
+    }
+
+    if (seeded === 0) {
+      const fallbackCredits = buildProjectCreditSeedRows(projectId);
+      if (fallbackCredits.length > 0) {
+        const { error: fallbackSeedError } = await this.admin.from("project_credits").insert(fallbackCredits);
+        if (fallbackSeedError) {
+          const message = String(fallbackSeedError.message ?? "").toLowerCase();
+          const code = String(fallbackSeedError.code ?? "");
+          const needsLegacyBridge =
+            code === "23502" ||
+            message.includes("credit_id") ||
+            message.includes("null value") ||
+            message.includes("violates not-null constraint");
+          if (!needsLegacyBridge) {
+            throw fallbackSeedError;
+          }
+          seeded = await this.instantiateLegacyCreditBridge(projectId);
+        } else {
+          seeded = fallbackCredits.length;
+        }
+      }
+    }
+
+    if (seeded > 0) {
+      await ragService.ingestProjectGuidance(projectId);
+    }
+
+    return seeded;
+  }
+
   /**
    * Fetches the role of a user within a specific project.
    */
@@ -105,51 +211,8 @@ export class ProjectService {
 
     if (membershipError) throw membershipError;
 
-    // 2. Instantiate project credits from templates (preferred path)
-    let instantiatedCredits = 0;
-    if (ratingSystemId) {
-      const { data: templates } = await this.admin
-        .from("credit_templates")
-        .select("*, category:credit_categories(name)")
-        .eq("rating_system_id", ratingSystemId);
-
-      if (templates && templates.length > 0) {
-        // Instantiate into project_credits (the CRITICAL layer)
-        const projectCreditsToInsert = templates.map((template: any) => ({
-          project_id: project.id,
-          credit_template_id: template.id,
-          credit_code: template.code,
-          credit_name: template.name,
-          category_id: template.category_id,
-          category_name: template.category?.name,
-          max_points: template.max_points || 0,
-          status: "DRAFT", // Use status as state rename 0043 is not applied remotely
-        }));
-
-        const { error: insertTemplateCreditsError } = await this.admin.from("project_credits").insert(projectCreditsToInsert);
-        if (insertTemplateCreditsError) {
-          throw insertTemplateCreditsError;
-        }
-        instantiatedCredits = projectCreditsToInsert.length;
-
-        // Prime RAG guidance context
-        await ragService.ingestProjectGuidance(project.id);
-      }
-    }
-
-    // 2b. Fallback seeding to prevent empty workspace trackers.
-    // If templates are unavailable/missing, seed from the static IGBC catalog.
-    if (instantiatedCredits === 0) {
-      const fallbackCredits = buildProjectCreditSeedRows(project.id);
-      if (fallbackCredits.length > 0) {
-        const { error: fallbackSeedError } = await this.admin
-          .from("project_credits")
-          .insert(fallbackCredits);
-        if (fallbackSeedError) {
-          throw fallbackSeedError;
-        }
-      }
-    }
+    // 2. Instantiate project credits (template-first, fallback to static seed)
+    await this.instantiateProjectCreditsIfMissing(project.id, ratingSystemId ?? null);
 
     // 3. Initialize default billing
     const { data: starterPlan } = await this.admin
@@ -301,23 +364,55 @@ export class ProjectService {
     const sanitizedBase = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "guidebook";
     const filePath = `${params.projectId}/guidebooks/${Date.now()}-${crypto.randomUUID()}-${sanitizedBase}.pdf`;
 
+    const { data: existingGuidebook } = await this.admin
+      .from("project_guidebooks")
+      .select("id, file_path")
+      .eq("project_id", params.projectId)
+      .eq("file_name", params.file.name)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { error: uploadError } = await this.admin.storage
       .from("project-documents")
       .upload(filePath, params.file, { upsert: false, contentType: "application/pdf" });
     if (uploadError) throw uploadError;
 
-    const { error: insertError } = await this.admin.from("project_guidebooks").insert({
+    const writePayload = {
       project_id: params.projectId,
       title: safeTitle,
       file_name: params.file.name,
       file_path: filePath,
       uploaded_by: user.id,
-    });
+    };
 
-    if (insertError) {
-      await this.admin.storage.from("project-documents").remove([filePath]);
-      throw insertError;
+    let writeError: any = null;
+    if (existingGuidebook?.id) {
+      const { error } = await this.admin
+        .from("project_guidebooks")
+        .update(writePayload)
+        .eq("id", existingGuidebook.id);
+      writeError = error;
+      if (!error && existingGuidebook.file_path && existingGuidebook.file_path !== filePath) {
+        await this.admin.storage.from("project-documents").remove([existingGuidebook.file_path]);
+      }
+    } else {
+      const { error } = await this.admin.from("project_guidebooks").insert(writePayload);
+      writeError = error;
     }
+
+    if (writeError) {
+      await this.admin.storage.from("project-documents").remove([filePath]);
+      throw writeError;
+    }
+
+    // Self-heal: uploading the project guidebook must always lead to an instantiated workspace.
+    const { data: projectMeta } = await this.admin
+      .from("projects")
+      .select("rating_system_id")
+      .eq("id", params.projectId)
+      .maybeSingle();
+    await this.instantiateProjectCreditsIfMissing(params.projectId, (projectMeta as any)?.rating_system_id ?? null);
   }
 
   async deleteProject(user: CurrentUser, projectId: string) {
@@ -343,15 +438,63 @@ export class ProjectService {
       throw new Error("Tracker import supports only .xlsx/.xls files.");
     }
 
+    // Self-heal before import: ensure project credit rows exist.
+    const { data: projectMeta } = await this.admin
+      .from("projects")
+      .select("rating_system_id")
+      .eq("id", params.projectId)
+      .maybeSingle();
+    await this.instantiateProjectCreditsIfMissing(params.projectId, (projectMeta as any)?.rating_system_id ?? null);
+
     const arrayBuffer = await params.file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames.find((name) => name.toLowerCase().includes("document tracker")) ?? workbook.SheetNames[0];
     if (!sheetName) throw new Error("No worksheet found in tracker file.");
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json<Array<any>>(sheet, { header: 1, defval: "" });
-    if (!rows.length || rows.length < 3) throw new Error("Tracker sheet is empty.");
+    if (!rows.length || rows.length < 2) throw new Error("Tracker sheet is empty.");
 
     const normalize = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const extractStructuredCode = (value: string) => {
+      const upper = value.toUpperCase();
+      const match = upper.match(/([A-Z]{2,4})\s*(?:CREDIT|C|MR|MREQ|MANDATORY\s+REQUIREMENT)?\s*([0-9]{1,2}(?:\.[0-9]{1,2})?)/);
+      if (!match) return null;
+      const [, prefix, num] = match;
+      return `${prefix} C${num}`;
+    };
+    const codeVariants = (value: string) => {
+      const original = value.trim();
+      const upper = original.toUpperCase();
+      const variants = new Set<string>();
+      const push = (v: string) => {
+        const n = normalize(v);
+        if (n) variants.add(n);
+      };
+
+      push(original);
+      push(upper);
+      push(upper.replace(/CREDIT/g, "C"));
+      push(upper.replace(/MANDATORY REQUIREMENT/g, "MR"));
+      push(upper.replace(/MANDATORY/g, "M").replace(/REQUIREMENT/g, "R"));
+      push(upper.replace(/[\-_]/g, " "));
+      push(upper.replace(/\./g, ""));
+
+      const tokenized = upper.match(/^([A-Z]{2,4})\s*(?:CREDIT|C|MR|MREQ|MANDATORY\s+REQUIREMENT)?\s*([0-9]{1,2})/);
+      if (tokenized) {
+        const [, prefix, num] = tokenized;
+        push(`${prefix} C${num}`);
+        push(`${prefix} CREDIT ${num}`);
+        push(`${prefix} ${num}`);
+      }
+
+      const structured = extractStructuredCode(upper);
+      if (structured) {
+        push(structured);
+        push(structured.replace(/\s+/g, ""));
+      }
+
+      return Array.from(variants);
+    };
     const parseRole = (value: string) => {
       const v = value.toLowerCase();
       if (v.includes("mep")) return "mep";
@@ -369,14 +512,35 @@ export class ProjectService {
       return true;
     };
 
+    const normalizeHeader = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const headerRowIndex = rows.findIndex((row) => {
+      const cells = (row ?? []).map((cell: any) => normalizeHeader(String(cell ?? "")));
+      return cells.some((cell) => cell.includes("criteria")) && cells.some((cell) => cell.includes("creditname"));
+    });
+    const resolvedHeaderIndex = headerRowIndex >= 0 ? headerRowIndex : 1;
+    const headerRow = rows[resolvedHeaderIndex] ?? [];
+    const findColumn = (aliases: string[], fallback: number) => {
+      for (let i = 0; i < headerRow.length; i += 1) {
+        const headerCell = normalizeHeader(String(headerRow[i] ?? ""));
+        if (!headerCell) continue;
+        if (aliases.some((alias) => headerCell.includes(alias))) return i;
+      }
+      return fallback;
+    };
+
+    const criteriaCol = findColumn(["criteria", "creditcode", "credit"], 0);
+    const creditNameCol = findColumn(["creditname", "credittitle", "name"], 1);
+    const docsSummaryCol = findColumn(["whattosubmit", "documentation", "requirements"], 2);
+    const responsibleRoleCol = findColumn(["owner", "responsiblerole", "role"], 13);
+
     const docColumns = [
-      { idx: 3, type: "Narrative", label: "Narrative" },
-      { idx: 4, type: "Tech Spec", label: "Tech Specs" },
-      { idx: 5, type: "Certificate/Declaration", label: "Certificates/ Declaration" },
-      { idx: 6, type: "Drawing", label: "Drawings" },
-      { idx: 7, type: "Calculation & Tables", label: "Calculations & Tables" },
-      { idx: 8, type: "Invoice", label: "Invoices" },
-      { idx: 9, type: "Pic/Video", label: "Pic/Video" },
+      { idx: findColumn(["narrative"], 3), type: "Narrative", label: "Narrative" },
+      { idx: findColumn(["techspec", "technicalspec", "specification"], 4), type: "Tech Spec", label: "Tech Specs" },
+      { idx: findColumn(["certificate", "declaration"], 5), type: "Certificate/Declaration", label: "Certificates/ Declaration" },
+      { idx: findColumn(["drawing", "dwg"], 6), type: "Drawing", label: "Drawings" },
+      { idx: findColumn(["calculation", "table"], 7), type: "Calculation & Tables", label: "Calculations & Tables" },
+      { idx: findColumn(["invoice"], 8), type: "Invoice", label: "Invoices" },
+      { idx: findColumn(["picvideo", "photo", "image", "video"], 9), type: "Pic/Video", label: "Pic/Video" },
     ] as const;
 
     const { data: projectCredits, error: projectCreditsError } = await this.admin
@@ -391,26 +555,75 @@ export class ProjectService {
       .eq("project_id", params.projectId);
 
     const byCode = new Map<string, { id: string; table: "project_credits" | "credits" }>();
+    const byName = new Map<string, { id: string; table: "project_credits" | "credits" }>();
+    const availableProjectCodes = new Set<string>();
     for (const credit of projectCredits ?? []) {
-      byCode.set(normalize(String((credit as any).credit_code ?? "")), { id: (credit as any).id, table: "project_credits" });
+      const code = String((credit as any).credit_code ?? "");
+      if (code) availableProjectCodes.add(code.trim());
+      const name = normalize(String((credit as any).credit_name ?? ""));
+      for (const key of codeVariants(code)) {
+        byCode.set(key, { id: (credit as any).id, table: "project_credits" });
+      }
+      if (name) byName.set(name, { id: (credit as any).id, table: "project_credits" });
     }
     for (const credit of legacyCredits ?? []) {
-      const key = normalize(String((credit as any).credit_code ?? ""));
-      if (!byCode.has(key)) byCode.set(key, { id: (credit as any).id, table: "credits" });
+      const code = String((credit as any).credit_code ?? "");
+      for (const key of codeVariants(code)) {
+        if (!byCode.has(key)) byCode.set(key, { id: (credit as any).id, table: "credits" });
+      }
+      const nameKey = normalize(String((credit as any).credit_name ?? ""));
+      if (nameKey && !byName.has(nameKey)) byName.set(nameKey, { id: (credit as any).id, table: "credits" });
     }
 
     let updated = 0;
-    for (let r = 2; r < rows.length; r += 1) {
+    const unmatchedRows: Array<{ code: string; name: string }> = [];
+    for (let r = resolvedHeaderIndex + 1; r < rows.length; r += 1) {
       const row = rows[r] ?? [];
-      const criteriaCode = String(row[0] ?? "").trim();
-      const creditName = String(row[1] ?? "").trim();
-      const docsRequiredText = String(row[2] ?? "").trim();
+      const criteriaCode = String(row[criteriaCol] ?? "").trim();
+      const creditName = String(row[creditNameCol] ?? "").trim();
+      const docsRequiredText = String(row[docsSummaryCol] ?? "").trim();
       if (!criteriaCode || !creditName) continue;
-      if (!/credit|mandatory/i.test(criteriaCode)) continue;
 
-      const codeKey = normalize(criteriaCode.replace(/\s+/g, " "));
-      const hit = byCode.get(codeKey);
-      if (!hit) continue;
+      const rawCode = criteriaCode.replace(/\s+/g, " ").trim();
+      const codeKeys = codeVariants(rawCode);
+      const codeKey = codeKeys[0] ?? "";
+      const creditNameKey = normalize(creditName);
+      let hit = codeKeys.map((key) => byCode.get(key)).find(Boolean);
+      if (!hit) {
+        const shortFromText = normalize(rawCode.split(/\s+/).slice(0, 2).join(" "));
+        hit = byCode.get(shortFromText);
+      }
+      if (!hit) {
+        const condensed = normalize(rawCode.replace(/[-_/]/g, " "));
+        hit = byCode.get(condensed);
+      }
+      if (!hit) {
+        const codeWithoutSuffix = normalize(rawCode.replace(/[^A-Za-z0-9 ]+/g, " ").split(/\s+/).slice(0, 3).join(" "));
+        hit = byCode.get(codeWithoutSuffix);
+      }
+      if (!hit) {
+        const fuzzyKey = Array.from(byCode.keys()).find((key) =>
+          (codeKey.length >= 4 && codeKey.includes(key)) || (key.length >= 4 && key.includes(codeKey)),
+        );
+        if (fuzzyKey) {
+          hit = byCode.get(fuzzyKey);
+        }
+      }
+      if (!hit && creditNameKey) {
+        hit = byName.get(creditNameKey);
+      }
+      if (!hit && creditNameKey) {
+        const fuzzyNameKey = Array.from(byName.keys()).find((key) =>
+          (creditNameKey.length >= 8 && creditNameKey.includes(key)) || (key.length >= 8 && key.includes(creditNameKey)),
+        );
+        if (fuzzyNameKey) {
+          hit = byName.get(fuzzyNameKey);
+        }
+      }
+      if (!hit) {
+        unmatchedRows.push({ code: criteriaCode, name: creditName });
+        continue;
+      }
 
       const documentsRequired = docColumns.map((col) => {
         const raw = String(row[col.idx] ?? "");
@@ -421,7 +634,7 @@ export class ProjectService {
           required: statusIsRequired(raw),
         };
       });
-      const responsibleRole = parseRole(String(row[13] ?? "").trim());
+      const responsibleRole = parseRole(String(row[responsibleRoleCol] ?? "").trim());
       const patch = {
         documents_required: documentsRequired,
         what_to_submit: docsRequiredText || null,
@@ -440,6 +653,20 @@ export class ProjectService {
       }
 
       updated += 1;
+    }
+
+    if (updated === 0) {
+      const unmatchedPreview = unmatchedRows
+        .slice(0, 5)
+        .map((row) => `${row.code}${row.name ? ` (${row.name})` : ""}`)
+        .join("; ");
+      const availablePreview = Array.from(availableProjectCodes).slice(0, 10).join(", ");
+      throw new Error(
+        `Tracker import did not match any credit codes in this project. ` +
+          `Unmatched rows (sample): ${unmatchedPreview || "none detected"}. ` +
+          `Available project codes: ${availablePreview || "none seeded"}. ` +
+          `Please verify tracker code format or project credit seed.`,
+      );
     }
 
     await ragService.ingestProjectGuidance(params.projectId);

@@ -1,0 +1,41 @@
+
+> tracknov-studio@0.1.0 dev
+> next dev -p 3000
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 4.6s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 3.6s (126 modules)
+ ○ Compiling /projects/[id] ...
+ ✓ Compiled /projects/[id] in 13.5s (788 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 200 in 22135ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /api/session/heartbeat in 4.4s (522 modules)
+ ✓ Compiled (547 modules)
+ GET /favicon.ico 200 in 5448ms
+ POST /api/session/heartbeat 200 in 3781ms
+ POST /api/session/heartbeat 200 in 3794ms
+ GET /api/me 200 in 3897ms
+ GET /api/me 200 in 199ms
+ ✓ Compiled in 8.1s (802 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ○ Compiling /_error ...
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 500 in 267ms
+ ✓ Compiled /_not-found in 5.1s (1029 modules)
+ GET /_next/static/webpack/be7c68b2cbad46cd.webpack.hot-update.json 404 in 5062ms
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /_next/static/css/app/layout.css?v=1778011860272 404 in 193ms
+ GET /_next/static/chunks/main-app.js?v=1778011860272 404 in 283ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 254ms
+ GET /_next/static/chunks/app/projects/%5Bid%5D/loading.js 404 in 134ms
+ GET /_next/static/chunks/app/error.js 404 in 55ms
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 200 in 3188ms
+ GET /_next/static/chunks/app/projects/%5Bid%5D/page.js 404 in 104ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 919ms (562 modules)
+ GET /favicon.ico 200 in 1221ms

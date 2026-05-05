@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Circle, Download, FileWarning, ShieldCheck } from "lucide-react";
 import {
   addRemarkAction,
+  assignCreditContributorAction,
   importProjectTrackerBaselineAction,
   setCreditStateAction,
   setDocumentStatusAction,
@@ -33,6 +34,8 @@ type PageProps = {
     category?: string;
     status?: string;
     credit?: string;
+    error?: string;
+    success?: string;
   };
 };
 
@@ -55,6 +58,11 @@ const trackerColumns = [
   { label: "Invoices", aliases: ["Invoice", "Invoices"] },
   { label: "Pic/Video", aliases: ["Pic/Video"] },
 ] as const;
+
+const defaultCategoryMeta = {
+  dot: "bg-[var(--color-text-tertiary)]",
+  color: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
+};
 
 function resolveTrackerCellStatus(credit: any, aliases: readonly string[]) {
   const requiredSlots = (credit.documents_required ?? []).filter((doc: any) => aliases.includes(doc.type) || aliases.includes(doc.label));
@@ -111,7 +119,28 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 export default async function ProjectPage({ params, searchParams }: PageProps) {
   console.log(">>> LOADING DASHBOARD FOR PROJECT:", params.id);
   const cookieStore = cookies();
-  const workspace = await getProjectWorkspace(params.id);
+  let workspaceError: string | null = null;
+  let workspace = null as Awaited<ReturnType<typeof getProjectWorkspace>>;
+  try {
+    workspace = await getProjectWorkspace(params.id);
+  } catch (error: any) {
+    workspaceError = error?.message ?? "Could not load project workspace.";
+  }
+  if (workspaceError) {
+    return (
+      <Shell title="Project Workspace" description="Workspace could not be loaded." role="consultant" notificationCount={0}>
+        <div className="surface-card p-8">
+          <p className="text-[14px] font-medium text-[var(--color-text-primary)]">Workspace load failed</p>
+          <p className="mt-2 text-[12px] text-[var(--color-red)]">{workspaceError}</p>
+          <div className="mt-4">
+            <Link href="/projects">
+              <Button variant="secondary">Back to Projects</Button>
+            </Link>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
   if (!workspace) {
     return (
       <Shell title="Project Not Found" description="The requested project could not be found." role="consultant" notificationCount={0}>
@@ -127,6 +156,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     );
   }
   const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
+  const canReview = canReviewProjectDocuments(workspace.userRole);
+  const canUpload = canUploadProjectDocuments(workspace.userRole);
+  const canManageGuidebook = canManageProjectGuidebook(workspace.userRole);
+  const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
+  const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
+  const canAssignContributors = ["owner", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const contributorMembers = workspace.members.filter((member) =>
+    ["consultant", "architect", "mep", "contractor"].includes(String(member.role)),
+  );
   const roleScopedCredits = isL0Contributor
     ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
     : workspace.credits;
@@ -145,9 +184,43 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
         <section className="surface-card px-5 py-8">
           <p className="text-[15px] font-medium text-[var(--color-text-primary)]">Project Workspace Ready</p>
           <p className="mt-2 max-w-[720px] text-[13px] leading-6 text-[var(--color-text-secondary)]">
-            This project has been created successfully. The credit tracker will appear here once the 
-            credits are instantiated from the {workspace.project.certification_type} template.
+            This project has been created successfully, but credits are not instantiated yet.
+            Upload the IGBC project guidebook and import the tracker baseline to instantiate the workspace.
           </p>
+          {canManageGuidebook ? (
+            <div className="mt-5 grid gap-2 md:max-w-[760px] md:grid-cols-[minmax(0,1fr)_auto]">
+              <form action={uploadProjectGuidebookAction} encType="multipart/form-data" className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                <input type="hidden" name="project_id" value={params.id} />
+                <input
+                  name="guidebook"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  required
+                  className="h-[36px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                />
+                <button type="submit" className="h-[36px] rounded-md bg-[var(--color-green)] px-3 text-[12px] font-medium text-white">
+                  Upload Guidebook
+                </button>
+              </form>
+              <form action={importProjectTrackerBaselineAction} encType="multipart/form-data" className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                <input type="hidden" name="project_id" value={params.id} />
+                <input
+                  name="tracker_file"
+                  type="file"
+                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  required
+                  className="h-[36px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                />
+                <button type="submit" className="h-[36px] rounded-md bg-[var(--color-blue)] px-3 text-[12px] font-medium text-white">
+                  Import Tracker Baseline
+                </button>
+              </form>
+            </div>
+          ) : (
+            <p className="mt-4 text-[12px] text-[var(--color-text-secondary)]">
+              Ask Project Admin or Super User to complete project instantiation.
+            </p>
+          )}
           <div className="mt-6">
             <Link href="/projects">
               <Button variant="secondary">Back to Projects</Button>
@@ -165,12 +238,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   });
   const mandatoryCredits = roleScopedCredits.filter((credit) => credit.is_mandatory);
   const mandatoryComplete = mandatoryCredits.filter((credit) => toLegacyCreditStatus(credit.state ?? credit.status) === "complete").length;
-  const canReview = canReviewProjectDocuments(workspace.userRole);
-  const canUpload = canUploadProjectDocuments(workspace.userRole);
-  const canManageGuidebook = canManageProjectGuidebook(workspace.userRole);
-  const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
-  const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
-  const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
   const reviewableDocuments = (selectedCredit.documents || []).filter((document: any) =>
     canOwnerReview ? document.status === "uploaded" : canFinalReview ? document.status === "owner_approved" : false,
   );
@@ -250,6 +317,18 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       role={workspace.userRole}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
+      {searchParams?.error ? (
+        <div className="mb-4 rounded-md border border-[var(--color-red-light)] bg-[var(--color-red-soft)] p-3 text-[12px] text-[var(--color-red)]">
+          {searchParams.error}
+        </div>
+      ) : null}
+      {searchParams?.success ? (
+        <div className="mb-4 rounded-md border border-[var(--color-green-light)] bg-[var(--color-green-soft)] p-3 text-[12px] text-[var(--color-green)]">
+          {searchParams.success}
+        </div>
+      ) : null}
+
+      {canManageGuidebook ? (
       <section className="mb-4 surface-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -260,7 +339,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           </div>
           {canManageGuidebook ? (
             <div className="flex flex-col gap-2">
-              <form action={uploadProjectGuidebookAction} className="flex flex-wrap items-center gap-2">
+              <form action={uploadProjectGuidebookAction} encType="multipart/form-data" className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="project_id" value={params.id} />
                 <input
                   name="title"
@@ -278,7 +357,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   Upload Guidebook
                 </button>
               </form>
-              <form action={importProjectTrackerBaselineAction} className="flex flex-wrap items-center gap-2">
+              <form action={importProjectTrackerBaselineAction} encType="multipart/form-data" className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="project_id" value={params.id} />
                 <input
                   name="tracker_file"
@@ -314,10 +393,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">No guidebook uploaded yet for this project.</p>
         )}
       </section>
+      ) : null}
 
       <section id="pending-list" className="mb-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
         {categoryProgress.map((item) => {
-          const meta = categoryMeta[item.key as keyof typeof categoryMeta];
+          const meta = categoryMeta[item.key as keyof typeof categoryMeta] ?? defaultCategoryMeta;
           return (
             <Link
               key={item.key}
@@ -384,7 +464,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 </span>
               </Link>
               {stats.categories.map((item) => {
-                const meta = categoryMeta[item.key as keyof typeof categoryMeta];
+                const meta = categoryMeta[item.key as keyof typeof categoryMeta] ?? defaultCategoryMeta;
                 const active = searchParams?.category === item.key;
                 return (
                   <Link
@@ -526,7 +606,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 {filteredCredits.map((credit) => {
                   const selected = credit.id === selectedCredit.id;
                   const creditStatus = toLegacyCreditStatus(credit.state ?? credit.status);
-                  const category = categoryMeta[credit.category as keyof typeof categoryMeta];
+                  const category = categoryMeta[credit.category as keyof typeof categoryMeta] ?? defaultCategoryMeta;
                   const displayCode = mandatoryCode(credit.credit_code, credit.is_mandatory);
                   const preview = credit.remarks[0]?.body ?? credit.documentation_summary ?? "No remarks yet";
                   return (
@@ -785,6 +865,34 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   </div>
                   <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
                     Save Requirements
+                  </Button>
+                </form>
+              </section>
+            ) : null}
+
+            {canAssignContributors ? (
+              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Assign Contributor</p>
+                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                  Assign this credit to one contributor. Only the assigned contributor can upload/update documents for this credit.
+                </p>
+                <form action={assignCreditContributorAction} className="mt-2 grid gap-2">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
+                  <select
+                    name="assigned_user_id"
+                    defaultValue={selectedCredit.assigned_user_id ?? ""}
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                  >
+                    <option value="">Unassigned</option>
+                    {contributorMembers.map((member) => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {(member.member_email ?? member.user_id).toString()} / {String(member.role).toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                    Save assignment
                   </Button>
                 </form>
               </section>

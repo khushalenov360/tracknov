@@ -164,6 +164,7 @@ function mapCredit(
     id: credit.id,
     project_credit_id: credit.project_credit_id ?? credit.id,
     project_id: credit.project_id,
+    assigned_user_id: credit.assigned_user_id ?? null,
     credit_code: credit.credit_code,
     category: credit.category,
     credit_name: credit.credit_name,
@@ -2330,7 +2331,17 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
 
     if (['architect', 'mep', 'contractor', 'consultant'].includes(role)) {
       const workspace = await getProjectWorkspace(project.id); if (!workspace) continue;
-      const myCredits = workspace.credits.filter(c => c.responsible_role === role && c.status !== 'complete');
+      const myCredits = workspace.credits.filter((credit) => {
+        const status = String(credit.status ?? "").toLowerCase();
+        if (status === "complete" || status === "closed" || status === "approved") return false;
+
+        const assignedUserId = String((credit as any).assigned_user_id ?? "").trim();
+        if (assignedUserId) {
+          return assignedUserId === user.id;
+        }
+
+        return credit.responsible_role === role;
+      });
       
       for (const credit of myCredits) {
         const missingCount = normalizeDocumentsRequired(credit.documents_required).filter(

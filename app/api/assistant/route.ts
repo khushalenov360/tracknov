@@ -24,10 +24,25 @@ type AssistantRequest = {
   }>;
 };
 
-function toGeminiContents(messages: AssistantMessage[]) {
-  return messages.map((message) => ({
+function toGeminiContents(messages: AssistantMessage[], attachments: AssistantRequest["attachments"] = []) {
+  const lastUserIndex = [...messages]
+    .map((message, index) => ({ message, index }))
+    .reverse()
+    .find((entry) => entry.message.role === "user")?.index;
+
+  return messages.map((message, index) => ({
     role: message.role === "assistant" ? "model" : "user",
-    parts: [{ text: message.content }],
+    parts: [
+      { text: message.content },
+      ...(lastUserIndex === index
+        ? (attachments ?? []).slice(0, 3).map((file) => ({
+            inline_data: {
+              mime_type: file.mimeType || "application/octet-stream",
+              data: file.base64,
+            },
+          }))
+        : []),
+    ],
   }));
 }
 
@@ -148,7 +163,10 @@ function buildWorkspaceSnapshot(
     lines.push(
       `Credits: total=${projectCredits.length}, complete=${completeCredits}, blocked=${blockedCredits}. Documents: uploaded=${uploadedCount}, owner_review=${ownerReviewCount}, approved=${approvedCount}, rejected=${rejectedCount}.`,
     );
-    const projectGuidebooks = guidebooks.filter((book) => book.project_id === project.id);
+    const projectGuidebooks = guidebooks
+      .filter((book) => book.project_id === project.id)
+      .filter((book, index, all) => all.findIndex((entry) => entry.file_name === book.file_name) === index)
+      .slice(0, 3);
     lines.push(
       `Guidebook: ${projectGuidebooks.length ? projectGuidebooks.map((book) => `${book.title} (${book.file_name})`).join("; ") : "none uploaded"}`,
     );
@@ -244,165 +262,108 @@ async function getWorkspaceSnapshot() {
   return { user, role: resolvedRole, projectIds, snapshot };
 }
 
-async function handleToolCall(name: string, args: any, user: any) {
-  const supabase = createClient();
-  
-  switch (name) {
-    case "get_wallet_balance": {
-      const { data: wallet } = await supabase
-        .from("wallets")
-        .select("document_credits, consultant_credits")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return wallet || { document_credits: 0, consultant_credits: 0 };
-    }
-    case "get_project_status": {
-      const { data: project } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("id", args.projectId)
-        .maybeSingle();
-      return project || { error: "Project not found" };
-    }
-    case "get_document_reviews": {
-      const { data: reviews } = await supabase
-        .from("document_reviews")
-        .select("*")
-        .eq("document_id", args.documentId)
-        .order("created_at", { ascending: false });
-      return reviews || [];
-    }
-    case "get_credit_guidance": {
-      const { data: guidance } = await supabase
-        .from("project_credits")
-        .select("credit_code, what_to_submit, sample_document_url")
-        .eq("credit_code", args.creditCode)
-        .limit(1)
-        .maybeSingle();
-      return guidance || { error: "Guidance not found" };
-    }
-    default:
-      return { error: "Unknown tool" };
-  }
+function getProjectIdFromContext(context?: AssistantContext) {
+  const current = String(context?.currentItem ?? "");
+  const match = current.match(/^\/projects\/([^/?#]+)/);
+  return match?.[1] ?? null;
 }
 
-function classifyIntent(query: string) {
+function isFileQuestion(query: string) {
   const q = query.toLowerCase();
-  if (q.includes("token") || q.includes("credit cost") || q.includes("session cost") || q.includes("wallet") || q.includes("balance")) {
-    return "billing";
-  }
-  if (q.includes("next step") || q.includes("what should i do") || q.includes("priority") || q.includes("todo") || q.includes("task")) {
-    return "workflow";
-  }
-  if (q.includes("upload") || q.includes("document") || q.includes("file") || q.includes("rejection") || q.includes("review")) {
-    return "document_analysis";
-  }
-  if (q.includes("credit") || q.includes("igbc") || q.includes("what to submit") || q.includes("guidance")) {
-    return "credit_guidance";
-  }
-  return "general";
+  return (
+    q.includes("what is this file") ||
+    q.includes("what's this file") ||
+    q.includes("analyze this file") ||
+    q.includes("analyse this file") ||
+    q.includes("tell me about this file") ||
+    q.includes("tell me more about the file") ||
+    q.includes("file uploaded") ||
+    q.includes("attached file") ||
+    q.includes("about this file") ||
+    q.includes("check this file") ||
+    q.includes("read this file") ||
+    q.includes("explain this file") ||
+    q.includes("compare it") ||
+    q.includes("recheck")
+  );
 }
 
-const SYSTEM_RULES = {
-  token_per_upload: 1,
-  consulting_tokens: 50,
-};
-
-function formatDirectResponse(name: string, answer: string, data: string[], recommendation: string) {
-  return `Hi ${name} 👋\n\nAnswer:\n${answer}\n\nData:\n${data.map(d => `- ${d}`).join("\n")}\n\nRecommendation:\n${recommendation}`;
+function isUploadMappingIntent(query: string) {
+  const q = query.toLowerCase();
+  return (
+    q.includes("map this to") ||
+    q.includes("map to ") ||
+    q.includes("upload") ||
+    q.includes("submit this file") ||
+    q.includes("push it to workflow")
+  );
 }
 
-const assistantTools = [
-  {
-    function_declarations: [
-      {
-        name: "get_wallet_balance",
-        description: "Fetch the user's current token credits (document and consultant credits).",
-      },
-      {
-        name: "get_project_status",
-        description: "Fetch detailed status and metrics for a specific project.",
-        parameters: {
-          type: "object",
-          properties: {
-            projectId: { type: "string", description: "The UUID of the project." },
-          },
-          required: ["projectId"],
-        },
-      },
-      {
-        name: "get_document_reviews",
-        description: "Fetch the review history and rejection reasons for a specific document.",
-        parameters: {
-          type: "object",
-          properties: {
-            documentId: { type: "string", description: "The UUID of the document." },
-          },
-          required: ["documentId"],
-        },
-      },
-      {
-        name: "get_credit_guidance",
-        description: "Fetch 'What to Submit' guidance and sample document info for a specific credit code.",
-        parameters: {
-          type: "object",
-          properties: {
-            creditCode: { type: "string", description: "The code of the credit (e.g., 'SSp1')." },
-          },
-          required: ["creditCode"],
-        },
-      },
-    ],
-  },
-];
+function detectDocTypeFromAttachment(name: string, mimeType?: string) {
+  const lower = name.toLowerCase();
+  const mime = String(mimeType ?? "").toLowerCase();
+  if (mime.includes("pdf") || lower.endsWith(".pdf")) return "Drawing / Narrative PDF";
+  if (mime.includes("spreadsheet") || lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "Tracker / Spreadsheet";
+  if (mime.startsWith("image/")) return "Site Photo / Image Evidence";
+  if (mime.includes("word") || lower.endsWith(".doc") || lower.endsWith(".docx")) return "Narrative / Report";
+  return "Project document";
+}
 
-async function createGeminiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string, user: any) {
-  const contents: any[] = toGeminiContents(messages);
+function buildAttachmentAnalysisReply(
+  userName: string,
+  file: { name: string; mimeType: string; size: number },
+  ragMatches: Array<{ content: string; metadata?: Record<string, unknown>; score: number }>,
+) {
+  const kb = Math.max(1, Math.round((file.size ?? 0) / 1024));
+  const docType = detectDocTypeFromAttachment(file.name, file.mimeType);
+  const hints = file.name.replace(/\.[^.]+$/, "").split(/[_\-\s]+/).filter(Boolean).slice(0, 6).join(", ");
+
+  const likelyCredits = ragMatches
+    .map((item) => ({
+      code: String(item.metadata?.credit_code ?? "").trim(),
+      score: item.score,
+      reason: item.content.slice(0, 120).replace(/\s+/g, " ").trim(),
+    }))
+    .filter((item) => item.code.length > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const creditLines =
+    likelyCredits.length > 0
+      ? likelyCredits.map((item, index) => {
+          const confidence = item.score >= 0.75 ? "high" : item.score >= 0.6 ? "medium" : "low";
+          return `${index + 1}. ${item.code} (${confidence} confidence) - ${item.reason}`;
+        })
+      : ["No strong credit match yet from project context. I can still map once you confirm the target credit code."];
+
+  return [
+    `Hi ${userName}, I checked your attached file.`,
+    "",
+    `Document type detected: ${docType}`,
+    `File: ${file.name} (${kb} KB)`,
+    "",
+    "Key data points found:",
+    `- Filename hints: ${hints || "not enough hints in filename"}`,
+    `- MIME type: ${file.mimeType || "unknown"}`,
+    "",
+    "Likely credit matches:",
+    ...creditLines,
+    "",
+    "What would you like to do next: map and upload this now, or ask me to compare it against one specific credit?",
+  ].join("\n");
+}
+
+async function createGeminiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attachments: AssistantRequest["attachments"] = [],
+) {
+  const contents: any[] = toGeminiContents(messages, attachments);
   const systemInstruction = {
     parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
   };
 
-  // First pass: Check for tool calls
-  const initialResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:generateContent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": env.geminiApiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction,
-      contents,
-      tools: assistantTools,
-      generationConfig: {
-        temperature: 0.2, // Lower temp for tool calling
-        maxOutputTokens: 1000,
-      },
-    }),
-  });
-
-  if (!initialResponse.ok) return null;
-  const initialData = await initialResponse.json();
-  const firstCandidate = initialData.candidates?.[0];
-  const toolCalls = firstCandidate?.content?.parts?.filter((p: any) => p.functionCall);
-
-  if (toolCalls && toolCalls.length > 0) {
-    const toolResults = [];
-    for (const call of toolCalls) {
-      const result = await handleToolCall(call.functionCall.name, call.functionCall.args, user);
-      toolResults.push({
-        functionResponse: {
-          name: call.functionCall.name,
-          response: { name: call.functionCall.name, content: result },
-        },
-      });
-    }
-
-    // Add model's call and our results to history
-    contents.push(firstCandidate.content);
-    contents.push({ role: "function", parts: toolResults });
-  }
-
-  // Final pass: Stream the result
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: {
@@ -412,12 +373,11 @@ async function createGeminiStream(context: AssistantContext, messages: Assistant
     body: JSON.stringify({
       systemInstruction,
       contents,
-      tools: assistantTools,
       generationConfig: {
-        temperature: 0.4,
+        temperature: 0.6,
         topP: 0.9,
         topK: 40,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1200,
       },
     }),
   });
@@ -519,6 +479,7 @@ export async function POST(request: Request) {
   }
 
   const latestPrompt = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
+  const focusedProjectId = getProjectIdFromContext(context);
   const { user, role, snapshot, projectIds } = await getWorkspaceSnapshot();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
@@ -535,7 +496,7 @@ export async function POST(request: Request) {
 
   const ragMatches = await ragService.retrieveContext({
     query: latestPrompt,
-    projectIds: projectIds ?? [],
+    projectIds: focusedProjectId ? [focusedProjectId] : projectIds ?? [],
     limit: 6,
   });
   const ragSnapshot = ragMatches.length
@@ -556,7 +517,10 @@ export async function POST(request: Request) {
         }),
       ].join("\n")
     : "Uploaded attachments: none";
-  const combinedSnapshot = [snapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n");
+  const compactSnapshot = focusedProjectId
+    ? [snapshot, "", "Note: focus on current project only.", focusedProjectId].join("\n")
+    : snapshot;
+  const combinedSnapshot = [compactSnapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n");
 
   // Determine tone
   let resolvedTone: AssistantTone;
@@ -566,49 +530,31 @@ export async function POST(request: Request) {
     resolvedTone = await toneService.getUserTone(user.id, role);
   }
 
-  // --- START V2 ROUTER LOGIC ---
-  const intent = classifyIntent(latestPrompt);
-
-  if (intent === "billing") {
-    const { data: wallet } = await supabase
-      .from("wallets")
-      .select("document_credits, consultant_credits")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    const docCredits = wallet?.document_credits ?? 0;
-    const consCredits = wallet?.consultant_credits ?? 0;
-
-    return createResponseStream(createTextStream(formatDirectResponse(
-      userName,
-      `1 document upload consumes ${SYSTEM_RULES.token_per_upload} credit. 1 consulting session consumes ${SYSTEM_RULES.consulting_tokens} credits.`,
-      [`Document credits: ${docCredits}`, `Consultant credits: ${consCredits}`],
-      docCredits > 0 ? "You can safely upload your documents." : "Please top up your wallet to continue."
-    )));
-  }
-
-  if (intent === "workflow") {
-    const leadStep = context.nextSteps[0] || "No immediate steps found.";
-    return createResponseStream(createTextStream(formatDirectResponse(
-      userName,
-      `Your current priority is: ${leadStep}`,
-      [`Accessible projects: ${projectIds?.length ?? 0}`, ...context.nextSteps.slice(0, 3)],
-      "Complete the lead step to unlock the next workflow stage."
-    )));
-  }
-  // --- END V2 ROUTER LOGIC ---
-
-  if (!env.geminiApiKey) {
+  if (isFileQuestion(latestPrompt) && attachments.length === 0) {
     return createResponseStream(
       createTextStream(
         [
-          buildFallbackAssistantReply(context, latestPrompt),
+          `Hi ${userName}, I do not currently have a file attached in this chat message.`,
           "",
-          "Workspace snapshot:",
-          combinedSnapshot,
+          "Please attach the file with the + button and ask: `Analyze this file`.",
+          "Then I will summarize it in plain language and suggest likely credit mapping before upload.",
         ].join("\n"),
       ),
     );
+  }
+
+  if (!env.geminiApiKey) {
+    if (attachments.length > 0) {
+      const file = attachments[0];
+      const attachmentReply = !isUploadMappingIntent(latestPrompt) || isFileQuestion(latestPrompt)
+        ? buildAttachmentAnalysisReply(userName, file, ragMatches)
+        : [
+            `Hi ${userName}, I can see your attached file: ${file.name}.`,
+            "Tell me the credit code and document type you want, and I will prepare the workflow upload step.",
+          ].join("\n");
+      return createResponseStream(createTextStream(attachmentReply));
+    }
+    return createResponseStream(createTextStream(buildFallbackAssistantReply(context, latestPrompt)));
   }
 
   try {
@@ -650,7 +596,7 @@ export async function POST(request: Request) {
       },
       messages,
       combinedSnapshot,
-      user,
+      attachments,
     );
     if (geminiStream) {
       return createResponseStream(geminiStream);
@@ -659,14 +605,13 @@ export async function POST(request: Request) {
     // Fall through to the local fallback.
   }
 
-  return createResponseStream(
-    createTextStream(
-      [
-        buildFallbackAssistantReply(context, latestPrompt),
-        "",
-        "Workspace snapshot:",
-        combinedSnapshot,
-      ].join("\n"),
-    ),
-  );
+  if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt))) {
+    return createResponseStream(
+      createTextStream(buildAttachmentAnalysisReply(userName, attachments[0], ragMatches)),
+    );
+  }
+
+  return createResponseStream(createTextStream(buildFallbackAssistantReply(context, latestPrompt)));
 }
+
+

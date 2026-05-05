@@ -15,11 +15,13 @@ export class CreditService {
     state: "DRAFT" | "ASSIGNED" | "IN_PROGRESS" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "CLOSED";
     remarks?: string;
   }) {
+    // params.creditId here is project_credit.id from action payload.
     if (params.state === "APPROVED") {
       const { data: docs } = await this.admin
         .from("project_document")
         .select("id, state")
-        .eq("project_credit_id", params.creditId);
+        .eq("project_credit_id", params.creditId)
+        .eq("is_latest", true);
       const rows = docs ?? [];
       const hasUnapproved = rows.some((document: any) => String(document.state ?? "").toUpperCase() !== "APPROVED");
       if (hasUnapproved) {
@@ -35,7 +37,7 @@ export class CreditService {
         state: params.state,
         updated_at: new Date().toISOString()
       })
-      .eq("credit_id", params.creditId);
+      .eq("id", params.creditId);
 
     if (pcError) throw pcError;
 
@@ -132,6 +134,61 @@ export class CreditService {
       actorRole,
       summary: "Updated client guidance and effort profile.",
       details: { effort_level: safeEffortLevel },
+    });
+  }
+
+  async assignContributor(user: CurrentUser, params: {
+    projectId: string;
+    projectCreditId: string;
+    assignedUserId: string | null;
+  }) {
+    const actorRole = await projectService.getActorProjectRole(params.projectId, user);
+    const canAssign = ["owner", "project_admin", "super_admin", "super_user"].includes(String(actorRole));
+    if (!canAssign) {
+      throw new Error("Unauthorized: Only Project Owner/Admin can assign contributors.");
+    }
+
+    const { data: member } = params.assignedUserId
+      ? await this.admin
+          .from("project_users")
+          .select("user_id, role")
+          .eq("project_id", params.projectId)
+          .eq("user_id", params.assignedUserId)
+          .maybeSingle()
+      : { data: null as any };
+
+    if (params.assignedUserId && !member) {
+      throw new Error("Selected contributor is not a member of this project.");
+    }
+
+    if (member) {
+      const normalizedRole = String(member.role ?? "").toLowerCase();
+      const l0Roles = ["consultant", "architect", "mep", "contractor"];
+      if (!l0Roles.includes(normalizedRole)) {
+        throw new Error("Only contributor roles (Consultant/Architect/MEP/Contractor) can be assigned.");
+      }
+    }
+
+    const { error } = await this.admin
+      .from("project_credits")
+      .update({
+        assigned_user_id: params.assignedUserId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.projectCreditId)
+      .eq("project_id", params.projectId);
+
+    if (error) throw error;
+
+    await logSystemActivity(this.admin, {
+      projectId: params.projectId,
+      entityType: "credit",
+      entityId: params.projectCreditId,
+      action: "credit_assignee_updated",
+      actorId: user.id,
+      actorRole: actorRole ?? user.role,
+      summary: params.assignedUserId ? "Assigned contributor to credit." : "Cleared contributor assignment for credit.",
+      details: { assigned_user_id: params.assignedUserId },
     });
   }
 }

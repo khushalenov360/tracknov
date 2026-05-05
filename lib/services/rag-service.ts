@@ -77,6 +77,56 @@ export class RAGService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
 
+  private async fetchCreditById(creditId: string) {
+    const preferredSelect = "credit_code, credit_name, documentation_summary, what_to_submit";
+    const fallbackSelect = "credit_code, credit_name, what_to_submit";
+    const attempt = await this.admin
+      .from("project_credits")
+      .select(preferredSelect)
+      .eq("id", creditId)
+      .maybeSingle();
+
+    if (!attempt.error) {
+      return attempt.data as any;
+    }
+
+    if (String((attempt.error as any)?.message ?? "").toLowerCase().includes("documentation_summary")) {
+      const fallback = await this.admin
+        .from("project_credits")
+        .select(fallbackSelect)
+        .eq("id", creditId)
+        .maybeSingle();
+      if (!fallback.error && fallback.data) {
+        return { ...fallback.data, documentation_summary: null } as any;
+      }
+    }
+    return null;
+  }
+
+  private async fetchProjectCredits(projectId: string) {
+    const preferredSelect = "project_id, id, credit_code, credit_name, what_to_submit, documentation_summary";
+    const fallbackSelect = "project_id, id, credit_code, credit_name, what_to_submit";
+    const attempt = await this.admin
+      .from("project_credits")
+      .select(preferredSelect)
+      .eq("project_id", projectId);
+
+    if (!attempt.error) {
+      return (attempt.data ?? []) as any[];
+    }
+
+    if (String((attempt.error as any)?.message ?? "").toLowerCase().includes("documentation_summary")) {
+      const fallback = await this.admin
+        .from("project_credits")
+        .select(fallbackSelect)
+        .eq("project_id", projectId);
+      if (!fallback.error) {
+        return (fallback.data ?? []).map((row: any) => ({ ...row, documentation_summary: null }));
+      }
+    }
+    return [];
+  }
+
   private async upsertChunks(documentId: string | null, chunks: RAGChunk[]) {
     if (!chunks.length) return;
     if (documentId) {
@@ -103,11 +153,7 @@ export class RAGService {
 
     if (!document) return;
 
-    const { data: credit } = await this.admin
-      .from("project_credits")
-      .select("credit_code, credit_name, documentation_summary, what_to_submit")
-      .eq("id", document.project_credit_id)
-      .maybeSingle();
+    const credit = await this.fetchCreditById(document.project_credit_id);
 
     const baseText = [
       `File: ${document.file_name}`,
@@ -136,10 +182,7 @@ export class RAGService {
   }
 
   async ingestProjectGuidance(projectId: string) {
-    const { data: credits } = await this.admin
-      .from("project_credits")
-      .select("project_id, id, credit_code, credit_name, what_to_submit, documentation_summary")
-      .eq("project_id", projectId);
+    const credits = await this.fetchProjectCredits(projectId);
 
     if (!credits?.length) return;
 
@@ -177,6 +220,12 @@ export class RAGService {
 
   async retrieveContext(params: { query: string; projectIds: string[]; limit?: number }) {
     const queryEmbedding = deterministicEmbedding(params.query);
+    const queryLower = params.query.toLowerCase();
+    const isCreditQuery =
+      queryLower.includes("credit") ||
+      queryLower.includes("igbc") ||
+      queryLower.includes("what to submit") ||
+      queryLower.includes("guidance");
     const limit = Math.max(1, Math.min(params.limit ?? 6, 12));
     if (!params.projectIds.length) return [] as Array<{ content: string; score: number; metadata: any }>;
 
@@ -195,7 +244,9 @@ export class RAGService {
       .map((row: any) => ({
         content: row.content as string,
         metadata: row.metadata,
-        score: cosineSimilarity(queryEmbedding, parseVector(row.embedding)),
+        score:
+          cosineSimilarity(queryEmbedding, parseVector(row.embedding)) +
+          (isCreditQuery && String(row?.metadata?.source ?? "") === "igbc_guidance" ? 0.08 : 0),
       }))
       .filter((item) => Number.isFinite(item.score))
       .sort((a, b) => b.score - a.score)
@@ -204,4 +255,3 @@ export class RAGService {
 }
 
 export const ragService = new RAGService();
-

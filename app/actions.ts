@@ -676,8 +676,11 @@ export async function uploadProjectGuidebookAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const file = formData.get("guidebook");
 
-  if (!projectId || !(file instanceof File)) {
-    return;
+  if (!projectId) {
+    redirect(`/projects?error=${encodeURIComponent("Missing project id for guidebook upload.")}`);
+  }
+  if (!(file instanceof File) || file.size <= 0) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent("Please choose a valid guidebook file before uploading.")}`);
   }
 
   const user = await getCurrentUser();
@@ -693,15 +696,21 @@ export async function uploadProjectGuidebookAction(formData: FormData) {
     });
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/projects");
+    redirect(`/projects/${projectId}?success=${encodeURIComponent("Guidebook uploaded and instantiation checked.")}`);
   } catch (error: any) {
-    return;
+    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Guidebook upload failed.")}`);
   }
 }
 
 export async function importProjectTrackerBaselineAction(formData: FormData) {
   const projectId = String(formData.get("project_id") ?? "").trim();
   const file = formData.get("tracker_file");
-  if (!projectId || !(file instanceof File)) return;
+  if (!projectId) {
+    redirect(`/projects?error=${encodeURIComponent("Missing project id for tracker import.")}`);
+  }
+  if (!(file instanceof File) || file.size <= 0) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent("Please choose a valid tracker file before importing.")}`);
+  }
 
   const user = await getCurrentUser();
   if (!user) return;
@@ -714,8 +723,9 @@ export async function importProjectTrackerBaselineAction(formData: FormData) {
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/projects");
     revalidatePath("/credits");
-  } catch {
-    return;
+    redirect(`/projects/${projectId}?success=${encodeURIComponent("Tracker baseline imported.")}`);
+  } catch (error: any) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Tracker baseline import failed.")}`);
   }
 }
 
@@ -874,6 +884,33 @@ export async function reassignTeamMemberAction(formData: FormData) {
   });
   revalidatePath("/team");
   revalidatePath("/projects");
+}
+
+export async function assignCreditContributorAction(formData: FormData): Promise<void> {
+  if (!env.isConfigured) return;
+
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
+  const assignedUserIdRaw = String(formData.get("assigned_user_id") ?? "").trim();
+  const assignedUserId = assignedUserIdRaw || null;
+
+  if (!projectId || !projectCreditId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await creditService.assignContributor(user, {
+      projectId,
+      projectCreditId,
+      assignedUserId,
+    });
+
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    revalidatePath("/tasks");
+  } catch (error: any) {
+    console.error("[Actions] assignCreditContributorAction failed:", error);
+  }
 }
 
 export async function runNotificationDigestAction() {

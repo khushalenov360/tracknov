@@ -8,7 +8,7 @@ import type { CreditWorkspace, ProjectWorkspace } from "@/lib/types";
 const fileSafeSegment = /[^a-z0-9._-]+/gi;
 
 function resolvedCreditStatus(credit: Pick<CreditWorkspace, "state" | "status">) {
-  return credit.state ?? credit.status ?? "pending";
+  return String(credit.state ?? credit.status ?? "pending").toUpperCase();
 }
 
 export function sanitizePathSegment(value: string) {
@@ -37,7 +37,10 @@ export function isSubmissionExportReady(workspace: Pick<ProjectWorkspace, "credi
   if (!mandatoryCredits.length) {
     return false;
   }
-  return mandatoryCredits.every((credit) => resolvedCreditStatus(credit) === "complete");
+  return mandatoryCredits.every((credit) => {
+    const state = resolvedCreditStatus(credit);
+    return state === "APPROVED" || state === "CLOSED" || state === "COMPLETE";
+  });
 }
 
 export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "credits">) {
@@ -46,8 +49,9 @@ export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "
       ...credit,
       documents: credit.documents.filter(
         (document) =>
-          (document.workflow_state ?? "").toUpperCase() === "APPROVED" ||
-          (document.status === "approved" && document.is_latest !== false),
+          ((document.workflow_state ?? "").toUpperCase() === "APPROVED" ||
+            String(document.status ?? "").toLowerCase() === "approved") &&
+          document.is_latest !== false,
       ),
     }))
     .filter((credit) => credit.documents.length > 0);
@@ -125,7 +129,7 @@ export function buildTrackerWorkbook(workspace: ProjectWorkspace) {
       credit.credit_code,
       1,
       Number((credit.completion_pct / 100).toFixed(2)),
-      resolvedCreditStatus(credit) === "in_progress" ? 1 : 0,
+      resolvedCreditStatus(credit) === "IN_PROGRESS" ? 1 : 0,
       credit.documents_required.filter((item) => item.required).length,
       credit.documents_required.filter((item) => !item.required).length,
     ]),
@@ -162,7 +166,7 @@ export async function buildProjectSummaryPdf(workspace: ProjectWorkspace) {
     page.drawText(credit.credit_code, { x: 48, y, size: 10, font: bold });
     page.drawText(credit.credit_name.slice(0, 40), { x: 130, y, size: 10, font });
     page.drawText(`${Math.round(credit.completion_pct)}%`, { x: 460, y, size: 10, font });
-    page.drawText(resolvedCreditStatus(credit), { x: 540, y, size: 10, font });
+    page.drawText(resolvedCreditStatus(credit).toLowerCase(), { x: 540, y, size: 10, font });
     y -= 18;
   }
 

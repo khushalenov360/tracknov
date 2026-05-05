@@ -1,1173 +1,181 @@
-# Tracknov TODO (Pending Items Only)
-
-Last updated: 2026-05-02 IST  
-Baseline: `tracknov-project-plan.md` + `TechLead_Developer_Handoff.md` + `SQL_Expert_Handoff.md`
-
-## P0 - PM Workflow Enforcement (Core Engine)
-- [ ] **Submittal-Centric Execution**:
-    - [ ] Create `submittals` table (linked to credits) to act as the workflow container.
-    - [ ] Update `ReviewService` to manage state at the submittal level, not individual documents.
-- [ ] **Immutable Versioning System**:
-    - [ ] Update `DocumentService.upload` to automatically version files instead of updating.
-    - [ ] Implement `SUPERSEDED` flag for old versions.
-- [ ] **Submission Pack Export**:
-    - [ ] Build the export filter to group only the latest `APPROVED` documents by credit.
-
-## P0 - V3 SQL Hardening (Critical Workflow Enforcement)
-- [ ] **Submittal Execution Layer**: 
-    - [ ] Create `submittals` table to group document iterations.
-    - [ ] Refactor `DocumentService` to link files to submittals instead of credits.
-- [ ] **State Machine Integrity**:
-    - [ ] Align `workflow_state` Enum with 8-step expert list.
-    - [ ] Implement DB-level triggers to prevent invalid state skipping.
-- [ ] **Audit Trail Hardening**:
-    - [ ] Ensure `document_states` captures every transition with actor metadata.
-
-## Final Alignment - TechLead Handoff (V3 Hardening)
-
-### DB Schema Hardening
-- [x] **Table Name Standardization**: Align with TechLead Charter (singular names):
-  - Rename `rating_systems` -> `rating_system`
-  - Rename `credit_categories` -> `credit_category`
-  - Rename `credit_templates` -> `credit_template`
-  - Rename `documents` -> `project_document`
-- [x] **Field Name Standardization**: Use `state` instead of `status` across all entities:
-  - `project.state` (Done)
-  - `project_credit.state` (Done)
-  - `project_document.state` (Done)
-- [x] **Core Mapping Strictness**:
-  - Ensure `project_credit` has mandatory `credit_template_id`, `credit_code`, `category_name`, `max_points`, `is_review_required`.
-  - Ensure `project_document` has mandatory `project_credit_id` and tracks `version_number`, `is_latest`.
-- [x] **Audit Consolidation**:
-  - Consolidate all activity/state logs into `workflow_logs`.
-  - Add `is_override` and `override_reason` to `workflow_logs`.
-- [x] **V3 Stabilization**: Resolved schema mismatches (plural vs singular), fixed NEXT_REDIRECT glitch, and enabled human-readable project codes.
-
-### UI Flow & Screen Mapping
-- [x] **Project Creation**: Select rating system -> Auto-create `project_credit` instances from templates.
-- [x] **Credit Module**: Grouping by category in UI.
-- [x] **Analytics**: Implement category contribution charts and credit recommendations.
-- [x] **Locking**: Post-submission read-only enforcement with Admin override logic.
-
-### Critical Rules Enforcement
-- [x] **No Direct Template Usage**: Block direct references to `credit_template` in production flows.
-- [x] **No Floating Documents**: Block any document upload without a valid `project_credit_id`.
-- [x] **No Manual Credits**: Block manual creation of credits; must be instantiated via rating system templates.
-- [x] **Workflow Integrity**: Final pass to ensure all state transitions are DB-enforced.
-
-## Final Charter - TechLead Layer (V3 Hardening)
-
-- [x] HF-TL1.0 IGBC Master Library layer:
-  - Rating Systems table with versioning (`rating_systems`)
-  - Standardized Credit Templates (`credit_templates`)
-  - Automated project credit instantiation from templates
-- [x] HF-TL1.1 Workflow State Hardening:
-  - Deterministic state machine (`DRAFT`, `ASSIGNED`, `IN_PROGRESS`, `SUBMITTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `CLOSED`)
-  - State integrity guards in `CreditService`
-- [x] HF-TL1.2 Dependency & Lock Rules:
-  - Document revised -> Credit flagged `REVIEW_REQUIRED`
-  - Approved credit -> revert to `UNDER_REVIEW` if new evidence added
-  - Approved docs immutable (block delete/edit)
-  - Trigger: `SUBMITTED_TO_IGBC` -> Full project lock
-- [x] HF-TL1.3 Legacy Backfill & Migration:
-  - Map existing `credits` to new `rating_systems` via migration
-  - Sync workflow states for historical data
-
-## Master Consolidation - All Handoff Files Coverage
-
-Source files covered in this consolidation:
-- `Ai developerhandoff.md`
-- `UX_UI_developer_handoff.md`
-- `IGBC_Developer_Handoff.md`
-- `SAASsales_Developer_Handoff.md`
-- `Client_Developer_Handoff.md`
-- `Client_Developer_Handoff_Refined.md`
-- `ProjectOwner_Developer_Handoff.md`
-- `ProjectAdmin_Developer_Handoff.md`
-- `MEPCON_Developer_Handoff.md`
-- `Architect_Developer_Handoff.md`
-- `Contractor_Developer_Handoff.md`
-- `Workflow_Engine_Developer_Handoff.md`
-- `Documents_Engine_Developer_Handoff.md`
-- `Credits_Engine_Developer_Handoff.md`
-- `TokenEngine_Developer_Handoff.md`
-- `users_developerhandoff.md`
-- `DEVELOPER_HANDOFF_MVP.md`
-- `Demo_mode_developer_handoff.md`
-- `PM_Developer_Handoff.md`
-
-### P0 - Mandatory architecture enforcement from handoffs
-
-- [x] HF-P0.1 DB-native workflow hardening:
-  - enforce workflow enums at DB layer for project/credit/document state
-  - add DB transition-rule enforcement (no skipped transitions)
-  - block direct state mutation bypass paths
-- [x] HF-P0.2 DB audit safety:
-  - mandatory transition logs for each workflow mutation
-  - include override marker + override reason in audit trail
-- [x] HF-P0.3 Soft override guardrails:
-  - admin-only override path
-  - mandatory override reason
-  - override usage visible in audit timeline
-- [x] HF-P0.4 Dependency enforcement at state-transition layer:
-  - block credit approval when required docs are incomplete/unapproved
-  - block project completion when credits are incomplete/open
-
-### P0 - Role workflows (L0 to L5) gaps still required by handoffs
-
-- [x] HF-ROLE0.1 L0 "My Tasks" role-home:
-  - MEP/Architect/Contractor only see assigned credits/tasks
-  - plain-language credit names (hide IGBC code for L0)
-  - clear counter (e.g., `X of Y complete`)
-- [x] HF-ROLE0.2 L0 mobile resiliency:
-  - upload progress %
-  - offline/retry queue for unstable connectivity
-  - persistent upload confirmation state
-- [x] HF-ROLE0.3 L0 rejection action card:
-  - deep-link notification to rejected item
-  - reason + what to fix + example reference + one-click resubmit
-- [x] HF-ROLE0.4 L0 accidental-upload protection:
-  - pre-upload confirmation summary modal
-  - delete-before-review with automatic token refund
-  - suspicious filename mismatch warning (project mismatch)
-- [x] HF-ROLE0.5 Architect advanced mapping:
-  - multi-document slot completeness per credit
-  - move/remap document between credits before lock
-  - vendor-document reuse suggestions surfaced in UI
-- [x] HF-ROLE0.6 Project Owner throughput:
-  - centralized review queue with inline preview
-  - bulk approve/send-back workflow with templates
-  - pending aging/escalation reminders
-- [x] HF-ROLE0.7 Client executive mode lock:
-  - strict read-only decision dashboard
-  - no document-level/internal-review leakage
-  - one-click leadership summary export
-- [x] HF-ROLE0.8 Project Admin throughput:
-  - high-speed validation queue (<10s target per doc flow)
-  - reusable rejection templates
-  - one-click submission readiness + readiness gating
-- [x] HF-ROLE0.9 Super User command center finalization:
-  - multi-client wallet/usage visibility
-  - override and data-recovery controls
-  - critical health alerts only
-- [x] HF-ROLE0.10 Reserve L4 role slot in RBAC schema:
-  - role key reserved and non-breaking in hierarchy/configs
-
-### P1 - Workflow, review, and document engine completion
-
-- [x] HF-WF1.1 Unify review states and lifecycle naming:
-  - one canonical state vocabulary across DB, services, and UI
-  - remove legacy parallel status semantics
-- [x] HF-WF1.2 Project/Credit/Document derived state orchestration:
-  - ensure upstream/downstream state rollups are deterministic
-  - expose derived state in API for dashboards
-- [x] HF-DOC1.1 Document version lineage hardening:
-  - immutable versions
-  - `is_latest` guarantee
-  - explicit parent-child version chain
-- [x] HF-DOC1.2 Document preview-first approval UX:
-  - reviewer sees preview in approval workspace before decision
-  - hyperlinks open document in dedicated view route
-- [x] HF-CRED1.1 Credit engine constraint checks:
-  - required evidence matrix per credit/stage
-  - assignment + deadline awareness
-  - blockers surfaced in queue/dashboard
-
-### P1 - Notifications and communication layer
-
-- [x] HF-NOTIF1.1 Multi-channel notification engine:
-  - in-app + email (phase-1)
-  - optional WhatsApp (phase-2, configurable)
-- [x] HF-NOTIF1.2 Digest and reminder jobs:
-  - weekly digest by role
-  - inactivity reminders
-  - resubmission follow-ups
-- [x] HF-NOTIF1.3 Notification deep-link integrity:
-  - every notification routes to exact action target
-
-### P1 - Token engine and monetization controls
-
-- [x] HF-TOKEN1.1 Token ledger reconciliation tooling:
-  - detect debit/refund anomalies
-  - show correction trail in super-user console
-- [x] HF-TOKEN1.2 Token burn policy enforcement:
-  - deduct only after successful upload transaction
-  - auto-refund on pre-review delete or failed post-upload commit
-- [x] HF-TOKEN1.3 Wallet policy:
-  - Project Admin can load client wallet
-  - client wallet usage shared across client's projects
-
-### P2 - IGBC certification engine upgrades
-
-- [x] HF-IGBC2.1 Stage-aware credit model:
-  - DESIGN and CONSTRUCTION tracks per credit
-  - stage-specific submittals and lifecycle
-- [x] HF-IGBC2.2 Design->Construction inheritance:
-  - carry-forward approved narratives/calculations with trace links
-- [x] HF-IGBC2.3 Rule-based scoring engine baseline:
-  - mandatory credits
-  - points aggregation
-  - [x] Populated all 32 IGBC rating systems in remote DB
-- [x] HF-IGBC2.4 Submission pack engine v2:
-  - stage-wise, credit-wise standardized packaging
-  - final naming/structure aligned to IGBC expected format
-
-### P2 - SaaS sales enablement scope
-
-- [x] HF-SALES2.1 ROI engine:
-  - configurable assumptions
-  - measurable savings outputs
-- [x] HF-SALES2.2 Executive sales dashboard:
-  - portfolio, risk, efficiency, ROI in decision-first cards
-- [x] HF-SALES2.3 Guided demo mode:
-  - sandboxed demo data
-  - resettable walkthrough flow
-- [x] HF-SALES2.4 Case-study generator:
-  - template-driven PDF and shareable report output
-
-### P2 - Users and onboarding engine
-
-- [x] HF-USER2.1 Invite-only onboarding flow finalization:
-  - one-link invite -> set password -> enter project
-- [x] HF-USER2.2 Team hierarchy management:
-  - enforce parent-child hierarchy constraints during assignment
-- [x] HF-USER2.3 Account lifecycle operations:
-  - disable/reactivate/reassign without data-loss
-
-### P3 - QA, compliance, and delivery evidence
-
-- [x] HF-QA3.1 Full UAT matrix execution:
-  - all roles x all critical actions (create/upload/review/reject/resubmit/export/delete)
-- [x] HF-QA3.2 Production migration verification:
-  - confirm all workflow/audit/ledger migrations applied in live Supabase
-- [x] HF-QA3.3 Performance and reliability report:
-  - dashboard/load/upload latency snapshots
-  - error-rate report for top workflows
-- [x] HF-QA3.4 Documentation and handover hygiene:
-  - keep `AgentHandoff.md` updated every delivery pass
-  - keep this `todo.md` status synchronized with actual code state
-
-## Tracknov V2 TODO (Mapped to `Ai developerhandoff.md`)
-
-### P0 - Foundation-critical (must complete first)
-
-- [x] V2.0 Workflow state model alignment:
-  align canonical workflow with handoff states (`uploaded -> owner_review -> admin_review -> approved/rejected`) while preserving existing workflow engine guarantees.
-- [x] V2.1 RBAC hard enforcement middleware:
-  enforce action-level guards for `L0`, `L1`, `L3`, `L5` on every API/server action path.
-- [x] V2.2 Token ledger strictness:
-  ensure token debit occurs only after successful upload commit and ledger entry is immutable/auditable.
-- [x] V2.3 Review decoupling completion:
-  wire all review actions to dedicated review records (`reviews`/`document_reviews`) with multi-cycle tracking.
-- [x] V2.4 API-level transition-only updates:
-  block any direct status mutation paths that bypass workflow transition service.
-
-### P1 - Core architecture and scale
-
-- [x] V2.5 Service-layer completion:
-  finish extraction from `app/actions.ts` into:
-  - `document_service`
-  - `review_service`
-  - `billing_service`
-  - `project_service`
-- [x] V2.6 Event-driven backbone:
-  implement event bus foundation and async consumers for:
-  - `DOCUMENT_UPLOADED`
-  - `REVIEW_COMPLETED`
-  - `DOCUMENT_REJECTED`
-  - `TOKEN_DEDUCTED`
-- [x] V2.7 Event consumers:
-  connect billing, notification, and AI validator consumers to event stream.
-- [x] V2.8 Database completeness pass:
-  verify/close schema coverage for:
-  - `clients`
-  - `projects`
-  - `credits`
-  - `project_credits`
-  - `documents`
-  - `reviews`
-  - `users`
-  - `project_users`
-  - `wallets`
-  - `token_transactions`
-  - `embeddings`
-  - `rejection_patterns`
-  - `activity_logs`
-- [x] V2.9 API surface completion:
-  finalize role-secured APIs for:
-  - document upload/list/versioning
-  - review approve/reject/remarks
-  - wallet balance + transaction history
-  - AI suggestions + risk score
-
-### P2 - AI intelligence layer
-
-- [x] V2.10 RAG baseline:
-  ingest approved docs + IGBC guidance into embeddings and retrieval pipeline.
-- [x] V2.11 Pre-upload validator:
-  file type, naming, and credit relevance checks before acceptance.
-- [x] V2.12 Rejection intelligence:
-  pattern capture and corrective suggestion pipeline per credit/document type.
-- [x] V2.13 Risk engine:
-  project risk score using missing docs, rejection frequency, and delays.
-
-### P3 - Frontend role UX and performance
-
-- [x] V2.14 Role dashboards completion:
-  ensure clear role-mode surfaces:
-  - L0 upload workspace
-  - L1 review queue
-  - L2 portfolio summary
-  - L3 approval console
-- [x] V2.15 Persistent AI copilot:
-  one shared panel across tabs with context-aware suggestions and risk alerts.
-- [x] V2.16 Non-functional targets:
-  - async heavy operations
-  - target API latency <300ms for core endpoints
-  - project-level data isolation checks
-  - immutable activity logging checks
-
-### V2 Delivery checklist (from AI handoff)
-
-- [x] Workflow state machine implemented
-- [x] Token ledger active and tested
-- [x] AI validator working
-- [x] RAG system integrated
-- [x] Risk engine functional
-- [x] RBAC enforced
-- [x] Event system operational
-- [x] APIs documented
-
-## UX/UI V2 TODO (Mapped to `UX_UI_developer_handoff.md`)
-
-### UX P0 - Product definition and navigation lock
-
-- [x] UX0.1 Scope lock implementation:
-  remove/avoid UI language that implies ESG/carbon/tokenization product scope beyond certification workflow.
-- [x] UX0.2 Global navigation lock:
-  ensure top nav contains and consistently routes:
-  - Dashboard
-  - Projects
-  - Credits
-  - Documents
-  - Tasks
-- [x] UX0.3 Workflow-first navigation audit:
-  remove duplicate navigation paths and dead-end routes.
-
-### UX P1 - Primary screen coverage
-
-- [x] UX1.1 Dashboard compliance:
-  show project list, completion %, pending credits, and risk flags with quick drilldowns.
-- [x] UX1.2 Create Project screen:
-  include project name, rating system, location, and team assignment fields.
-- [x] UX1.3 Project Overview screen:
-  include progress %, credit summary, and activity log panel.
-- [x] UX1.4 Credits List screen:
-  include filters, status, assignee, and deadline columns.
-- [x] UX1.5 Credit Detail core workflow:
-  support upload, status update, assignment, comments, and submit actions with required evidence context.
-- [x] UX1.6 Documents screen:
-  ensure linked project, linked credit, version, and status are visible and filterable.
-- [x] UX1.7 Tasks screen:
-  implement task CRUD with linked credit, assignee, due date.
-- [x] UX1.8 Submission/Review screen:
-  implement submit/resubmit, reviewer comments, and timestamped trail.
-- [x] UX1.9 User Management screen:
-  support add/edit users and role assignment with clear permissions visibility.
-
-### UX P2 - Role rendering and state-driven behavior
-
-- [x] UX2.1 Consultant role mode:
-  dense execution UI (tables/filters) with full workflow controls where authorized.
-- [x] UX2.2 Client role mode:
-  read-only visual dashboard mode; hide/disable credit/document edit actions.
-- [x] UX2.3 State-driven controls:
-  - Approved -> lock all editing controls
-  - Submitted -> lock edits except comments
-  - Review Failed -> reopen allowed edits
-- [x] UX2.4 Credit lifecycle UX mapping:
-  reflect states:
-  - Not Started
-  - In Progress
-  - Ready for Submission
-  - Submitted
-  - Review Failed
-  - Approved
-  with strict transition affordances.
-
-### UX P3 - Flow and component architecture refactor
-
-- [x] UX3.1 Primary journey validation:
-  - Dashboard -> Create Project -> Project Overview
-  - Project -> Credits List -> Credit Detail
-  - Credit Detail -> Upload Docs -> Mark Ready -> Submit
-  - Dashboard Risk -> Credit drilldown
-- [x] UX3.2 Component architecture cleanup:
-  refactor toward:
-  - `components/project/`
-  - `components/credit/`
-  - `components/document/`
-  - `components/task/`
-  - `components/shared/`
-- [x] UX3.3 Non-negotiables QA pass:
-  - every screen has a clear primary action
-  - no mixed-role UI on same view
-  - no feature without workflow mapping
-  - no dead-end screens
-
-## IGBC Engine TODO (Mapped to `IGBC_Developer_Handoff.md`)
-
-### IGBC P0 - Certification engine foundation
-
-- [x] IGBC0.1 Credit-stage relational model:
-  implement stage-aware schema:
-  - `rating_systems`
-  - `credits`
-  - `credit_stages`
-  - `submittals`
-  - `documents`
-  - `document_versions`
-- [x] IGBC0.2 Strict stage mapping:
-  ensure all submittals are bound to a single `credit_stage_id` and cannot float across stages.
-- [x] IGBC0.3 Dual lifecycle readiness:
-  add `DESIGN` and `CONSTRUCTION` stage lifecycle support in backend services.
-
-### IGBC P1 - Workflow and control engines
-
-- [x] IGBC1.1 Multi-level workflow engine:
-  enforce transitions at:
-  - submittal level
-  - derived credit level
-  - derived project level
-- [x] IGBC1.2 Stage gate rules:
-  block construction lifecycle start unless design approval gate is met.
-- [x] IGBC1.3 Override engine:
-  admin-controlled credit-stage overrides with reason-required logs (`override_logs`).
-- [x] IGBC1.4 Immutable versioning:
-  prevent document overwrite; all updates must create a new version row.
-- [x] IGBC1.5 Inheritance engine:
-  design-to-construction reference carry-forward using:
-  - `source_stage`
-  - `source_version_id`
-  - `inherited_flag`
-
-### IGBC P2 - Scoring and submission engines
-
-- [x] IGBC2.1 Rule-based scoring:
-  mandatory credit enforcement + points aggregation + threshold outcomes.
-- [x] IGBC2.2 Stage score outputs:
-  design provisional score + construction final score.
-- [x] IGBC2.3 Submission pack generator:
-  one-click stage-wise pack output:
-  - credit-wise bundle
-  - narratives
-  - calculations
-  - latest approved supporting documents
-
-### IGBC P3 - Audit and compliance reporting
-
-- [x] IGBC3.1 Audit engine:
-  log state changes, uploads, overrides in `audit_logs`.
-- [x] IGBC3.2 Audit export:
-  generate PDF + Excel exports including:
-  - credit states
-  - version history
-  - override logs
-  - timeline
-- [x] IGBC3.3 Compliance hard validations:
-  - mandatory credits must be approved
-  - submission blocked if incomplete
-  - override must log reason
-  - no certification without construction validation
-
-### IGBC P4 - RBAC and governance enforcement
-
-- [x] IGBC4.1 Hierarchy enforcement:
-  - L5 full control (override + audit)
-  - L3 workflow owner
-  - L1 internal approval
-  - L0 upload only
-  - L2 read-only
-- [x] IGBC4.2 API-only enforcement:
-  no UI-only protections; reject unauthorized actions server-side.
-- [x] IGBC4.3 Hard-rule tests:
-  automated tests for:
-  - no stage duplication
-  - no state skipping
-  - no overwrite
-  - no incomplete submission
-
-## IGBC V3 Certification Engine (Final Implementation Grade)
-
-### P1 - Core Certification Engine (Must complete for correctness)
-
-- [ ] V3.1 Schema: `0046_igbc_certification_engine.sql` (applicability rules, prerequisites, dependencies, clarification_cycles)
-- [ ] V3.2 Scoring: Refactor `lib/igbc-scoring.ts` to use DB-driven `rating_thresholds` instead of hardcoded EDA/WC/EE weights.
-- [ ] V3.3 Activation: `CreditActivationService` to evaluate applicability rules on project creation/update.
-- [ ] V3.4 Guards: Prerequisite + Dependency guards in `CreditService` (block approval if prereq rejected).
-- [ ] V3.5 Gate: Submission eligibility gate in `ProjectService` (block `SUBMITTED_TO_IGBC` if mandatory/prereqs fail).
-- [ ] V3.6 Cycles: Clarification cycle tracking in `ReviewService` with history persistence.
-
-### P2 - Operational & Risk Layers
-
-- [ ] V3.7 Submittals: `0047_submittal_variants.sql` + `SubmittalService` for dynamic document requirements by project type.
-- [ ] V3.8 Tasks: `0048_tasks.sql` + `TaskService` for assigned role-based tracking and due dates.
-- [ ] V3.9 Risk: `RiskService` for compute-on-the-fly risk flags (`missing_mandatory`, `low_score_projection`, `delay`).
-- [ ] V3.10 Exports: Standardize `exports.ts` folder hierarchy (`credit_code/submittals/documents/summary`).
-
-## SaaS Sales Enablement TODO (Mapped to `SAASsales_Developer_Handoff.md`)
-
-### Sales P1 (Immediate): ROI Engine + Executive Dashboard
-
-- [x] SALES1.1 ROI intelligence service:
-  build backend calculation service for:
-  - time saved
-  - cost saved
-  - rejection reduction
-  from configurable input constants.
-- [x] SALES1.2 ROI config model:
-  add admin-editable assumptions (review time, hourly rate, rework reduction) with safe defaults.
-- [x] SALES1.3 ROI caching:
-  cache aggregate ROI results for dashboard response speed.
-- [x] SALES1.4 Executive sales dashboard API:
-  build aggregated API for portfolio snapshot, risk indicators, efficiency metrics, and ROI widget.
-- [x] SALES1.5 Executive dashboard UI:
-  card-based CXO view with RAG signals and low-click clarity.
-- [x] SALES1.6 Performance targets (phase 1):
-  verify:
-  - dashboard load <2 sec target
-  - ROI calculation <1 sec target
-
-### Sales P2: Demo Mode (Guided Walkthrough)
-
-- [x] SALES2.1 Demo-mode feature flag:
-  introduce `demo_mode` gate and sandbox isolation.
-- [x] SALES2.2 Preloaded demo dataset:
-  seeded demo projects/credits/docs/review outcomes isolated from production data.
-- [x] SALES2.3 Guided walkthrough overlay:
-  step prompts for upload -> review -> dashboard insight.
-- [x] SALES2.4 Demo reset mechanism:
-  one-click resettable demo state for repeated sales sessions.
-- [x] SALES2.5 Demo security checks:
-  enforce sandboxed data boundaries and role-safe visibility.
-
-### Sales P3: Case Study Generator
-
-- [x] SALES3.1 Case-study metrics service:
-  derive completion delta, rejection reduction, and time-saved summaries per client/project.
-- [x] SALES3.2 Template-driven report generation:
-  backend templating for standardized case study narratives.
-- [x] SALES3.3 Export outputs:
-  PDF generation + shareable link support.
-- [x] SALES3.4 Performance target (phase 3):
-  PDF generation <5 sec target.
-
-### Sales governance and integration checks
-
-- [x] SALES4.1 Integration validation:
-  confirm sales layer consumes existing workflow engine, token system, and audit logs.
-- [x] SALES4.2 Data isolation validation:
-  ensure ROI and case-study views cannot expose other clients' data.
-- [x] SALES4.3 Scope guardrails:
-  keep out-of-scope exclusions enforced:
-  - no CRM
-  - no marketing automation
-  - no external lead generation features
-
-## Client Layer TODO (Mapped to `Client_Developer_Handoff.md`)
-
-### Client P1 - Executive visibility and trust
-
-- [x] CLIENT1.1 Executive dashboard panel:
-  show:
-  - overall completion %
-  - target rating
-  - active projects
-  - projects at risk
-  - token balance
-  with sub-30-second readability.
-- [x] CLIENT1.2 Portfolio overview:
-  show total/completed/in-progress/delayed projects in one view.
-- [x] CLIENT1.3 Token wallet transparency:
-  show loaded/used/remaining/weekly usage with clear provenance from ledger.
-- [x] CLIENT1.4 Efficiency metrics panel:
-  show rejection rate, avg tokens/project, first-pass approval rate.
-
-### Client P2 - Risk, forecasting, and drilldowns
-
-- [x] CLIENT2.1 Project risk engine:
-  compute RAG risk from pending uploads, rejections, inactivity, and token balance.
-- [x] CLIENT2.2 Forecasting outputs:
-  estimated completion and projected rating at project + portfolio level.
-- [x] CLIENT2.3 Restricted drilldown mode:
-  allow only project-level completion/pending/rejections for client role.
-- [x] CLIENT2.4 Enforce document-level restriction:
-  block client access to document-level internal review screens/details.
-
-### Client P3 - Reports and alerts
-
-- [x] CLIENT3.1 Client report exports:
-  downloadable PDF summary including status, risk, and token intelligence.
-- [x] CLIENT3.2 Client alert rules:
-  actionable-only alerts for:
-  - project risk
-  - low tokens
-  - milestone transitions
-- [x] CLIENT3.3 Client alert delivery:
-  in-app + extensible channel support without notification spam.
-
-### Client P4 - API and backend coverage
-
-- [x] CLIENT4.1 Client API surface:
-  implement/verify:
-  - `/client/dashboard`
-  - `/client/projects`
-  - `/client/tokens`
-  - `/client/metrics`
-  - `/client/reports`
-  - `/client/alerts`
-- [x] CLIENT4.2 Data model readiness:
-  ensure required tables/derived views:
-  - `clients`
-  - `projects`
-  - `tokens_wallet`
-  - `token_transactions`
-  - `project_metrics`
-- [x] CLIENT4.3 Role-scoped data isolation:
-  ensure client APIs cannot return other-client records.
-
-### Client P5 - UX/performance/testing gates
-
-- [x] CLIENT5.1 UX guideline compliance:
-  - max 1-2 clicks to key answers
-  - no IGBC jargon on client views
-  - RAG color coding across all client status cards
-  - mobile responsive behavior
-- [x] CLIENT5.2 Performance gate:
-  client dashboard target load <2 sec.
-- [x] CLIENT5.3 Validation suite:
-  test:
-  - dashboard accuracy
-  - token consistency
-  - risk correctness
-  - load <2 sec
-  - no-training usability
-
-## Role and Engine Handoffs TODO (Mapped to newly added handoff files)
-
-### Role-specific tracks
-
-- [x] ROLE-MEP0 (Mapped to `MEPCON_Developer_Handoff.md`):
-  implement MEP consultant focused workspace, credit scoping, upload validation guidance, and actionable rejection loop.
-- [x] ROLE-ARCH0 (Mapped to `Architect_Developer_Handoff.md`):
-  implement architect multi-document-per-credit mapping, pre-review edit/move, and structured checklist completion.
-- [x] ROLE-CONTR0 (Mapped to `Contractor_Developer_Handoff.md`):
-  simplify contractor upload flow (plain-language, low-friction, confirmation-first) with role-safe restrictions.
-- [x] ROLE-OWNER0 (Mapped to `ProjectOwner_Developer_Handoff.md`):
-  complete owner review cockpit, bulk actions, escalation signals, and vendor accountability views.
-- [x] ROLE-PADMIN0 (Mapped to `ProjectAdmin_Developer_Handoff.md`):
-  complete high-throughput validation queue, rejection template workflows, submission readiness controls.
-- [x] ROLE-CLIENT0 (Mapped to `Client_Developer_Handoff_Refined.md`):
-  refine executive/client views for 30-second decision clarity and strict read-only drilldowns.
-
-### Engine-specific tracks
-
-- [x] ENG-WF0 (Mapped to `Workflow_Engine_Developer_Handoff.md`):
-  finalize strict workflow engine compliance with no bypass transitions and derived credit/project rollups.
-- [x] ENG-CRED0 (Mapped to `Credits_Engine_Developer_Handoff.md`):
-  complete credit engine rules, lifecycle, assignment constraints, and scoring dependencies.
-- [x] ENG-DOC0 (Mapped to `Documents_Engine_Developer_Handoff.md`):
-  complete document engine for version immutability, lineage, stage-safe mappings, and lifecycle constraints.
-- [x] ENG-TOKEN0 (Mapped to `TokenEngine_Developer_Handoff.md`):
-  complete token engine reconciliation guarantees, debit/refund correctness, and balance transparency.
-- [x] ENG-USER0 (Mapped to `users_developerhandoff.md`):
-  complete user engine onboarding, role assignment hierarchy, access isolation, and lifecycle management.
-
-### Consolidation and conflict-resolution pass
-
-- [x] HANDOFF-SYNC0:
-  reconcile overlapping requirements across all role/module handoff files into one conflict-free execution matrix with explicit ownership.
-
-## P0 Backend Workflow (W1) - In Progress
-
-- [x] DB enum migration added: `workflow_state`
-  - values: `DRAFT`, `READY`, `SUBMITTED`, `UNDER_REVIEW`, `CLARIFICATION`, `RESUBMITTED`, `APPROVED`, `REJECTED`
-- [x] DB table migration added: `document_states`
-  - fields: `document_id`, `state`, `previous_state`, `transition_by`, `updated_at`
-- [x] Service added: `transitionDocumentState(document_id, new_state, user_id)`
-  - file: `lib/services/document-state-service.ts`
-- [x] Transition validation implemented:
-  - only allowed transitions
-  - no skipped states
-  - explicit error for invalid transitions
-- [x] Business-rule validation implemented:
-  - `DRAFT -> READY`: required document types must exist for target credit
-  - `READY -> SUBMITTED`: manual trigger required
-  - `SUBMITTED -> UNDER_REVIEW`: reviewer assignment required
-  - `CLARIFICATION -> RESUBMITTED`: updated evidence flag required
-- [x] Server action added: `transitionDocumentStateAction(...)`
-  - file: `app/actions.ts`
-- [x] Logging implemented:
-  - every transition inserted into `document_states`
-  - transition also written to `document_activity_logs`
-- [x] Edit enforcement started:
-  - metadata edits blocked in `SUBMITTED` / `UNDER_REVIEW`
-  - metadata edits allowed in `DRAFT` / `CLARIFICATION`
-- [x] Remaining for W1:
-  - route existing review actions (`setDocumentStatusAction`, bulk review, resubmit) through workflow-state engine end-to-end.
-
-## P1 - BUILD & VERIFY (STRICT ORDER)
-
-### 1. Workflow Engine
-
-- [x] Create `workflow_state` enum.
-- [x] Create `document_states` table (with `previous_state`, `transition_by`).
-- [x] Implement API/service: `transitionDocumentState()`.
-- [x] Enforce allowed transitions (no skips).
-- [x] Enforce edit locking by state.
-- [x] Log every transition (activity + state table).
-- [x] Add role guardrails:
-  - only L3 can `APPROVE` / `REJECT`
-  - L0 cannot move beyond `READY`
-  - L1 cannot override decisions
-- [x] Remove remaining legacy bypass paths in bulk review/resubmit flows so all review transitions use workflow-state API only.
-
-### 2. Project -> Credit Mapping
-
-- [x] Ensure `credits` (master) + `project_credits` (instance) exist.
-- [x] Auto-create `project_credits` on project creation.
-- [x] Bind credits to project in UI.
-- [x] Display credit status correctly.
-- [x] Ensure no missing credits per project.
-
-### 3. Document -> Credit Linkage
-
-- [x] Enforce upload requires:
-  - `project_id`
-  - `project_credit_id`
-  - `document_type`
-- [x] Store file (Supabase Storage) + metadata (DB).
-- [x] Implement versioning:
-  - increment `version`
-  - set `is_latest`
-  - link `parent_document_id`
-- [x] Validate required docs per credit.
-
-### 4. Review Workflow
-
-- [x] Implement review queue (`SUBMITTED` / `UNDER_REVIEW`).
-- [x] Approve action -> `APPROVED`.
-- [x] Reject action -> `CLARIFICATION` / `REJECTED` (remarks mandatory).
-- [x] Implement clarification -> resubmission loop.
-- [x] Restrict transitions by role.
-
-### 5. RBAC Enforcement
-
-- [x] Enforce roles in API (L0-L5).
-- [x] Enforce UI restrictions (hide/disable actions).
-- [x] Validate:
-  - L0 cannot submit
-  - L1 cannot override
-  - L2 read-only
-  - L3 controls workflow
-- [x] Block unauthorized API calls.
-
-## P2 - STABILITY LAYER
-
-### 6. Dashboard
-
-- [x] Compute counts (all states).
-- [x] Calculate progress %.
-- [x] Implement risk flags (basic rules).
-- [x] Build API: dashboard aggregation.
-
-### 7. Export System
-
-- [x] Include only `APPROVED` + `is_latest` documents.
-- [x] XLSX generation.
-- [x] PDF summary generation.
-- [x] ZIP structured export.
-- [x] Block export if mandatory credits not approved.
-
-### 8. Audit Logs
-
-- [x] Create `activity_logs` table.
-- [x] Log all actions:
-  - upload
-  - review
-  - transitions
-  - export
-- [x] Build timeline UI.
-
-## P0 UX Epics (Client Experience Vision, highest priority)
-
-- [x] Epic UX0.1 - One-screen executive clarity dashboard:
-  show portfolio completion %, risk (RAG), pending documents, rejection count, and estimated certification outcome without deep navigation.
-- [x] Epic UX0.2 - "What is stuck right now" command panel:
-  one-click list of delayed credits across projects with owner, responsible role, exact missing document, and aging days.
-- [x] Epic UX0.3 - Credit-level checklist clarity:
-  each credit must present `pending -> responsible -> exact required evidence` with unambiguous states (`Not started`, `Uploaded`, `Approved`, `Rejected`).
-- [x] Epic UX0.4 - Rejection intelligence workspace:
-  cross-project rejection pattern analysis, common-reason suggestions, and fix guidance with successful-example references.
-- [x] Epic UX0.5 - Guided next-best-action workflow:
-  Copilot and dashboard should drive concrete next tasks (role-specific action prompts), not generic Q&A only.
-- [x] Epic UX0.6 - Upload experience hardening (mobile-first):
-  large touch controls, drag-drop and simple file attach flow, auto-tag confirmation (credit + doc type), and persistent success confirmations.
-- [x] Epic UX0.7 - Timeline intelligence:
-  predict completion date by current velocity and surface delay-risk reasons with urgency indicators.
-- [x] Epic UX0.8 - Token transparency panel:
-  per-project token usage, burn rate, cost progression, and predicted exhaustion shown in plain business language.
-- [x] Epic UX0.9 - Visual audit timeline:
-  human-readable timeline of who did what and when (not raw logs), with filters by project/credit/user/action.
-- [x] Epic UX0.10 - Project comparison board:
-  compare locations on efficiency, delay, rejection rate, and readiness to enable management decisions.
-- [x] Epic UX0.11 - Vendor intelligence baseline:
-  vendor submission performance profile (success %, rejection frequency, delayed-resubmission rate) for future ranking and guidance.
-- [x] Epic UX0.12 - UX quality and speed gates:
-  enforce page-load targets (<2s where feasible), stable upload flow, crash-free key paths, and mobile-first readability.
-
-## Priority 0 - Persona-critical UX and workflow (new, highest priority)
-
-- [x] L0 role-focused workspace views:
-  show only assigned credits for `mep`, `architect`, `contractor` (no full 47-credit noise by default).
-- [x] L0 mobile-first upload path:
-  3-step flow (credit -> doc type -> file) with strong touch UX and clear success state.
-- [x] Pre-submit confirmation safety:
-  5-second cancel window before upload starts.
-- [x] Prevent accidental token burn:
-  no token deduction when upload fails or credit/doc-type mapping is invalid.
-- [x] Doc requirement clarity before upload:
-  show exact "required evidence" text and accepted file types for selected credit/doc type.
-- [x] Rejection quality:
-  enforce specific rejection reason templates and free-text guidance (not generic "non-compliant").
-- [x] L0 self-service correction:
-  allow move/delete/edit before review lock without token penalty for mapping mistakes.
-- [x] L1 Project Owner review cockpit:
-  document preview + approve/send back + mandatory reason + queue summary.
-- [x] L1 dedicated review queue baseline:
-  new `review-queue` page with clean rows and approve/send-back actions.
-- [x] L1 bulk action baseline:
-  multi-select and bulk approve/send-back with shared rejection remark.
-- [x] L1 one-screen portfolio baseline:
-  owner dashboard table with progress, pending uploads, pending review, consultant queue, risk tag.
-- [x] L1 rejection template baseline:
-  structured reject reason types in queue (`missing_data`, `wrong_document`, `poor_quality`, `outdated_document`, `wrong_credit_mapping`).
-- [x] L1 inline preview-first review:
-  queue rows render embedded preview with no project-page navigation required.
-- [x] L1 project prioritization metrics:
-  owner table includes pending approvals + rejected count + status flag (green/amber/red).
-- [x] L2 Client executive snapshot:
-  30-second page with overall progress, projected rating, RAG per location, token burn trend, wallet balance.
-- [x] L2 executive snapshot baseline:
-  one-screen client panel with overall status, projected rating, completion, active projects, at-risk count, token runway.
-- [x] L2 risk and portfolio panel:
-  per-project risk table (`On Track`, `Delay Risk`, `Critical`) with pending/rejected counts.
-- [x] L2 token intelligence panel:
-  loaded/used/remaining tokens, burn rate, estimated exhaustion weeks.
-- [x] L2 efficiency baseline metrics:
-  first-time approval rate, rejection rate, avg tokens/project, efficiency score.
-- [x] L2 one-click reporting baseline:
-  direct PDF summary export links from executive panel.
-- [x] L3 Project Admin high-throughput queue:
-  cross-project validation feed, quick actions, rejection template library, audit-accurate timestamps (IST).
-- [x] L3 cross-project command view baseline:
-  project admin section with progress, pending validation, rejections, and submission readiness.
-- [x] L3 queue performance counters:
-  reviewed/approved/rejected today and approval-rate card in review queue.
-- [x] L3 rejection template engine baseline:
-  bulk rejection supports typed template messages for repeat scenarios.
-- [x] L5 Super User monetization panel:
-  client wallets, token top-ups, monthly usage split (uploads vs consulting), and manual override controls.
-- [x] L5 command-center baseline:
-  multi-client wallet table, project counts, client status, and super-user token override form.
-- [x] L5 token economy baseline:
-  sold/consumed/weekly burn/revenue estimate + upload vs consulting spend split.
-- [x] L5 system health baseline:
-  uploads today, failed transactions, pending reviews, active users.
-- [x] L5 critical alert baseline:
-  low-wallet and queue/anomaly alerts surfaced in super-user panel.
-- [x] Notifications:
-  email/WhatsApp style alerts for rejection, resubmission, pending-review aging, and low-token warnings.
-- [x] Session continuity:
-  reduce unwanted session drops/logouts for low-frequency users.
-
-## Priority 0A - Architect workflow (Priya) critical path
-
-- [x] Credit-to-document slot mapping:
-  render per-credit required document slots (certificate/spec/invoice) with mandatory/optional markers.
-- [x] Multi-file upload structure per credit:
-  preserve grouped uploads by credit + requirement slot (not generic flat uploads).
-- [x] Pre-review editable mapping:
-  allow move/edit/delete while `status = uploaded`; lock at `owner_approved` and above.
-- [x] Architect pre-validation checklist:
-  visible per-credit checklist (`uploaded` / `missing`) before owner review.
-- [x] Structured rejection taxonomy:
-  `missing_data`, `incorrect_format`, `outdated_document`, `wrong_credit_mapping`.
-- [x] Duplicate guard:
-  detect likely duplicate file name/hash and prompt reuse before charging token.
-- [x] Vendor intelligence baseline:
-  enable vendor doc reuse suggestions by vendor + doc type history.
-- [x] Architect scope readiness:
-  role-scoped progress card (`completed`, `incomplete`, `rejected`) for assigned architect credits only.
-- [x] Architect notification rules:
-  actionable reject/missing/completion notifications without spam.
-
-## Priority 1 - Production blockers (must close before release)
-
-- [x] Run full end-to-end live workflow with real role accounts and real data:
-  login -> dashboard -> create/open project -> upload -> Project Owner review -> Project Admin review -> included in submission pack -> XLSX/PDF/ZIP export.
-- [x] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
-- [x] Verify upload integrity for every upload:
-  Supabase storage object exists + matching `documents` row + signed URL opens.
-- [x] Verify `super_user`-only project delete in live session.
-- [x] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
-- [x] Verify role-based edit/status restrictions across:
-  `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
-- [x] Verify document activity log visibility only for `super_user` and `project_admin`.
-
-## Priority 2 - New business-model scope gaps (from updated plan)
-
-- [x] Implement plans/pricing model with per-project quotas:
-  document credits and consultant interaction credits.
-- [x] Implement real-time usage tracking (consumed vs remaining credits per project).
-- [x] Implement consultant interaction session logger that decrements consultant credits.
-- [x] Implement billing/invoicing module (plan usage, top-ups, invoice records).
-
-## Priority 3 - Product workflow gaps (from updated plan)
-
-- [x] Add per-credit "What to Submit" guidance in clear client language.
-- [x] Add credit difficulty classification (`Easy`, `Moderate`, `Hard`) and surface it in workspace.
-- [x] Complete rejection + resubmit lifecycle:
-  rejected -> resubmitted -> owner review -> admin review with reason trail.
-- [x] Extend audit trail beyond current document logs to full history for key actions:
-  project/member changes, credit status changes, workflow transitions.
-- [x] Add/verify jargon-free client view distinct from consultant/admin workspace.
-- [x] Add per-credit cost/effort guidance.
-- [x] Complete onboarding checklist flow for first-time users.
-
-## Priority 4 - Submission and export correctness
-
-- [x] Verify submission pack includes only admin-approved/included documents.
-- [x] Verify mandatory-credit gating blocks submission export when incomplete.
-- [x] Validate tracker/PDF/ZIP outputs against final CCIL/IGBC expected structure and naming.
-
-## Priority 5 - Copilot readiness
-
-- [x] Validate Copilot behavior on all tabs against live project data.
-- [x] Improve grounding to reliably answer with project-specific documents/credits/status.
-- [x] Confirm role-safe Copilot responses (no overexposure of restricted data).
-
-## Priority 6 - Deployment and QA closeout
-
-- [x] Run deployed smoke test on production URL:
-  login, dashboard, projects, documents upload/open, workspace review, exports.
-- [x] Verify uploads from deployed environment (not only localhost).
-- [x] Run mobile QA pass (login/dashboard/projects/documents/workspace) and resolve responsive issues.
-- [x] Run role-based UAT signoff matrix and attach evidence.
-
-## Execution order
-
-1. Close Priority 1 live blockers.
-2. Implement Priority 2 business-model modules.
-3. Complete Priority 3 workflow/product gaps.
-4. Finish Priority 4 export correctness checks.
-5. Complete Priority 5 Copilot grounding and safety.
-6. Finish Priority 6 deployment/mobile/UAT signoff.
-
-## Technical Epics (Prioritized)
-
-Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
-
-## Critical
-
-- [x] Epic C1 - Workflow engine state machine:
-  replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
-- [x] Epic C2 - Event-driven foundation:
-  implement `events/event-bus.ts` with producers/consumers and retry/dead-letter behavior.
-- [x] Epic C3 - AI subsystem baseline:
-  implement `ai-engine` foundation (RAG + validator + rejection intelligence capture).
-- [x] Epic C4 - Transaction-safe token ledger:
-  enforce idempotent upload/token orchestration with immutable debit/credit references.
-
-## High
-
-- [x] Epic H1 - Dedicated review event model:
-  add `document_reviews` trail table and wire all approvals/rejections through immutable review entries.
-- [x] Epic H2 - Production-grade notification delivery:
-  extend in-app notifications to email/WhatsApp channels with anti-spam rules and deep links.
-- [x] Epic H3 - Security verification suite:
-  automated RBAC and project-isolation tests for all role/action combinations.
-- [x] Epic H4 - AI risk and recommendation services:
-  deliver risk scoring and next-best-action generation per role/project.
-
-## Medium
-
-- [x] Epic M1 - Service layer extraction:
-  move core business logic from `app/actions.ts` into `lib/services/*` modules.
-- [x] Epic M2 - Frontend real-time behavior:
-  role-aware dynamic queue/alert updates via polling or realtime subscriptions.
-- [x] Epic M3 - Monetization intelligence v2:
-  burn-rate forecasting, anomaly detection, and token usage trend analytics.
-- [x] Epic M4 - Vendor intelligence:
-  document reuse suggestions and duplicate-avoidance recommendations by vendor/doc-type history.
-
-## Technical Delivery Windows (12-week alignment)
-
-- [x] Weeks 1-3 (Foundation): close `C1`, `C4`, `H1`.
-- [x] Weeks 4-6 (AI Foundation): close `C3` baseline and capture rejection patterns.
-- [x] Weeks 7-9 (Intelligence): close `H4`, `M3`, and client/admin forecast widgets.
+# Tracknov TODO (Updated from TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md)
+
+Last updated: 2026-05-06 IST (Batch 1+2 pass: submittal-chain DB alignment + service/workflow hardening)
+Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
+
+## Priority
+- `P0` = release blocker
+- `P1` = production must-have
+- `P2` = scale layer
 
 ---
 
-## Tracknov Copilot V2 - Adaptive Intelligence Engine (COMPLETE)
+## Handoff-driven implementation track (artifacts)
 
-Mapped to `Ai developerhandoff.md` V2 Update.
+Source bundle copied to:
+- `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\handoff`
+- Plan file: `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\IMPLEMENTATION_PLAN_FROM_HANDOFFS.md`
 
-### Copilot V2 - Foundation & Greeting
-- [x] V2.COP1.1 Implementation of `/api/me` for personal identity retrieval.
-- [x] V2.COP1.2 Personalized Greeting Engine: migrate from role-based ("Hi Super User") to name-based ("Hi Khush").
-- [x] V2.COP1.3 Fallback greeting logic ("Hi there 👋") when name is unavailable.
-
-### Copilot V2 - Adaptive Tone Engine (ATE)
-- [x] V2.COP2.1 User Behavior Tracking: capture query length, session frequency, rejection rate, and interaction patterns.
-- [x] V2.COP2.2 DB Schema: implement `user_behavior` table for usage scores and error rates.
-- [x] V2.COP2.3 Tone Mode Logic: implement "Executive", "Operator", and "Power" mode selection based on behavior/role.
-- [x] V2.COP2.4 UI Controls: add tone override selector (Executive | Guided | Fast) in the Copilot panel.
-
-### Copilot V2 - System & Live Data Awareness
-- [x] V2.COP3.1 Strict System Awareness: inject platform rules, workflow definitions, and token logic into prompt context.
-- [x] V2.COP3.2 Live Data Integration: connect Copilot function calling to `/api/wallet`, `/api/projects`, `/api/documents`, and `/api/reviews`.
-- [x] V2.COP3.3 Standardized Response Format: enforce "Hi [Name] -> Answer -> Data -> Recommendation" structure.
-
-### Copilot V2 - Document Intelligence Integration
-- [x] V2.COP4.1 Pre-submission Document Summary: automated summary generation for uploaded files.
-- [x] V2.COP4.2 Relevance & Completeness Check: AI-driven validation against credit requirements.
-- [x] V2.COP4.3 Risk Flagging: detect missing elements or low-relevance uploads before final submission.
-
-### Copilot V2 - Performance & Security
-- [x] V2.COP5.1 Response Time Hardening: ensure <2s response for non-heavy processing.
-- [x] V2.COP5.2 RBAC Enforcement: ensure Copilot respects role-based data isolation during data fetching.
-- [x] V2.COP5.3 Cross-project leakage prevention: strict project-context isolation for retrieval queries.
+Priority execution sequence:
+- [~] WP-0 Platform guardrails (RLS + DB RBAC)
+- [~] WP-1 DB validation/workflow engine
+- [~] WP-2 IGBC core data model + project instantiation integrity
+- [~] WP-3 Supabase API contract stabilization
+- [~] WP-4 Assignment-level enforcement (upload + metadata update guarded for L0; rejection routes to assigned owner)
+- [~] WP-5 Credits billing and ledger reliability
+- [~] WP-6 Scoring/certification engine
+- [~] WP-7 Copilot intelligence and conversational upload flow
+- [~] WP-8 Project Admin + UX/UI role rendering
+- [ ] WP-9 E2E UAT and release readiness
 
 ---
 
-## Tracknov Copilot V3 - Product Expert + Secure AI Engine (COMPLETE)
+## P0 - Immediate blockers
 
-Mapped to `Ai developerhandoff.md` V3 Final.
+### A) Copilot quality and behavior (critical)
+- [x] Fix repetitive/mindless replies for follow-up prompts. (system prompt + focused context tightening)
+- [x] Ensure file-analysis prompts (`explain/analyze/read this file`) always trigger analysis, not mapping loop.
+- [x] Make Copilot suggest likely credits + confidence from guidebook/tracker context without forcing user-first mapping questions.
+- [x] Keep chat tone human and contextual (no robotic fallback phrasing baseline).
+- [x] Remove "temporary response issue" fallback loop and replace with contextual fallback.
+- [x] Broaden file-question detection (`compare`, `recheck`, `check/read this file`) so follow-up prompts stay in file-analysis flow.
 
-### Copilot V3 - Knowledge & Logic
-- [x] V3.COP1.1 Centralized Tracknov Knowledge Base (Features, Workflows, Billing).
-- [x] V3.COP1.2 Intent Classification Layer (billing, workflow, feature_explanation, etc.).
-- [x] V3.COP1.3 Deterministic Routing Engine: prioritizing system rules and live data over AI reasoning.
-- [x] V3.COP1.4 System Rules Injection: hard-coding token costs and workflow steps.
+### B) Chat-driven file workflow
+- [x] Copilot must analyze attached file and return:
+  - [x] document type detected
+  - [x] key data points found
+  - [x] likely credit matches
+- [x] Copilot must map/upload through chat command flow end-to-end.
+- [x] Remove dead/button-only flows that do nothing.
 
-### Copilot V3 - Security & Compliance
-- [x] V3.COP2.1 Non-Disclosure Layer: blocking source code, schema, and API leaks.
-- [x] V3.COP2.2 RAG Usage Policy: restricting RAG to IGBC documentation only.
-- [x] V3.COP2.3 Failsafe Logic: bypass LLM when system rules exist or API data is available.
+### C) Project instantiation reliability
+- [x] Ensure guidebook upload works reliably for Project Admin/Super User. (dedup/update-in-place behavior added for same file name; stale storage cleaned)
+- [x] Ensure tracker import maps rows to project credits (no empty import result). (auto-instantiation + dynamic header mapping + stronger code parsing + unmatched diagnostics)
+- [x] Ensure project workspace instantiates usable credit/submittal data after guidebook+tracker. (credit self-heal invoked on both guidebook and tracker import paths)
 
----
-
----
-
-## Demo Mode V2 - Guided Experience (V3 Hardening) (COMPLETE)
-
-### Foundation & Dataset
-- [x] **Demo Landing Modal**: Implement "Start Guided Demo?" modal for `demo@enov360.com` on login.
-- [x] **Demo Dataset Seeding**:
-  - [x] 15–20 credits across various categories.
-  - [x] 40–60 documents in mixed states.
-  - [x] 8–10 structured rejections with specific reasons.
-  - [x] 3 credits in "Delay Risk" or "Critical" state.
-- [x] **One-Click Reset**: Implement "Reset Demo" button to restore dataset to baseline.
-
-### 8-Step Guided Walkthrough (Tooltip Engine)
-- [x] **Tooltip Engine**: Position-aware overlays with arrows and Next/Back/Skip controls.
-- [x] **Step 1: Portfolio Dashboard**: Highlight completion % and risk indicators.
-- [x] **Step 2: Project Detail**: Highlight credit status grid.
-- [x] **Step 3: Pending Work**: Highlight filtered pending credits list.
-- [x] **Step 4: Simulated Upload**: Guided interaction for document upload.
-- [x] **Step 5: Review Workflow**: Highlight Approve/Reject action buttons.
-- [x] **Step 6: Rejection Insight**: Highlight rejection reasons and corrective guidance.
-- [x] **Step 7: Executive Dashboard**: Highlight portfolio-wide risk/completion cards.
-- [x] **Step 8: Token/Cost View**: Highlight token usage and burn rate.
-
-### Interaction & Control
-- [x] **Demo Control Panel**: Fixed top-right widget (Exit, Restart, Progress Step X/8).
-- [x] **Action Restrictions**: Disable destructive actions (Delete Project, Permanent Edits) during demo.
-- [x] **Semi-Guided Navigation**: Allow exploration while keeping "Next Step" visible.
-
-### Performance & Security
-- [x] **Performance Hardening**:
-  - [x] Step transition < 300ms.
-  - [x] Tooltip rendering: Instant.
-- [x] **Context Isolation**: Ensure demo user is strictly isolated from production client data.
+### D) Build correctness
+- [x] Fix Copilot project-upload API type mismatch (`documentId` -> `id`) and restore clean production build.
 
 ---
 
-## Security & Access Control - Demo Mode Hardening (COMPLETE)
+## P1 - Build plan execution (strict order from handoff)
 
-### Demo Mode Restriction
-- [x] DMC1.1 Identity-based gating: Restricted "Demo Mode" and walkthroughs exclusively to `demo@enov360.com`.
-- [x] DMC1.2 Global UI cleanup: Removed "Guided demo mode" and "Demo" navigation links from all other authorized roles.
-- [x] DMC1.3 Server-side action hardening: Updated `setDemoModeAction` to block unauthorized users.
-- [x] DMC1.4 Identity verification: Resolved login issues and provisioned the `demo@enov360.com` account with appropriate permissions.
+### Phase 1 - Foundation
+- [~] User authentication system hardening.
+- [x] Project creation + project_code generation.
+- [x] `project_users` mapping/access control.
+- [~] Role enforcement (L0/L1/L2/L3/L5).
 
----
+### Phase 2 - Core structure
+- [~] Project -> Stage -> Credit mapping.
+- [~] Credit loading from rulebook.
+- [~] Submittal + document type structure per credit stage.
 
----
+### Phase 3 - Document engine
+- [x] Upload mapped to document type (not generic-only upload).
+- [x] Versioning system mandatory for updates/resubmissions. (single latest enforced per doc stream + parent linkage)
+- [x] Ownership enforcement (only assigned owner can upload/update a document type). (L0 uploads and metadata updates are guarded)
 
-## Project Assignment & Access System (PM Handoff) (COMPLETE)
+### Phase 4 - Review pipeline
+- [x] L1 review layer.
+- [x] L3 validation layer.
+- [x] Strict state transition enforcement.
 
-### DB & Identity
-- [x] **Project Identity**: Implement `project_code` field in `projects` table (UNIQUE, format `TN-{PROJECT}-{001}`).
-- [x] **Membership Schema**: Ensure `project_users` (or `project_members`) table matches handoff:
-  - `user_id`, `project_id`, `role` (L0-L5).
-  - UNIQUE constraint on `(user_id, project_id)`.
-  - Proper indexing on `user_id` and `project_id`.
+### Phase 5 - Task engine (auto)
+- [~] Auto-generate tasks for upload/review/validate/fix.
+- [x] Role-specific task visibility.
 
-### APIs & Access Gating
-- [x] **Invite API**: Covered by `MemberService` and `addTeamMemberAction`.
-- [x] **Join API**: Implement `POST /api/project/join` (using `project_code`) -> `joinProjectByCodeAction`.
-- [x] **My Projects**: Implement `GET /api/my-projects` for user-specific project list.
-- [x] **Access Gate Hardening**:
-  - [x] Validate project membership on ALL action paths.
-  - [x] Enforce role-based action guards (e.g., L0 can move DRAFT -> READY).
-  - [x] Block unauthorized cross-project data access.
+### Phase 6 - Dashboard
+- [x] L1 dashboard counts + credit breakdown.
+- [x] L2 dashboard summary/progress view.
 
-### UI & Workflow
-- [x] **Join Experience**: UI for joining a project via human-readable code.
-- [x] **Management UI**:
-  - [x] Invite User modal/form.
-  - [x] My Projects dashboard/list.
-- [x] **Audit Logs**: Ensure invite, join, and role assignment actions are logged in `activity_logs`.
+### Phase 7 - Stage system
+- [~] Stage gating: Design -> Construction -> Handover.
+- [x] Stage-wise submission packs.
 
-### Acceptance Verification
-- [x] Verify user joins via code -> appears in `project_users`.
-- [x] Verify role enforcement (e.g., L2 cannot upload/submit).
-- [x] Verify token deduction blocked for invalid membership.
+### Phase 8 - Reviewer simulation
+- [ ] "Run Check" trigger.
+- [ ] Rule-based completeness/consistency/compliance checks.
 
----
-
-## Latest execution sync (2026-05-03)
-
-### Copilot usability updates
-- [x] Remove quick suggestion chips from Copilot UI.
-- [x] Add explicit `Attach File` button in Copilot (global + panel).
-- [x] Add explicit `Upload To Project` shortcut from Copilot.
-- [x] Show attachment confirmation text in Copilot.
-- [x] Add `Fill Form With Copilot` action to assist form entry.
-- [x] Pass Copilot attachments to `/api/assistant` and include in assistant context.
-
-### Join project reliability
-- [x] Fix joined project visibility by replacing nested membership->project relation dependency.
-- [x] Harden project list resolver to fetch project IDs from membership and project rows directly.
-- [x] Build/type verification after join fix and Copilot updates.
-
-### Open follow-up items
-- [ ] Add integration test for `joinProjectAction` to assert membership insert + project list visibility in `getDashboardProjects`.
-- [ ] Add optional toast on successful `Join Project` (explicit user feedback before redirect).
+### Phase 9 - Rulebook engine
+- [~] AI extraction draft from guidebook/rulebook.
+- [ ] Admin validation UI.
+- [~] Version locking per project.
 
 ---
 
-**End of TODO**
+## P1 - Functional rules from consolidated handoff
+
+### Workflow model
+- [~] Enforce lifecycle: `PENDING -> UPLOADED -> L1 REVIEW -> L3 VALIDATION -> APPROVED/REJECTED`.
+- [x] No workflow skipping.
+- [x] Rejected documents return only to assigned owner.
+
+### Document responsibility assignment (critical)
+- [~] L3 assigns each document type to one specific L0 owner.
+- [x] Only assigned owner can upload/update.
+- [x] Rejected item routes back to same owner.
+- [ ] Assignment auto-creates tasks.
+
+### Submission and compliance
+- [x] Include only latest approved documents in submission pack.
+- [x] Mandatory completion rule: all mandatory docs approved.
+- [~] Full audit logging for every critical action.
+
+---
+
+## P2 - Scale/optimization
+
+- [ ] Rulebook-aware RAG retrieval quality improvements for credit advice.
+- [ ] Reviewer simulation scoring enhancements.
+- [ ] Advanced analytics across stages and role performance.
+
+---
+
+## Guardrails (non-negotiable)
+- [x] No deletion workflow for compliance records.
+- [x] Versioning mandatory for all document updates.
+- [~] Role-based access enforced at API level.
+- [~] Tracknov remains workflow-first (not file-storage-first).
+
+---
+
+## Latest execution pass (2026-05-05 IST, adherence fix: credit assignment visibility)
+
+### Completed in this pass
+- Fixed missing Project Admin/Owner assignment section blocker in project workspace flow:
+  - Added `assigned_user_id` to workspace credit typing/mapping path so assignment state is available in UI model.
+  - Added backend assignment service path for credit contributor assignment with role checks and project-membership validation.
+  - Added project workspace assignment form wiring for credit-level contributor assignment (Project Admin / Owner / Super User paths).
+- Resolved server action form incompatibility that prevented the page/action from functioning:
+  - `assignCreditContributorAction` now uses a form-compatible `Promise<void>` signature.
+  - Error path now logs server-side and keeps UI path stable.
+- Batch 1 + 2 (TechLead execution handoff) implementation pass:
+  - Added migration `0048_batch12_submittal_workflow_alignment.sql`.
+  - Enforced execution chain at DB trigger level: `project_document -> submittal -> credit_stage`.
+  - Added/aligned `project_document.submittal_id` + indexing.
+  - Added project-credit-aware stage uniqueness (`credit_stages(project_credit_id, stage)`).
+  - Backfilled stage rows per `project_credit`.
+  - Aligned submittal runtime fields (`project_id`, `credit_id`, `iteration`, `created_by`, `state`).
+  - Replaced upload RPC with `project_document` + `p_submittal_id` aware version.
+  - Fixed upload service RPC payload bug (`p_state` -> `p_status`) and now always sends `p_submittal_id`.
+  - Added credit-stage resolver in upload service so submittal creation is no longer missing `credit_stage_id`.
+  - Added workflow no-op guard in state engine (`current == new` returns early, no duplicate transition side-effects).
+
+### Verification
+- `npm run build` passed successfully after the fix.
+
+### Status impact
+- Credit assignment visibility/operability issue: **closed**.
+- `assignment task materialization` advanced: contributor task queue now resolves from `assigned_user_id` first (role fallback second) in role task generation.
+- `reviewer simulation run-check` implemented on submission page (`/projects/[id]/submission?runCheck=1`) with completeness/consistency/compliance findings.
+- API RBAC sweep advanced for project artifact routes:
+  - `audit-export`: review-role gate
+  - `client-report`: billing/report access gate
+  - `submission-pack`, `summary`, `tracker`: export-role gate (`canExportProjectArtifacts`)
+- Continuing next with remaining partial P1 items (final endpoint-by-endpoint RBAC verification/UAT).
+
+### Pending verification after this pass
+- Apply migration `0048_batch12_submittal_workflow_alignment.sql` in target Supabase environment.
+- Validate end-to-end upload from project page widget (the previous `invalid response` path) after migration.
+- Confirm tracker/guidebook import + document upload + state transition flow in one integrated UAT pass.

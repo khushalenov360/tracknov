@@ -1,6 +1,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { isL5Role } from "@/lib/rbac";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +12,18 @@ export async function GET(request: Request) {
   
   if (!user) {
     return NextResponse.json({ error: "No user found" }, { status: 401 });
+  }
+
+  const { data: profile } = await client
+    .from("profiles")
+    .select("global_role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const role = String(
+    profile?.global_role ?? user.user_metadata?.role ?? user.app_metadata?.role ?? "",
+  ).toLowerCase();
+  if (!isL5Role(role as any)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // 1. Check if user exists in project_users

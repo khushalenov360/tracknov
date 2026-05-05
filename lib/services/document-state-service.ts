@@ -125,6 +125,16 @@ async function hasAllRequiredDocsForCredit(writer: SupabaseClient, creditId: str
   return true;
 }
 
+async function getAssignedOwnerForCredit(writer: SupabaseClient, projectCreditId: string) {
+  const { data } = await writer
+    .from("project_credits")
+    .select("assigned_user_id")
+    .eq("id", projectCreditId)
+    .maybeSingle();
+  const assignedUserId = (data as any)?.assigned_user_id as string | null;
+  return assignedUserId ?? null;
+}
+
 export async function transitionDocumentState(
   writer: SupabaseClient,
   {
@@ -160,6 +170,15 @@ export async function transitionDocumentState(
   }
 
   const currentState = (document.state ?? "DRAFT") as WorkflowState;
+  if (currentState === newState) {
+    return {
+      ok: true as const,
+      fromState: currentState,
+      toState: newState,
+      projectId: document.project_id,
+      creditId: document.credit_id,
+    };
+  }
   const isOverride = Boolean(override);
   const normalizedOverrideReason = overrideReason?.trim() || null;
   
@@ -340,13 +359,15 @@ export async function transitionDocumentState(
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
   } else if (newState === "CLARIFICATION" || newState === "REJECTED") {
+    const assignedOwnerId = await getAssignedOwnerForCredit(writer, document.project_credit_id);
     const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
-    if (docData?.uploaded_by) {
+    const targetUserId = assignedOwnerId || docData?.uploaded_by || null;
+    if (targetUserId) {
         await notifyUsers(writer, {
             projectId: document.project_id,
             creditId: document.credit_id,
             documentId,
-            userIds: [docData.uploaded_by],
+            userIds: [targetUserId],
             body: `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
             actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });

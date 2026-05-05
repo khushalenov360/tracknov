@@ -3,11 +3,15 @@ import { getProjectWorkspaceForApi } from "@/lib/data";
 import { buildSubmissionZip, isSubmissionExportReady } from "@/lib/exports";
 import { logSystemActivity } from "@/lib/services/activity-service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { canExportProjectArtifacts } from "@/lib/rbac";
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const workspace = await getProjectWorkspaceForApi(params.id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+  if (!canExportProjectArtifacts(workspace.userRole)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   // Audit Log

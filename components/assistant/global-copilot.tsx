@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, ChevronLeft, ChevronRight, Send, Sparkles, Settings } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/assistant";
@@ -92,9 +92,9 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         `Page title: ${title}`,
       ],
       nextSteps: [
-        "Identify the highest-impact action for the current page.",
-        "Call out blockers and missing documentation.",
-        "Recommend the exact next update in Tracknov.",
+        "Answer the user's exact question first.",
+        "Use the attached file before generic guidance.",
+        "Suggest one concrete workflow action.",
       ],
     }),
     [description, pathname, role, surface, title],
@@ -107,16 +107,28 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
-  const [showSettings, setShowSettings] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [fillingForm, setFillingForm] = useState(false);
-  const [analysisSummary, setAnalysisSummary] = useState("");
   const [availableCredits, setAvailableCredits] = useState<CopilotCreditOption[]>([]);
   const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
 
   const canManageGuidebookTracker = ["super_user", "project_admin"].includes(role ?? "");
   const docCategories = ["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing", "Calculation & Tables", "Invoice", "Pic/Video"];
+
+  function isAnalysisPrompt(text: string) {
+    const lower = text.toLowerCase();
+    return (
+      lower.includes("analy") ||
+      lower.includes("analyse") ||
+      lower.includes("explain the file") ||
+      lower.includes("explain this file") ||
+      lower.includes("what is this file") ||
+      lower.includes("tell me about this file") ||
+      lower.includes("read this file")
+    );
+  }
 
   function parseUploadIntentFromChat(text: string) {
     const lower = text.toLowerCase();
@@ -141,6 +153,17 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     };
   }
 
+  function shouldAttemptProjectUpload(text: string) {
+    const lower = text.toLowerCase().trim();
+    const hasMapIntent =
+      lower.includes("map this to") ||
+      lower.includes("map to ") ||
+      lower.includes("upload to workflow") ||
+      lower.includes("and upload") ||
+      lower.includes("submit this file");
+    return hasMapIntent && !isAnalysisPrompt(text);
+  }
+
   useEffect(() => {
     async function fetchProfile() {
       try {
@@ -157,9 +180,9 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   }, []);
 
   const personalizedGreeting = useMemo(() => {
-    const greeting = userName ? `Hi ${userName} 👋` : "Hi there 👋";
-    return `${greeting}. I can help you work through ${title} step by step.`;
-  }, [userName, title]);
+    const greeting = userName ? `Hi ${userName}` : "Hi there";
+    return `${greeting}. How can I help you today?`;
+  }, [userName]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -195,6 +218,18 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
 
+  useEffect(() => {
+    function handleClickOutside() {
+      setShowAttachMenu(false);
+    }
+    if (showAttachMenu) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => {
+      window.removeEventListener("click", handleClickOutside);
+    };
+  }, [showAttachMenu]);
+
   async function readStream(response: Response, onChunk: (chunk: string) => void) {
     if (!response.body) {
       onChunk(await response.text());
@@ -227,6 +262,14 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
       return;
     }
 
+    if (attachmentFile && shouldAttemptProjectUpload(text)) {
+      const uploaded = await uploadAttachmentToProject(text);
+      if (uploaded) {
+        setInput("");
+      }
+      return;
+    }
+
     setError("");
     setLoading(true);
 
@@ -249,12 +292,26 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     setInput("");
 
     try {
+      const requestMessages = [...nextMessages.slice(0, -1)];
+      if (attachmentFile && isAnalysisPrompt(text)) {
+        requestMessages[requestMessages.length - 1] = {
+          role: "user",
+          content: [
+            "Please analyze the attached file and answer naturally.",
+            "Respond with: document type detected, key data points, and likely credit matches with confidence.",
+            "Then ask one short follow-up question to confirm mapping and upload.",
+            "",
+            `User request: ${text}`,
+          ].join("\n"),
+        };
+      }
+
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context,
-          messages: nextMessages.slice(0, -1),
+          messages: requestMessages,
           tone: selectedTone !== "Auto" ? selectedTone : undefined,
           attachments: attachment ? [attachment] : [],
         }),
@@ -274,7 +331,23 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           return copy;
         });
       });
-      setAttachment(null);
+      const sanitized = assistantText.replace(/\s+/g, " ").toLowerCase();
+      const refusalLike =
+        sanitized.includes("i can't") ||
+        sanitized.includes("i cannot") ||
+        sanitized.includes("i do not have the ability") ||
+        sanitized.includes("as an ai assistant");
+      if (refusalLike && attachmentFile) {
+        setMessages((current) => {
+          const copy = [...current];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content:
+              "Got it — I can handle this here in chat. Tell me which credit and document type you want, and I’ll upload it to workflow.",
+          };
+          return copy;
+        });
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
       setMessages((current) => current.slice(0, -1));
@@ -496,7 +569,6 @@ Important:
         const summary = await response.text();
         const trimmed = summary.trim();
         if (trimmed) {
-          setAnalysisSummary(trimmed);
           setMessages((current) => [...current, { role: "assistant", content: trimmed }]);
         }
       }
@@ -507,28 +579,30 @@ Important:
     }
   }
 
-  async function uploadAttachmentToProject() {
+  async function uploadAttachmentToProject(intentSource: string) {
     if (!attachmentFile) {
       setError("Attach a file first.");
-      return;
+      return false;
     }
     const match = pathname.match(/^\/projects\/([^/]+)/);
     const projectId = match?.[1];
     if (!projectId) {
       setError("Open a project workspace to upload this file to project context.");
-      return;
+      return false;
     }
-
-    const intentSource =
-      input.trim() ||
-      [...messages].reverse().find((message) => message.role === "user")?.content ||
-      "";
     const intent = parseUploadIntentFromChat(intentSource);
     const effectiveMode = uploadMode === "document" ? intent.mode : uploadMode;
 
     if (effectiveMode === "document" && !intent.creditId) {
-      setError("Tell Copilot where to map this file, e.g. 'Map to EDA C1 as Drawing and upload'.");
-      return;
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            "Sure — which credit should I map this file to? Also tell me the document type (for example: Drawing, Narrative, Invoice, Certificate).",
+        },
+      ]);
+      return false;
     }
 
     setLoading(true);
@@ -567,9 +641,10 @@ Important:
       ]);
       setAttachment(null);
       setAttachmentFile(null);
-      setAnalysisSummary("");
+      return true;
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -597,19 +672,18 @@ Important:
             <Sparkles className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)]">Tracknov Copilot</p>
+            <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)] inline-flex items-center gap-1.5">
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-red-500"}`}
+                aria-label={enabled ? "AI online" : "AI offline"}
+                title={enabled ? "AI online" : "AI offline"}
+              />
+              Tracknov Copilot
+            </p>
             <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowSettings(!showSettings)}
-            className={`rounded-md p-1 hover:bg-[var(--color-surface)] ${showSettings ? "text-[var(--color-blue)]" : "text-[var(--color-text-tertiary)]"}`}
-            title="Copilot Settings"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
           <button
             type="button"
             onClick={() => setCollapsed(true)}
@@ -620,30 +694,6 @@ Important:
           </button>
         </div>
       </div>
-
-      {showSettings && (
-        <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 animate-in fade-in slide-in-from-top-1">
-          <p className="mb-2 text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Response Tone</p>
-          <div className="flex gap-1">
-            {(["Auto", "Executive", "Guided", "Fast"] as AssistantTone[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setSelectedTone(t);
-                  setShowSettings(false);
-                }}
-                className={`flex-1 rounded px-2 py-1 text-[10px] font-medium transition-colors ${
-                  selectedTone === t 
-                    ? "bg-[var(--color-blue-light)] text-[var(--color-blue)]" 
-                    : "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="flex h-[calc(100%-49px)] flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
@@ -667,55 +717,61 @@ Important:
 
         <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3">
           <form onSubmit={onSubmit} className="space-y-2">
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-8 rounded-md"
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  Attach File
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 rounded-md"
-                  onClick={() => void uploadAttachmentToProject()}
-                >
-                  Upload To Project
-                </Button>
-              </div>
-            {attachment ? (
-                <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                  Attached to Copilot: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
-                </p>
-              ) : null}
-              {analysisSummary ? (
-                <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2 text-[10px] text-[var(--color-text-secondary)] max-h-28 overflow-y-auto">
-                  {analysisSummary}
+
+              {attachment ? (
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+                  Attached: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
                 </div>
               ) : null}
+
+              <div className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowAttachMenu((current) => !current);
+                  }}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]"
+                  aria-label="Open attachment menu"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                {showAttachMenu ? (
+                  <div
+                    className="absolute bottom-12 left-0 z-10 min-w-[220px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)]"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      Add files
+                    </button>
+                  </div>
+                ) : null}
+
+                <Textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Ask Copilot..."
+                  className="min-h-[84px] resize-none"
+                />
+                <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <p className="text-[10px] text-[var(--color-text-secondary)]">
-                Confirm mapping in chat and Copilot will upload to the workflow.
+                Ask in chat to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
                 {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
               </p>
             </div>
-            <Textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask Copilot..."
-              className="min-h-[84px] resize-none"
-            />
             {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
-            <Button type="button" variant="secondary" className="h-8 w-full rounded-md" disabled={loading || fillingForm} onClick={() => void assistFormFill()}>
-              {fillingForm ? "Filling form..." : "Fill Form With Copilot"}
-            </Button>
-            <Button type="submit" className="h-8 w-full rounded-md" disabled={!input.trim() || loading}>
-              <Send className="mr-2 h-3.5 w-3.5" />
-              Ask Copilot
-            </Button>
           </form>
         </div>
       </div>

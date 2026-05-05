@@ -157,24 +157,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: { e
         </section>
       ) : null}
 
-      <section className="surface-card mt-4 p-4">
-        <h3 className="text-[12px] font-medium text-[var(--color-text-primary)]">Project instantiation</h3>
-        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-          Instantiation means setting up the working tracker baseline for a project. It is complete when:
-          (1) project is created, (2) project manual is uploaded, and (3) tracker baseline is imported from XLSX.
-        </p>
-        <ol className="mt-2 list-decimal pl-4 text-[11px] text-[var(--color-text-secondary)]">
-          <li>Create project from the form above.</li>
-          <li>Use <strong>Upload Project Manual</strong> on that project card.</li>
-          <li>Use <strong>Import Tracker Baseline</strong> on that same card.</li>
-        </ol>
-        {!canCreateProject ? (
-          <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
-            Your role is view/join only. Ask the Super User to instantiate a new project.
-          </p>
-        ) : null}
-      </section>
-
       {!["super_user", "super_admin"].includes(activeRole) && (
         <section className="surface-card mt-4 p-4">
           <div className="max-w-md">

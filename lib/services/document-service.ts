@@ -14,6 +14,9 @@ import type { CurrentUser } from "@/lib/types";
 export class DocumentService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
+  private isL0Role(role: string) {
+    return ["consultant", "architect", "mep", "contractor"].includes(String(role).toLowerCase());
+  }
 
   private async getActorProjectRole(projectId: string, user: CurrentUser) {
     if (user.role === "super_user") return "super_user";
@@ -39,6 +42,77 @@ export class DocumentService {
     return data?.user_id ?? null;
   }
 
+  private async getProjectCreditAssignment(projectCreditId: string) {
+    const { data, error } = await this.admin
+      .from("project_credits")
+      .select("*")
+      .eq("id", projectCreditId)
+      .maybeSingle();
+    if (error) throw error;
+    return data as any;
+  }
+
+  private async resolveCreditStageId(params: {
+    projectCreditId: string;
+    creditId: string;
+  }) {
+    const { projectCreditId, creditId } = params;
+    const preferredStages = ["DESIGN", "CONSTRUCTION"];
+
+    const { data: existingByProjectCredit } = await this.admin
+      .from("credit_stages")
+      .select("id, stage")
+      .eq("project_credit_id", projectCreditId)
+      .order("created_at", { ascending: true });
+
+    const rankedExisting =
+      (existingByProjectCredit ?? []).sort((a: any, b: any) => {
+        const rankA = preferredStages.indexOf(String(a.stage ?? "").toUpperCase());
+        const rankB = preferredStages.indexOf(String(b.stage ?? "").toUpperCase());
+        return (rankA === -1 ? 99 : rankA) - (rankB === -1 ? 99 : rankB);
+      }) ?? [];
+
+    if (rankedExisting[0]?.id) {
+      return rankedExisting[0].id as string;
+    }
+
+    const { data: seededStage, error: seedError } = await this.admin
+      .from("credit_stages")
+      .insert({
+        project_credit_id: projectCreditId,
+        credit_id: creditId,
+        stage: "DESIGN",
+        state: "DRAFT",
+      })
+      .select("id")
+      .single();
+
+    if (seedError || !seededStage?.id) {
+      throw new Error(
+        seedError?.message ??
+          "Unable to create credit stage for this mapped credit. Please contact Project Admin.",
+      );
+    }
+
+    return seededStage.id as string;
+  }
+
+  private assertL0AssignmentAccess(args: {
+    actorRole: string;
+    actorUserId: string;
+    mappedCredit: any;
+  }) {
+    if (!this.isL0Role(args.actorRole)) return;
+    const assignedUserId = args.mappedCredit?.assigned_user_id as string | null;
+    const responsibleRole = String(args.mappedCredit?.responsible_role ?? "").toLowerCase().trim();
+    if (assignedUserId && assignedUserId !== args.actorUserId) {
+      throw new Error("This credit is assigned to a different owner. Only the assigned owner can upload or update here.");
+    }
+    if (!assignedUserId && responsibleRole && responsibleRole !== String(args.actorRole).toLowerCase()) {
+      throw new Error(`This credit is mapped to ${responsibleRole}. Your role cannot upload or update here.`);
+    }
+  }
+
   async uploadDocument(user: CurrentUser, params: {
     projectId: string;
     creditId: string;
@@ -51,19 +125,6 @@ export class DocumentService {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
       throw new Error("Unauthorized: You do not have upload access for this project.");
-    }
-
-    const validation = await aiService.validateUploadCandidate({
-      projectId: params.projectId,
-      creditId: params.creditId,
-      projectCreditId: params.projectCreditId,
-      fileName: params.file.name,
-      fileType: params.file.type,
-      fileSize: params.file.size,
-      docCategory: params.docCategory,
-    });
-    if (!validation.ok) {
-      throw new Error(validation.errors.join(" "));
     }
 
     let projectCreditId = params.projectCreditId;
@@ -79,6 +140,31 @@ export class DocumentService {
 
     if (!projectCreditId) {
       throw new Error("Project credit mapping not found.");
+    }
+
+    const mappedCredit = await this.getProjectCreditAssignment(projectCreditId);
+    if (!mappedCredit) {
+      throw new Error("Mapped project credit is missing.");
+    }
+
+    // P1 enforcement: L0 uploader must match assignment on this mapped credit.
+    this.assertL0AssignmentAccess({
+      actorRole: String(actorRole),
+      actorUserId: user.id,
+      mappedCredit,
+    });
+
+    const validation = await aiService.validateUploadCandidate({
+      projectId: params.projectId,
+      creditId: params.creditId,
+      projectCreditId: projectCreditId,
+      fileName: params.file.name,
+      fileType: params.file.type,
+      fileSize: params.file.size,
+      docCategory: params.docCategory,
+    });
+    if (!validation.ok) {
+      throw new Error(validation.errors.join(" "));
     }
 
     const clientUserId = await this.getClientUserForProject(params.projectId);
@@ -100,11 +186,15 @@ export class DocumentService {
     }
 
     // Submittal Management (Execution Unit)
+    const creditStageId = await this.resolveCreditStageId({
+      projectCreditId,
+      creditId: params.creditId,
+    });
+
     const { data: activeSubmittal, error: subError } = await this.admin
       .from("submittals")
       .select("id")
-      .eq("project_id", params.projectId)
-      .eq("credit_id", params.creditId)
+      .eq("credit_stage_id", creditStageId)
       .in("state", ["DRAFT", "READY", "CLARIFICATION"])
       .order("iteration", { ascending: false })
       .limit(1)
@@ -117,10 +207,13 @@ export class DocumentService {
       const { data: newSubmittal, error: createSubError } = await this.admin
         .from("submittals")
         .insert({
+          credit_stage_id: creditStageId,
           project_id: params.projectId,
           credit_id: params.creditId,
           name: "Active Work Round",
+          type: params.docCategory,
           state: "DRAFT",
+          iteration: 1,
           created_by: user.id
         })
         .select("id")
@@ -183,13 +276,14 @@ export class DocumentService {
       p_project_id: params.projectId,
       p_credit_id: params.creditId,
       p_project_credit_id: projectCreditId,
+      p_submittal_id: submittalId,
       p_uploaded_by: user.id,
       p_file_name: params.file.name,
       p_file_path: filePath,
       p_file_type: extension,
       p_doc_category: params.docCategory,
       p_notes: mergedNotes,
-      p_state: "DRAFT",
+      p_status: "DRAFT",
       p_version: nextVersion,
       p_is_latest: true,
       p_parent_document_id: latestVersion?.id ?? null,
@@ -211,6 +305,16 @@ export class DocumentService {
       await this.admin.storage.from("project-documents").remove([filePath]);
       throw dbError ?? new Error("Upload record could not be saved.");
     }
+
+    // Ensure strict latest-version line: only the newly created row remains latest.
+    await this.admin
+      .from("project_document")
+      .update({ is_latest: false })
+      .eq("project_id", params.projectId)
+      .eq("project_credit_id", projectCreditId)
+      .eq("doc_category", params.docCategory)
+      .eq("is_latest", true)
+      .neq("id", documentId);
 
     // Post-upload side effects
     await logDocumentActivity(this.admin, {
@@ -313,6 +417,17 @@ export class DocumentService {
     if (!canAdminEdit && !canOwnEdit) {
       throw new Error("Unauthorized: Insufficient permissions to edit metadata.");
     }
+
+    // P1 enforcement parity: L0 metadata remap/update must also respect assignment owner.
+    const mappedCredit = await this.getProjectCreditAssignment(params.creditId);
+    if (!mappedCredit) {
+      throw new Error("Target credit mapping is missing.");
+    }
+    this.assertL0AssignmentAccess({
+      actorRole: String(actorRole),
+      actorUserId: user.id,
+      mappedCredit,
+    });
 
     const { error } = await this.admin
       .from("project_document")

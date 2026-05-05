@@ -3,6 +3,7 @@ import { auditService } from "@/lib/services/audit-service";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logSystemActivity } from "@/lib/services/activity-service";
+import { canReviewProjectDocuments } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const workspace = await getProjectWorkspaceForApi(params.id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+  if (!canReviewProjectDocuments(workspace.userRole)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   const buffer = await auditService.generateAuditExport(params.id);

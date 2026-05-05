@@ -36,28 +36,41 @@ export class AIService {
       errors.push("Unsupported file extension. Use PDF, DOCX, PNG, or JPG.");
     }
 
-    if (input.fileSize > 10 * 1024 * 1024) {
-      errors.push("File exceeds 10 MB limit.");
+    if (input.fileSize > 100 * 1024 * 1024) {
+      warnings.push("Large file detected. Upload may take longer on slower networks.");
     }
 
     if (!/^[a-zA-Z0-9 _.\-()]+$/.test(input.fileName)) {
       warnings.push("Filename has special characters. Rename for better traceability.");
     }
 
-    const { data: credit, error: creditError } = await this.admin
+    let credit: any = null;
+    let creditError: any = null;
+    const primary = await this.admin
       .from("project_credits")
       .select("credit_name, documents_required, what_to_submit")
       .eq("id", input.creditId)
       .maybeSingle();
+    credit = primary.data;
+    creditError = primary.error;
+    if (creditError && String(creditError.message ?? "").toLowerCase().includes("documents_required")) {
+      const fallback = await this.admin
+        .from("project_credits")
+        .select("credit_name, what_to_submit")
+        .eq("id", input.creditId)
+        .maybeSingle();
+      credit = fallback.data ? { ...fallback.data, documents_required: [] } : null;
+      creditError = fallback.error;
+    }
 
     if (creditError || !credit) {
       errors.push("Credit mapping could not be validated.");
       return { ok: false, errors, warnings, expectedTypes };
     }
 
-    const requiredTypes = ((credit.documents_required ?? []) as Array<{ type?: string; required?: boolean }>)
-      .filter((item) => Boolean(item?.type))
-      .map((item) => String(item.type));
+    const requiredTypes = (Array.isArray(credit.documents_required) ? (credit.documents_required as Array<{ type?: string; required?: boolean }>) : [])
+      .filter((item: { type?: string }) => Boolean(item?.type))
+      .map((item: { type?: string }) => String(item.type));
 
     expectedTypes.push(...requiredTypes);
     if (requiredTypes.length > 0 && !requiredTypes.includes(input.docCategory)) {

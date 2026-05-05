@@ -119,6 +119,7 @@ export type CreditWorkspace = {
   id: string;
   project_credit_id?: string | null;
   project_id: string;
+  assigned_user_id?: string | null;
   credit_code: string;
   category: string;
   credit_name: string;

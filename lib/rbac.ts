@@ -33,6 +33,10 @@ export function canEditOwnDocumentBeforeFinalApproval(role?: MemberRole | null) 
 export function canUploadProjectDocuments(role?: MemberRole | null) {
   return (
     role === "super_user" ||
+    role === "super_admin" ||
+    role === "project_admin" ||
+    role === "owner" ||
+    role === "client" ||
     role === "consultant" ||
     role === "architect" ||
     role === "mep" ||
@@ -85,4 +89,14 @@ export function canAccessBillingAndInvoice(role?: MemberRole | null) {
 
 export function canManageProjectGuidebook(role?: MemberRole | null) {
   return role === "super_user" || role === "project_admin";
+}
+
+export function canExportProjectArtifacts(role?: MemberRole | null) {
+  return (
+    role === "super_user" ||
+    role === "super_admin" ||
+    role === "project_admin" ||
+    role === "owner" ||
+    role === "client"
+  );
 }

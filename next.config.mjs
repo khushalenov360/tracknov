@@ -5,6 +5,11 @@ const nextConfig = {
   // This is required because all pages use Supabase auth which relies on
   // next/headers (cookies), which is not available at build time.
   output: undefined,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "64mb",
+    },
+  },
 };
 
 export default nextConfig;

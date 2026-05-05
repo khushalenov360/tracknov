@@ -1,0 +1,40 @@
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (215kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ⨯ app\projects\[id]\page.tsx (617:148) @ color
+ ⨯ TypeError: Cannot read properties of undefined (reading 'color')
+    at eval (./app/projects/[id]/page.tsx:1332:296)
+    at Array.map (<anonymous>)
+    at ProjectPage (./app/projects/[id]/page.tsx:1315:71)
+digest: "1589150322"
+[0m [90m 615 |[39m [32m                          })}`[39m}[0m
+[0m [90m 616 |[39m                           className[33m=[39m{[32m`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${[39m[0m
+[0m[31m[1m>[22m[39m[90m 617 |[39m [32m                            credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color[39m[0m
+[0m [90m     |[39m                                                                                                                                                    [31m[1m^[22m[39m[0m
+[0m [90m 618 |[39m [32m                          }`[39m}[0m
+[0m [90m 619 |[39m                         [33m>[39m[0m
+[0m [90m 620 |[39m                           {displayCode}[0m
+ ⨯ app\projects\[id]\page.tsx (617:148) @ color
+ ⨯ TypeError: Cannot read properties of undefined (reading 'color')
+    at eval (./app/projects/[id]/page.tsx:1332:296)
+    at Array.map (<anonymous>)
+    at ProjectPage (./app/projects/[id]/page.tsx:1315:71)
+digest: "1589150322"
+[0m [90m 615 |[39m [32m                          })}`[39m}[0m
+[0m [90m 616 |[39m                           className[33m=[39m{[32m`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${[39m[0m
+[0m[31m[1m>[22m[39m[90m 617 |[39m [32m                            credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color[39m[0m
+[0m [90m     |[39m                                                                                                                                                    [31m[1m^[22m[39m[0m
+[0m [90m 618 |[39m [32m                          }`[39m}[0m
+[0m [90m 619 |[39m                         [33m>[39m[0m
+[0m [90m 620 |[39m                           {displayCode}[0m
+ ⨯ app\projects\[id]\page.tsx (617:148) @ color
+ ⨯ TypeError: Cannot read properties of undefined (reading 'color')
+    at eval (./app/projects/[id]/page.tsx:1332:296)
+    at Array.map (<anonymous>)
+    at ProjectPage (./app/projects/[id]/page.tsx:1315:71)
+digest: "1589150322"
+[0m [90m 615 |[39m [32m                          })}`[39m}[0m
+[0m [90m 616 |[39m                           className[33m=[39m{[32m`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${[39m[0m
+[0m[31m[1m>[22m[39m[90m 617 |[39m [32m                            credit.is_mandatory ? "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]" : category.color[39m[0m
+[0m [90m     |[39m                                                                                                                                                    [31m[1m^[22m[39m[0m
+[0m [90m 618 |[39m [32m                          }`[39m}[0m
+[0m [90m 619 |[39m                         [33m>[39m[0m
+[0m [90m 620 |[39m                           {displayCode}[0m

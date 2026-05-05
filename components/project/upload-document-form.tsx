@@ -62,6 +62,9 @@ export function UploadDocumentForm({
       formData.set("project_credit_id", projectCreditId);
       formData.set("doc_category", docType);
       const result = await uploadDocumentAction(formData);
+      if (!result || typeof result.ok !== "boolean") {
+        throw new Error("Upload action returned an invalid response. Please retry.");
+      }
       if (!result.ok) {
         throw new Error(result.error ?? "Upload failed");
       }
