@@ -1,6 +1,6 @@
 # Tracknov TODO (Updated from TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md)
 
-Last updated: 2026-05-06 IST (Batch 1+2 pass: submittal-chain DB alignment + service/workflow hardening)
+Last updated: 2026-05-06 IST (P0 DB-native validation/scoring/assignment + policy deviation fixes)
 Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
 
 ## Priority
@@ -55,6 +55,14 @@ Priority execution sequence:
 
 ### D) Build correctness
 - [x] Fix Copilot project-upload API type mismatch (`documentId` -> `id`) and restore clean production build.
+
+### E) Critical closure gaps from handoff verification
+- [x] DB-native Validation Engine baseline: `validation_rules`, `validation_results`, `validate_submittal()`.
+- [x] DB-native Scoring Engine baseline: `credit_scores`, `certification_levels`, `recompute_credit_scores()`, `get_project_certification_summary()`.
+- [x] DB-native Assignment Enforcement baseline: `assignments`, `is_assigned_user()` wired into L0 upload/update checks.
+- [x] Threshold alignment updated to handoff (`40/50/60/80`) in service scoring logic.
+- [x] L2 upload permission removed (`client` now read-only for document upload actions).
+- [x] L3 bulk approve path disabled (`project_admin`/`super_admin` blocked in action + UI disables bulk controls).
 
 ---
 

@@ -1,3 +1,35 @@
+## Latest execution pass (2026-05-06, P0 closure: validation/scoring/assignment + RBAC deviations)
+
+### Completed in this pass
+- Added migration: `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0049_validation_scoring_assignment_engine.sql`
+  - Introduced DB-native validation engine:
+    - `validation_rules`
+    - `validation_results`
+    - `validate_submittal(p_submittal_id, p_actor_id)`
+  - Introduced DB-native assignment primitives:
+    - `assignments`
+    - `is_assigned_user(p_project_credit_id, p_user_id)`
+  - Introduced DB-native scoring primitives:
+    - `certification_levels` (aligned thresholds: 40/50/60/80)
+    - `credit_scores`
+    - `recompute_credit_scores(p_project_id)`
+    - `get_project_certification_summary(p_project_id)`
+- Enforced validation gate in workflow transitions:
+  - `READY -> SUBMITTED` and `RESUBMITTED -> UNDER_REVIEW` now invoke `validate_submittal(...)` in `document-state-service`.
+- Added assignment function integration into L0 guardrails:
+  - `document-service` now checks `is_assigned_user(...)` before upload/remap for L0 users.
+- Closed policy deviations in app layer:
+  - Removed L2/client upload permission (`lib/rbac.ts`).
+  - Disabled L3 bulk approval path (`app/actions.ts` + `app/review-queue/page.tsx` UI disabling).
+- Aligned service scoring thresholds:
+  - `lib/services/igbc-scoring-service.ts` now uses 40/50/60/80.
+
+### Verification
+- `npm run build` passed.
+
+### Important deployment note
+- Migration `0049_validation_scoring_assignment_engine.sql` must be applied in the active Supabase environment before UAT sign-off for DB-native engines.
+
 ## Latest execution pass (2026-05-06, Batch 1+2: DB reconciliation + workflow/service hardening)
 
 ### Completed in this pass

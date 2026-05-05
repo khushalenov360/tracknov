@@ -4,9 +4,9 @@ type StageName = "DESIGN" | "CONSTRUCTION";
 
 function ratingFromPct(pct: number) {
   if (pct >= 80) return "Platinum";
-  if (pct >= 65) return "Gold";
+  if (pct >= 60) return "Gold";
   if (pct >= 50) return "Silver";
-  if (pct >= 35) return "Certified";
+  if (pct >= 40) return "Certified";
   return "Pre-Certification";
 }
 

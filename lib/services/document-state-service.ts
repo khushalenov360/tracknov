@@ -135,6 +135,24 @@ async function getAssignedOwnerForCredit(writer: SupabaseClient, projectCreditId
   return assignedUserId ?? null;
 }
 
+async function executeValidationGate(writer: SupabaseClient, submittalId: string, userId?: string | null) {
+  const { data, error } = await writer.rpc("validate_submittal", {
+    p_submittal_id: submittalId,
+    p_actor_id: userId ?? null,
+  });
+  if (error) {
+    if (String(error.message ?? "").toLowerCase().includes("validate_submittal")) {
+      return { ok: true };
+    }
+    return { ok: false, error: error.message };
+  }
+  const payload = (data ?? {}) as { ok?: boolean; message?: string };
+  if (payload.ok === false) {
+    return { ok: false, error: payload.message ?? "Validation gate blocked this transition." };
+  }
+  return { ok: true };
+}
+
 export async function transitionDocumentState(
   writer: SupabaseClient,
   {
@@ -161,7 +179,7 @@ export async function transitionDocumentState(
 ) {
   const { data: document } = await writer
     .from("project_document")
-    .select("id, project_id, project_credit_id, credit_id, state, file_name, rejection_reason")
+    .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -246,6 +264,15 @@ export async function transitionDocumentState(
     const hasReviewer = await hasReviewerAssigned(writer, document.project_id);
     if (!hasReviewer) {
       return { ok: false as const, error: "Cannot move to UNDER_REVIEW without reviewer assignment." };
+    }
+  }
+
+  if ((currentState === "READY" && newState === "SUBMITTED") || (currentState === "RESUBMITTED" && newState === "UNDER_REVIEW")) {
+    if (document.submittal_id) {
+      const validationGate = await executeValidationGate(writer, document.submittal_id, userId ?? null);
+      if (!validationGate.ok) {
+        return { ok: false as const, error: validationGate.error };
+      }
     }
   }
 
@@ -415,6 +442,15 @@ export async function transitionDocumentState(
       userId: userId || "",
     },
   });
+
+  // Keep DB-native scoring synced with workflow progression.
+  if (document.project_id) {
+    try {
+      await writer.rpc("recompute_credit_scores", { p_project_id: document.project_id });
+    } catch {
+      // Keep transition non-blocking if scoring migration is not applied yet.
+    }
+  }
 
   return {
     ok: true as const,

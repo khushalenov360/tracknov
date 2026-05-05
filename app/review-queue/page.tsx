@@ -10,11 +10,12 @@ export const dynamic = "force-dynamic";
 export default async function ReviewQueuePage() {
   const [user, queue, metrics] = await Promise.all([getCurrentUser(), getOwnerReviewQueue(), getReviewerPerformanceSummary()]);
   const role = user?.role ?? "consultant";
+  const allowBulkActions = role !== "project_admin" && role !== "super_admin";
 
   return (
     <Shell
       title="My Review Queue"
-      description="Owner/Admin queue for document approvals with bulk actions."
+      description={allowBulkActions ? "Owner/Admin queue for document approvals." : "Project Admin queue for document inspection and single-item review handoff."}
       role={role}
       notificationCount={queue.length}
     >
@@ -38,7 +39,7 @@ export default async function ReviewQueuePage() {
           </div>
         </div>
 
-        {queue.length ? (
+        {allowBulkActions && queue.length ? (
           <form action={bulkReviewDocumentsAction} className="mb-3">
             {queue.map((item) => (
               <input key={`all-${item.id}`} type="hidden" name="document_ids" value={item.id} />
@@ -51,15 +52,20 @@ export default async function ReviewQueuePage() {
 
         <form action={bulkReviewDocumentsAction}>
           <div id="action-buttons" className="mb-3 flex flex-wrap items-center gap-2">
-            <Button type="submit" name="bulk_action" value="approve" className="h-[32px] rounded-md px-3 text-[12px]">
-              Approve Selected
-            </Button>
-            <Button type="submit" name="bulk_action" value="reject" variant="danger" className="h-[32px] rounded-md px-3 text-[12px]">
-              Send Back Selected
-            </Button>
+            {allowBulkActions ? (
+              <>
+                <Button type="submit" name="bulk_action" value="approve" className="h-[32px] rounded-md px-3 text-[12px]">
+                  Approve Selected
+                </Button>
+                <Button type="submit" name="bulk_action" value="reject" variant="danger" className="h-[32px] rounded-md px-3 text-[12px]">
+                  Send Back Selected
+                </Button>
+              </>
+            ) : null}
             <select
               name="rejection_type"
               defaultValue=""
+              disabled={!allowBulkActions}
               className="h-[32px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
             >
               <option value="">Reject reason type</option>
@@ -73,6 +79,7 @@ export default async function ReviewQueuePage() {
             <input
               name="rejection_remark"
               placeholder="Required for send back: exact issue and what to fix (min 20 chars)"
+              disabled={!allowBulkActions}
               className="h-[32px] min-w-[320px] flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
             />
           </div>
@@ -81,7 +88,7 @@ export default async function ReviewQueuePage() {
             {queue.map((item) => (
               <div key={item.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <input type="checkbox" name="document_ids" value={item.id} />
+                  <input type="checkbox" name="document_ids" value={item.id} disabled={!allowBulkActions} />
                   <span className="text-[12px] font-medium text-[var(--color-text-primary)]">{item.project_name}</span>
                   <span className="text-[11px] text-[var(--color-text-secondary)]">/ {item.credit_name}</span>
                 </div>
@@ -121,7 +128,7 @@ export default async function ReviewQueuePage() {
                 {queue.map((item) => (
                   <tr key={item.id} className="border-b border-[var(--color-border)]">
                     <td className="px-3 py-2">
-                      <input type="checkbox" name="document_ids" value={item.id} />
+                      <input type="checkbox" name="document_ids" value={item.id} disabled={!allowBulkActions} />
                     </td>
                     <td className="px-3 py-2">{item.project_name}</td>
                     <td className="px-3 py-2">{item.credit_name}</td>

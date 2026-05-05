@@ -97,12 +97,22 @@ export class DocumentService {
     return seededStage.id as string;
   }
 
-  private assertL0AssignmentAccess(args: {
+  private async assertL0AssignmentAccess(args: {
     actorRole: string;
     actorUserId: string;
     mappedCredit: any;
   }) {
     if (!this.isL0Role(args.actorRole)) return;
+    const projectCreditId = String(args.mappedCredit?.id ?? "").trim();
+    if (projectCreditId) {
+      const { data: assignmentMatch, error: assignmentError } = await this.admin.rpc("is_assigned_user", {
+        p_project_credit_id: projectCreditId,
+        p_user_id: args.actorUserId,
+      });
+      if (!assignmentError && assignmentMatch === true) {
+        return;
+      }
+    }
     const assignedUserId = args.mappedCredit?.assigned_user_id as string | null;
     const responsibleRole = String(args.mappedCredit?.responsible_role ?? "").toLowerCase().trim();
     if (assignedUserId && assignedUserId !== args.actorUserId) {
@@ -148,7 +158,7 @@ export class DocumentService {
     }
 
     // P1 enforcement: L0 uploader must match assignment on this mapped credit.
-    this.assertL0AssignmentAccess({
+    await this.assertL0AssignmentAccess({
       actorRole: String(actorRole),
       actorUserId: user.id,
       mappedCredit,
@@ -423,7 +433,7 @@ export class DocumentService {
     if (!mappedCredit) {
       throw new Error("Target credit mapping is missing.");
     }
-    this.assertL0AssignmentAccess({
+    await this.assertL0AssignmentAccess({
       actorRole: String(actorRole),
       actorUserId: user.id,
       mappedCredit,

@@ -425,6 +425,7 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
+  if (user.role === "project_admin" || user.role === "super_admin") return;
 
   try {
     const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();

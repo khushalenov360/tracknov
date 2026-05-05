@@ -36,7 +36,6 @@ export function canUploadProjectDocuments(role?: MemberRole | null) {
     role === "super_admin" ||
     role === "project_admin" ||
     role === "owner" ||
-    role === "client" ||
     role === "consultant" ||
     role === "architect" ||
     role === "mep" ||
