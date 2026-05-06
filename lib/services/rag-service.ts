@@ -73,6 +73,11 @@ function cosineSimilarity(a: number[], b: number[]) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+function extractCreditCode(query: string) {
+  const match = query.toUpperCase().match(/\b([A-Z]{2,4}\s?C\d+(?:\.\d+)?)\b/);
+  return match ? match[1].replace(/\s+/g, " ").trim() : null;
+}
+
 export class RAGService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
@@ -221,6 +226,7 @@ export class RAGService {
   async retrieveContext(params: { query: string; projectIds: string[]; limit?: number }) {
     const queryEmbedding = deterministicEmbedding(params.query);
     const queryLower = params.query.toLowerCase();
+    const creditCodeInQuery = extractCreditCode(params.query);
     const isCreditQuery =
       queryLower.includes("credit") ||
       queryLower.includes("igbc") ||
@@ -246,7 +252,8 @@ export class RAGService {
         metadata: row.metadata,
         score:
           cosineSimilarity(queryEmbedding, parseVector(row.embedding)) +
-          (isCreditQuery && String(row?.metadata?.source ?? "") === "igbc_guidance" ? 0.08 : 0),
+          (isCreditQuery && String(row?.metadata?.source ?? "") === "igbc_guidance" ? 0.08 : 0) +
+          (creditCodeInQuery && String(row?.metadata?.credit_code ?? "").toUpperCase() === creditCodeInQuery ? 0.2 : 0),
       }))
       .filter((item) => Number.isFinite(item.score))
       .sort((a, b) => b.score - a.score)

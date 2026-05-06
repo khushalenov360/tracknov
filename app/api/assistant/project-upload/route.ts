@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
 import { documentService } from "@/lib/services/document-service";
 import { projectService } from "@/lib/services/project-service";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const throttled = checkRateLimit(request, {
+    key: "api:assistant:project-upload",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   try {
     const user = await getCurrentUser();
     if (!user) {

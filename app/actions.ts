@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import {
   canAccessBillingAndInvoice,
+  canManageTokens,
   canEditPlanControls,
   canCreateProjects,
   canDeleteProjects,
@@ -211,7 +212,7 @@ export async function logConsultantSessionAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
-  if (!canAccessBillingAndInvoice(user.role)) return;
+  if (!canManageTokens(user.role)) return;
 
   await billingService.consumeConsultantTokens(user, {
     projectId,
@@ -236,7 +237,7 @@ export async function createProjectTopupInvoiceAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
-  if (!canAccessBillingAndInvoice(user.role)) return;
+  if (!canManageTokens(user.role)) return;
 
   await billingService.createTopupInvoice(user, {
     projectId,

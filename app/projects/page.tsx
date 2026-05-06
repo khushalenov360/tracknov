@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { igbcRatingSystemGroups, projectStatuses, projectTypes, roleLabels } from "@/lib/constants";
 import { getActiveSubscriptionPlans, getCurrentUser, getDashboardProjects, getRatingSystems } from "@/lib/data";
-import { canAccessBillingAndInvoice, canCreateProjects, canDeleteProjects, canEditPlanControls, canManageProject } from "@/lib/rbac";
+import { canCreateProjects, canDeleteProjects, canEditPlanControls, canManageProject, canManageTokens } from "@/lib/rbac";
 import { pct } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: { e
   const canCreateProject = canCreateProjects(user?.role);
   const canDeleteAnyProject = canDeleteProjects(user?.role);
   const canEditPlan = canEditPlanControls(user?.role);
-  const canAccessBilling = canAccessBillingAndInvoice(user?.role);
+  const canManageTokenControls = canManageTokens(user?.role);
   const activeRole = user?.role ?? projects[0]?.role ?? "consultant";
   const isL3OrAbove = ["project_admin", "super_admin", "super_user"].includes(activeRole);
   const billingTotals = projects.reduce(
@@ -451,7 +451,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: { e
                       </div>
                     </section>
                   )}
-                  {canAccessBilling ? (
+                  {canManageTokenControls ? (
                     <>
                       <form action={logConsultantSessionAction} className="mt-2 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                         <input type="hidden" name="project_id" value={project.id} />

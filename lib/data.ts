@@ -2542,3 +2542,25 @@ export async function getRatingSystems(): Promise<ProjectRatingSystem[]> {
     description: row.description ?? null,
   })) as ProjectRatingSystem[];
 }
+
+export async function getRuntimeDesyncSummary() {
+  if (!env.isConfigured) {
+    return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
+  }
+  const user = await getCurrentUser();
+  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) {
+    return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
+  }
+  const client = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const [{ count: openCount }, { count: queuedCount }, { data: projectRows }] = await Promise.all([
+    client.from("runtime_desync").select("*", { count: "exact", head: true }).eq("status", "open"),
+    client.from("runtime_reconciliation_queue").select("*", { count: "exact", head: true }).in("status", ["pending", "retry", "processing"]),
+    client.from("runtime_desync").select("project_id").eq("status", "open"),
+  ]);
+  const projectSet = new Set((projectRows ?? []).map((row: any) => row.project_id).filter(Boolean));
+  return {
+    openDesyncCount: Number(openCount ?? 0),
+    queuedRepairs: Number(queuedCount ?? 0),
+    projectsImpacted: projectSet.size,
+  };
+}

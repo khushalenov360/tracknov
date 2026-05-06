@@ -68,6 +68,7 @@
     "qa:exports": "playwright test tests/export-structure.spec.ts",
     "qa:events": "playwright test tests/event-bus.spec.ts",
     "qa:workflow": "playwright test tests/workflow-state-machine.spec.ts",
+    "qa:runtime-audit": "node scripts/runtime-audit-automation.mjs",
     "smoke:headed": "playwright test --headed"
   },
   "dependencies": {

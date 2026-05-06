@@ -10,6 +10,38 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 
 ---
 
+## Runtime audit stabilization (from `artifacts/handoff/2/runtime_audit_developer_handoff.md`)
+
+### P0 - Runtime integrity blockers
+- [x] Add explicit `STATE_DESYNC` lifecycle support for derived-state failures after committed workflow mutations.
+- [x] Block certification/final submission when any entity in hierarchy is marked `STATE_DESYNC`.
+- [x] Build reconciliation engine (submittal -> credit_stage -> credit -> project -> certification) with deterministic retry behavior.
+- [x] Add replay-safe retry worker/jobs for recalculation and derived-state repair.
+- [x] Add runtime desync dashboard/repair queue visibility for admins.
+- [x] Enforce transaction policy chain for critical actions:
+  - authorize -> validate -> execute -> audit -> commit (or rollback all).
+- [x] Add concurrency protection for transitions/reviews:
+  - prevent double approvals, stale writes, conflicting transitions.
+- [x] Prove rollback + recovery behavior in automated QA.
+
+### P1 - Observability, alerting, and enforcement proofs
+- [x] Add runtime observability metrics and counters:
+  - failed transitions, validation failures, desync entities, audit failures, stale states, auth failures.
+- [x] Add alert triggers for:
+  - workflow bypass attempts, recalculation failures, audit failures, certification inconsistencies, RLS failures.
+- [x] Add API enforcement audit to verify all write routes follow:
+  - authenticate -> authorize -> validate -> workflow enforce -> audit -> recalculate -> commit.
+- [x] Add DB enforcement audit to verify:
+  - ENUM/FK/trigger/RLS/transition-protection/immutable-log coverage.
+- [x] Add deployment-gate checklist automation:
+  - runtime audit pass, security pass, rollback proof, reconciliation proof, concurrency proof.
+
+### P2 - Runtime performance hardening
+- [x] Add performance checks/SLO alerts for:
+  - validation < 2s, transition < 1s, recalculation < 3s.
+
+---
+
 ## Handoff-driven implementation track (artifacts)
 
 Source bundle copied to:
@@ -33,6 +65,36 @@ Priority execution sequence:
 ---
 
 ## P0 - Immediate blockers
+
+### Validation + Certification Scoring Final Handoff (Handoff/2) - P0
+- [~] Add DB-governed rule architecture tables:
+  - `manual_versions`
+  - `rule_sets`
+  - `rules`
+  - `thresholds`
+  - `mandatory_requirements`
+  - `rule_dependencies`
+- [~] Lock every project to immutable `manual_version_id` and enforce scoring against locked version only. (migration `0053` includes backfill + lock guard trigger)
+- [~] Introduce certification-state authority (`NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `ELIGIBLE`, `CERTIFIED`, `INVALID`) with DB-derived transitions. (migration `0053`)
+- [~] Enforce mandatory-credit failure behavior:
+  - blocks certification issuance only
+  - does not block operational workflow.
+- [~] Add stale-state / revalidation cascade trigger baseline:
+  - replacement/resubmission invalidates downstream validation state and re-triggers recomputation.
+- [x] Enforce validation entry points coverage audit for:
+  - upload, mapping, assignment, review, approval/rejection/clarification, submittal/credit/stage/project submission, scoring/recompute, overrides, replacement, resubmission.
+- [x] Move `/api/projects/[id]/igbc-score` to DB-authoritative scoring path (RPC first, service fallback only when explicitly unavailable).
+
+### TechLead execution + migration alignment (Handoff/2) - P0/P1
+- [~] Ensure `documents -> submittals -> credit_stages -> project_credits` chain is the only execution path (no direct execution via templates).
+- [~] Confirm/patch unique and FK guarantees from migration handoff SQL in active migration line. (migration `0054` alignment added)
+- [~] Add no-op state guard at every transition endpoint (`if same state -> return`).
+- [~] Ensure transition logs + override logs are append-only and complete for scoring-affecting changes.
+
+### RBAC Security auditor consolidation (Handoff/2) - P0
+- [x] Add explicit API rate-limit middleware coverage map (login, AI, upload, export, workflow).
+- [x] Verify signed URL-only document access path and remove any direct/public URL fallbacks in APIs.
+- [x] Run endpoint-by-endpoint RBAC closure report against capability engine with evidence links.
 
 ### Auditor baseline enforcement (new mandatory track)
 - [~] Enforce frozen role flow strictly in all mutation APIs: `L1 assign -> L0 upload -> L1 review -> L3 validate`.
@@ -175,9 +237,9 @@ Priority execution sequence:
 
 ## P2 - Scale/optimization
 
-- [ ] Rulebook-aware RAG retrieval quality improvements for credit advice.
-- [ ] Reviewer simulation scoring enhancements.
-- [ ] Advanced analytics across stages and role performance.
+- [x] Rulebook-aware RAG retrieval quality improvements for credit advice.
+- [x] Reviewer simulation scoring enhancements.
+- [x] Advanced analytics across stages and role performance.
 
 ---
 

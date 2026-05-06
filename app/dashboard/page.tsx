@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOwnerReviewQueue, getRoleTasks } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOwnerReviewQueue, getRoleTasks, getRuntimeDesyncSummary } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { getRoiSnapshot } from "@/lib/services/roi-service";
@@ -19,12 +19,13 @@ export default async function DashboardPage({
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  const [user, projects, ownerQueue, insights, roleTasks] = await Promise.all([
+  const [user, projects, ownerQueue, insights, roleTasks, runtimeSummary] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
     getExecutiveInsights(),
     getRoleTasks(),
+    getRuntimeDesyncSummary(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
@@ -152,6 +153,37 @@ export default async function DashboardPage({
       notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
       <RefreshTrigger intervalMs={60000} />
+      {["super_user", "super_admin", "project_admin"].includes(activeRole) ? (
+        <section className="surface-card mb-4 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Runtime desync monitor</h2>
+              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                Open desync entities are certification blockers until reconciliation completes.
+              </p>
+            </div>
+            <form action="/api/jobs/runtime/reconcile" method="post">
+              <Button type="submit" variant="secondary" className="h-[30px] rounded-md px-3 text-[12px]">
+                Run repair
+              </Button>
+            </form>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Open desync</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.openDesyncCount}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Queued repairs</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.queuedRepairs}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Projects impacted</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.projectsImpacted}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
       {isOwner ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-3">

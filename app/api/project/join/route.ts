@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { projectService } from "@/lib/services/project-service";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
+  const throttled = checkRateLimit(req, {
+    key: "api:project:join",
+    limit: 15,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();

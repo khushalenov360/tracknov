@@ -17,6 +17,7 @@ import {
   sanitizeContextText,
   sanitizeUserText,
 } from "@/lib/services/copilot-governance";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -562,6 +563,13 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
 }
 
 export async function POST(request: Request) {
+  const throttled = checkRateLimit(request, {
+    key: "api:assistant:chat",
+    limit: 40,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   const startedAt = Date.now();
   let body: AssistantRequest;
 

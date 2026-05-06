@@ -86,6 +86,10 @@ export function canAccessBillingAndInvoice(role?: MemberRole | null) {
   );
 }
 
+export function canManageTokens(role?: MemberRole | null) {
+  return role === "super_user";
+}
+
 export function canManageProjectGuidebook(role?: MemberRole | null) {
   return role === "super_user" || role === "project_admin";
 }

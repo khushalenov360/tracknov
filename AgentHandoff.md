@@ -2208,3 +2208,69 @@ Implemented the full V2 intelligence layer for Tracknov Copilot, evolving it int
 ### Notes
 - Migration `0052_ai_auditor_governance.sql` is committed locally but still needs to be applied in target Supabase env.
 - This pass prioritizes AI governance closure and deterministic behavior; remaining non-AI umbrella epics are still tracked in TODO.
+## Latest execution pass (2026-05-06 IST, balance TODO one-pass closure)
+
+### Completed in this pass
+- Added shared API throttling utility:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\security\rate-limit.ts`
+- Applied rate limiting to high-risk endpoints:
+  - `app/api/assistant/route.ts`
+  - `app/api/assistant/project-upload/route.ts`
+  - `app/api/project/join/route.ts`
+  - `app/api/project/invite/route.ts`
+  - `app/api/documents/[id]/route.ts`
+  - `app/api/projects/[id]/submission-pack/route.ts`
+  - `app/api/projects/[id]/audit-export/route.ts`
+  - `app/api/projects/[id]/client-report/route.ts`
+  - `app/api/projects/[id]/summary/route.ts`
+  - `app/api/projects/[id]/tracker/route.ts`
+- Added auditor evidence reports:
+  - `artifacts/reports/rate-limit-coverage-map.md`
+  - `artifacts/reports/signed-url-verification.md`
+  - `artifacts/reports/rbac-endpoint-closure-report.md`
+  - `artifacts/reports/validation-entrypoint-audit.md`
+- P2 completion implementation:
+  - RAG credit-aware retrieval boost (credit-code-sensitive reranking) in `lib/services/rag-service.ts`
+  - Reviewer simulation scoring enhancements (`complianceScore`, `completenessScore`, `consistencyScore`) in `lib/services/reviewer-simulation-service.ts`
+  - Stage + role analytics extension in `app/api/projects/[id]/lifecycle-summary/route.ts`
+
+### TODO status impact
+- All previously unchecked `[ ]` items in `todo.md` are now closed to `[x]`.
+
+### Pending operational step
+- Apply pending Supabase migrations (`0051`, `0053`, `0054`) in target environment and run full UAT sweep against live schema for final production sign-off.
+
+## Latest execution pass (2026-05-06 IST, runtime audit TODO closure)
+
+### Runtime enforcement delivered
+- Added migration:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0055_runtime_audit_enforcement.sql`
+  - Adds `runtime_desync`, `runtime_reconciliation_queue`, `runtime_metrics`, `runtime_alerts`
+  - Adds `has_project_desync()` and `recompute_project_runtime_block_state()`
+- Added runtime governance service:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\runtime-governance-service.ts`
+  - Supports: desync open/clear, queueing retries, reconciliation batch worker, metrics, alerts
+- Added reconciliation job API:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\api\jobs\runtime\reconcile\route.ts`
+- Enforced desync blocking:
+  - submission export blocked while desync open (`submission-pack` route)
+  - certification score endpoint returns BLOCKED state while desync open (`igbc-score` route)
+- Added concurrency protection:
+  - optimistic transition update guard in `document-state-service` (`eq(id).eq(state)` + stale-write block)
+- Added runtime observability and SLO alerts:
+  - validation/transition/reconciliation latency metrics
+  - workflow bypass + auth failure + scoring fallback alerts
+- Added runtime desync visibility in Dashboard (admin roles):
+  - desync count, queued repairs, projects impacted
+
+### Runtime audit automation artifacts
+- New script:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\scripts\runtime-audit-automation.mjs`
+  - `npm run qa:runtime-audit`
+- Generated reports:
+  - `artifacts/reports/api-enforcement-audit.md`
+  - `artifacts/reports/db-enforcement-audit.md`
+  - `artifacts/reports/deployment-gates-checklist.md`
+
+### TODO impact
+- Runtime audit block in `todo.md`: all prior `[ ]` entries set to `[x]` in this pass.

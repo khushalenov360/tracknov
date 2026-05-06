@@ -17,6 +17,9 @@ export type ReviewerSimulationResult = {
     findings: number;
     failed: number;
     warnings: number;
+    complianceScore: number;
+    completenessScore: number;
+    consistencyScore: number;
   };
   findings: ReviewerFinding[];
 };
@@ -31,6 +34,9 @@ function isApprovedState(state: string): boolean {
 
 export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimulationResult {
   const findings: ReviewerFinding[] = [];
+  let completenessPenalty = 0;
+  let consistencyPenalty = 0;
+  let compliancePenalty = 0;
 
   for (const credit of workspace.credits ?? []) {
     const requirements = (credit.documents_required ?? []).filter((item) => item.required);
@@ -41,6 +47,7 @@ export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimu
       (required) => !latestDocs.some((doc) => doc.doc_category === required.type),
     );
     if (missingRequired.length > 0) {
+      completenessPenalty += missingRequired.length * 8;
       findings.push({
         creditId: credit.id,
         creditCode: credit.credit_code,
@@ -59,6 +66,7 @@ export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimu
     }
     const duplicated = Array.from(counts.entries()).filter(([, count]) => count > 1);
     if (duplicated.length > 0) {
+      consistencyPenalty += duplicated.length * 4;
       findings.push({
         creditId: credit.id,
         creditCode: credit.credit_code,
@@ -76,6 +84,7 @@ export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimu
         return !candidates.some((doc) => isApprovedState(normalizeState((doc as any).state ?? doc.status)));
       });
       if (nonApprovedRequired.length > 0) {
+        compliancePenalty += nonApprovedRequired.length * 10;
         findings.push({
           creditId: credit.id,
           creditCode: credit.credit_code,
@@ -92,6 +101,10 @@ export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimu
   const failed = findings.filter((item) => item.severity === "fail").length;
   const warnings = findings.filter((item) => item.severity === "warning").length;
   const status: ReviewerCheckStatus = failed > 0 ? "fail" : warnings > 0 ? "warning" : "pass";
+  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
+  const completenessScore = clamp(100 - completenessPenalty);
+  const consistencyScore = clamp(100 - consistencyPenalty);
+  const complianceScore = clamp(100 - compliancePenalty);
 
   return {
     status,
@@ -100,8 +113,10 @@ export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimu
       findings: findings.length,
       failed,
       warnings,
+      complianceScore,
+      completenessScore,
+      consistencyScore,
     },
     findings,
   };
 }
-

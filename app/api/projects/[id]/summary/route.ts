@@ -4,10 +4,18 @@ import { buildProjectSummaryPdf } from "@/lib/exports";
 import { logSystemActivity } from "@/lib/services/activity-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canExportProjectArtifacts } from "@/lib/rbac";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const throttled = checkRateLimit(request, {
+    key: "api:project:summary-export",
+    limit: 12,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   const workspace = await getProjectWorkspaceForApi(params.id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

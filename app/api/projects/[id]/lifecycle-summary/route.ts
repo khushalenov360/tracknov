@@ -23,6 +23,81 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           totalCredits,
       )
     : 0;
+  const activityLogs = workspace.activityLogs ?? [];
+  const roleActivity = activityLogs.reduce<Record<string, number>>((acc, row) => {
+    const role = String(row.actor_role ?? "unknown");
+    acc[role] = (acc[role] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const workflowCounts = {
+    draft: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "DRAFT").length,
+      0,
+    ),
+    ready: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "READY").length,
+      0,
+    ),
+    submitted: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "SUBMITTED").length,
+      0,
+    ),
+    under_review: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter(
+          (document) => String((document as any).state ?? "").toUpperCase() === "UNDER_REVIEW",
+        ).length,
+      0,
+    ),
+    clarification: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter(
+          (document) => String((document as any).state ?? "").toUpperCase() === "CLARIFICATION",
+        ).length,
+      0,
+    ),
+    resubmitted: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter(
+          (document) => String((document as any).state ?? "").toUpperCase() === "RESUBMITTED",
+        ).length,
+      0,
+    ),
+    approved: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "APPROVED").length,
+      0,
+    ),
+    rejected: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "REJECTED").length,
+      0,
+    ),
+    eliminated: credits.reduce(
+      (sum, credit) =>
+        sum +
+        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "ELIMINATED").length,
+      0,
+    ),
+  };
+
+  const stageAnalytics = {
+    design: workflowCounts.draft + workflowCounts.ready + workflowCounts.submitted,
+    construction: workflowCounts.under_review + workflowCounts.clarification + workflowCounts.resubmitted,
+    handover: workflowCounts.approved + workflowCounts.rejected + workflowCounts.eliminated,
+  };
 
   return NextResponse.json({
     project: {
@@ -41,62 +116,11 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     },
     documents: {
       total: credits.reduce((sum, credit) => sum + credit.documents.length, 0),
-      workflow: {
-        draft: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "DRAFT").length,
-          0,
-        ),
-        ready: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "READY").length,
-          0,
-        ),
-        submitted: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "SUBMITTED").length,
-          0,
-        ),
-        under_review: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter(
-              (document) => String((document as any).state ?? "").toUpperCase() === "UNDER_REVIEW",
-            ).length,
-          0,
-        ),
-        clarification: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter(
-              (document) => String((document as any).state ?? "").toUpperCase() === "CLARIFICATION",
-            ).length,
-          0,
-        ),
-        resubmitted: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter(
-              (document) => String((document as any).state ?? "").toUpperCase() === "RESUBMITTED",
-            ).length,
-          0,
-        ),
-        approved: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "APPROVED").length,
-          0,
-        ),
-        rejected: credits.reduce(
-          (sum, credit) =>
-            sum +
-            credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "REJECTED").length,
-          0,
-        ),
-      },
+      workflow: workflowCounts,
+    },
+    analytics: {
+      stage_load: stageAnalytics,
+      role_activity: roleActivity,
     },
   });
 }

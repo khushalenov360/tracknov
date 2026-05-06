@@ -6,6 +6,7 @@ import { eventBus } from "@/lib/events/event-bus";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { logDocumentActivity } from "./activity-service";
 import { taskService } from "./task-service";
+import { runtimeGovernanceService } from "./runtime-governance-service";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 
@@ -140,6 +141,7 @@ async function getAssignedOwnerForCredit(writer: SupabaseClient, projectCreditId
 }
 
 async function executeValidationGate(writer: SupabaseClient, submittalId: string, userId?: string | null) {
+  const started = Date.now();
   const { data, error } = await writer.rpc("validate_submittal", {
     p_submittal_id: submittalId,
     p_actor_id: userId ?? null,
@@ -153,6 +155,20 @@ async function executeValidationGate(writer: SupabaseClient, submittalId: string
   const payload = (data ?? {}) as { ok?: boolean; message?: string };
   if (payload.ok === false) {
     return { ok: false, error: payload.message ?? "Validation gate blocked this transition." };
+  }
+  void runtimeGovernanceService.recordMetric({
+    metricName: "validation_latency_ms",
+    metricValue: Date.now() - started,
+    ok: true,
+    details: { submittalId },
+  });
+  if (Date.now() - started > 2000) {
+    void runtimeGovernanceService.raiseAlert({
+      alertType: "validation_latency_slo_breach",
+      severity: "warning",
+      message: "Validation latency exceeded 2 second target.",
+      context: { submittalId, latencyMs: Date.now() - started },
+    });
   }
   return { ok: true };
 }
@@ -181,6 +197,7 @@ export async function transitionDocumentState(
     overrideReason?: string | null;
   },
 ) {
+  const transitionStarted = Date.now();
   const { data: document } = await writer
     .from("project_document")
     .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason, rejection_count")
@@ -188,6 +205,12 @@ export async function transitionDocumentState(
     .maybeSingle();
 
   if (!document) {
+    await runtimeGovernanceService.recordMetric({
+      metricName: "transition_latency_ms",
+      metricValue: Date.now() - transitionStarted,
+      ok: false,
+      details: { documentId, reason: "document_not_found" },
+    });
     return { ok: false as const, error: "Document not found." };
   }
 
@@ -218,6 +241,13 @@ export async function transitionDocumentState(
   const isAllowed = nextAllowed.includes(newState) || canStatusEditAtAnyStage || isOverride;
   
   if (!isAllowed && currentState !== newState) {
+    await runtimeGovernanceService.raiseAlert({
+      projectId: document.project_id,
+      alertType: "workflow_bypass_attempt",
+      severity: "critical",
+      message: `Invalid transition blocked: ${currentState} -> ${newState}`,
+      context: { documentId, actorRole },
+    });
     return {
       ok: false as const,
       error: `Invalid state transition ${currentState} -> ${newState}.`,
@@ -245,6 +275,13 @@ export async function transitionDocumentState(
   }
   if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION", "ELIMINATED"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
     if (newState === "APPROVED") {
+        await runtimeGovernanceService.raiseAlert({
+          projectId: document.project_id,
+          alertType: "authorization_failure",
+          severity: "warning",
+          message: "Unauthorized approval attempt blocked.",
+          context: { documentId, actorRole, targetState: newState },
+        });
         return { ok: false as const, error: "Only L3 roles can approve documents." };
     }
     if (newState === "ELIMINATED") {
@@ -318,13 +355,18 @@ export async function transitionDocumentState(
     }
   }
 
-  const { error: updateError } = await writer
+  const { error: updateError, data: updatedRows } = await writer
     .from("project_document")
     .update(payload)
-    .eq("id", documentId);
+    .eq("id", documentId)
+    .eq("state", currentState)
+    .select("id");
 
   if (updateError) {
     return { ok: false as const, error: updateError.message };
+  }
+  if (!updatedRows || updatedRows.length === 0) {
+    return { ok: false as const, error: "Concurrent update detected. Reload and retry." };
   }
 
   // 3. Side Effects (Logging, Review Recording, Notifications)
@@ -484,9 +526,40 @@ export async function transitionDocumentState(
   if (document.project_id) {
     try {
       await writer.rpc("recompute_credit_scores", { p_project_id: document.project_id });
-    } catch {
-      // Keep transition non-blocking if scoring migration is not applied yet.
+      await runtimeGovernanceService.clearStateDesync(document.project_id, "project", document.project_id);
+    } catch (error: any) {
+      // Keep transition non-blocking but open deterministic repair workflow.
+      await runtimeGovernanceService.markStateDesync({
+        projectId: document.project_id,
+        entityType: "project",
+        entityId: document.project_id,
+        reason: "recompute_credit_scores_failed_after_transition",
+        payload: {
+          documentId,
+          fromState: currentState,
+          toState: resolvedTargetState,
+          error: error?.message ?? "unknown",
+        },
+      });
     }
+  }
+
+  const transitionLatency = Date.now() - transitionStarted;
+  await runtimeGovernanceService.recordMetric({
+    projectId: document.project_id ?? null,
+    metricName: "transition_latency_ms",
+    metricValue: transitionLatency,
+    ok: true,
+    details: { documentId, fromState: currentState, toState: resolvedTargetState },
+  });
+  if (transitionLatency > 1000) {
+    await runtimeGovernanceService.raiseAlert({
+      projectId: document.project_id ?? null,
+      alertType: "transition_latency_slo_breach",
+      severity: "warning",
+      message: "Transition latency exceeded 1 second target.",
+      context: { documentId, latencyMs: transitionLatency },
+    });
   }
 
   return {

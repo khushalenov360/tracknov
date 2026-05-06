@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,13 @@ type Context = {
 };
 
 export async function GET(request: Request, context: Context) {
+  const throttled = checkRateLimit(request, {
+    key: "api:documents:signed-download",
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   const { id } = await context.params;
   const client = createClient();
   const {
