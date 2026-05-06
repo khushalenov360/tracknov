@@ -5,6 +5,7 @@ import { canEditDocumentStatusAtAnyStage } from "@/lib/rbac";
 import { eventBus } from "@/lib/events/event-bus";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { logDocumentActivity } from "./activity-service";
+import { taskService } from "./task-service";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 
@@ -23,7 +24,8 @@ export type WorkflowState =
   | "CLARIFICATION"
   | "RESUBMITTED"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "ELIMINATED";
 
 export function toCanonicalReviewState(state: WorkflowState): CanonicalReviewState {
   switch (state) {
@@ -39,6 +41,7 @@ export function toCanonicalReviewState(state: WorkflowState): CanonicalReviewSta
     case "APPROVED":
       return "approved";
     case "REJECTED":
+    case "ELIMINATED":
       return "rejected";
     default:
       return "uploaded";
@@ -71,6 +74,7 @@ const allowedTransitions: Record<WorkflowState, WorkflowState[]> = {
   RESUBMITTED: ["UNDER_REVIEW"],
   APPROVED: [],
   REJECTED: [],
+  ELIMINATED: [],
 };
 
 // Consistently using consolidated utility services.
@@ -179,7 +183,7 @@ export async function transitionDocumentState(
 ) {
   const { data: document } = await writer
     .from("project_document")
-    .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason")
+    .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason, rejection_count")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -239,9 +243,12 @@ export async function transitionDocumentState(
   if (!isOverride && l1Roles.includes(role) && !["UNDER_REVIEW", "CLARIFICATION", "REJECTED"].includes(newState)) {
     return { ok: false as const, error: "L1 role can only perform owner-stage review actions." };
   }
-  if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
+  if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION", "ELIMINATED"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
     if (newState === "APPROVED") {
         return { ok: false as const, error: "Only L3 roles can approve documents." };
+    }
+    if (newState === "ELIMINATED") {
+      return { ok: false as const, error: "Only L3 roles can eliminate a document." };
     }
   }
   if (!isOverride && newState === "UNDER_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
@@ -281,9 +288,8 @@ export async function transitionDocumentState(
   }
 
   // 2. Perform Update
-  const payload: any = {
-    state: newState,
-  };
+  const payload: any = { state: newState };
+  let resolvedTargetState: WorkflowState = newState;
 
   if (remarks) {
     payload.rejection_reason = remarks;
@@ -297,6 +303,19 @@ export async function transitionDocumentState(
     payload.owner_reviewed_at = null;
     payload.reviewed_by = null;
     payload.reviewed_at = null;
+  }
+
+  // Auditor rule: second rejection/clarification eliminates this evidence node from active workflow.
+  if (newState === "REJECTED" || newState === "CLARIFICATION") {
+    const priorRejections = Number((document as any).rejection_count ?? 0);
+    const nextRejections = priorRejections + 1;
+    payload.rejection_count = nextRejections;
+    if (nextRejections >= 2) {
+      resolvedTargetState = "ELIMINATED";
+      payload.state = "ELIMINATED";
+      payload.is_latest = false;
+      payload.rejection_reason = remarks ?? "Automatically eliminated after second rejection.";
+    }
   }
 
   const { error: updateError } = await writer
@@ -315,7 +334,7 @@ export async function transitionDocumentState(
     project_id: document.project_id,
     entity_type: "document",
     entity_id: documentId,
-    state: newState,
+    state: resolvedTargetState,
     previous_state: currentState,
     actor_id: userId ?? null,
     is_override: isOverride,
@@ -324,17 +343,19 @@ export async function transitionDocumentState(
 
   // Determine Review Action
   let reviewAction: "owner_forward" | "admin_approve" | "owner_reject" | "admin_reject" | "resubmit" | "status_override" = "status_override";
-  if (!canStatusEditAtAnyStage || nextAllowed.includes(newState)) {
-    if (currentState === "SUBMITTED" && newState === "UNDER_REVIEW") reviewAction = "owner_forward";
-    else if (currentState === "UNDER_REVIEW" && newState === "APPROVED") reviewAction = "admin_approve";
-    else if (currentState === "SUBMITTED" && (newState === "CLARIFICATION" || newState === "REJECTED")) reviewAction = "owner_reject";
-    else if (currentState === "UNDER_REVIEW" && (newState === "CLARIFICATION" || newState === "REJECTED")) reviewAction = "admin_reject";
-    else if (currentState === "CLARIFICATION" && newState === "RESUBMITTED") reviewAction = "resubmit";
+  if (!canStatusEditAtAnyStage || nextAllowed.includes(resolvedTargetState)) {
+    if (currentState === "SUBMITTED" && resolvedTargetState === "UNDER_REVIEW") reviewAction = "owner_forward";
+    else if (currentState === "UNDER_REVIEW" && resolvedTargetState === "APPROVED") reviewAction = "admin_approve";
+    else if (currentState === "SUBMITTED" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED")) reviewAction = "owner_reject";
+    else if (currentState === "UNDER_REVIEW" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED")) reviewAction = "admin_reject";
+    else if (currentState === "CLARIFICATION" && resolvedTargetState === "RESUBMITTED") reviewAction = "resubmit";
   }
 
   // Record Review Event
   if (["owner_forward", "admin_approve", "owner_reject", "admin_reject", "resubmit"].includes(reviewAction) || canStatusEditAtAnyStage) {
-    const mappedLegacyStatus = toCanonicalReviewState(newState);
+    const mappedLegacyStatus = toCanonicalReviewState(
+      resolvedTargetState === "ELIMINATED" ? "REJECTED" : resolvedTargetState,
+    );
     await recordDocumentReviewEvent({
         documentId,
         projectId: document.project_id,
@@ -347,7 +368,7 @@ export async function transitionDocumentState(
   }
 
   // Log Activity
-  const summary = `Document workflow state moved from ${currentState} to ${newState}.`;
+  const summary = `Document workflow state moved from ${currentState} to ${resolvedTargetState}.`;
   await logDocumentActivity(writer, {
     documentId,
     projectId: document.project_id,
@@ -357,7 +378,7 @@ export async function transitionDocumentState(
     summary,
       details: {
         from_state: currentState,
-        to_state: newState,
+        to_state: resolvedTargetState,
         remarks: remarks || null,
         is_override: isOverride,
         override_reason: normalizedOverrideReason,
@@ -365,7 +386,7 @@ export async function transitionDocumentState(
   });
 
   // Notifications
-  if (newState === "UNDER_REVIEW") {
+  if (resolvedTargetState === "UNDER_REVIEW") {
     const admins = await getProjectMembersByRoles(writer, document.project_id, ["project_admin", "super_admin", "super_user"]);
     await notifyUsers(writer, {
       projectId: document.project_id,
@@ -375,7 +396,7 @@ export async function transitionDocumentState(
       body: `A document (${document.file_name}) is ready for Project Admin review.`,
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
-  } else if (newState === "SUBMITTED") {
+  } else if (resolvedTargetState === "SUBMITTED") {
     const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
     await notifyUsers(writer, {
       projectId: document.project_id,
@@ -385,7 +406,7 @@ export async function transitionDocumentState(
       body: `A document (${document.file_name}) is awaiting Project Owner review.`,
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
-  } else if (newState === "CLARIFICATION" || newState === "REJECTED") {
+  } else if (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED") {
     const assignedOwnerId = await getAssignedOwnerForCredit(writer, document.project_credit_id);
     const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     const targetUserId = assignedOwnerId || docData?.uploaded_by || null;
@@ -395,8 +416,18 @@ export async function transitionDocumentState(
             creditId: document.credit_id,
             documentId,
             userIds: [targetUserId],
-            body: `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
+            body: resolvedTargetState === "ELIMINATED"
+              ? `Document (${document.file_name}) was eliminated after second rejection.`
+              : `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
             actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
+        });
+        await taskService.upsertClarificationTask({
+          projectId: document.project_id,
+          documentId,
+          assignedUserId: targetUserId,
+          createdBy: userId ?? null,
+          title: `Fix and resubmit ${document.file_name}`,
+          description: remarks || "Document needs clarification before approval.",
         });
     }
     // Insert into remarks table for UI display
@@ -409,7 +440,7 @@ export async function transitionDocumentState(
             body: remarks,
         });
     }
-  } else if (newState === "APPROVED") {
+  } else if (resolvedTargetState === "APPROVED") {
     const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     if (docData?.uploaded_by) {
         await notifyUsers(writer, {
@@ -421,7 +452,13 @@ export async function transitionDocumentState(
             actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });
     }
-  } else if (newState === "RESUBMITTED") {
+  } else if (resolvedTargetState === "RESUBMITTED") {
+    const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
+    await taskService.closeClarificationTasks({
+      projectId: document.project_id,
+      documentId,
+      assignedUserId: docData?.uploaded_by ?? null,
+    });
     const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
     await notifyUsers(writer, {
       projectId: document.project_id,
@@ -438,7 +475,7 @@ export async function transitionDocumentState(
     payload: {
       documentId,
       projectId: document.project_id,
-      status: newState,
+      status: resolvedTargetState,
       userId: userId || "",
     },
   });
@@ -455,7 +492,7 @@ export async function transitionDocumentState(
   return {
     ok: true as const,
     fromState: currentState,
-    toState: newState,
+    toState: resolvedTargetState,
     projectId: document.project_id,
     creditId: document.credit_id,
   };

@@ -28,6 +28,7 @@ import {
   canEditPlanControls,
   canCreateProjects,
   canDeleteProjects,
+  canManageProject,
 } from "@/lib/rbac";
 
 function pathFor(projectId: string) {
@@ -920,4 +921,43 @@ export async function runNotificationDigestAction() {
   await runNotificationDigestJobs();
   revalidatePath("/dashboard");
   revalidatePath("/team");
+}
+
+export async function createValidationRuleAction(formData: FormData): Promise<void> {
+  if (!env.isConfigured) return;
+
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+  const ruleName = String(formData.get("rule_name") ?? "").trim();
+  const requiredKeywordsRaw = String(formData.get("required_keywords") ?? "").trim();
+  const severity = String(formData.get("severity") ?? "error").trim();
+
+  if (!projectId || !projectCreditId || !creditId || !ruleName) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+  if (!canManageProject(user.role)) return;
+
+  const keywords = requiredKeywordsRaw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const { error } = await writer.from("validation_rules").insert({
+    project_id: projectId,
+    project_credit_id: projectCreditId,
+    credit_id: creditId,
+    doc_category: docCategory || null,
+    rule_name: ruleName,
+    required_keywords: keywords,
+    severity: severity === "warning" ? "warning" : "error",
+    is_active: true,
+  });
+
+  if (error) return;
+
+  revalidatePath(`/projects/${projectId}`);
 }

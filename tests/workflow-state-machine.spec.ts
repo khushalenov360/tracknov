@@ -35,4 +35,9 @@ test.describe("workflow state machine", () => {
   test("blocks project completion when credits are open", () => {
     expect(() => validateProjectCanComplete({ allCreditsClosed: false })).toThrow();
   });
+
+  test("allows reviewer to eliminate after rejection lifecycle", () => {
+    const machine = new DocumentWorkflowMachine();
+    expect(machine.validate("rejected", "eliminated", "reviewer")).toBe(true);
+  });
 });

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { logSystemActivity } from "./activity-service";
 import { projectService } from "./project-service";
+import { taskService } from "./task-service";
 import type { CurrentUser } from "@/lib/types";
 
 export class CreditService {
@@ -141,6 +142,7 @@ export class CreditService {
     projectId: string;
     projectCreditId: string;
     assignedUserId: string | null;
+    reason?: string | null;
   }) {
     const actorRole = await projectService.getActorProjectRole(params.projectId, user);
     const canAssign = ["owner", "project_admin", "super_admin", "super_user"].includes(String(actorRole));
@@ -180,6 +182,51 @@ export class CreditService {
 
     if (error) throw error;
 
+    // Keep DB-level assignment ledger in sync (single active assignee policy).
+    await this.admin
+      .from("assignments")
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq("project_id", params.projectId)
+      .eq("project_credit_id", params.projectCreditId)
+      .eq("is_active", true);
+
+    if (params.assignedUserId) {
+      const { error: assignmentError } = await this.admin
+        .from("assignments")
+        .insert({
+          project_id: params.projectId,
+          project_credit_id: params.projectCreditId,
+          user_id: params.assignedUserId,
+          role: member?.role ?? "consultant",
+          is_active: true,
+          created_by: user.id,
+        });
+      if (assignmentError) throw assignmentError;
+    }
+
+    const { data: creditMeta } = await this.admin
+      .from("project_credits")
+      .select("credit_code, credit_name")
+      .eq("id", params.projectCreditId)
+      .maybeSingle();
+
+    if (params.assignedUserId) {
+      await taskService.upsertAssignmentUploadTask({
+        projectId: params.projectId,
+        projectCreditId: params.projectCreditId,
+        assignedUserId: params.assignedUserId,
+        createdBy: user.id,
+        title: `Upload required evidence for ${creditMeta?.credit_code ?? "assigned credit"}`,
+        description: `Credit: ${creditMeta?.credit_name ?? "Assigned credit"} — upload pending required documents.`,
+        priority: "high",
+      });
+    } else {
+      await taskService.closeAssignmentTasks({
+        projectId: params.projectId,
+        projectCreditId: params.projectCreditId,
+      });
+    }
+
     await logSystemActivity(this.admin, {
       projectId: params.projectId,
       entityType: "credit",
@@ -190,6 +237,7 @@ export class CreditService {
       summary: params.assignedUserId ? "Assigned contributor to credit." : "Cleared contributor assignment for credit.",
       details: { assigned_user_id: params.assignedUserId },
     });
+
   }
 }
 

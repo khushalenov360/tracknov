@@ -66,7 +66,8 @@ type WorkflowState =
   | "CLARIFICATION"
   | "RESUBMITTED"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "ELIMINATED";
 
 function normalizeWorkflowState(state?: string | null, legacyStatus?: string | null): WorkflowState {
   const raw = String(state ?? "").toUpperCase();
@@ -78,7 +79,8 @@ function normalizeWorkflowState(state?: string | null, legacyStatus?: string | n
     raw === "CLARIFICATION" ||
     raw === "RESUBMITTED" ||
     raw === "APPROVED" ||
-    raw === "REJECTED"
+    raw === "REJECTED" ||
+    raw === "ELIMINATED"
   ) {
     return raw;
   }
@@ -91,7 +93,7 @@ function normalizeWorkflowState(state?: string | null, legacyStatus?: string | n
 }
 
 function workflowToLegacyStatus(state: WorkflowState): "uploaded" | "owner_approved" | "approved" | "rejected" {
-  if (state === "CLARIFICATION" || state === "REJECTED") return "rejected";
+  if (state === "CLARIFICATION" || state === "REJECTED" || state === "ELIMINATED") return "rejected";
   if (state === "UNDER_REVIEW") return "owner_approved";
   if (state === "APPROVED") return "approved";
   return "uploaded";
@@ -562,7 +564,7 @@ export async function getProjectWorkspace(projectId: string) {
   const currentUser = await getCurrentUser();
   if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
-    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, members, invites] =
+    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, members, invites] =
       await Promise.all([
         admin.from("projects").select("*").eq("id", projectId).single(),
         admin.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -588,6 +590,13 @@ export async function getProjectWorkspace(projectId: string) {
           .select("id, title, file_name, file_path, uploaded_by, created_at")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false }),
+        admin
+          .from("validation_rules")
+          .select("id, project_credit_id, credit_id, doc_category, rule_name, required_keywords, severity, is_active, created_at")
+          .eq("project_id", projectId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(200),
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
@@ -620,6 +629,7 @@ export async function getProjectWorkspace(projectId: string) {
       userRole: "super_user",
       credits: mappedCredits,
       guidebooks: mappedGuidebooks,
+      validationRules: (validationRules ?? []) as any,
       members,
       invites,
       notifications: notifications ?? [],
@@ -642,7 +652,7 @@ export async function getProjectWorkspace(projectId: string) {
     return null;
   }
 
-  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, members, invites] =
+  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, members, invites] =
     await Promise.all([
       client.from("projects").select("*").eq("id", projectId).single(),
       client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -668,6 +678,13 @@ export async function getProjectWorkspace(projectId: string) {
         .select("id, title, file_name, file_path, uploaded_by, created_at")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false }),
+      client
+        .from("validation_rules")
+        .select("id, project_credit_id, credit_id, doc_category, rule_name, required_keywords, severity, is_active, created_at")
+        .eq("project_id", projectId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(200),
       getProjectMembers(client, projectId),
       getProjectInvites(client, projectId),
     ]);
@@ -700,6 +717,7 @@ export async function getProjectWorkspace(projectId: string) {
     userRole: normalizeRole(membership.role),
     credits: mappedCredits,
     guidebooks: mappedGuidebooks,
+    validationRules: (validationRules ?? []) as any,
     members,
     invites,
     notifications: notifications ?? [],
@@ -2400,7 +2418,43 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
     }
   }
 
-  return tasks.sort((a, b) => (a.priority === 'high' ? -1 : 1));
+  const { data: materializedTasks } = await client
+    .from("project_tasks")
+    .select("id, project_id, project_credit_id, document_id, task_type, title, description, priority, status")
+    .eq("assigned_user_id", user.id)
+    .in("status", ["open", "in_progress"])
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+  for (const item of materializedTasks ?? []) {
+    const projectId = String((item as any).project_id ?? "");
+    if (!projectId) continue;
+    const projectName = projectNameById.get(projectId) ?? "Project";
+    const taskType = String((item as any).task_type ?? "");
+    const actionUrl =
+      taskType === "clarification_fix"
+        ? `/documents?project=${projectId}&document=${(item as any).document_id ?? ""}`
+        : `/projects/${projectId}`;
+    tasks.push({
+      id: `mat-${(item as any).id}`,
+      type: taskType === "clarification_fix" ? "clarification_needed" : "upload_pending",
+      title: String((item as any).title ?? "Pending task"),
+      subtitle: String((item as any).description ?? projectName),
+      projectId,
+      projectName,
+      actionUrl,
+      priority: (String((item as any).priority ?? "medium") as "high" | "medium" | "low"),
+    });
+  }
+
+  const unique = new Map<string, RoleTask>();
+  for (const task of tasks) {
+    const key = `${task.type}:${task.projectId}:${task.title}:${task.subtitle}`;
+    if (!unique.has(key)) unique.set(key, task);
+  }
+
+  return Array.from(unique.values()).sort((a, b) => (a.priority === 'high' ? -1 : 1));
 }
 
 

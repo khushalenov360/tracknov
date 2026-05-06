@@ -9,6 +9,14 @@ import {
 } from "@/lib/assistant";
 import { ragService } from "@/lib/services/rag-service";
 import { toneService, type AssistantTone } from "@/lib/services/tone-service";
+import {
+  getUnknownDataResponse,
+  normalizeCopilotResponse,
+  requiresExplicitConfirmationForExecution,
+  routeCopilotIntent,
+  sanitizeContextText,
+  sanitizeUserText,
+} from "@/lib/services/copilot-governance";
 
 export const dynamic = "force-dynamic";
 
@@ -111,7 +119,7 @@ function buildWorkspaceSnapshot(
   credits: CreditRow[],
   documents: DocumentRow[],
   role: string,
-  guidebooks: Array<{ project_id: string; title: string; file_name: string }>,
+  guidebooks: Array<{ project_id: string; title: string; file_name: string; created_at?: string }>,
 ) {
   if (!projects.length) {
     return "No accessible projects were found for this user.";
@@ -167,8 +175,14 @@ function buildWorkspaceSnapshot(
       .filter((book) => book.project_id === project.id)
       .filter((book, index, all) => all.findIndex((entry) => entry.file_name === book.file_name) === index)
       .slice(0, 3);
+    const latestGuidebook = projectGuidebooks
+      .slice()
+      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())[0];
     lines.push(
       `Guidebook: ${projectGuidebooks.length ? projectGuidebooks.map((book) => `${book.title} (${book.file_name})`).join("; ") : "none uploaded"}`,
+    );
+    lines.push(
+      `Manual version lock: ${latestGuidebook ? `${latestGuidebook.file_name}@${latestGuidebook.created_at ?? "unknown"}` : "none"}`,
     );
     const trackerPreview = projectCredits
       .slice(0, 5)
@@ -235,13 +249,13 @@ async function getWorkspaceSnapshot() {
   ]);
   const { data: guidebooksData } = await reader
     .from("project_guidebooks")
-    .select("project_id, title, file_name")
+    .select("project_id, title, file_name, created_at")
     .in("project_id", projectIds)
     .order("created_at", { ascending: false });
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
-  const guidebooks = (guidebooksData ?? []) as Array<{ project_id: string; title: string; file_name: string }>;
+  const guidebooks = (guidebooksData ?? []) as Array<{ project_id: string; title: string; file_name: string; created_at?: string }>;
 
   // Fetch recent intelligence for these documents
   const { data: intelligence } = await reader
@@ -374,7 +388,7 @@ async function createGeminiStream(
       systemInstruction,
       contents,
       generationConfig: {
-        temperature: 0.6,
+        temperature: 0.2,
         topP: 0.9,
         topK: 40,
         maxOutputTokens: 1200,
@@ -461,7 +475,94 @@ async function createGeminiStream(
   });
 }
 
+async function logAiInteraction(params: {
+  userId: string;
+  intent: string;
+  query: string;
+  model: string;
+  contextSize: number;
+  tokenUsage: number;
+  fallbackUsed: boolean;
+  latencyMs: number;
+}) {
+  try {
+    const client = createClient();
+    await client.from("ai_interactions").insert({
+      user_id: params.userId,
+      intent: params.intent,
+      query: params.query.slice(0, 4000),
+      model: params.model,
+      context_size: params.contextSize,
+      token_usage: params.tokenUsage,
+      fallback_used: params.fallbackUsed,
+      latency_ms: params.latencyMs,
+    });
+  } catch {
+    // no-op
+  }
+}
+
+function tryDeterministicAnswer(intent: string, snapshot: string) {
+  if (!snapshot?.trim()) {
+    return null;
+  }
+  if (intent === "status") {
+    const projectLines = snapshot
+      .split("\n")
+      .filter((line) => line.startsWith("Project "))
+      .slice(0, 6);
+    if (!projectLines.length) {
+      return normalizeCopilotResponse({
+        assessment: getUnknownDataResponse(),
+        fit: "Not suitable",
+        reason: "No project lines found in your accessible data.",
+        recommendation: "Open a project workspace and try again.",
+        confirm: "Confirm?",
+      });
+    }
+    return normalizeCopilotResponse({
+      assessment: `I found ${projectLines.length} active project snapshots in your accessible workspace.`,
+      fit: "Strong",
+      reason: projectLines.join(" | "),
+      recommendation: "Tell me one project name/code and I will give exact pending counts and next action.",
+      confirm: "Confirm?",
+    });
+  }
+  if (intent === "workflow") {
+    const workflowHints = snapshot
+      .split("\n")
+      .filter((line) => line.toLowerCase().includes("documents:") || line.toLowerCase().includes("credits:"))
+      .slice(0, 4)
+      .join(" | ");
+    return normalizeCopilotResponse({
+      assessment: workflowHints || getUnknownDataResponse(),
+      fit: workflowHints ? "Medium" : "Not suitable",
+      reason: workflowHints || "Workflow counters are not present in the current snapshot.",
+      recommendation: "Ask: 'show workflow status for <project>' for a focused breakdown.",
+      confirm: "Confirm?",
+    });
+  }
+  if (intent === "validation") {
+    const hasValidation = snapshot.toLowerCase().includes("required:");
+    return normalizeCopilotResponse({
+      assessment: hasValidation
+        ? "Validation requirements are present in current tracker/credit context."
+        : getUnknownDataResponse(),
+      fit: hasValidation ? "Medium" : "Not suitable",
+      reason: hasValidation
+        ? "I can see credit requirement rows in the workspace snapshot."
+        : "No validation requirement rows were found in the current context.",
+      recommendation: hasValidation
+        ? "Share the target credit code and document type so I can validate mapping readiness."
+        : "Upload tracker or open a project with instantiated credits.",
+      confirm: "Confirm?",
+    });
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   let body: AssistantRequest;
 
   try {
@@ -478,7 +579,9 @@ export async function POST(request: Request) {
     return new Response("Missing assistant context.", { status: 400 });
   }
 
-  const latestPrompt = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
+  const latestPromptRaw = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
+  const latestPrompt = sanitizeUserText(latestPromptRaw);
+  const intent = routeCopilotIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
   const { user, role, snapshot, projectIds } = await getWorkspaceSnapshot();
   if (!user) {
@@ -520,7 +623,45 @@ export async function POST(request: Request) {
   const compactSnapshot = focusedProjectId
     ? [snapshot, "", "Note: focus on current project only.", focusedProjectId].join("\n")
     : snapshot;
-  const combinedSnapshot = [compactSnapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n");
+  const combinedSnapshot = sanitizeContextText([compactSnapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n"));
+  const hasManualLock = combinedSnapshot.includes("Manual version lock:") && !combinedSnapshot.includes("Manual version lock: none");
+
+  // Deterministic-first routing for status/workflow/validation intents.
+  const deterministic = tryDeterministicAnswer(intent, combinedSnapshot);
+  if (deterministic) {
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "deterministic",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: false,
+      latencyMs: Date.now() - startedAt,
+    });
+    return createResponseStream(createTextStream(deterministic));
+  }
+
+  if ((intent === "mapping" || intent === "comparison" || intent === "summary") && !hasManualLock) {
+    const manualLockReply = normalizeCopilotResponse({
+      assessment: getUnknownDataResponse(),
+      fit: "Not suitable",
+      reason: "Project manual version is not locked for this workspace.",
+      recommendation: "Ask Project Admin/Super User to upload and lock the guidebook first.",
+      confirm: "Confirm?",
+    });
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "deterministic",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: false,
+      latencyMs: Date.now() - startedAt,
+    });
+    return createResponseStream(createTextStream(manualLockReply));
+  }
 
   // Determine tone
   let resolvedTone: AssistantTone;
@@ -531,16 +672,47 @@ export async function POST(request: Request) {
   }
 
   if (isFileQuestion(latestPrompt) && attachments.length === 0) {
+    const normalizedNoAttachment = normalizeCopilotResponse({
+      assessment: "No file is attached in this chat message.",
+      fit: "Not suitable",
+      reason: "File analysis needs an attached file in the current message.",
+      recommendation: "Attach the file with the + button and ask: Analyze this file.",
+      confirm: "Confirm?",
+    });
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "deterministic",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: false,
+      latencyMs: Date.now() - startedAt,
+    });
     return createResponseStream(
-      createTextStream(
-        [
-          `Hi ${userName}, I do not currently have a file attached in this chat message.`,
-          "",
-          "Please attach the file with the + button and ask: `Analyze this file`.",
-          "Then I will summarize it in plain language and suggest likely credit mapping before upload.",
-        ].join("\n"),
-      ),
+      createTextStream(normalizedNoAttachment),
     );
+  }
+
+  if (requiresExplicitConfirmationForExecution(latestPrompt)) {
+    const confirmReply = normalizeCopilotResponse({
+      assessment: "I can prepare this upload flow, but execution needs explicit confirmation.",
+      fit: "Medium",
+      reason: "Compliance mode requires confirmation before upload/mapping actions.",
+      recommendation: "Please reply: Confirm upload this to <credit code> as <document type>.",
+      confirm: "Confirm?",
+    });
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "deterministic",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: false,
+      latencyMs: Date.now() - startedAt,
+    });
+    return createResponseStream(createTextStream(confirmReply));
   }
 
   if (!env.geminiApiKey) {
@@ -552,9 +724,43 @@ export async function POST(request: Request) {
             `Hi ${userName}, I can see your attached file: ${file.name}.`,
             "Tell me the credit code and document type you want, and I will prepare the workflow upload step.",
           ].join("\n");
-      return createResponseStream(createTextStream(attachmentReply));
+      const normalizedAttachment = normalizeCopilotResponse({
+        assessment: attachmentReply,
+        fit: "Medium",
+        reason: "AI provider is offline, using deterministic attachment analysis fallback.",
+        recommendation: "Share target credit code + document type to continue.",
+        confirm: "Confirm?",
+      });
+      await logAiInteraction({
+        userId: user.id,
+        intent,
+        query: latestPrompt,
+        model: "fallback",
+        contextSize: combinedSnapshot.length,
+        tokenUsage: 0,
+        fallbackUsed: true,
+        latencyMs: Date.now() - startedAt,
+      });
+      return createResponseStream(createTextStream(normalizedAttachment));
     }
-    return createResponseStream(createTextStream(buildFallbackAssistantReply(context, latestPrompt)));
+    const fallbackText = normalizeCopilotResponse({
+      assessment: buildFallbackAssistantReply(context, latestPrompt),
+      fit: "Medium",
+      reason: "AI provider is offline. Deterministic guidance is active.",
+      recommendation: "Ask one focused question with project/credit code for precise guidance.",
+      confirm: "Confirm?",
+    });
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "fallback",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: true,
+      latencyMs: Date.now() - startedAt,
+    });
+    return createResponseStream(createTextStream(fallbackText));
   }
 
   try {
@@ -599,6 +805,17 @@ export async function POST(request: Request) {
       attachments,
     );
     if (geminiStream) {
+      // Wrap stream with a post-log path by returning directly and logging best-effort now.
+      await logAiInteraction({
+        userId: user.id,
+        intent,
+        query: latestPrompt,
+        model: env.aiModel,
+        contextSize: combinedSnapshot.length,
+        tokenUsage: Math.ceil((latestPrompt.length + combinedSnapshot.length) / 4),
+        fallbackUsed: false,
+        latencyMs: Date.now() - startedAt,
+      });
       return createResponseStream(geminiStream);
     }
   } catch {
@@ -606,12 +823,46 @@ export async function POST(request: Request) {
   }
 
   if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt))) {
+    const fallbackAttachment = normalizeCopilotResponse({
+      assessment: buildAttachmentAnalysisReply(userName, attachments[0], ragMatches),
+      fit: "Medium",
+      reason: "AI runtime fallback used for this file-analysis request.",
+      recommendation: "Confirm mapping target to continue with upload flow.",
+      confirm: "Confirm?",
+    });
+    await logAiInteraction({
+      userId: user.id,
+      intent,
+      query: latestPrompt,
+      model: "fallback",
+      contextSize: combinedSnapshot.length,
+      tokenUsage: 0,
+      fallbackUsed: true,
+      latencyMs: Date.now() - startedAt,
+    });
     return createResponseStream(
-      createTextStream(buildAttachmentAnalysisReply(userName, attachments[0], ragMatches)),
+      createTextStream(fallbackAttachment),
     );
   }
 
-  return createResponseStream(createTextStream(buildFallbackAssistantReply(context, latestPrompt)));
+  const normalizedFallback = normalizeCopilotResponse({
+    assessment: buildFallbackAssistantReply(context, latestPrompt),
+    fit: "Medium",
+    reason: "AI fallback was used for this request path.",
+    recommendation: "Ask with a specific project + credit code for precise enforcement-safe guidance.",
+    confirm: "Confirm?",
+  });
+  await logAiInteraction({
+    userId: user.id,
+    intent,
+    query: latestPrompt,
+    model: "fallback",
+    contextSize: combinedSnapshot.length,
+    tokenUsage: 0,
+    fallbackUsed: true,
+    latencyMs: Date.now() - startedAt,
+  });
+  return createResponseStream(createTextStream(normalizedFallback));
 }
 
 

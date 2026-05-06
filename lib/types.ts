@@ -22,7 +22,8 @@ export type DocumentStatus =
   | "CLARIFICATION"
   | "RESUBMITTED"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "ELIMINATED";
 export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
 export type ProjectType = "residential" | "commercial" | "industrial" | "infrastructure" | "mixed_use";
 export type IgbcVariant = "new" | "existing";
@@ -238,6 +239,17 @@ export type ProjectWorkspace = {
     file_path: string;
     signed_url?: string | null;
     uploaded_by?: string | null;
+    created_at: string;
+  }[];
+  validationRules?: {
+    id: string;
+    project_credit_id?: string | null;
+    credit_id?: string | null;
+    doc_category?: string | null;
+    rule_name: string;
+    required_keywords?: string[];
+    severity: "error" | "warning";
+    is_active: boolean;
     created_at: string;
   }[];
 };

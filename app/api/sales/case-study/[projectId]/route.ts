@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDashboardProjects, getProjectWorkspaceForApi } from "@/lib/data";
 import { getRoiSnapshot } from "@/lib/services/roi-service";
+import { canAccessBillingAndInvoice } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export async function GET(request: Request, { params }: { params: { projectId: s
   const workspace = await getProjectWorkspaceForApi(params.projectId);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+  if (!canAccessBillingAndInvoice(workspace.userRole)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   const [projects, roi] = await Promise.all([getDashboardProjects(), getRoiSnapshot()]);

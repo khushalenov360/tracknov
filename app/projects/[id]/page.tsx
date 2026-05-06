@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Circle, Download, FileWarning, ShieldCheck } from "lucide-react";
 import {
   addRemarkAction,
+  createValidationRuleAction,
   assignCreditContributorAction,
   importProjectTrackerBaselineAction,
   setCreditStateAction,
@@ -308,6 +309,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       avgCompletion,
     };
   });
+  const selectedCreditValidationRules = (workspace.validationRules ?? []).filter(
+    (rule: any) => (rule.project_credit_id && rule.project_credit_id === selectedCredit.id) || rule.credit_id === selectedCredit.id,
+  );
 
 
   return (
@@ -867,6 +871,61 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     Save Requirements
                   </Button>
                 </form>
+              </section>
+            ) : null}
+
+            {canConfigureDocRequirements ? (
+              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Validation Rules</p>
+                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                  Add per-credit validation rules used during submission gate checks.
+                </p>
+                <form action={createValidationRuleAction} className="mt-2 grid gap-2">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
+                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                  <input
+                    name="rule_name"
+                    placeholder="Rule name (e.g. Must mention plant count)"
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                    required
+                  />
+                  <input
+                    name="doc_category"
+                    placeholder="Doc type (optional, e.g. Drawing)"
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                  />
+                  <input
+                    name="required_keywords"
+                    placeholder="Required keywords (comma-separated)"
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                  />
+                  <select
+                    name="severity"
+                    defaultValue="error"
+                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                  >
+                    <option value="error">Error (block transition)</option>
+                    <option value="warning">Warning (allow transition)</option>
+                  </select>
+                  <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
+                    Add validation rule
+                  </Button>
+                </form>
+                <div className="mt-2 space-y-1">
+                  {selectedCreditValidationRules.length === 0 ? (
+                    <p className="text-[10px] text-[var(--color-text-tertiary)]">No custom validation rules yet.</p>
+                  ) : (
+                    selectedCreditValidationRules.slice(0, 6).map((rule: any) => (
+                      <div key={rule.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[10px]">
+                        <p className="font-medium text-[var(--color-text-primary)]">{rule.rule_name}</p>
+                        <p className="mt-1 text-[var(--color-text-tertiary)]">
+                          {(rule.doc_category || "Any doc type")} / {rule.severity.toUpperCase()} / keywords: {(rule.required_keywords ?? []).join(", ") || "none"}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </section>
             ) : null}
 

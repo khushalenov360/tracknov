@@ -27,8 +27,8 @@ export type DocumentWorkflowState =
   | "under_review"
   | "approved"
   | "rejected"
-  | "revised";
+  | "revised"
+  | "eliminated";
 
 export type TransitionMap<TState extends string> = Record<TState, TState[]>;
 export type RoleTransitionMap<TState extends string> = Record<string, WorkflowRole[]>;
-

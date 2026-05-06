@@ -57,15 +57,16 @@ export class CreditWorkflowMachine extends BaseStateMachine<CreditWorkflowState>
 }
 
 export class DocumentWorkflowMachine extends BaseStateMachine<DocumentWorkflowState> {
-  states = ["uploaded", "tagged", "submitted", "under_review", "approved", "rejected", "revised"] as const;
+  states = ["uploaded", "tagged", "submitted", "under_review", "approved", "rejected", "revised", "eliminated"] as const;
   transitions: TransitionMap<DocumentWorkflowState> = {
     uploaded: ["tagged", "submitted"],
     tagged: ["submitted"],
     submitted: ["under_review", "rejected"],
     under_review: ["approved", "rejected"],
     approved: [],
-    rejected: ["revised"],
+    rejected: ["revised", "eliminated"],
     revised: ["submitted"],
+    eliminated: [],
   };
   rolesAllowed: RoleTransitionMap<DocumentWorkflowState> = {
     "uploaded->tagged": ["consultant", "admin"],
@@ -76,6 +77,7 @@ export class DocumentWorkflowMachine extends BaseStateMachine<DocumentWorkflowSt
     "under_review->approved": ["reviewer", "admin"],
     "under_review->rejected": ["reviewer", "admin"],
     "rejected->revised": ["consultant", "admin", "client"],
+    "rejected->eliminated": ["reviewer", "admin"],
     "revised->submitted": ["consultant", "admin"],
   };
 }

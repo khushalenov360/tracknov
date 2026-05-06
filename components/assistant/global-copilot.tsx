@@ -159,9 +159,13 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
       lower.includes("map this to") ||
       lower.includes("map to ") ||
       lower.includes("upload to workflow") ||
-      lower.includes("and upload") ||
       lower.includes("submit this file");
-    return hasMapIntent && !isAnalysisPrompt(text);
+    const hasExplicitConfirm =
+      lower.includes("confirm") ||
+      lower.includes("and upload") ||
+      lower.includes("yes upload") ||
+      lower.includes("proceed upload");
+    return hasMapIntent && hasExplicitConfirm && !isAnalysisPrompt(text);
   }
 
   useEffect(() => {
@@ -599,7 +603,7 @@ Important:
         {
           role: "assistant",
           content:
-            "Sure — which credit should I map this file to? Also tell me the document type (for example: Drawing, Narrative, Invoice, Certificate).",
+            "Sure — which credit should I map this file to? Also tell me the document type (for example: Drawing, Narrative, Invoice, Certificate), then confirm with 'Confirm upload'.",
         },
       ]);
       return false;

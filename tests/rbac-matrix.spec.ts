@@ -67,7 +67,18 @@ test("rbac matrix enforces review/status boundaries", async () => {
       expect(canEditStatusAny).toBe(false);
     }
 
-    if (["super_user", "consultant", "architect", "mep", "contractor"].includes(role)) {
+    if (
+      [
+        "super_user",
+        "super_admin",
+        "project_admin",
+        "owner",
+        "consultant",
+        "architect",
+        "mep",
+        "contractor",
+      ].includes(role)
+    ) {
       expect(canUpload).toBe(true);
     } else {
       expect(canUpload).toBe(false);
@@ -93,4 +104,3 @@ test("rbac matrix enforces contributor/self-edit and team controls", async () =>
     }
   }
 });
-

@@ -1,3 +1,135 @@
+## Latest execution pass (2026-05-06 IST, auditor governance implementation sweep)
+
+### Delivered in this pass
+- Added migration:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0051_auditor_enforcement_baseline.sql`
+- DB enforcement added:
+  - `ELIMINATED` lifecycle support path.
+  - `rejection_count` tracking on `project_document`.
+  - second-rejection elimination support.
+  - strict upload-assignment guard trigger.
+  - single-active-assignee unique partial index.
+  - append-only guard trigger function + immutable table triggers.
+  - append-only lineage tables:
+    - `document_versions`
+    - `assignment_logs`
+    - `workflow_history`
+    - `audit_logs`
+  - no-overwrite guard on `project_document.file_path`.
+  - derived-state recalculation function/trigger path from document mutations.
+- Service logic updates:
+  - `lib/services/document-state-service.ts`
+    - supports `ELIMINATED`
+    - auto-eliminates after second reject/clarification
+    - writes consistent transition/audit payload for elimination.
+  - `lib/services/credit-service.ts`
+    - assignment mutations now sync into `assignments` with active-assignee rollover.
+- Model + workflow updates:
+  - `lib/types.ts`
+  - `lib/data.ts`
+  - `lib/workflow/types.ts`
+  - `lib/workflow/machines.ts`
+- Test enhancement:
+  - `tests/workflow-state-machine.spec.ts` includes elimination transition coverage.
+
+### Verification
+- `npm run build` passed.
+- `npx playwright test tests/workflow-state-machine.spec.ts` passed (8/8).
+
+### Important follow-up
+- Migration `0051_auditor_enforcement_baseline.sql` must be applied in active Supabase before behavior is effective in runtime.
+- Remaining open auditor items are still tracked in `todo.md` as partial and need env-level verification/UAT closure.
+
+## Latest execution pass (2026-05-06 IST, WP-9 automated UAT/readiness pass)
+
+### Completed in this pass
+- Ran readiness gates:
+  - `npm run build` -> passed
+  - `npm run lint` -> passed
+- Ran automated UAT suites:
+  - `npx playwright test tests/workflow-state-machine.spec.ts` -> 7/7 passed
+  - `npx playwright test tests/rbac-matrix.spec.ts` -> 3/3 passed
+  - `npx playwright test tests/production-readiness.spec.ts` -> 1/1 passed
+- Fixed stale RBAC matrix expectation in:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\tests\rbac-matrix.spec.ts`
+  - Upload policy expectation now matches current enforcement (admin/owner/L0 roles allowed; client blocked).
+
+### WP-9 status
+- Automated UAT/readiness checks are now green.
+- Remaining for full WP-9 closure:
+  1. Apply/verify latest migrations in active Supabase environment.
+  2. Complete final role-by-role browser UAT on live project data (guidebook/tracker/upload/review/export runbook).
+
+## Latest execution pass (2026-05-06, P1 admin validation UI + API role hardening)
+
+### Completed in this pass
+- Added project-level validation rule management in workspace UI:
+  - `app/projects/[id]/page.tsx`
+  - New "Validation Rules" panel for admin-capable roles.
+- Added server action for validation rule creation:
+  - `app/actions.ts#createValidationRuleAction`
+  - Enforces project-management role check before writing to `validation_rules`.
+- Extended workspace data model to include validation rules:
+  - `lib/data.ts` now fetches active `validation_rules` per project for both super-user and member workspace paths.
+  - `lib/types.ts` extended with `ProjectWorkspace.validationRules`.
+- Additional API role hardening:
+  - `app/api/sales/executive/route.ts` gated by `canAccessBillingAndInvoice`.
+  - `app/api/sales/case-study/[projectId]/route.ts` gated by `canAccessBillingAndInvoice`.
+
+### Verification
+- `npm run build` passed.
+
+## Latest execution pass (2026-05-06, P1 role/access hardening + task engine activation)
+
+### Completed in this pass
+- Added DB task engine migration:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0050_project_tasks_engine.sql`
+  - New table `project_tasks` with open-task uniqueness for assignment and clarification loops.
+- Added task orchestration service:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\task-service.ts`
+  - Handles assignment-task creation/closure and clarification-task creation/closure.
+- Integrated task materialization in workflow:
+  - `credit-service.assignContributor(...)` now auto-creates upload tasks for assignees.
+  - `document-state-service` now creates clarification fix tasks on reject/clarification and closes them on resubmission.
+  - `getRoleTasks()` now merges materialized DB tasks with derived role tasks.
+- Added role-hardening on sales APIs:
+  - `app/api/sales/executive/route.ts` now requires `canAccessBillingAndInvoice(...)`.
+  - `app/api/sales/case-study/[projectId]/route.ts` now enforces same role gate.
+
+### Verification
+- `npm run build` passed.
+
+### Mandatory next step
+- Apply migration `0050_project_tasks_engine.sql` in Supabase before UAT to enable persistent task materialization.
+
+## Latest execution pass (2026-05-06, P1 closure: task materialization + reviewer simulation sync)
+
+### Completed in this pass
+- Added migration: `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0050_project_tasks_engine.sql`
+  - New table: `project_tasks`
+  - Open-task uniqueness for assignment and clarification loops
+- Added service: `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\task-service.ts`
+  - `upsertAssignmentUploadTask(...)`
+  - `closeAssignmentTasks(...)`
+  - `upsertClarificationTask(...)`
+  - `closeClarificationTasks(...)`
+- Integrated auto-task materialization into workflow:
+  - `credit-service.assignContributor(...)` now creates/clears assignment upload tasks.
+  - `document-state-service` now creates clarification tasks on `CLARIFICATION/REJECTED`.
+  - `document-state-service` now closes clarification tasks on `RESUBMITTED`.
+- Integrated materialized tasks into role task feed:
+  - `lib/data.ts#getRoleTasks()` now merges open `project_tasks` assigned to current user and deduplicates list output.
+- TODO alignment:
+  - Marked Phase 5 auto-task generation complete.
+  - Marked Phase 8 reviewer simulation trigger + rule checks complete.
+  - Marked assignment auto-task item complete.
+
+### Verification
+- `npm run build` passed.
+
+### Mandatory next step
+- Apply migration `0050_project_tasks_engine.sql` in active Supabase environment before UAT so runtime task materialization persists to DB.
+
 ## Latest execution pass (2026-05-06, P0 closure: validation/scoring/assignment + RBAC deviations)
 
 ### Completed in this pass
@@ -2032,3 +2164,47 @@ Implemented the full V2 intelligence layer for Tracknov Copilot, evolving it int
 3. L3 assignment UI/API for per-document-type ownership granularity (currently credit-level owner assignment guard)
 4. Assignment auto-task materialization (currently role tasks are derived, not persisted task-queue records)
 5. API-level role guard completion audit across every endpoint (partial; core flows covered)
+
+## Latest execution pass (2026-05-06, AI auditor governance one-pass implementation)
+
+### Scope implemented
+- Added new handoff artifact:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\handoff\AI_Auditor_Developer_Handoff.md`
+- Added AI governance module:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\copilot-governance.ts`
+  - Implements:
+    - deterministic intent routing (`status/validation/workflow/...`)
+    - prompt/context sanitization (basic injection defense + redaction)
+    - unknown-data fixed response
+    - strict normalized response envelope
+    - execution confirmation requirement detection
+- Upgraded assistant API:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\api\assistant\route.ts`
+  - Changes:
+    - deterministic-first short-circuit for status/workflow/validation intents
+    - normalized fallback responses (no raw model-down messaging)
+    - low-temperature policy (`temperature: 0.2`)
+    - manual version lock signal included in snapshot (`Manual version lock: ...`)
+    - guard when mapping/comparison/summary requested without manual lock
+    - AI interaction telemetry logging hook
+- Added DB migration for AI telemetry:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0052_ai_auditor_governance.sql`
+  - Adds `ai_interactions` table + RLS policies + indexes
+- Enforced explicit confirmation before chat-driven upload execution:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\components\assistant\global-copilot.tsx`
+  - Upload trigger now requires explicit confirmation phrase (for example, `confirm` / `and upload`)
+- Added governance tests:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\tests\copilot-governance.spec.ts`
+
+### Verification
+- `npm run build` passed
+- `npm run lint` passed
+- `npx playwright test tests/copilot-governance.spec.ts` passed (4/4)
+
+### TODO sync
+- Marked AI auditor governance checklist items as complete in:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\todo.md`
+
+### Notes
+- Migration `0052_ai_auditor_governance.sql` is committed locally but still needs to be applied in target Supabase env.
+- This pass prioritizes AI governance closure and deterministic behavior; remaining non-AI umbrella epics are still tracked in TODO.
