@@ -6,7 +6,6 @@ import {
   assignCreditContributorAction,
   importProjectTrackerBaselineAction,
   setCreditStateAction,
-  setDocumentStatusAction,
   uploadProjectGuidebookAction,
   updateCreditGuidanceAction,
   updateCreditDocumentRequirementsAction,
@@ -1075,55 +1074,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       ) : null}
 
                       {canReview ? (
-                        <div className="mt-3 space-y-2">
-                          {canOwnerReview && document.status === "uploaded" ? (
-                            <form action={setDocumentStatusAction}>
-                              <input type="hidden" name="project_id" value={params.id} />
-                              <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                              <input type="hidden" name="document_id" value={document.id} />
-                              <input type="hidden" name="status" value="owner_approved" />
-                              <Button type="submit" className="h-7 w-full rounded-md text-[11px]">
-                                Forward To Project Admin
-                              </Button>
-                            </form>
-                          ) : null}
-                          {canFinalReview && document.status === "owner_approved" ? (
-                            <form action={setDocumentStatusAction}>
-                              <input type="hidden" name="project_id" value={params.id} />
-                              <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                              <input type="hidden" name="document_id" value={document.id} />
-                              <input type="hidden" name="status" value="approved" />
-                              <Button type="submit" className="h-7 w-full rounded-md text-[11px]">
-                                Include In Submission Pack
-                              </Button>
-                            </form>
-                          ) : null}
-                          <form action={setDocumentStatusAction} className="space-y-2">
-                            <input type="hidden" name="project_id" value={params.id} />
-                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                            <input type="hidden" name="document_id" value={document.id} />
-                            <input type="hidden" name="status" value="rejected" />
-                            <select
-                              name="rejection_type"
-                              defaultValue="missing_data"
-                              className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-                            >
-                              <option value="missing_data">Missing required information</option>
-                              <option value="incorrect_format">Incorrect format</option>
-                              <option value="wrong_document">Wrong document type</option>
-                              <option value="poor_quality">Poor image quality / unreadable</option>
-                              <option value="outdated_document">Outdated document</option>
-                              <option value="wrong_credit_mapping">Wrong credit mapping</option>
-                            </select>
-                            <input
-                              name="rejection_remark"
-                              placeholder="Specific correction note (minimum 20 characters)"
-                              className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
-                            />
-                            <Button type="submit" variant="danger" className="h-7 w-full rounded-md text-[11px]">
-                              Exclude
-                            </Button>
-                          </form>
+                        <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
+                          Review actions are handled in the governed review queue so this credit screen remains context-only.
+                          <Link href="/review-queue" className="ml-1 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+                            Open review queue
+                          </Link>
                         </div>
                       ) : null}
                     </div>

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { transitionDocumentState } from "./document-state-service";
+import { workflowOrchestratorService } from "./workflow-orchestrator-service";
 import { ragService } from "./rag-service";
 import { eventBus } from "@/lib/events/event-bus";
 import { computeIgbcScore } from "./igbc-scoring-service";
@@ -118,19 +119,22 @@ export class ReviewService {
       .eq("id", params.documentId)
       .maybeSingle();
 
-    const result = await transitionDocumentState(this.admin, {
-      documentId: params.documentId,
-      newState: params.newState as any,
-      userId: user.id,
-      actorRole,
-      manualSubmit: params.manualSubmit,
-      updatedEvidence: params.updatedEvidence,
-      remarks: params.remarks,
-      override: params.override,
-      overrideReason: params.overrideReason,
+    const result = await workflowOrchestratorService.transition(user, {
+      entityType: "document",
+      entityId: params.documentId,
+      projectId: params.projectId,
+      targetState: params.newState as any,
+      action: params.manualSubmit ? "submit" : null,
+      reason: params.remarks ?? null,
+      metadata: {
+        manualSubmit: Boolean(params.manualSubmit),
+        updatedEvidence: Boolean(params.updatedEvidence),
+      },
+      override: Boolean(params.override),
+      overrideReason: params.overrideReason ?? null,
     });
 
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) throw new Error(result.message);
 
     if (params.newState === "APPROVED") {
       await ragService.ingestApprovedDocument(params.documentId);

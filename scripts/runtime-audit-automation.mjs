@@ -68,10 +68,37 @@ fs.writeFileSync(path.join(outDir, "db-enforcement-audit.md"), dbReport);
 const gateChecks = [
   ["Runtime desync schema present", migrationFiles.some((f) => f.includes("0055_runtime_audit_enforcement.sql"))],
   ["AI governance migration present", migrationFiles.some((f) => f.includes("0052_ai_auditor_governance.sql"))],
+  ["Runtime orchestration hardening migration present", migrationFiles.some((f) => f.includes("0056_runtime_semantics_orchestration_hardening.sql"))],
+  ["Workflow transition endpoint present", fs.existsSync(path.join(root, "app", "api", "workflow", "transition", "route.ts"))],
+  ["Workflow transition rules table present", /create table if not exists public\.workflow_transition_rules/i.test(migrationText)],
+  ["Certified lock guard present", /CERTIFIED_LOCKED/i.test(migrationText) && /guard_certified_project_mutation/i.test(migrationText)],
+  ["Append-only trigger baseline present", /prevent_append_only_mutation/i.test(migrationText)],
   ["Runtime reconciliation endpoint present", fs.existsSync(path.join(root, "app", "api", "jobs", "runtime", "reconcile", "route.ts"))],
   ["Signed URL endpoint present", fs.existsSync(path.join(root, "app", "api", "documents", "[id]", "route.ts"))],
   ["Rate-limit utility present", fs.existsSync(path.join(root, "lib", "security", "rate-limit.ts"))],
 ];
+
+const sourceFiles = [
+  ...walk(path.join(root, "app")).filter((f) => /\.(ts|tsx)$/.test(f)),
+  ...walk(path.join(root, "lib")).filter((f) => /\.(ts|tsx)$/.test(f)),
+];
+
+const manualDerivedStateFindings = sourceFiles.flatMap((file) => {
+  const relative = path.relative(root, file).replaceAll("\\", "/");
+  const text = fs.readFileSync(file, "utf8");
+  const suspicious = [];
+  if (/\.from\("projects"\)[\s\S]{0,500}\.update\(\{[\s\S]{0,300}(state|certification_state|status)/.test(text)) {
+    suspicious.push("project derived-state update");
+  }
+  if (/\.from\("project_credits"\)[\s\S]{0,500}\.update\(\{[\s\S]{0,300}(state|status)/.test(text)) {
+    suspicious.push("project_credit derived-state update");
+  }
+  if (/\.from\("credit_stages"\)[\s\S]{0,500}\.update\(\{[\s\S]{0,300}(state|status)/.test(text)) {
+    suspicious.push("credit_stage derived-state update");
+  }
+  return suspicious.map((finding) => ({ file: relative, finding }));
+});
+
 const gatesReport = [
   "# Deployment gates checklist automation",
   "",
@@ -79,11 +106,48 @@ const gatesReport = [
   "|---|---:|",
   ...gateChecks.map(([name, ok]) => `| ${name} | ${ok ? "PASS" : "FAIL"} |`),
   "",
+  "## Manual derived-state mutation scan",
+  "",
+  manualDerivedStateFindings.length
+    ? "| File | Finding |\n|---|---|\n" + manualDerivedStateFindings.map((f) => `| \`${f.file}\` | ${f.finding} |`).join("\n")
+    : "No suspicious manual derived-state mutation patterns detected in `app/` or `lib/`.",
+  "",
 ].join("\n");
 fs.writeFileSync(path.join(outDir, "deployment-gates-checklist.md"), gatesReport);
+
+const reconcileRows = [
+  ["Orchestration endpoint exists", fs.existsSync(path.join(root, "app", "api", "workflow", "transition", "route.ts")), "app/api/workflow/transition/route.ts", "Critical"],
+  ["Workflow transition matrix exists", /workflow_transition_rules/i.test(migrationText), "supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql", "Critical"],
+  ["Append-only audit trigger exists", /prevent_append_only_mutation/i.test(migrationText), "supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql", "Critical"],
+  ["Certified lock guard exists", /guard_certified_project_mutation/i.test(migrationText), "supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql", "Critical"],
+  ["Security event logging exists", /security_events/i.test(migrationText), "supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql", "High"],
+  ["Runtime repair procedures exist", /repair_project_state/i.test(migrationText) && /rebuild_derived_states/i.test(migrationText), "supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql", "High"],
+  ["No manual derived-state mutation pattern found", manualDerivedStateFindings.length === 0, "app/, lib/ scan", "High"],
+];
+
+const reconcileReport = [
+  "# Orchestration reconcile audit",
+  "",
+  "| Requirement | Status | Evidence | Severity |",
+  "|---|---:|---|---|",
+  ...reconcileRows.map(([requirement, ok, evidence, severity]) => `| ${requirement} | ${ok ? "PASS" : "FAIL"} | \`${evidence}\` | ${severity} |`),
+  "",
+].join("\n");
+fs.writeFileSync(path.join(outDir, "orchestration-reconcile-audit.md"), reconcileReport);
+
+const criticalFailures = [...gateChecks, ...reconcileRows.filter((row) => row[3] === "Critical").map((row) => [row[0], row[1]])]
+  .filter(([, ok]) => !ok);
+
+if (criticalFailures.length > 0) {
+  console.error("Critical deployment gate failures:");
+  for (const [name] of criticalFailures) {
+    console.error(`- ${name}`);
+  }
+  process.exitCode = 1;
+}
 
 console.log("Runtime audit reports generated:");
 console.log("- artifacts/reports/api-enforcement-audit.md");
 console.log("- artifacts/reports/db-enforcement-audit.md");
 console.log("- artifacts/reports/deployment-gates-checklist.md");
-
+console.log("- artifacts/reports/orchestration-reconcile-audit.md");

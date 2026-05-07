@@ -153,7 +153,7 @@ export default async function DashboardPage({
       notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
       <RefreshTrigger intervalMs={60000} />
-      {["super_user", "super_admin", "project_admin"].includes(activeRole) ? (
+      {["super_user", "super_admin"].includes(activeRole) ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-2">
             <div>

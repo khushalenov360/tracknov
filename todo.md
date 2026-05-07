@@ -10,6 +10,54 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 
 ---
 
+## 3-phase dependency-safe implementation handoff (from `artifacts/handoff/3/TRACKNOV_3Phase_Implementation_Developer_Handoff.md`)
+
+### P0 - Phase 1 core enforcement gate
+- [~] Confirm DB schema enforcement, workflow engine, validation engine, RBAC/RLS, immutable audit logs, and API orchestration are active before expanding UI/AI behavior.
+- [~] Prove no direct frontend DB mutations remain.
+- [~] Prove no workflow state skipping is possible across DB/API/server actions.
+- [~] Prove document overwrite is impossible across every upload/update path.
+- [ ] Prove no derived state is stored or mutated manually outside backend recalculation/orchestration paths.
+- [x] Confirm required API families exist and are backend-authoritative:
+  - `/workflow/*`
+  - `/validation/*`
+  - `/documents/*`
+  - `/projects/*`
+  - `/credits/*`
+
+### P0 - Cross-phase dependency gates
+- [~] Do not expand UI behavior until workflow transitions are backend enforced, validation blocks invalid actions, RLS isolates projects, and audit logging is immutable.
+- [~] Do not expand AI behavior until validation authority and project-scoped retrieval are enforced.
+- [~] Do not build dashboard/analytics surfaces before derived-state engine outputs are backend-owned.
+- [x] Remove operational-user visibility of runtime instability, reconciliation tooling, repair systems, and internal desync metrics.
+
+### P1 - Phase 2 execution and UX safety
+- [x] Queue-first UX with capability-driven rendering and lock-state display.
+- [~] Review orchestration must be submittal-first, not document/card-first. (submittal review route added; remaining mutation universality still pending)
+- [~] Project Admin UI must show only validation queues, blockers, stage readiness, pending reviews, and workflow actions.
+- [x] Hide runtime desync metrics, repair tooling, and infrastructure diagnostics from Project Admin and operational roles; reserve internal diagnostics for governance/super-user/admin-only surfaces.
+
+### P1 - Phase 3 AI certification intelligence safety
+- [x] Keep AI advisory-only:
+  - summarize
+  - recommend
+  - explain
+- [x] Block AI from approve/reject/override/transition authority.
+- [x] Enforce RBAC filtering before retrieval, project-scoped context, and prompt-injection defense.
+- [~] Ensure AI answers are evidence-linked and do not expose raw runtime/retrieval internals.
+
+### P1 - Auditor framework alignment
+- [~] Maintain closure evidence for:
+  - DB Integrity Audit
+  - API + Workflow Audit
+  - Frontend/Backend Separation Audit
+  - Validation & Certification Audit
+  - RBAC + Security Audit
+  - AI Reliability Audit
+  - Trust Integrity Audit
+
+---
+
 ## Runtime audit stabilization (from `artifacts/handoff/2/runtime_audit_developer_handoff.md`)
 
 ### P0 - Runtime integrity blockers
@@ -39,6 +87,89 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 ### P2 - Runtime performance hardening
 - [x] Add performance checks/SLO alerts for:
   - validation < 2s, transition < 1s, recalculation < 3s.
+
+---
+
+## Central workflow orchestration engine (from `artifacts/handoff/2/CENTRAL_WORKFLOW_ORCHESTRATION_ENGINE.md`)
+
+### P0 - Centralized mutation authority
+- [x] Create authoritative endpoint `POST /api/workflow/transition`.
+- [~] Route all workflow state changes through the authoritative endpoint. (document review transitions now routed; legacy submittal/direct paths still need migration)
+- [~] Block direct workflow mutation pathways outside orchestration entrypoint (API/server action/db write bypasses).
+- [~] Enforce strict orchestration sequence in one transaction:
+  - authenticate -> membership -> capability -> assignment -> lock -> legality -> validation -> concurrency -> mutate -> audit -> derived -> scoring -> certification -> commit.
+- [x] Return deterministic standardized response contract:
+  - `workflow_state`, `allowed_actions`, `lock_state`, `validation_status`, `audit_reference`, `derived_state_summary`.
+- [x] Return deterministic error schema for all failures.
+
+### P0 - Certification lock and override governance
+- [~] Implement `CERTIFIED_LOCKED` project lock state and hard-block post-certification mutations. (migration + orchestrator guard added; target Supabase migration application pending)
+- [~] Allow lock bypass only for L5 override with mandatory reason + immutable before/after snapshots. (L5/reason guard added; snapshot depth still partial)
+- [~] Restrict override authority to L5 for workflow/validation/scoring/certification paths.
+
+### P1 - Workflow legality and validation coupling
+- [x] Introduce/align `workflow_transition_rules` table as document legality matrix for orchestrator/DB trigger.
+- [~] Enforce clarification safety invalidation:
+  - previous review/validation/approval authority invalidated on clarification mutation.
+- [x] Ensure persistent document lifecycle (`CLARIFICATION -> RESUBMITTED`) without replacement documents.
+- [~] Ensure persistent submittal lifecycle (`CLARIFICATION -> RESUBMITTED`) without replacement submittals.
+- [~] Snapshot freeze on approval:
+  - evidence versions, validation snapshot, scoring snapshot, assignment snapshot, rule version snapshot.
+
+### P1 - Concurrency and security events
+- [x] Add stale state detection and deterministic conflict handling at orchestration endpoint for document transitions.
+- [x] Emit `security_events` for:
+  - unauthorized attempts, stale mutation attempts, invalid transitions, override usage, lock violations.
+
+### P1 - Derived-state/scoring orchestration closure
+- [~] Guarantee post-mutation recalculation chain:
+  - submittal -> credit_stage -> project_credit -> project -> certification.
+- [~] Guarantee scoring/threshold/certification reevaluation after approval-affecting mutations.
+- [ ] Prove no manual derived-state updates remain in mutation code paths.
+
+### P2 - Performance and indexing for orchestrator path
+- [x] Add/verify indexes for orchestrator read/write path:
+  - workflow history lookups, transition legality checks, assignment checks, lock checks.
+- [x] Add orchestrator latency instrumentation and target checks for deterministic transaction path.
+
+---
+
+## UX/UI workflow execution console (from `artifacts/handoff/2/UX_UI_DEVELOPER_HANDOFF.md`)
+
+### P0 - Backend-authoritative UI and review safety
+- [x] Add centralized `workflowStateRenderer()` so state labels, lock behavior, editability, and allowed actions are not scattered through screens.
+- [x] Add reusable `WorkflowStatePanel` for backend-supplied state, lock state, blockers, and allowed actions.
+- [~] Convert review queue away from bulk/global approval behavior toward single-item backend-action review surfaces. (bulk UI removed from review queue; full submittal auto-dequeue still pending)
+- [~] Ensure all review surfaces consume backend `allowed_actions` instead of frontend-inferred actions. (review queue now renders allowed actions from workflow renderer; project credit detail forms still need migration)
+- [x] Remove workflow transition/review action controls from credit context screens; credit screens must display context only.
+- [x] Build canonical submittal detail screen with:
+  - Workflow State Panel
+  - Validation Panel
+  - Document Viewer
+  - Version History
+  - Review Action Bar
+  - Audit Timeline
+  - AI Assistance Panel
+- [~] Implement project-scoped submittal queue ordering:
+  - mandatory-first
+  - clarification-priority
+  - assignment-aware
+  - stage-aware
+- [x] Implement review auto-dequeue to next relevant submittal after action.
+
+### P1 - Frontend trust-boundary hardening
+- [ ] Remove remaining frontend-derived readiness/workflow/completion logic from UI components and route all derived values through backend contracts.
+- [~] Add conflict/stale-state UX handling for workflow-bound actions:
+  - rollback optimistic UI
+  - refresh authoritative state
+  - preserve reviewer context.
+- [x] Add version history and validation outcome visibility to review screens.
+- [~] Add UX governance tests for:
+  - unauthorized action visibility
+  - workflow lock bypass
+  - stale permissions
+  - context persistence
+  - queue sequencing.
 
 ---
 
@@ -371,3 +502,296 @@ Priority execution sequence:
 ### Status impact
 - `ELIMINATED` item moved from missing to partial pending live-schema/application verification.
 - Append-only immutability item moved from missing to partial pending migration rollout + env-level proof.
+
+
+---
+
+## Orchestration reconcile audit closure (from `artifacts/handoff/2/ORCHESTRATION_RECONCILE_AUDITOR.md`)
+
+### P0 - Enterprise blockers (must prove PASS)
+- [~] Enforce centralized workflow mutations only via `POST /api/workflow/transition`. (endpoint/service added; universal migration still open)
+- [~] Eliminate all direct workflow state update bypass paths (DB/API/server-action/background).
+- [~] Guarantee atomic transition chain with rollback:
+  - authorize -> validate -> mutate -> audit -> recalculate -> score -> certify -> commit.
+- [~] Enforce validation-before-transition at runtime for all workflow mutations.
+- [~] Enforce derived-state synchronization chain:
+  - submittal -> credit_stage -> project_credit -> project -> certification.
+- [~] Enforce immutable audit/version tables (append-only):
+  - `workflow_history`, `audit_logs`, `override_logs`, `certification_snapshots`, `document_versions`.
+- [~] Enforce `CERTIFIED_LOCKED` mutation blocking except explicit L5 override with reason + snapshots.
+- [x] Enforce project-scoped RLS isolation (`auth.uid() -> project_users`) for primary runtime workflow entities.
+- [x] Enforce AI mutation isolation (AI cannot mutate workflow/state/scoring/approval paths).
+
+### P1 - High-risk enforcement proofs
+- [~] Produce evidence map of every workflow mutation path and prove orchestration routing. (runtime audit reports + authority matrix added; full route proof still open)
+- [~] Add stale write/concurrency guards with immutable approval snapshots (`last-write-wins + frozen approvals`).
+- [~] Enforce assignment engine determinism + reassignment audit lineage.
+- [~] Enforce override governance:
+  - only L5 override
+  - reason mandatory
+  - immutable override logs.
+- [~] Enforce certification snapshot freeze content:
+  - evidence versions
+  - validation snapshot
+  - scoring snapshot
+  - rule version
+  - approver lineage
+  - override lineage.
+- [~] Enforce document version lineage immutability and block evidence overwrite.
+- [~] Enforce deterministic scoring with manual-version freeze (no retroactive drift).
+
+### P2 - Runtime quality and performance hardening
+- [x] Add/verify index coverage:
+  - workflow state
+  - project lineage
+  - assignment ownership
+  - certification lookup
+  - audit retrieval
+  - validation retrieval.
+- [x] Add orchestration performance audit checks for transition/audit/validation paths.
+- [~] Generate reconciliation audit report table format:
+  - Requirement | PASS/FAIL | Evidence | Severity.
+- [~] Add production gate that blocks deploy on any critical FAIL in:
+  - workflow enforcement
+  - RLS
+  - validation
+  - immutable audit
+  - certification locking
+  - orchestration centralization.
+
+---
+
+## SQL runtime hardening closure (from `artifacts/handoff/2/SQL_RUNTIME_HARDENING_HANDOFF.md`)
+
+### P0 - Runtime integrity and invariants (release blockers)
+- [~] Add runtime schema integrity framework:
+  - `schema_migration_integrity` table
+  - migration checksum verification
+  - migration order verification
+  - startup schema drift verification
+  - migration lock enforcement.
+- [x] Block deployment when critical runtime hardening/schema gate checks fail in `npm run qa:runtime-audit`.
+- [~] Enforce DB invariants for:
+  - illegal workflow transition block
+  - certified project immutability
+  - evidence overwrite prevention
+  - orphan prevention (FK coverage)
+  - invalid assignment prevention
+  - duplicate role-assignment prevention
+  - duplicate project-credit mapping prevention.
+- [~] Enforce immutable append-only policy for:
+  - `workflow_history`
+  - `audit_logs`
+  - `override_logs`
+  - `certification_snapshots`
+  - `document_versions`
+  - `validation_snapshots`
+  - block UPDATE/DELETE.
+- [~] Enforce universal mutation orchestration path via `/api/workflow/transition` with full transactional rollback on critical-step failure.
+- [~] Enforce universal validation gate before workflow mutation (no bypass paths).
+
+### P1 - Deterministic reconciliation and certification defensibility
+- [~] Add deterministic derived-state reconciliation procedures:
+  - `recalculate_submittal_state()`
+  - `recalculate_credit_state()`
+  - `recalculate_project_state()`
+  - `recalculate_certification_state()`
+  - and wire replay-safe reconciliation jobs.
+- [~] Enforce immutable certification snapshot payload:
+  - evidence versions
+  - validation snapshot
+  - scoring snapshot
+  - workflow snapshot
+  - assignment snapshot
+  - rule/manual version
+  - override lineage.
+- [~] Add `certification_snapshot_hash` generation and verification.
+- [~] Enforce manual version lock (`manual_version_id`) with explicit migration-only changes.
+- [~] Add runtime repair/recovery procedures:
+  - `repair_project_state()`
+  - `repair_credit_state()`
+  - `verify_certification_integrity()`
+  - `rebuild_derived_states()`
+  - with deterministic replay support.
+- [~] Enforce override hardening:
+  - L5-only
+  - mandatory reason
+  - immutable before/after snapshots
+  - lineage preservation.
+
+### P2 - Performance and operational hardening
+- [x] Add/verify index coverage for:
+  - workflow state
+  - project lineage
+  - assignment ownership
+  - certification lookup
+  - audit retrieval
+  - validation retrieval
+  - reconciliation queries.
+- [~] Add reconciliation query optimization:
+  - composite indexes
+  - partial indexes
+  - materialized reporting views.
+- [~] Add runtime hardening audit script/report proving:
+  - no drift
+  - deterministic derived-state sync
+  - immutable lineage
+  - orchestration universality.
+
+---
+
+## Runtime-enforceable implementation semantics (from `artifacts/handoff/2/RUNTIME_ENFORCEABLE_IMPLEMENTATION_SEMANTICS_PLAN.md`)
+
+### P0 - Runtime authority stabilization
+- [~] Implement/complete central orchestrator layer for mutation flow:
+  - request -> orchestrator -> authorization -> validation -> workflow -> audit -> mutation -> derived recalculation -> response.
+- [~] Centralize validation gateway so no mapping, workflow transition, scoring, approval, or rejection can occur without validation execution.
+- [x] Enforce explicit workflow transition matrix; workflow state must never be inferred.
+- [~] Enforce immutable audit layer with before/after snapshots and actor traceability for all sensitive actions.
+- [~] Define and enforce exact runtime state semantics for:
+  - `proposed`
+  - `mapped`
+  - `ready`
+  - `submitted`
+  - `approved`.
+- [~] Add runtime truth tables for:
+  - validation failure
+  - AI timeout
+  - stale workflow
+  - unauthorized access.
+- [~] Define and implement failure trees for:
+  - rollback
+  - retry
+  - degraded operation
+  - conflict
+  - reconciliation.
+
+### P0 - AI runtime governance and authority boundary
+- [x] Enforce deterministic-first AI routing:
+  - DB -> Validation -> Workflow -> AI.
+- [x] Prevent AI from answering deterministic project counts/workflow states/pending items/validation results when deterministic source exists.
+- [x] Enforce structured context builder:
+  - authorized
+  - project-scoped
+  - workflow-scoped
+  - validation-filtered.
+- [~] Block raw RAG dumps, retrieval scores, internal telemetry, and vector metadata from frontend responses.
+- [x] Enforce AI response normalization:
+  - Assessment
+  - Fit
+  - Reason
+  - Recommendation
+  - Confirmation Request.
+- [x] Enforce AI capability firewall:
+  - AI can summarize/explain/suggest/classify
+  - AI cannot mutate/approve/reject/transition/override validation.
+
+### P1 - Governance reference artifacts
+- [x] Produce action authority matrix.
+- [x] Produce mutation authority matrix.
+- [x] Produce workflow authority matrix.
+- [x] Produce AI capability matrix.
+- [~] Produce canonical runtime diagrams for:
+  - document upload lifecycle
+  - AI query lifecycle
+  - workflow transition lifecycle
+  - validation lifecycle
+  - rollback lifecycle
+  - conflict resolution lifecycle
+  - authorization lifecycle.
+- [~] Produce API execution contracts for every mutation API:
+  - authorization sequence
+  - validation sequence
+  - workflow checks
+  - mutation rules
+  - audit obligations
+  - rollback behavior
+  - side effects.
+
+### P1 - Frontend boundary and reconciliation
+- [~] Enforce frontend trust boundary:
+  - frontend renders/triggers only
+  - frontend never determines permissions/workflow legality/validation success/certification readiness.
+- [~] Add reconciliation checks for:
+  - derived-state mismatch
+  - orphan records
+  - workflow desync
+  - audit consistency
+  - validation consistency.
+- [x] Enforce AI security hardening:
+  - prompt injection sanitization
+  - project-scoped retrieval
+  - authorization-before-retrieval
+  - AI context filtering
+  - DTO filtering.
+
+### P2 - Semantics validation suites
+- [x] Add workflow enforcement test suite.
+- [~] Add validation authority test suite.
+- [x] Add AI hallucination test suite.
+- [x] Add prompt injection test suite.
+- [x] Add concurrency test suite.
+- [~] Add rollback test suite.
+- [x] Add tenant isolation test suite.
+- [x] Add fallback behavior test suite.
+
+---
+
+## Latest execution pass (2026-05-06 IST, orchestration/runtime hardening)
+
+### Completed
+- Added central workflow transition endpoint:
+  - `app/api/workflow/transition/route.ts`
+- Added orchestration service:
+  - `lib/services/workflow-orchestrator-service.ts`
+- Routed document review transitions through the orchestrator:
+  - `lib/services/review-service.ts`
+- Added runtime hardening migration:
+  - `supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql`
+- Added runtime authority matrix and lifecycle artifact:
+  - `artifacts/governance/RUNTIME_AUTHORITY_MATRICES.md`
+- Updated `AgentHandoff.md` with implementation and remaining gaps.
+
+### Verified
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` passed.
+
+### Still open after this pass
+- Universal orchestration migration for all workflow mutation paths.
+- Submittal workflow support inside `/api/workflow/transition`.
+- Live Supabase migration application and DB-level enforcement verification.
+  - Blocked in this environment as of 2026-05-07 because `.env.local` has blank `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, and `SUPABASE_ACCESS_TOKEN`; `npx supabase` is available, but it cannot link/push without those values.
+- Startup schema checksum/drift deployment blocker.
+- Full certification snapshot freeze/reconstruction UAT.
+- Tenant-isolation test suite.
+
+---
+
+## Latest execution pass (2026-05-07 IST, TODO repo-side implementation)
+
+### Completed
+- Added 3-phase implementation handoff artifact:
+  - `artifacts/handoff/3/TRACKNOV_3Phase_Implementation_Developer_Handoff.md`
+- Removed workflow/review mutation controls from the project credit context screen.
+- Added governed submittal review detail route:
+  - `app/projects/[id]/submittals/[submittalId]/page.tsx`
+- Added review auto-dequeue server action:
+  - `submitDocumentTransitionAction()` in `app/actions.ts`
+- Added required API family proof routes:
+  - `app/api/credits/route.ts`
+  - `app/api/validation/submittal/route.ts`
+- Updated review queue data contract with submittal IDs, allowed actions, lock state, and deterministic ordering inputs.
+- Expanded workflow UI contract tests.
+
+### Verified
+- `npx playwright test tests/workflow-ui-contract.spec.ts` passed (8/8).
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` generated current audit reports.
+
+### Still open after this pass
+- Current open/partial TODO count: 113.
+- Runtime audit still reports high-severity failure for manual derived-state mutation patterns.
+- Universal orchestration is still partial; document review transitions route through the orchestrator, but every mutation path is not yet forced through `/api/workflow/transition`.
+- Live Supabase migration is prepared but not applied for the credential reason above.

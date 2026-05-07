@@ -12,6 +12,7 @@ import {
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { workflowStateRenderer } from "@/lib/workflow/state-renderer";
 import type {
   AuditTimelineRecord,
   DocumentActivityLog,
@@ -1767,7 +1768,7 @@ export async function getOwnerReviewQueue() {
 
   const { data: docs } = await client
     .from("project_document")
-    .select("id, project_id, credit_id, uploaded_by, file_name, uploaded_at, notes, state")
+    .select("id, project_id, credit_id, submittal_id, uploaded_by, file_name, uploaded_at, notes, state")
     .in("project_id", ownedProjectIds)
     .in("state", reviewWorkflowStates)
     .order("uploaded_at", { ascending: true });
@@ -1782,24 +1783,48 @@ export async function getOwnerReviewQueue() {
 
   const [{ data: projects }, { data: credits }, { data: profiles }] = await Promise.all([
     client.from("projects").select("id, name").in("id", projectIds),
-    creditIds.length ? client.from("project_credits").select("id, credit_name").in("id", creditIds) : Promise.resolve({ data: [] }),
+    creditIds.length ? client.from("project_credits").select("id, credit_name, category, is_mandatory").in("id", creditIds) : Promise.resolve({ data: [] }),
     userIds.length ? client.from("profiles").select("user_id, full_name, email").in("user_id", userIds) : Promise.resolve({ data: [] }),
   ]);
 
   const projectById = new Map((projects ?? []).map((row: any) => [row.id, row.name]));
-  const creditById = new Map((credits ?? []).map((row: any) => [row.id, row.credit_name]));
+  const creditById = new Map((credits ?? []).map((row: any) => [row.id, row]));
   const userById = new Map((profiles ?? []).map((row: any) => [row.user_id, row.full_name ?? row.email ?? "Team member"]));
 
-  return rows.map((row: any) => ({
-    id: row.id,
-    project_id: row.project_id,
-    project_name: projectById.get(row.project_id) ?? "Project",
-    credit_name: row.credit_id ? creditById.get(row.credit_id) ?? "Credit" : "Credit",
-    uploaded_by_name: row.uploaded_by ? userById.get(row.uploaded_by) ?? "Team member" : "Team member",
-    file_name: row.file_name,
-    uploaded_at: row.uploaded_at,
-    notes: row.notes ?? "",
-  }));
+  return rows
+    .map((row: any) => {
+    const credit = row.credit_id ? creditById.get(row.credit_id) : null;
+    const workflow = workflowStateRenderer(row.state);
+    return {
+      id: row.id,
+      project_id: row.project_id,
+      submittal_id: row.submittal_id ?? null,
+      project_name: projectById.get(row.project_id) ?? "Project",
+      credit_name: credit?.credit_name ?? "Credit",
+      credit_category: credit?.category ?? null,
+      is_mandatory: Boolean(credit?.is_mandatory),
+      uploaded_by_name: row.uploaded_by ? userById.get(row.uploaded_by) ?? "Team member" : "Team member",
+      file_name: row.file_name,
+      uploaded_at: row.uploaded_at,
+      notes: row.notes ?? "",
+      workflow_state: workflow.state,
+      allowed_actions: workflow.allowedActions,
+      lock_state: {
+        locked: workflow.locked,
+        reason: workflow.blocker,
+      },
+    };
+  })
+  .sort((a: any, b: any) => {
+    const projectCompare = String(a.project_name).localeCompare(String(b.project_name));
+    if (projectCompare !== 0) return projectCompare;
+    if (a.workflow_state === "CLARIFICATION" && b.workflow_state !== "CLARIFICATION") return -1;
+    if (a.workflow_state !== "CLARIFICATION" && b.workflow_state === "CLARIFICATION") return 1;
+    if (a.is_mandatory !== b.is_mandatory) return a.is_mandatory ? -1 : 1;
+    const categoryCompare = String(a.credit_category ?? "").localeCompare(String(b.credit_category ?? ""));
+    if (categoryCompare !== 0) return categoryCompare;
+    return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
+  });
 }
 
 export async function getReviewerPerformanceSummary() {
@@ -2548,7 +2573,7 @@ export async function getRuntimeDesyncSummary() {
     return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
   }
   const user = await getCurrentUser();
-  if (!user || !["super_user", "super_admin", "project_admin"].includes(user.role)) {
+  if (!user || !["super_user", "super_admin"].includes(user.role)) {
     return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
   }
   const client = env.supabaseServiceRoleKey ? createAdminClient() : createClient();

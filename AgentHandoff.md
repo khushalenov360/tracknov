@@ -2274,3 +2274,174 @@ Implemented the full V2 intelligence layer for Tracknov Copilot, evolving it int
 
 ### TODO impact
 - Runtime audit block in `todo.md`: all prior `[ ]` entries set to `[x]` in this pass.
+
+## Latest execution pass (2026-05-06 IST, orchestration/runtime hardening implementation)
+
+### Implemented
+- Added handoff artifacts under `artifacts/handoff/2`:
+  - `CENTRAL_WORKFLOW_ORCHESTRATION_ENGINE.md`
+  - `ORCHESTRATION_RECONCILE_AUDITOR.md`
+  - `SQL_RUNTIME_HARDENING_HANDOFF.md`
+  - `RUNTIME_ENFORCEABLE_IMPLEMENTATION_SEMANTICS_PLAN.md`
+- Added central workflow transition endpoint:
+  - `app/api/workflow/transition/route.ts`
+  - Deterministic response contract includes `workflow_state`, `allowed_actions`, `lock_state`, `validation_status`, `audit_reference`, `derived_state_summary`.
+- Added orchestration service:
+  - `lib/services/workflow-orchestrator-service.ts`
+  - Handles document transitions with authentication, project membership, role capability, certified-lock checks, L5-only override guard, deterministic errors, security event logging, and latency metric logging.
+- Routed review document transitions through the orchestrator:
+  - `lib/services/review-service.ts`
+- Removed the direct `review-service` import from `document-state-service.ts` to avoid circular service coupling.
+- Added DB/runtime hardening migration:
+  - `supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql`
+  - Adds `schema_migration_integrity`, `workflow_transition_rules`, `security_events`, `validation_snapshots`, `certification_snapshots`, append-only triggers, document transition guard, certified-lock guard, certification snapshot function, reconciliation/repair procedures, and runtime indexes.
+  - Adds explicit RLS for `project_users` and `project_document` using `auth.uid() -> project_users` membership lineage.
+- Added runtime authority reference artifact:
+  - `artifacts/governance/RUNTIME_AUTHORITY_MATRICES.md`
+  - Includes action/mutation/workflow/AI authority matrices, lifecycle diagrams, and workflow API execution contract.
+- Strengthened runtime audit automation:
+  - `scripts/runtime-audit-automation.mjs`
+  - Adds critical deployment-gate checks and generates `artifacts/reports/orchestration-reconcile-audit.md`.
+- Added tenant-isolation QA:
+  - `tests/tenant-isolation.spec.ts`
+
+### Verification
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` passed and regenerated:
+  - `artifacts/reports/api-enforcement-audit.md`
+  - `artifacts/reports/db-enforcement-audit.md`
+  - `artifacts/reports/deployment-gates-checklist.md`
+  - `artifacts/reports/orchestration-reconcile-audit.md`
+- `npx playwright test tests/tenant-isolation.spec.ts` passed (2/2).
+
+### Important remaining gaps
+- The orchestrator is live for document transitions used by review flows, but not yet universal across all mutation paths.
+- Submittal workflow mutation still has legacy paths and must be migrated into `/api/workflow/transition`.
+- SQL migration `0056` must be applied to the target Supabase environment before DB-level enforcement can be considered active.
+- The migration includes schema integrity tracking, but startup checksum verification / deployment blocking is still partial.
+- Certification snapshot payload exists as a DB function, but full freeze/reconstruction UAT remains pending.
+- Runtime audit currently flags manual derived-state mutation patterns in:
+  - `lib/data.ts`
+  - `lib/services/credit-service.ts`
+  - `lib/services/project-service.ts`
+  - `lib/services/review-service.ts`
+  These must be migrated into orchestration/recalculation paths before the "no manual derived-state updates" TODO can close.
+
+## Latest execution pass (2026-05-07 IST, UX workflow authority slice)
+
+### Implemented
+- Added the UX/UI governance artifact:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\handoff\2\UX_UI_DEVELOPER_HANDOFF.md`
+- Added centralized workflow UI contract:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\workflow\state-renderer.ts`
+  - Defines canonical workflow states, lock modes, editability, blockers, and allowed actions in one backend-owned module.
+- Updated orchestrator allowed-action output to use the shared workflow renderer:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\workflow-orchestrator-service.ts`
+- Added reusable workflow state panel:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\components\workflow\workflow-state-panel.tsx`
+- Updated review queue toward governance-compliant review UX:
+  - removed bulk approval controls from the review queue page
+  - displays workflow state, lock state, blockers, and backend allowed actions per evidence item
+  - adds allowed-action fields to `getOwnerReviewQueue()`
+- Added QA coverage:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\tests\workflow-ui-contract.spec.ts`
+
+### TODO impact
+- Added new UX/UI workflow execution console section to `todo.md`.
+- Closed:
+  - centralized `workflowStateRenderer()`
+  - reusable `WorkflowStatePanel`
+- Moved to partial:
+  - review queue removal of bulk/global approval behavior
+  - backend allowed-action rendering in review queue
+
+### Remaining UX governance gaps
+- Credit context screens still contain workflow/review controls and must be migrated into a submittal detail screen.
+- Submittal detail screen is not yet complete.
+- Review auto-dequeue and project-scoped submittal queue ordering remain pending.
+- Frontend-derived readiness/completion logic still exists in several pages and must be replaced by backend contracts.
+
+## Latest execution pass (2026-05-07 IST, 3-phase handoff intake + trust integrity patch)
+
+### Added artifact
+- Copied new 3-phase handoff into:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\handoff\3\TRACKNOV_3Phase_Implementation_Developer_Handoff.md`
+
+### TODO impact
+- Added a 3-phase dependency-safe implementation section to `todo.md` covering:
+  - Phase 1 core enforcement gates
+  - cross-phase dependency gates
+  - Phase 2 execution/UX safety
+  - Phase 3 AI safety
+  - auditor framework alignment
+
+### Implemented
+- Enforced the new trust-integrity rule that operational users must not see runtime repair/desync internals:
+  - Dashboard runtime desync monitor is now visible only to `super_user` / `super_admin`.
+  - Runtime desync summary data returns only for `super_user` / `super_admin`.
+  - Runtime reconciliation repair API now denies `project_admin`.
+- Added regression coverage in:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\tests\workflow-ui-contract.spec.ts`
+
+### Remaining from 3-phase handoff
+- Manual derived-state mutation proof remains open.
+- Full submittal-first review execution model remains partial.
+- Required API family proof for `/validation/*` and `/credits/*` should be formalized in audit output.
+
+## Latest execution pass (2026-05-07 IST, TODO repo-side implementation + live migration preparation)
+
+### Implemented in repo
+- Added the new 3-phase implementation handoff artifact:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\handoff\3\TRACKNOV_3Phase_Implementation_Developer_Handoff.md`
+- Updated `todo.md` with the 3-phase dependency-safe requirements and current closure status.
+- Removed direct workflow/review mutation controls from the credit context screen:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\projects\[id]\page.tsx`
+  - Credit page now stays context-only and routes review work to the governed review queue.
+- Added a submittal-style review detail route:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\projects\[id]\submittals\[submittalId]\page.tsx`
+  - Includes workflow state panel, validation panel, document viewer, version history, review action bar, audit timeline, and AI assistance panel.
+- Added review auto-dequeue server action:
+  - `submitDocumentTransitionAction()` in `C:\Users\91922\Documents\Codex\tracknov\harita\app\actions.ts`
+  - Successful review transitions redirect to the next relevant queued item when available, otherwise back to `/review-queue`.
+- Added API family coverage requested by the handoffs:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\api\credits\route.ts`
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\api\validation\submittal\route.ts`
+- Strengthened project-scoped queue data:
+  - `getOwnerReviewQueue()` now carries submittal IDs, credit metadata, lock state, allowed actions, and deterministic ordering inputs.
+- Added/extended QA contract tests:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\tests\workflow-ui-contract.spec.ts`
+
+### Verification
+- `npx playwright test tests/workflow-ui-contract.spec.ts` passed (8/8).
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` completed and regenerated:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\reports\api-enforcement-audit.md`
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\reports\db-enforcement-audit.md`
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\reports\deployment-gates-checklist.md`
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\artifacts\reports\orchestration-reconcile-audit.md`
+
+### Live Supabase migration status
+- User approved moving to live Supabase migration after repo-side implementation.
+- `npx supabase` is available locally at CLI version `2.98.2`.
+- Global `supabase` command is not installed.
+- Live migration is currently blocked because `.env.local` has blank values for:
+  - `SUPABASE_PROJECT_REF`
+  - `SUPABASE_DB_PASSWORD`
+  - `SUPABASE_ACCESS_TOKEN`
+- No checked-in `exec_migrations` or equivalent arbitrary SQL bridge exists in the current repo.
+- Latest migration prepared but not applied live:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0056_runtime_semantics_orchestration_hardening.sql`
+
+### Current TODO reality
+- Current open/partial TODO count: 113.
+- The repo-side pass moved several UX/API workflow items forward, but the full TODO cannot honestly be marked complete yet.
+- Runtime audit still fails this high-severity check:
+  - `No manual derived-state mutation pattern found`
+- Known remaining blockers before production-grade closure:
+  - Universal orchestration is not yet enforced across every mutation path.
+  - Submittal mutation support in `/api/workflow/transition` is still not complete.
+  - Manual derived-state updates still need to be eliminated or moved behind DB/orchestrator recalculation functions.
+  - Live Supabase migration must be applied and verified.
+  - DB/runtime enforcement must be verified against live schema after migration.

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { recordDocumentReviewEvent } from "@/lib/services/review-service";
 import { canEditDocumentStatusAtAnyStage } from "@/lib/rbac";
 import { eventBus } from "@/lib/events/event-bus";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
@@ -171,6 +170,29 @@ async function executeValidationGate(writer: SupabaseClient, submittalId: string
     });
   }
   return { ok: true };
+}
+
+async function recordDocumentReviewEventDirect(
+  writer: SupabaseClient,
+  input: {
+    documentId: string;
+    projectId: string;
+    reviewerId?: string | null;
+    reviewerRole?: string | null;
+    action: "owner_forward" | "admin_approve" | "owner_reject" | "admin_reject" | "resubmit" | "status_override";
+    statusAfter: string;
+    remarks?: string | null;
+  },
+) {
+  await writer.from("document_reviews").insert({
+    document_id: input.documentId,
+    project_id: input.projectId,
+    reviewer_id: input.reviewerId ?? null,
+    reviewer_role: input.reviewerRole ?? null,
+    action: input.action,
+    status_after: input.statusAfter,
+    remarks: input.remarks ?? null,
+  });
 }
 
 export async function transitionDocumentState(
@@ -398,7 +420,7 @@ export async function transitionDocumentState(
     const mappedLegacyStatus = toCanonicalReviewState(
       resolvedTargetState === "ELIMINATED" ? "REJECTED" : resolvedTargetState,
     );
-    await recordDocumentReviewEvent({
+    await recordDocumentReviewEventDirect(writer, {
         documentId,
         projectId: document.project_id,
         reviewerId: userId,

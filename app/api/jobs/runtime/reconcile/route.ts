@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
-  if (!["super_user", "super_admin", "project_admin"].includes(user.role)) {
+  if (!["super_user", "super_admin"].includes(user.role)) {
     return NextResponse.json({ ok: false, error: "Forbidden." }, { status: 403 });
   }
 

@@ -412,6 +412,33 @@ export async function transitionDocumentStateAction(
   }
 }
 
+export async function submitDocumentTransitionAction(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const currentDocumentId = String(formData.get("document_id") ?? "").trim();
+  const result = await transitionDocumentStateAction(formData);
+  if (!result.ok || !projectId) {
+    redirect(projectId ? `/projects/${projectId}/submittals/${currentDocumentId}?error=${encodeURIComponent(result.error ?? "Transition failed.")}` : "/review-queue");
+  }
+
+  const user = await getCurrentUser();
+  const reviewStates = user?.role === "owner" ? ["SUBMITTED"] : ["UNDER_REVIEW"];
+  const client = createClient();
+  const { data: nextDocs } = await client
+    .from("project_document")
+    .select("id, submittal_id, uploaded_at")
+    .eq("project_id", projectId)
+    .in("state", reviewStates)
+    .neq("id", currentDocumentId)
+    .order("uploaded_at", { ascending: true })
+    .limit(1);
+
+  const next = nextDocs?.[0] as any;
+  if (next?.id) {
+    redirect(`/projects/${projectId}/submittals/${next.submittal_id ?? next.id}`);
+  }
+  redirect("/review-queue");
+}
+
 export async function bulkReviewDocumentsAction(formData: FormData) {
   if (!env.isConfigured) return;
 

@@ -5,6 +5,7 @@
 | `app/api/assistant/project-upload/route.ts` | Y | N | Y | N |
 | `app/api/assistant/route.ts` | Y | N | Y | N |
 | `app/api/assistant/track/route.ts` | Y | N | N | N |
+| `app/api/credits/route.ts` | Y | N | Y | N |
 | `app/api/documents/[id]/route.ts` | Y | Y | Y | N |
 | `app/api/jobs/notifications/digest/route.ts` | Y | N | N | N |
 | `app/api/jobs/runtime/reconcile/route.ts` | Y | Y | Y | N |
@@ -23,3 +24,5 @@
 | `app/api/sales/executive/route.ts` | Y | Y | N | N |
 | `app/api/session/heartbeat/route.ts` | Y | N | N | N |
 | `app/api/test-permissions/route.ts` | Y | Y | N | N |
+| `app/api/validation/submittal/route.ts` | Y | N | Y | N |
+| `app/api/workflow/transition/route.ts` | Y | N | N | N |
