@@ -106,5 +106,12 @@ create table if not exists public.override_logs (
   created_at timestamptz not null default now()
 );
 
+alter table public.override_logs
+  add column if not exists entity_id uuid;
+
+update public.override_logs
+set entity_id = coalesce(entity_id, credit_stage_id, credit_id, project_id)
+where entity_id is null;
+
 create index if not exists idx_workflow_logs_entity on public.workflow_logs(entity_type, entity_id, created_at desc);
 create index if not exists idx_override_logs_entity on public.override_logs(entity_id, created_at desc);

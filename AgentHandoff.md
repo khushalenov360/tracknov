@@ -2426,13 +2426,42 @@ Implemented the full V2 intelligence layer for Tracknov Copilot, evolving it int
 - User approved moving to live Supabase migration after repo-side implementation.
 - `npx supabase` is available locally at CLI version `2.98.2`.
 - Global `supabase` command is not installed.
-- Live migration is currently blocked because `.env.local` has blank values for:
-  - `SUPABASE_PROJECT_REF`
-  - `SUPABASE_DB_PASSWORD`
-  - `SUPABASE_ACCESS_TOKEN`
-- No checked-in `exec_migrations` or equivalent arbitrary SQL bridge exists in the current repo.
-- Latest migration prepared but not applied live:
-  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0056_runtime_semantics_orchestration_hardening.sql`
+- Local repo was linked to live Supabase project:
+  - Project: `Tracknov`
+  - Ref: `uiecvxxamykfubgtqzap`
+- Four orphan remote migration-history rows were marked reverted because they did not exist locally:
+  - `20260502132955`
+  - `20260502195910`
+  - `20260503115233`
+  - `20260503120206`
+- Live schema was already drifted beyond early migrations (`project_document` existed while older migration history did not), so old sequential replay from `0010` was unsafe.
+- Applied enforcement migrations `0048` through `0056` directly through `npx supabase db query --linked`.
+- Patched migration `0054_tracknov_supabase_migration_alignment.sql` to add `override_logs.entity_id` compatibility for existing live schemas.
+- Renamed duplicate local migration version:
+  - from `0041_project_credits_documentation_summary.sql`
+  - to `0057_project_credits_documentation_summary.sql`
+- Applied `0057` through `npx supabase db push`.
+- Final verification:
+  - `npx supabase db push --dry-run` reports: `Remote database is up to date.`
+  - `npx supabase migration list` shows local and remote aligned through `0057`.
+  - Live enforcement objects verified:
+    - `schema_migration_integrity`
+    - `workflow_transition_rules`
+    - `security_events`
+    - `validation_snapshots`
+    - `certification_snapshots`
+    - `assignments`
+    - `validation_rules`
+    - `validation_results`
+    - `credit_scores`
+    - `workflow_history`
+  - Live functions verified:
+    - `validate_submittal(uuid,uuid)`
+    - `is_assigned_user(uuid,uuid)`
+    - `recompute_credit_scores(uuid)`
+    - `get_project_certification_summary(uuid)`
+    - `rebuild_derived_states(uuid)`
+  - `workflow_transition_rules` contains 14 rules.
 
 ### Current TODO reality
 - Current open/partial TODO count: 113.
@@ -2443,5 +2472,5 @@ Implemented the full V2 intelligence layer for Tracknov Copilot, evolving it int
   - Universal orchestration is not yet enforced across every mutation path.
   - Submittal mutation support in `/api/workflow/transition` is still not complete.
   - Manual derived-state updates still need to be eliminated or moved behind DB/orchestrator recalculation functions.
-  - Live Supabase migration must be applied and verified.
-  - DB/runtime enforcement must be verified against live schema after migration.
+  - Live Supabase migration has been applied and schema-level enforcement objects are verified.
+  - Role-by-role browser UAT on live data remains pending.

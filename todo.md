@@ -103,7 +103,7 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 - [x] Return deterministic error schema for all failures.
 
 ### P0 - Certification lock and override governance
-- [~] Implement `CERTIFIED_LOCKED` project lock state and hard-block post-certification mutations. (migration + orchestrator guard added; target Supabase migration application pending)
+- [~] Implement `CERTIFIED_LOCKED` project lock state and hard-block post-certification mutations. (migration + orchestrator guard added; live Supabase migration applied; full mutation-path UAT still pending)
 - [~] Allow lock bypass only for L5 override with mandatory reason + immutable before/after snapshots. (L5/reason guard added; snapshot depth still partial)
 - [~] Restrict override authority to L5 for workflow/validation/scoring/certification paths.
 
@@ -761,7 +761,7 @@ Priority execution sequence:
 - Universal orchestration migration for all workflow mutation paths.
 - Submittal workflow support inside `/api/workflow/transition`.
 - Live Supabase migration application and DB-level enforcement verification.
-  - Blocked in this environment as of 2026-05-07 because `.env.local` has blank `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, and `SUPABASE_ACCESS_TOKEN`; `npx supabase` is available, but it cannot link/push without those values.
+  - Completed in live Supabase on 2026-05-07 through migration history `0057`; `npx supabase db push --dry-run` reports remote database is up to date.
 - Startup schema checksum/drift deployment blocker.
 - Full certification snapshot freeze/reconstruction UAT.
 - Tenant-isolation test suite.
@@ -794,4 +794,49 @@ Priority execution sequence:
 - Current open/partial TODO count: 113.
 - Runtime audit still reports high-severity failure for manual derived-state mutation patterns.
 - Universal orchestration is still partial; document review transitions route through the orchestrator, but every mutation path is not yet forced through `/api/workflow/transition`.
-- Live Supabase migration is prepared but not applied for the credential reason above.
+- Live Supabase migration applied and verified through Supabase CLI dry-run. Remaining work is runtime UAT and manual derived-state cleanup.
+
+---
+
+## Latest execution pass (2026-05-07 IST, live Supabase migration reconciliation)
+
+### Completed
+- Linked local repo to live Supabase project `Tracknov` (`uiecvxxamykfubgtqzap`).
+- Repaired four orphan remote migration-history rows as reverted:
+  - `20260502132955`
+  - `20260502195910`
+  - `20260503115233`
+  - `20260503120206`
+- Applied enforcement migrations `0048` through `0056` directly to live Supabase because the live schema had drifted past the old `documents -> project_document` rename.
+- Patched migration `0054_tracknov_supabase_migration_alignment.sql` to tolerate existing `override_logs` tables without `entity_id`.
+- Renamed duplicate migration version:
+  - `0041_project_credits_documentation_summary.sql`
+  - to `0057_project_credits_documentation_summary.sql`
+- Applied `0057` through Supabase CLI.
+
+### Verified
+- `npx supabase db push --dry-run` reports: `Remote database is up to date.`
+- `npx supabase migration list` shows local and remote aligned through `0057`.
+- Live schema verification confirms key runtime enforcement objects exist:
+  - `schema_migration_integrity`
+  - `workflow_transition_rules`
+  - `security_events`
+  - `validation_snapshots`
+  - `certification_snapshots`
+  - `assignments`
+  - `validation_rules`
+  - `validation_results`
+  - `credit_scores`
+  - `workflow_history`
+- Live function verification confirms:
+  - `validate_submittal(uuid,uuid)`
+  - `is_assigned_user(uuid,uuid)`
+  - `recompute_credit_scores(uuid)`
+  - `get_project_certification_summary(uuid)`
+  - `rebuild_derived_states(uuid)`
+- `workflow_transition_rules` contains 14 rules.
+
+### Still open after live DB reconciliation
+- Runtime audit still flags manual derived-state mutation patterns in application code.
+- Universal orchestration across every mutation path remains partial.
+- Full role-by-role browser UAT on live data remains pending.
