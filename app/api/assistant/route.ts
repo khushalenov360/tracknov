@@ -8,6 +8,7 @@ import {
   type AssistantMessage,
 } from "@/lib/assistant";
 import { ragService } from "@/lib/services/rag-service";
+import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,31 @@ function toGeminiContents(messages: AssistantMessage[]) {
   }));
 }
 
-function toChatMessages(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
+function toGeminiMessagesWithFunctionCalls(
+  messages: AssistantMessage[],
+  functionCalls: Array<{ name: string; response: unknown }>,
+) {
+  const geminiMessages = toGeminiContents(messages);
+  const modelPart = {
+    role: "model" as const,
+    parts: functionCalls.map((fc) => ({
+      functionCall: { name: fc.name, args: {} },
+    })),
+  };
+  const functionParts = {
+    role: "function" as const,
+    parts: functionCalls.map((fc) => ({
+      functionResponse: { name: fc.name, response: { result: fc.response } },
+    })),
+  };
+  return [...geminiMessages, modelPart, functionParts];
+}
+
+function toChatMessages(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string, role?: string) {
   return [
     {
       role: "system",
-      content: buildAssistantSystemPrompt(context, workspaceSnapshot),
+      content: buildAssistantSystemPrompt(context, workspaceSnapshot, role),
     },
     ...messages.map((message) => ({
       role: message.role,
@@ -55,6 +76,28 @@ function extractText(responseData: any) {
     .trim();
 }
 
+function extractFunctionCalls(responseData: any): Array<{ name: string; args: Record<string, unknown> }> {
+  const parts = responseData?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return [];
+  return parts
+    .filter((part: any) => part?.functionCall)
+    .map((part: any) => ({
+      name: part.functionCall.name,
+      args: part.functionCall.args ?? {},
+    }));
+}
+
+function extractOpenAiFunctionCalls(responseData: any): Array<{ name: string; args: Record<string, unknown> }> {
+  const toolCalls = responseData?.choices?.[0]?.message?.tool_calls;
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls
+    .filter((tc: any) => tc.type === "function")
+    .map((tc: any) => ({
+      name: tc.function.name,
+      args: JSON.parse(tc.function.arguments ?? "{}"),
+    }));
+}
+
 function createTextStream(text: string) {
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
@@ -65,15 +108,17 @@ function createTextStream(text: string) {
   });
 }
 
-function createResponseStream(textStream: ReadableStream<Uint8Array>) {
-  return new Response(textStream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+function createResponseStream(textStream: ReadableStream<Uint8Array>, navigateTo?: string) {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Content-Type-Options": "nosniff",
+  };
+  if (navigateTo) {
+    headers["X-Copilot-Navigate"] = navigateTo;
+  }
+  return new Response(textStream, { headers });
 }
 
 function buildProviderAttempts() {
@@ -195,15 +240,19 @@ async function getWorkspaceSnapshot() {
   } = await client.auth.getUser();
 
   if (!user) {
-    return { user: null, snapshot: "User is not signed in." };
+    return { user: null, role: "consultant", projectIds: [], snapshot: "User is not signed in.", userName: "", userEmail: "" };
   }
 
   const { data: profile } = await client
     .from("profiles")
-    .select("global_role")
+    .select("global_role, full_name, email")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const userName = profile?.full_name
+    ?? (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "")
+    ?? "";
+  const userEmail = profile?.email ?? user.email ?? "";
   const metadataRole = typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "";
   const resolvedRole = (profile?.global_role ?? metadataRole ?? "consultant") as string;
   const isSuperUser =
@@ -220,7 +269,7 @@ async function getWorkspaceSnapshot() {
   const projectIds = projects.map((project) => project.id);
 
   if (!projectIds.length) {
-    return { user, role: resolvedRole, projectIds, snapshot: "No projects currently available in the workspace." };
+    return { user, role: resolvedRole, projectIds, snapshot: "No projects currently available in the workspace.", userName, userEmail };
   }
 
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
@@ -239,16 +288,19 @@ async function getWorkspaceSnapshot() {
 
   const credits = (creditsData ?? []) as CreditRow[];
   const documents = (documentsData ?? []) as DocumentRow[];
-  return { user, role: resolvedRole, projectIds, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole) };
+  return { user, role: resolvedRole, projectIds, snapshot: buildWorkspaceSnapshot(projects, credits, documents, resolvedRole), userName, userEmail };
 }
 
-async function createGeminiStream(
+// ─── Gemini helpers ───────────────────────────────────────────────────────────
+
+async function callGeminiWithTools(
   context: AssistantContext,
   messages: AssistantMessage[],
   workspaceSnapshot: string,
+  role: string,
   attempt: ProviderAttempt,
-) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:streamGenerateContent?alt=sse`, {
+): Promise<{ type: "function_call"; calls: Array<{ name: string; args: Record<string, unknown> }> } | { type: "content"; text: string } | null> {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -256,16 +308,68 @@ async function createGeminiStream(
     },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
+        parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot, role) }],
       },
       contents: toGeminiContents(messages),
+      tools: toGeminiTools(),
       generationConfig: {
         temperature: 0.4,
         topP: 0.9,
         topK: 40,
-        maxOutputTokens: 500,
+        maxOutputTokens: 300,
       },
     }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json() as any;
+  const functionCalls = extractFunctionCalls(data);
+  if (functionCalls.length > 0) {
+    return { type: "function_call", calls: functionCalls };
+  }
+
+  const text = extractText(data);
+  if (text) {
+    return { type: "content", text };
+  }
+
+  return null;
+}
+
+async function createGeminiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  const body: Record<string, unknown> = {
+    systemInstruction: {
+      parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot, role) }],
+    },
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: 500,
+    },
+  };
+
+  if (functionResults?.length) {
+    body.contents = toGeminiMessagesWithFunctionCalls(messages, functionResults);
+  } else {
+    body.contents = toGeminiContents(messages);
+  }
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:streamGenerateContent?alt=sse`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": attempt.apiKey,
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok || !response.body) {
@@ -347,6 +451,8 @@ async function createGeminiStream(
   });
 }
 
+// ─── OpenAI-compatible helpers ───────────────────────────────────────────────
+
 function openAiCompatibleEndpoint(provider: AiProvider) {
   if (provider === "doubleword") {
     return "https://api.doubleword.ai/v1/chat/completions";
@@ -360,28 +466,91 @@ function openAiCompatibleEndpoint(provider: AiProvider) {
   throw new Error(`Unsupported OpenAI-compatible provider: ${provider}`);
 }
 
+function openAiHeaders(attempt: ProviderAttempt): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${attempt.apiKey}`,
+  };
+  if (attempt.provider === "openrouter") {
+    headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
+    headers["X-Title"] = "Tracknov";
+  }
+  return headers;
+}
+
+async function callOpenAiWithTools(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role: string,
+  attempt: ProviderAttempt,
+): Promise<{ type: "function_call"; calls: Array<{ name: string; args: Record<string, unknown> }> } | { type: "content"; text: string } | null> {
+  const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
+    method: "POST",
+    headers: openAiHeaders(attempt),
+    body: JSON.stringify({
+      model: attempt.model,
+      messages: toChatMessages(context, messages, workspaceSnapshot, role),
+      tools: toOpenAiTools(),
+      temperature: 0.4,
+      max_tokens: 300,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json() as any;
+  const functionCalls = extractOpenAiFunctionCalls(data);
+  if (functionCalls.length > 0) {
+    return { type: "function_call", calls: functionCalls };
+  }
+
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  if (text) {
+    return { type: "content", text };
+  }
+
+  return null;
+}
+
 async function createOpenAiCompatibleStream(
   context: AssistantContext,
   messages: AssistantMessage[],
   workspaceSnapshot: string,
   attempt: ProviderAttempt,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
 ) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${attempt.apiKey}`,
-  };
+  let bodyMessages = toChatMessages(context, messages, workspaceSnapshot, role);
 
-  if (attempt.provider === "openrouter") {
-    headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
-    headers["X-Title"] = "Tracknov";
+  if (functionResults?.length) {
+    const lastAssistantMsg = bodyMessages[bodyMessages.length - 1];
+    bodyMessages = [
+      ...bodyMessages.slice(0, -1),
+      {
+        ...lastAssistantMsg,
+        content: lastAssistantMsg.content,
+        tool_calls: functionResults.map((fr) => ({
+          id: `call_${fr.name}`,
+          type: "function" as const,
+          function: { name: fr.name, arguments: "{}" },
+        })),
+      } as any,
+      ...functionResults.map((fr) => ({
+        role: "tool" as const,
+        tool_call_id: `call_${fr.name}`,
+        content: JSON.stringify(fr.response),
+      })),
+    ];
   }
 
   const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
     method: "POST",
-    headers,
+    headers: openAiHeaders(attempt),
     body: JSON.stringify({
       model: attempt.model,
-      messages: toChatMessages(context, messages, workspaceSnapshot),
+      messages: bodyMessages,
       temperature: 0.4,
       max_tokens: 500,
       stream: true,
@@ -458,15 +627,50 @@ async function createOpenAiCompatibleStream(
   });
 }
 
-async function createAiStream(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string) {
+// ─── Orchestration ────────────────────────────────────────────────────────────
+
+async function tryDetectFunctionCalls(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role: string,
+): Promise<Array<{ name: string; args: Record<string, unknown> }> | null> {
+  const attempts = buildProviderAttempts();
+  for (const attempt of attempts) {
+    try {
+      const result = attempt.provider === "gemini"
+        ? await callGeminiWithTools(context, messages, workspaceSnapshot, role, attempt)
+        : await callOpenAiWithTools(context, messages, workspaceSnapshot, role, attempt);
+
+      if (result?.type === "function_call") {
+        return result.calls;
+      }
+      // Content response means no function call needed
+      if (result?.type === "content") {
+        return [];
+      }
+    } catch (error) {
+      console.warn(`[Assistant] Tool detection ${attempt.provider} failed; trying next.`, error);
+    }
+  }
+  return null;
+}
+
+async function createAiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
   const attempts = buildProviderAttempts();
 
   for (const attempt of attempts) {
     try {
       const stream =
         attempt.provider === "gemini"
-          ? await createGeminiStream(context, messages, workspaceSnapshot, attempt)
-          : await createOpenAiCompatibleStream(context, messages, workspaceSnapshot, attempt);
+          ? await createGeminiStream(context, messages, workspaceSnapshot, attempt, role, functionResults)
+          : await createOpenAiCompatibleStream(context, messages, workspaceSnapshot, attempt, role, functionResults);
 
       if (stream) {
         return stream;
@@ -478,6 +682,8 @@ async function createAiStream(context: AssistantContext, messages: AssistantMess
 
   return null;
 }
+
+// ─── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   let body: AssistantRequest;
@@ -496,7 +702,7 @@ export async function POST(request: Request) {
   }
 
   const latestPrompt = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
-  const { user, role, snapshot, projectIds } = await getWorkspaceSnapshot();
+  const { user, role, snapshot, projectIds, userName, userEmail } = await getWorkspaceSnapshot();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -530,25 +736,50 @@ export async function POST(request: Request) {
     );
   }
 
+  const enrichedContext: AssistantContext = {
+    ...context,
+    facts: [
+      ...context.facts,
+      `User: ${userName || userEmail || "Unknown"}`,
+      `User email: ${userEmail}`,
+      `Resolved role: ${role}`,
+      "Responses must be grounded in the workspace snapshot attached in system instructions.",
+    ],
+  };
+  const mergedContext = { ...enrichedContext, summary: context.summary };
+
   try {
-    const enrichedContext: AssistantContext = {
-      ...context,
-      facts: [
-        ...context.facts,
-        `Resolved role: ${role}`,
-        "Responses must be grounded in the workspace snapshot attached in system instructions.",
-      ],
-    };
-    const aiStream = await createAiStream(
-      {
-        ...enrichedContext,
-        summary: context.summary,
-      },
-      messages,
-      combinedSnapshot,
-    );
-    if (aiStream) {
-      return createResponseStream(aiStream);
+    // Phase 1: Detect function calls
+    const functionCalls = await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role);
+
+    if (functionCalls === null) {
+      // Tool detection failed entirely, fall through to streaming or fallback
+    }
+
+    if (functionCalls && functionCalls.length > 0) {
+      // Phase 2: Execute all function calls
+      const results: Array<{ name: string; response: unknown }> = [];
+      let navigateTo: string | undefined;
+
+      for (const fc of functionCalls) {
+        const result = await executeTool(fc.name, fc.args);
+        results.push({ name: fc.name, response: result });
+        if (result.navigateTo) {
+          navigateTo = result.navigateTo;
+        }
+      }
+
+      // Phase 3: Stream the final response with function results
+      const aiStream = await createAiStream(mergedContext, messages, combinedSnapshot, role, results);
+      if (aiStream) {
+        return createResponseStream(aiStream, navigateTo);
+      }
+    } else {
+      // No function calls needed, stream directly
+      const aiStream = await createAiStream(mergedContext, messages, combinedSnapshot, role);
+      if (aiStream) {
+        return createResponseStream(aiStream);
+      }
     }
   } catch {
     // Fall through to the local fallback.
