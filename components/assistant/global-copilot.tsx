@@ -1,12 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { Bot, ChevronLeft, ChevronRight, Send, Sparkles } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bot, ChevronLeft, ChevronRight, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/assistant";
 import type { MemberRole } from "@/lib/types";
+import { sessionMemory } from "@/lib/services/session-memory-service";
+
+type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
+type CopilotAttachment = {
+  name: string;
+  mimeType: string;
+  size: number;
+  base64: string;
+};
+type CopilotCreditOption = { id: string; code: string; name: string };
+type FormFieldMeta = {
+  key: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+};
 
 type GlobalCopilotProps = {
   enabled: boolean;
@@ -59,10 +75,12 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
 
 export function GlobalCopilot({ enabled, role, title, description }: GlobalCopilotProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const surface = mapSurface(pathname);
-  const storageKey = `tracknov-global-copilot:${pathname}`;
+  const storageKey = "tracknov-global-copilot:history";
   const collapseKey = "tracknov-global-copilot-collapsed";
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const context = useMemo<AssistantContext>(
     () => ({
@@ -74,31 +92,115 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         `Current tab: ${surface}`,
         `Role: ${role ?? "unknown"}`,
         `Page title: ${title}`,
+        // SECTION 9: Inject session memory facts for context continuity
+        ...sessionMemory.buildContextFacts(),
       ],
       nextSteps: [
-        "Identify the highest-impact action for the current page.",
-        "Call out blockers and missing documentation.",
-        "Recommend the exact next update in Tracknov.",
+        "Answer the user's exact question first.",
+        "Use the attached file before generic guidance.",
+        "Suggest one concrete workflow action.",
       ],
     }),
     [description, pathname, role, surface, title],
   );
 
-  const defaultMessage = useMemo<AssistantMessage[]>(
-    () => [
-      {
-        role: "assistant",
-        content: `I am always available in this tab. Ask for next steps, blockers, or validation guidance for ${title}.`,
-      },
-    ],
-    [title],
-  );
-
   const [collapsed, setCollapsed] = useState(false);
-  const [messages, setMessages] = useState<AssistantMessage[]>(defaultMessage);
+  const [userName, setUserName] = useState<string>("");
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [fillingForm, setFillingForm] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<CopilotCreditOption[]>([]);
+  const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
+  const [pickedIntent, setPickedIntent] = useState<"analysis" | "workflow" | null>(null);
+
+  const canManageGuidebookTracker = ["super_user", "project_admin"].includes(role ?? "");
+  const docCategories = ["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing", "Calculation & Tables", "Invoice", "Pic/Video"];
+
+  function isAnalysisPrompt(text: string) {
+    const lower = text.toLowerCase();
+    return (
+      lower.includes("analy") ||
+      lower.includes("analyse") ||
+      lower.includes("explain the file") ||
+      lower.includes("explain this file") ||
+      lower.includes("what is this file") ||
+      lower.includes("tell me about this file") ||
+      lower.includes("read this file")
+    );
+  }
+
+  function parseUploadIntentFromChat(text: string) {
+    const lower = text.toLowerCase();
+    const mode: "document" | "guidebook" | "tracker" =
+      lower.includes("guidebook") && canManageGuidebookTracker
+        ? "guidebook"
+        : lower.includes("tracker") && canManageGuidebookTracker
+          ? "tracker"
+          : "document";
+
+    const pickedDocCategory =
+      docCategories.find((category) => lower.includes(category.toLowerCase())) ?? "Narrative";
+
+    const credit =
+      availableCredits.find((candidate) => lower.includes(candidate.code.toLowerCase())) ??
+      availableCredits.find((candidate) => lower.includes(candidate.name.toLowerCase()));
+
+    return {
+      mode,
+      creditId: credit?.id ?? "",
+      docCategory: pickedDocCategory,
+    };
+  }
+
+  function shouldAttemptProjectUpload(text: string) {
+    const lower = text.toLowerCase().trim();
+    const hasMapIntent =
+      lower.includes("map this to") ||
+      lower.includes("map to ") ||
+      lower.includes("upload to workflow") ||
+      lower.includes("submit this file");
+    const hasExplicitConfirm =
+      lower.includes("confirm") ||
+      lower.includes("and upload") ||
+      lower.includes("yes upload") ||
+      lower.includes("proceed upload");
+    return hasMapIntent && hasExplicitConfirm && !isAnalysisPrompt(text);
+  }
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const response = await fetch("/api/me");
+        if (response.ok) {
+          const data = await response.json();
+          setUserName(data.name);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user profile", err);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  // SECTION 9: Auto-detect active project from URL and store in session memory
+  useEffect(() => {
+    const match = pathname.match(/^\/projects\/([^/?#]+)/);
+    if (match?.[1]) {
+      // Extract project name from page title if available
+      sessionMemory.setActiveProject(match[1], title || match[1]);
+    }
+  }, [pathname, title]);
+
+  const personalizedGreeting = useMemo(() => {
+    const greeting = userName ? `Hi ${userName}` : "Hi there";
+    return `${greeting}. How can I help you today?`;
+  }, [userName]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -115,8 +217,13 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   }, [collapsed]);
 
   useEffect(() => {
-    setMessages(loadMessages(storageKey, defaultMessage));
-  }, [defaultMessage, storageKey]);
+    const history = loadMessages(storageKey, []);
+    if (history.length === 0) {
+      setMessages([{ role: "assistant", content: personalizedGreeting }]);
+    } else {
+      setMessages(history);
+    }
+  }, [personalizedGreeting, storageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -128,6 +235,18 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setShowAttachMenu(false);
+    }
+    if (showAttachMenu) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => {
+      window.removeEventListener("click", handleClickOutside);
+    };
+  }, [showAttachMenu]);
 
   async function readStream(response: Response, onChunk: (chunk: string) => void) {
     if (!response.body) {
@@ -161,8 +280,26 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
       return;
     }
 
+    if (attachmentFile && shouldAttemptProjectUpload(text)) {
+      const uploaded = await uploadAttachmentToProject(text);
+      if (uploaded) {
+        setInput("");
+      }
+      return;
+    }
+
     setError("");
     setLoading(true);
+
+    // Track interaction
+    void fetch("/api/assistant/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "query",
+        metadata: { query: text, surface, title },
+      }),
+    }).catch(() => {});
 
     const nextMessages: AssistantMessage[] = [
       ...messages,
@@ -173,12 +310,28 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     setInput("");
 
     try {
+      const requestMessages = [...nextMessages.slice(0, -1)];
+      if (attachmentFile && isAnalysisPrompt(text)) {
+        requestMessages[requestMessages.length - 1] = {
+          role: "user",
+          content: [
+            "Please analyze the attached file and answer naturally.",
+            "Respond with: document type detected, key data points, and likely credit matches with confidence.",
+            "Then ask one short follow-up question to confirm mapping and upload.",
+            "",
+            `User request: ${text}`,
+          ].join("\n"),
+        };
+      }
+
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context,
-          messages: nextMessages.slice(0, -1),
+          messages: requestMessages,
+          tone: selectedTone !== "Auto" ? selectedTone : undefined,
+          attachments: attachment ? [attachment] : [],
         }),
       });
 
@@ -196,6 +349,30 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           return copy;
         });
       });
+
+      const sanitized = assistantText.replace(/\s+/g, " ").toLowerCase();
+      const refusalLike =
+        sanitized.includes("i can't") ||
+        sanitized.includes("i cannot") ||
+        sanitized.includes("i do not have the ability") ||
+        sanitized.includes("as an ai assistant");
+
+      if (refusalLike && attachmentFile) {
+        setMessages((current) => {
+          const copy = [...current];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content:
+              "Got it — I can handle this here in chat. Tell me which credit and document type you want, and I’ll upload it to workflow.",
+          };
+          return copy;
+        });
+      }
+
+      const navigateTo = response.headers.get("X-Copilot-Navigate");
+      if (navigateTo) {
+        router.push(navigateTo);
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
       setMessages((current) => current.slice(0, -1));
@@ -204,16 +381,324 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     }
   }
 
+  function collectVisibleFormFields(): FormFieldMeta[] {
+    const controls = Array.from(document.querySelectorAll("input, textarea, select")) as Array<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >;
+    const fields: FormFieldMeta[] = [];
+
+    for (const control of controls) {
+      if (control.disabled) {
+        continue;
+      }
+      const rect = control.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        continue;
+      }
+      const type = control instanceof HTMLSelectElement ? "select" : control.type || control.tagName.toLowerCase();
+      if (type === "hidden" || type === "password" || type === "file") {
+        continue;
+      }
+      const idKey = control.getAttribute("name") || control.getAttribute("id") || control.getAttribute("aria-label");
+      if (!idKey) {
+        continue;
+      }
+      const linkedLabel =
+        (control.getAttribute("id") && document.querySelector(`label[for="${control.getAttribute("id")}"]`)?.textContent) ||
+        control.closest("label")?.textContent ||
+        control.getAttribute("aria-label") ||
+        control.getAttribute("placeholder") ||
+        idKey;
+      fields.push({
+        key: idKey.trim(),
+        label: linkedLabel.trim(),
+        type,
+        placeholder: "placeholder" in control ? control.placeholder : undefined,
+      });
+    }
+
+    return fields.slice(0, 40);
+  }
+
+  function parseJsonObject(text: string): Record<string, string> | null {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+      const values: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "string" && value.trim()) {
+          values[key] = value.trim();
+        }
+      }
+      return values;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyFormValues(values: Record<string, string>) {
+    let applied = 0;
+    for (const [fieldKey, value] of Object.entries(values)) {
+      const selector = `[name="${fieldKey}"], #${CSS.escape(fieldKey)}, [aria-label="${fieldKey}"]`;
+      const target = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (!target || target.disabled) {
+        continue;
+      }
+      if (target instanceof HTMLSelectElement) {
+        const option = Array.from(target.options).find((opt) => opt.value === value || opt.text.trim().toLowerCase() === value.toLowerCase());
+        if (option) {
+          target.value = option.value;
+          target.dispatchEvent(new Event("change", { bubbles: true }));
+          applied += 1;
+        }
+        continue;
+      }
+      target.value = value;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+      applied += 1;
+    }
+    return applied;
+  }
+
+  async function assistFormFill() {
+    if (loading || fillingForm) {
+      return;
+    }
+    const fields = collectVisibleFormFields();
+    if (!fields.length) {
+      setError("No editable form fields found on this page.");
+      return;
+    }
+    const userGoal = input.trim() || "Fill this form with sensible values based on current page context.";
+    setFillingForm(true);
+    setError("");
+    try {
+      const assistPrompt = `${userGoal}
+
+You are helping fill a web form.
+Return ONLY a JSON object mapping field keys to values.
+Do not include markdown or explanation.
+Only include fields you are confident about.
+
+Form fields:
+${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${field.type}" placeholder="${field.placeholder ?? ""}"`).join("\n")}`;
+
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context,
+          messages: [{ role: "user", content: assistPrompt }],
+          tone: "Guided",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Copilot could not generate form suggestions.");
+      }
+      const raw = await response.text();
+      const parsed = parseJsonObject(raw);
+      if (!parsed || Object.keys(parsed).length === 0) {
+        throw new Error("Copilot returned no usable form suggestions.");
+      }
+      const count = applyFormValues(parsed);
+      if (count === 0) {
+        throw new Error("No matching form fields were updated.");
+      }
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: `I filled ${count} form fields for you. Please review before submitting.` },
+      ]);
+    } catch (formError) {
+      setError(formError instanceof Error ? formError.message : "Could not assist with form filling.");
+    } finally {
+      setFillingForm(false);
+    }
+  }
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void sendPrompt(input);
   }
 
-  const quickPrompts = [
-    "What is the next best action in this tab?",
-    "What blockers should I clear first?",
-    "Give me a short review checklist for this page.",
-  ];
+  async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      const bytes = await file.arrayBuffer();
+      let binary = "";
+      const view = new Uint8Array(bytes);
+      for (let i = 0; i < view.length; i += 1) {
+        binary += String.fromCharCode(view[i]);
+      }
+      setAttachment({
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        base64: btoa(binary),
+      });
+      setAttachmentFile(file);
+      setError("");
+
+      const match = pathname.match(/^\/projects\/([^/]+)/);
+      const projectId = match?.[1];
+      if (projectId) {
+        const creditsResponse = await fetch(`/api/assistant/project-upload?project_id=${encodeURIComponent(projectId)}`);
+        if (creditsResponse.ok) {
+          const creditsPayload = (await creditsResponse.json()) as { credits?: CopilotCreditOption[] };
+          setAvailableCredits(creditsPayload.credits ?? []);
+        }
+      }
+
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (extension === "xlsx" || extension === "xls") {
+        setUploadMode("tracker");
+      } else if (extension === "pdf" && canManageGuidebookTracker) {
+        setUploadMode("guidebook");
+      } else {
+        setUploadMode("document");
+      }
+
+      // Phase 3: Only trigger analysis if intent is 'analysis' or 'ambiguous' (null)
+      if (pickedIntent === "workflow") {
+        setMessages((current) => [...current, { 
+          role: "assistant", 
+          content: `I've attached "${file.name}" for workflow upload. Tell me which credit it belongs to and the document type (e.g. Drawing, Narrative), then say "Confirm upload".` 
+        }]);
+        return;
+      }
+
+      const analysisPrompt = `You are helping a user after they attached a file in Tracknov.
+Write a natural, human response (not a rigid template) with:
+- detected document type
+- most important data points found
+- likely credit matches (with confidence wording)
+
+Important:
+- be explicit this is analysis of the attached chat file.
+- do not claim this file is already uploaded to project workflow.
+- end with one clear follow-up question asking where the user wants to map this file.`;
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context,
+          messages: [...messages, { role: "user", content: analysisPrompt }],
+          tone: "Guided",
+          attachments: [{
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+            base64: btoa(binary),
+          }],
+        }),
+      });
+      if (response.ok) {
+        const summary = await response.text();
+        const trimmed = summary.trim();
+        if (trimmed) {
+          setMessages((current) => [...current, { role: "assistant", content: trimmed }]);
+          // SECTION 9 & Phase 3: Store analysis summary in session memory
+          sessionMemory.setLastAnalyzedFile(file.name, trimmed);
+        }
+      }
+    } catch {
+      setError("Could not read the selected file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function clearHistory() {
+    setMessages([{ role: "assistant", content: personalizedGreeting }]);
+    setAttachment(null);
+    setAttachmentFile(null);
+    setInput("");
+    setError("");
+    // SECTION 9 & Phase 3: Clear session memory on "New Chat"
+    sessionMemory.clear();
+    // Also clear localStorage history
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
+    }
+  }
+
+  async function uploadAttachmentToProject(intentSource: string) {
+    if (!attachmentFile) {
+      setError("Attach a file first.");
+      return false;
+    }
+    const match = pathname.match(/^\/projects\/([^/]+)/);
+    const projectId = match?.[1];
+    if (!projectId) {
+      setError("Open a project workspace to upload this file to project context.");
+      return false;
+    }
+    const intent = parseUploadIntentFromChat(intentSource);
+    const effectiveMode = uploadMode === "document" ? intent.mode : uploadMode;
+
+    if (effectiveMode === "document" && !intent.creditId) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            "Sure — which credit should I map this file to? Also tell me the document type (for example: Drawing, Narrative, Invoice, Certificate), then confirm with 'Confirm upload'.",
+        },
+      ]);
+      return false;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("project_id", projectId);
+      formData.append("file", attachmentFile);
+      formData.append("title", attachmentFile.name.replace(/\.[^.]+$/, ""));
+      formData.append("mode", effectiveMode);
+      if (effectiveMode === "document") {
+        formData.append("credit_id", intent.creditId);
+        formData.append("doc_category", intent.docCategory);
+      }
+
+      const response = await fetch("/api/assistant/project-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; mode?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? "Upload failed.");
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            payload.mode === "guidebook"
+              ? "Guidebook uploaded successfully. Workspace instantiation has been triggered."
+              : payload.mode === "tracker"
+                ? "Tracker baseline uploaded successfully and mapped to project credits."
+                : "Document uploaded and mapped from your chat instruction. It has entered the workflow review queue.",
+        },
+      ]);
+      setAttachment(null);
+      setAttachmentFile(null);
+      return true;
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (collapsed) {
     return (
@@ -237,18 +722,36 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
             <Sparkles className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)]">Tracknov Copilot</p>
-            <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? "Gemini ready" : "Fallback guidance mode"}</p>
+            <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)] inline-flex items-center gap-1.5">
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-red-500"}`}
+                aria-label={enabled ? "AI online" : "AI offline"}
+                title={enabled ? "AI online" : "AI offline"}
+              />
+              Tracknov Copilot
+            </p>
+            <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed(true)}
-          className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-          aria-label="Collapse Copilot"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={clearHistory}
+            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+            title="New Chat"
+            aria-label="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+            aria-label="Collapse Copilot"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex h-[calc(100%-49px)] flex-col">
@@ -272,31 +775,76 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         </div>
 
         <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3">
-          <div className="flex flex-wrap gap-2">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => void sendPrompt(prompt)}
-                disabled={loading}
-                className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 py-1 text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
           <form onSubmit={onSubmit} className="space-y-2">
-            <Textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask Copilot..."
-              className="min-h-[84px] resize-none"
-            />
+            <div className="space-y-2 relative">
+              <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
+
+              {attachment ? (
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+                  Attached: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+                </div>
+              ) : null}
+
+              <div className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowAttachMenu((current) => !current);
+                  }}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]"
+                  aria-label="Open attachment menu"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                {showAttachMenu ? (
+                  <div
+                    className="absolute bottom-12 left-0 z-10 min-w-[220px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        setPickedIntent("analysis");
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      <Bot className="h-3.5 w-3.5 text-[var(--color-green)]" />
+                      Add for Analysis (Chat)
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        setPickedIntent("workflow");
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 text-[var(--color-blue)]" />
+                      Add for Workflow Upload
+                    </button>
+                  </div>
+                ) : null}
+
+                <Textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Ask Copilot..."
+                  className="min-h-[84px] resize-none"
+                />
+                <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-[var(--color-text-secondary)]">
+                Ask in chat to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
+                {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
+              </p>
+            </div>
             {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
-            <Button type="submit" className="h-8 w-full rounded-md" disabled={!input.trim() || loading}>
-              <Send className="mr-2 h-3.5 w-3.5" />
-              Ask Copilot
-            </Button>
           </form>
         </div>
       </div>

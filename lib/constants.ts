@@ -130,6 +130,7 @@ export const creditStatuses = {
 
 export const roleLabels = {
   super_user: "Super User",
+  l4_reserved: "L4 (Reserved)",
   owner: "Project Owner",
   client: "Client",
   consultant: "Consultant",

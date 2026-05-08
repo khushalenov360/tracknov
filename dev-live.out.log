@@ -1,0 +1,186 @@
+
+> tracknov-studio@0.1.0 dev
+> next dev -p 3000
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.9s
+ ✓ Compiled /middleware in 340ms (126 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 6s (704 modules)
+ GET /login 200 in 6766ms
+ GET /login 200 in 89ms
+ GET /login 200 in 1028ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 989ms (404 modules)
+ GET /favicon.ico 200 in 1221ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 2.8s (931 modules)
+ ○ Compiling /api/me ...
+ ✓ Compiled /api/me in 1238ms (591 modules)
+ ✓ Compiled (593 modules)
+ POST /api/session/heartbeat 200 in 1787ms
+ POST /api/session/heartbeat 200 in 1901ms
+ GET /api/me 200 in 1922ms
+ GET /api/me 200 in 199ms
+ ○ Compiling /projects ...
+ ✓ Compiled /projects in 744ms (947 modules)
+ POST /api/session/heartbeat 200 in 254ms
+ POST /api/session/heartbeat 200 in 254ms
+ GET /api/me 200 in 329ms
+ GET /api/me 200 in 201ms
+ ○ Compiling /projects/[id] ...
+ ✓ Compiled /projects/[id] in 1183ms (978 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ POST /api/session/heartbeat 200 in 177ms
+ GET /api/me 200 in 202ms
+ POST /api/session/heartbeat 200 in 151ms
+ GET /api/me 200 in 210ms
+ ✓ Compiled /api/assistant/project-upload in 370ms (621 modules)
+ GET /api/assistant/project-upload?project_id=b73d7310-df16-4d26-b6c8-61bebb197410 200 in 2331ms
+ ○ Compiling /api/assistant ...
+ ✓ Compiled /api/assistant in 631ms (625 modules)
+ ✓ Compiled /api/assistant/track in 326ms (627 modules)
+ POST /api/assistant/track 200 in 1226ms
+ POST /api/assistant 200 in 16051ms
+ POST /api/assistant 200 in 13309ms
+ POST /api/assistant/track 200 in 538ms
+ POST /api/assistant 200 in 7299ms
+ POST /api/assistant/track 200 in 407ms
+ POST /api/assistant 200 in 7410ms
+ POST /api/session/heartbeat 200 in 121ms
+ POST /api/session/heartbeat 200 in 127ms
+ POST /api/session/heartbeat 200 in 161ms
+ POST /api/session/heartbeat 200 in 150ms
+ POST /api/session/heartbeat 200 in 1450ms
+ ○ Compiling /auth/signout ...
+ ✓ Compiled /auth/signout in 2.4s (590 modules)
+ POST /auth/signout 307 in 3357ms
+ POST /login 200 in 944ms
+ POST /api/session/heartbeat 200 in 116ms
+ POST /api/session/heartbeat 200 in 242ms
+ ✓ Compiled /api/me in 517ms (592 modules)
+ GET /api/me 200 in 903ms
+ GET /api/me 200 in 190ms
+ POST /api/session/heartbeat 200 in 121ms
+ POST /api/session/heartbeat 200 in 133ms
+ GET /api/me 200 in 218ms
+ GET /api/me 200 in 211ms
+[ProjectService] User mepcon@sapphirefoods.in attempting to join project with code: TN-BHAV-319
+[ProjectService] Project found: Bhavarkua (b73d7310-df16-4d26-b6c8-61bebb197410). Linking user...
+[ProjectService] User is already a member of this project.
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ POST /projects 303 in 3387ms
+ POST /api/session/heartbeat 200 in 97ms
+ POST /api/session/heartbeat 200 in 157ms
+ GET /api/me 200 in 239ms
+ GET /api/me 200 in 298ms
+ ✓ Compiled in 788ms (373 modules)
+ ✓ Compiled in 535ms (373 modules)
+ ✓ Compiled in 468ms (373 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ POST /api/session/heartbeat 200 in 115ms
+ POST /api/session/heartbeat 200 in 152ms
+ GET /api/me 200 in 229ms
+ GET /api/me 200 in 186ms
+ ✓ Compiled in 2.2s (963 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ✓ Compiled in 1556ms (963 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ✓ Compiled in 2.2s (963 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ✓ Compiled in 1797ms (935 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ✓ Compiled in 1174ms (935 modules)
+ ✓ Compiled in 280ms (373 modules)
+ ✓ Compiled in 1549ms (935 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /api/session/heartbeat in 1740ms (938 modules)
+ ✓ Compiled (964 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /_next/static/webpack/fd2f3c2c4f560e02.webpack.hot-update.json 404 in 4007ms
+ POST /api/session/heartbeat 200 in 2961ms
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /_next/static/css/app/layout.css?v=1777983614067 404 in 177ms
+ GET /_next/static/chunks/main-app.js?v=1777983614067 404 in 311ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 339ms
+ GET /_next/static/chunks/app/projects/%5Bid%5D/loading.js 404 in 212ms
+ GET /_next/static/chunks/app/error.js 404 in 54ms
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 200 in 6050ms
+ GET /_next/static/chunks/app/projects/%5Bid%5D/page.js 404 in 83ms
+ ✓ Compiled /favicon.ico in 297ms (618 modules)
+ GET /favicon.ico 200 in 432ms
+ ✓ Compiled in 3.8s (373 modules)
+ ✓ Compiled in 575ms (373 modules)
+ ✓ Compiled in 685ms (373 modules)
+ ✓ Compiled in 617ms (373 modules)
+ ✓ Compiled in 577ms (373 modules)
+ ✓ Compiled in 5.4s (935 modules)
+ ✓ Compiled in 532ms (373 modules)
+ ✓ Compiled in 742ms (373 modules)
+ ✓ Compiled in 574ms (373 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 200 in 6837ms
+ ○ Compiling /api/session/heartbeat ...
+ ✓ Compiled /documents in 1648ms (594 modules)
+ ✓ Compiled in 6.3s (377 modules)
+ GET /favicon.ico 500 in 13536ms
+ GET /api/me 200 in 14036ms
+ ○ Compiling /_error ...
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ ✓ Compiled /team in 33.9s (1237 modules)
+ POST /api/session/heartbeat 500 in 48873ms
+ ○ Compiling /api/assistant/track ...
+ ✓ Compiled /api/assistant in 1639ms (687 modules)
+ GET /api/assistant/project-upload?project_id=b73d7310-df16-4d26-b6c8-61bebb197410 200 in 39041ms
+ ✓ Compiled (691 modules)
+ POST /api/assistant/track 200 in 4077ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 3.7s (1246 modules)
+ GET /_next/static/chunks/app-pages-internals.js 404 in 4378ms
+ GET /_next/static/chunks/app/dashboard/loading.js 404 in 4373ms
+ ○ Compiling /api/projects/[id]/summary ...
+ ✓ Compiled /api/projects/[id]/summary in 9.9s (926 modules)
+ POST /api/assistant 200 in 19074ms
+ ✓ Compiled (928 modules)
+ POST /api/assistant 200 in 18007ms
+ ✓ Compiled in 1558ms (1166 modules)
+ ✓ Compiled in 488ms (565 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1018ms (1169 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1334ms (1157 modules)
+ ○ Compiling /api/assistant ...
+ ✓ Compiled /api/assistant in 622ms (629 modules)
+ ✓ Compiled (633 modules)
+ POST /api/assistant/track 500 in 7467ms
+ POST /api/assistant 200 in 19727ms
+ POST /api/assistant/track 500 in 534ms
+ POST /api/assistant 200 in 13485ms
+ POST /api/assistant/track 404 in 31ms
+ POST /api/assistant 404 in 30ms
+ POST /projects/b73d7310-df16-4d26-b6c8-61bebb197410 500 in 40ms
+ ○ Compiling /api/session/heartbeat ...
+ ✓ Compiled /api/session/heartbeat in 1107ms (628 modules)
+ POST /api/session/heartbeat 200 in 1394ms
+ ✓ Compiled in 2.3s (1166 modules)
+ ✓ Compiled in 883ms (565 modules)
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+>>> LOADING DASHBOARD FOR PROJECT: b73d7310-df16-4d26-b6c8-61bebb197410
+ GET /projects/b73d7310-df16-4d26-b6c8-61bebb197410 200 in 5342ms
+ ○ Compiling /api/me ...
+ ✓ Compiled /api/me in 715ms (633 modules)
+ ✓ Compiled (658 modules)
+ GET /favicon.ico 200 in 2254ms
+ GET /api/me 200 in 2085ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_not-found in 3s (1214 modules)
+ POST /api/session/heartbeat 500 in 5122ms
+ POST /projects/b73d7310-df16-4d26-b6c8-61bebb197410 500 in 59ms
+[?25h

@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { bulkReviewDocumentsAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
-import { Button } from "@/components/ui/button";
+import { WorkflowStatePanel } from "@/components/workflow/workflow-state-panel";
 import { getCurrentUser, getOwnerReviewQueue, getReviewerPerformanceSummary } from "@/lib/data";
 import { formatDateTimeIST } from "@/lib/utils";
+import { workflowStateRenderer } from "@/lib/workflow/state-renderer";
+
+export const dynamic = "force-dynamic";
 
 export default async function ReviewQueuePage() {
   const [user, queue, metrics] = await Promise.all([getCurrentUser(), getOwnerReviewQueue(), getReviewerPerformanceSummary()]);
@@ -11,8 +13,8 @@ export default async function ReviewQueuePage() {
 
   return (
     <Shell
-      title="My Review Queue"
-      description="Owner/Admin queue for document approvals with bulk actions."
+      title="Project Review Queue"
+      description="Project-scoped evidence review with backend-supplied workflow actions and lock state."
       role={role}
       notificationCount={queue.length}
     >
@@ -36,53 +38,20 @@ export default async function ReviewQueuePage() {
           </div>
         </div>
 
-        {queue.length ? (
-          <form action={bulkReviewDocumentsAction} className="mb-3">
-            {queue.map((item) => (
-              <input key={`all-${item.id}`} type="hidden" name="document_ids" value={item.id} />
-            ))}
-            <Button type="submit" name="bulk_action" value="approve" className="h-[32px] rounded-md px-3 text-[12px]">
-              Approve All Listed
-            </Button>
-          </form>
-        ) : null}
+        <div className="mb-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] text-[var(--color-text-secondary)]">
+          Bulk approval is disabled by workflow governance. Open a project item and take the next allowed action from the backend action contract.
+        </div>
 
-        <form action={bulkReviewDocumentsAction}>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Button type="submit" name="bulk_action" value="approve" className="h-[32px] rounded-md px-3 text-[12px]">
-              Approve Selected
-            </Button>
-            <Button type="submit" name="bulk_action" value="reject" variant="danger" className="h-[32px] rounded-md px-3 text-[12px]">
-              Send Back Selected
-            </Button>
-            <select
-              name="rejection_type"
-              defaultValue=""
-              className="h-[32px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-            >
-              <option value="">Reject reason type</option>
-              <option value="missing_data">Missing required information</option>
-              <option value="incorrect_format">Incorrect format</option>\n              <option value="wrong_document">Wrong document type</option>
-              <option value="poor_quality">Poor image quality / unreadable</option>
-              <option value="outdated_document">Outdated certificate/document</option>
-              <option value="wrong_credit_mapping">Wrong credit mapping</option>
-            </select>
-            <input
-              name="rejection_remark"
-              placeholder="Required for send back: exact issue and what to fix (min 20 chars)"
-              className="h-[32px] min-w-[320px] flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-            />
-          </div>
-
-          <div className="space-y-3">
-            {queue.map((item) => (
+        <div className="space-y-3">
+          {queue.map((item) => {
+            const workflow = workflowStateRenderer(item.workflow_state);
+            return (
               <div key={item.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <input type="checkbox" name="document_ids" value={item.id} />
                   <span className="text-[12px] font-medium text-[var(--color-text-primary)]">{item.project_name}</span>
                   <span className="text-[11px] text-[var(--color-text-secondary)]">/ {item.credit_name}</span>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px_280px]">
                   <div className="min-w-0">
                     <p className="truncate text-[12px] text-[var(--color-text-primary)]">{item.file_name}</p>
                     <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
@@ -90,24 +59,29 @@ export default async function ReviewQueuePage() {
                     </p>
                     {item.notes ? <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{item.notes}</p> : null}
                     <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
+                      <Link href={`/projects/${item.project_id}/submittals/${item.submittal_id ?? item.id}`} className="mr-3 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+                        Open review screen
+                      </Link>
                       <Link href={`/api/documents/${item.id}`} target="_blank" className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
                         Open full document
                       </Link>
                     </p>
                   </div>
+                  <WorkflowStatePanel render={workflow} assignedReviewer={role} />
                   <div className="overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
                     <iframe src={`/api/documents/${item.id}`} title={`Preview ${item.file_name}`} className="h-[220px] w-full" />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
           <div className="mt-4 overflow-x-auto rounded-lg border border-[var(--color-border)]">
             <table className="min-w-full border-collapse text-[12px]">
               <thead className="bg-[var(--color-surface-2)]">
                 <tr className="border-b border-[var(--color-border)]">
-                  {["", "Project", "Credit", "Uploaded by", "File", "Upload time", "Preview"].map((heading) => (
+                  {["Project", "Credit", "State", "Allowed actions", "Uploaded by", "File", "Upload time", "Preview"].map((heading) => (
                     <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                       {heading}
                     </th>
@@ -115,13 +89,16 @@ export default async function ReviewQueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {queue.map((item) => (
-                  <tr key={item.id} className="border-b border-[var(--color-border)]">
-                    <td className="px-3 py-2">
-                      <input type="checkbox" name="document_ids" value={item.id} />
-                    </td>
+                {queue.map((item) => {
+                  const workflow = workflowStateRenderer(item.workflow_state);
+                  return (
+                    <tr key={item.id} className="border-b border-[var(--color-border)]">
                     <td className="px-3 py-2">{item.project_name}</td>
                     <td className="px-3 py-2">{item.credit_name}</td>
+                    <td className="px-3 py-2">{workflow.label}</td>
+                    <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+                      {workflow.allowedActions.length ? workflow.allowedActions.join(", ") : "None"}
+                    </td>
                     <td className="px-3 py-2">{item.uploaded_by_name}</td>
                     <td className="px-3 py-2">
                       <div className="max-w-[280px] truncate text-[var(--color-text-primary)]">{item.file_name}</div>
@@ -129,15 +106,19 @@ export default async function ReviewQueuePage() {
                     </td>
                     <td className="px-3 py-2 text-[var(--color-text-secondary)]">{formatDateTimeIST(item.uploaded_at)}</td>
                     <td className="px-3 py-2">
+                      <Link href={`/projects/${item.project_id}/submittals/${item.submittal_id ?? item.id}`} className="mr-3 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+                        Review
+                      </Link>
                       <Link href={`/api/documents/${item.id}`} target="_blank" className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
                         Open
                       </Link>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {queue.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-[12px] text-[var(--color-text-tertiary)]">
+                    <td colSpan={8} className="px-3 py-8 text-center text-[12px] text-[var(--color-text-tertiary)]">
                       No documents are pending your review.
                     </td>
                   </tr>
@@ -145,7 +126,6 @@ export default async function ReviewQueuePage() {
               </tbody>
             </table>
           </div>
-        </form>
       </section>
     </Shell>
   );

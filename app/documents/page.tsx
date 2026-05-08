@@ -9,11 +9,28 @@ import { documentStatuses } from "@/lib/constants";
 import { getDashboardProjects, getDocumentLibrary, getDocumentUploadOptions } from "@/lib/data";
 import { formatDateTimeIST } from "@/lib/utils";
 
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function toLegacyDocumentStatus(rawState: string | undefined): keyof typeof documentStatuses {
+  if (!rawState) return "uploaded";
+  const normalized = rawState.toLowerCase();
+  if (normalized === "draft" || normalized === "ready" || normalized === "tagged") return "uploaded";
+  if (normalized === "submitted" || normalized === "under_review" || normalized === "resubmitted") return "owner_approved";
+  if (normalized === "approved") return "approved";
+  if (normalized === "clarification" || normalized === "rejected") return "rejected";
+  if (normalized in documentStatuses) return normalized as keyof typeof documentStatuses;
+  return "uploaded";
+}
+
 export default async function DocumentsPage({
   searchParams,
 }: {
-  searchParams?: { project?: string; status?: string; search?: string };
+  searchParams?: { project?: string; status?: string; search?: string; document?: string };
 }) {
+  cookies(); // Explicitly call cookies to force dynamic behavior
   const [projects, documents, uploadProjects] = await Promise.all([
     getDashboardProjects(),
     getDocumentLibrary(searchParams),
@@ -21,16 +38,21 @@ export default async function DocumentsPage({
   ]);
   const projectOptionsById = new Map(uploadProjects.map((project) => [project.id, project]));
   const activeRole = projects[0]?.role ?? "consultant";
+  const clientMode = activeRole === "client";
   const roleScopedSummary =
     activeRole === "architect" || activeRole === "mep" || activeRole === "contractor"
       ? (() => {
           const total = documents.length;
-          const completed = documents.filter((document) => document.status === "approved").length;
-          const rejected = documents.filter((document) => document.status === "rejected").length;
+          const completed = documents.filter((document) => (document.state ?? document.status) === "approved").length;
+          const rejected = documents.filter((document) => (document.state ?? document.status) === "rejected").length;
           const incomplete = Math.max(total - completed - rejected, 0);
           return { total, completed, rejected, incomplete };
         })()
       : null;
+  const focusedDocumentId = (searchParams?.document ?? "").trim();
+  const focusedRejectedDocument = focusedDocumentId
+    ? documents.find((document) => document.id === focusedDocumentId && (document.state ?? document.status) === "rejected")
+    : null;
 
   return (
     <Shell
@@ -40,7 +62,9 @@ export default async function DocumentsPage({
       notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
     >
       {uploadProjects.length ? (
-        <GeneralUploadDocumentForm projects={uploadProjects} />
+        <div id="upload-zone">
+          <GeneralUploadDocumentForm projects={uploadProjects} />
+        </div>
       ) : (
         <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">No project access</h2>
@@ -117,6 +141,45 @@ export default async function DocumentsPage({
         </form>
       </section>
 
+      {!clientMode && focusedRejectedDocument ? (
+        <section id="rejection-card" className="mt-4 rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-4">
+          <h2 className="text-[13px] font-semibold text-[var(--color-text-primary)]">Action needed: rejected document</h2>
+          <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+            <strong>{focusedRejectedDocument.file_name}</strong> for{" "}
+            <strong>{focusedRejectedDocument.credit_code ?? "Credit mapping required"}</strong> was sent back.
+          </p>
+          <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+            <strong>Fix requested:</strong>{" "}
+            {focusedRejectedDocument.rejection_reason || "Reviewer comment was not provided."}
+          </p>
+          {focusedRejectedDocument.credit_what_to_submit ? (
+            <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+              <strong>What to submit:</strong> {focusedRejectedDocument.credit_what_to_submit}
+            </p>
+          ) : null}
+          {focusedRejectedDocument.credit_sample_document_url ? (
+            <p className="mt-2 text-[12px]">
+              <a
+                href={focusedRejectedDocument.credit_sample_document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+              >
+                Open sample reference document
+              </a>
+            </p>
+          ) : null}
+          <p className="mt-3 text-[12px]">
+            <a
+              href={`#doc-${focusedRejectedDocument.id}`}
+              className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+            >
+              Open this document row and resubmit
+            </a>
+          </p>
+        </section>
+      ) : null}
+
       <section className="mt-4 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-[12px]">
@@ -131,7 +194,8 @@ export default async function DocumentsPage({
             </thead>
             <tbody>
               {documents.map((document) => {
-                const status = documentStatuses[document.status];
+                const statusKey = toLegacyDocumentStatus(document.state ?? document.status);
+                const status = documentStatuses[statusKey];
                 const projectOptions = projectOptionsById.get(document.project_id);
                 const creditOptions = projectOptions?.credits ?? [];
                 const selectedCredit =
@@ -141,14 +205,20 @@ export default async function DocumentsPage({
                   : Array.from(new Set(creditOptions.flatMap((credit) => credit.doc_types)));
                 const canOpen = Boolean(document.file_path);
                 return (
-                  <tr key={document.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)]">
+                  <tr
+                    id={`doc-${document.id}`}
+                    key={document.id}
+                    className={`border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)] ${
+                      focusedDocumentId === document.id ? "bg-[var(--color-blue-soft)]" : ""
+                    }`}
+                  >
                     <td className="px-3 py-3">
                       <div className="flex min-w-[220px] items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                          {canOpen ? (
+                          {canOpen && !clientMode ? (
                             <a
                               href={`/api/documents/${document.id}`}
                               target="_blank"
@@ -188,10 +258,10 @@ export default async function DocumentsPage({
                       <Badge className={status.className}>{status.enovaitLabel}</Badge>
                     </td>
                     <td className="max-w-[260px] truncate px-3 py-3 text-[11px] text-[var(--color-text-secondary)]">
-                      {document.notes || document.rejection_reason || "No notes"}
+                      {clientMode ? "Restricted in client mode" : document.notes || document.rejection_reason || "No notes"}
                     </td>
                     <td className="px-3 py-3 align-top">
-                      {document.can_edit_metadata || document.can_edit_status || document.can_reject || document.can_delete ? (
+                      {!clientMode && (document.can_edit_metadata || document.can_edit_status || document.can_reject || document.can_delete) ? (
                         <details className="min-w-[260px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                           <summary className="cursor-pointer list-none text-[12px] font-medium text-[var(--color-text-primary)]">
                             Edit document
@@ -275,7 +345,8 @@ export default async function DocumentsPage({
                                 >
                                   <option value="">Reject reason type (required for rejection)</option>
                                   <option value="missing_data">Missing required information</option>
-                                  <option value="incorrect_format">Incorrect format</option>\n                                  <option value="wrong_document">Wrong document type</option>
+                                  <option value="incorrect_format">Incorrect format</option>
+                                  <option value="wrong_document">Wrong document type</option>
                                   <option value="poor_quality">Poor image quality / unreadable</option>
                                   <option value="outdated_document">Outdated document</option>
                                   <option value="wrong_credit_mapping">Wrong credit mapping</option>
@@ -367,4 +438,3 @@ export default async function DocumentsPage({
     </Shell>
   );
 }
-

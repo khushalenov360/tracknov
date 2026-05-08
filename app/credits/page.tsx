@@ -8,9 +8,12 @@ import { categoryMeta } from "@/lib/constants";
 import { getDashboardProjects, getProjectWorkspace } from "@/lib/data";
 import { scoreIgbcCredits } from "@/lib/igbc-scoring";
 
+export const dynamic = "force-dynamic";
+
 export default async function CreditsPage() {
   const projects = await getDashboardProjects();
-  const workspaces = await Promise.all(projects.map((project) => getProjectWorkspace(project.id)));
+  const workspaces = (await Promise.all(projects.map((project) => getProjectWorkspace(project.id))))
+    .filter((w): w is NonNullable<typeof w> => w !== null);
 
   return (
     <Shell
@@ -23,7 +26,7 @@ export default async function CreditsPage() {
         {workspaces.length ? workspaces.map((workspace) => {
           const score = scoreIgbcCredits(workspace.credits, workspace.project.igbc_variant);
           const mandatory = workspace.credits.filter((credit) => credit.is_mandatory);
-          const mandatoryComplete = mandatory.filter((credit) => credit.status === "complete").length;
+          const mandatoryComplete = mandatory.filter((credit) => credit.state === "complete").length;
           return (
             <article key={workspace.project.id} className="surface-card overflow-hidden">
               <div className="grid gap-4 p-5 xl:grid-cols-[240px_minmax(0,1fr)_220px]">

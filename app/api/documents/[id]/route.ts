@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
+
+export const dynamic = "force-dynamic";
 
 type Context = {
   params: Promise<{
@@ -9,6 +12,13 @@ type Context = {
 };
 
 export async function GET(request: Request, context: Context) {
+  const throttled = checkRateLimit(request, {
+    key: "api:documents:signed-download",
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   const { id } = await context.params;
   const client = createClient();
   const {
@@ -30,7 +40,7 @@ export async function GET(request: Request, context: Context) {
 
   const reader = isSuperUser ? createAdminClient() : client;
   const { data: document } = await reader
-    .from("documents")
+    .from("project_document")
     .select("id, project_id, file_path")
     .eq("id", id)
     .maybeSingle();
@@ -41,7 +51,7 @@ export async function GET(request: Request, context: Context) {
 
   if (!isSuperUser) {
     const { data: membership } = await client
-      .from("project_members")
+      .from("project_users")
       .select("id")
       .eq("project_id", document.project_id)
       .eq("user_id", user.id)

@@ -1,0 +1,65 @@
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (215kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+Warning: Cannot specify a encType or method for a form that specifies a function as the action. React provides those automatically. They will get overridden.
+    at form
+    at div
+    at div
+    at section
+    at main
+    at div
+    at InnerLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:242:11)
+    at RedirectErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:73:9)
+    at RedirectBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:81:11)
+    at NotFoundBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at Suspense
+    at LoadingBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:347:11)
+    at ErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:158:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at Lazy
+    at OuterLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:367:11)
+    at Lazy
+    at InnerLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:242:11)
+    at RedirectErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:73:9)
+    at RedirectBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:81:11)
+    at NotFoundBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at Suspense
+    at LoadingBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:347:11)
+    at ErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:158:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at Lazy
+    at OuterLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:367:11)
+    at Lazy
+    at InnerLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:242:11)
+    at RedirectErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:73:9)
+    at RedirectBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:81:11)
+    at NotFoundErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/not-found-boundary.js:76:9)
+    at NotFoundBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at Suspense
+    at LoadingBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:347:11)
+    at ErrorBoundaryHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:112:9)
+    at ErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:158:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at Lazy
+    at OuterLayoutRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/layout-router.js:367:11)
+    at Lazy
+    at Providers (webpack-internal:///(ssr)/./components/providers.tsx:10:22)
+    at Lazy
+    at body
+    at html
+    at RedirectErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:73:9)
+    at RedirectBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/redirect-boundary.js:81:11)
+    at ReactDevOverlay (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/react-dev-overlay/app/ReactDevOverlay.js:87:9)
+    at HotReload (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:322:11)
+    at Router (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/app-router.js:202:11)
+    at ErrorBoundaryHandler (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:112:9)
+    at ErrorBoundary (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/error-boundary.js:158:11)
+    at AppRouter (webpack-internal:///(ssr)/./node_modules/next/dist/client/components/app-router.js:564:13)
+    at Lazy
+    at r7 (C:\Users\91922\Documents\Codex\tracknov\harita\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:40:19155)
+    at r7 (C:\Users\91922\Documents\Codex\tracknov\harita\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:40:19155)
+    at ServerInsertedHTMLProvider (C:\Users\91922\Documents\Codex\tracknov\harita\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:40:24939)

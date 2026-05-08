@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCurrentUser, getDashboardProjects, getOrCreateOnboardingChecklist } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export default async function WelcomePage() {
   const [user, projects] = await Promise.all([getCurrentUser(), getDashboardProjects()]);
 

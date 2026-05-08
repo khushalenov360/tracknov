@@ -18,3 +18,16 @@ export function buildSeedCredits(projectId: string) {
     documentation_summary: credit.documentation_summary,
   }));
 }
+
+export function buildProjectCreditSeedRows(projectId: string) {
+  return igbcCreditCatalog.map((credit) => ({
+    project_id: projectId,
+    credit_code: credit.credit_code,
+    credit_name: credit.credit_name,
+    is_mandatory: credit.is_mandatory,
+    documents_required: credit.documents_required,
+    documentation_summary: credit.documentation_summary ?? null,
+    max_points: 0,
+    status: "DRAFT",
+  }));
+}

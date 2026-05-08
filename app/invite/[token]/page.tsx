@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: { token: string };
 };

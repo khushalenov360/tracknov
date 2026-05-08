@@ -1,0 +1,96 @@
+
+> tracknov-studio@0.1.0 predev
+> node scripts/clean-next-cache.mjs
+
+
+> tracknov-studio@0.1.0 dev
+> next dev --hostname 127.0.0.1 --port 3000
+
+  ▲ Next.js 14.2.35
+  - Local:        http://127.0.0.1:3000
+  - Network:      http://127.0.0.1:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.6s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 3s (126 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /dashboard in 26.6s (954 modules)
+ ✓ Compiled in 1116ms (374 modules)
+ GET /_next/static/webpack/f0bebefd5083e7c0.webpack.hot-update.json 404 in 30737ms
+ POST /api/session/heartbeat 200 in 29029ms
+>>> LOADING DASHBOARD FOR PROJECT: fd6d917f-5942-4c79-86bc-c7a614c7afdf
+>>> LOADING DASHBOARD FOR PROJECT: fd6d917f-5942-4c79-86bc-c7a614c7afdf
+ GET /dashboard 200 in 8265ms
+ GET /projects/fd6d917f-5942-4c79-86bc-c7a614c7afdf?error=Tracker%20import%20did%20not%20match%20any%20credit%20codes%20in%20this%20project.%20Unmatched%20rows%20(sample)%3A%20WE%20Credit%202%20(Use%20of%20rejected%20water).%20Available%20project%20codes%3A%20EDA%20C3%2C%20EDA%20C5%2C%20IID%20C1.3%2C%20WC%20C2%2C%20EE%20C2%2C%20EE%20C4%2C%20EE%20C6%2C%20IM%20C2%2C%20IM%20C5%2C%20IM%20C9.%20Please%20verify%20tracker%20code%20format%20or%20project%20credit%20seed. 200 in 31280ms
+ ○ Compiling /api/me ...
+ ✓ Compiled /api/me in 1548ms (619 modules)
+ ✓ Compiled (621 modules)
+ GET /favicon.ico 200 in 4736ms
+ POST /api/session/heartbeat 200 in 4669ms
+ POST /api/session/heartbeat 200 in 4712ms
+ GET /api/me 200 in 4793ms
+ GET /api/me 200 in 253ms
+ GET /login 200 in 1279ms
+ GET /login?next=%2Fprojects%2Ffd6d917f-5942-4c79-86bc-c7a614c7afdf 200 in 162ms
+ GET /favicon.ico 200 in 67ms
+ POST /api/session/heartbeat 200 in 249ms
+ POST /api/session/heartbeat 200 in 249ms
+ GET /api/me 200 in 334ms
+ GET /api/me 200 in 202ms
+ GET /login?next=%2Fprojects%2Ffd6d917f-5942-4c79-86bc-c7a614c7afdf 200 in 51ms
+ POST /api/session/heartbeat 200 in 116ms
+ POST /api/session/heartbeat 200 in 112ms
+ GET /api/me 200 in 216ms
+ GET /api/me 200 in 206ms
+ ○ Compiling /team ...
+ ✓ Compiled /team in 1386ms (885 modules)
+ ✓ Compiled /api/me in 186ms (536 modules)
+ GET /api/me 200 in 566ms
+ ✓ Compiled /api/session/heartbeat in 204ms (538 modules)
+ POST /api/session/heartbeat 200 in 396ms
+ POST /api/session/heartbeat 200 in 416ms
+ GET /api/me 200 in 213ms
+ POST /api/session/heartbeat 200 in 143ms
+ POST /api/session/heartbeat 200 in 128ms
+ GET /api/me 200 in 203ms
+ GET /api/me 200 in 196ms
+ ✓ Compiled /projects in 496ms (903 modules)
+ POST /api/session/heartbeat 200 in 131ms
+ POST /api/session/heartbeat 200 in 140ms
+ GET /api/me 200 in 242ms
+ GET /api/me 200 in 175ms
+ POST /api/session/heartbeat 200 in 282ms
+ POST /api/session/heartbeat 200 in 212ms
+ GET /api/me 200 in 356ms
+ GET /api/me 200 in 198ms
+>>> LOADING DASHBOARD FOR PROJECT: fd6d917f-5942-4c79-86bc-c7a614c7afdf
+ POST /api/session/heartbeat 200 in 118ms
+ POST /api/session/heartbeat 200 in 129ms
+ GET /api/me 200 in 210ms
+ GET /api/me 200 in 209ms
+>>> LOADING DASHBOARD FOR PROJECT: fd6d917f-5942-4c79-86bc-c7a614c7afdf
+ POST /projects/fd6d917f-5942-4c79-86bc-c7a614c7afdf 200 in 1628ms
+>>> LOADING DASHBOARD FOR PROJECT: fd6d917f-5942-4c79-86bc-c7a614c7afdf
+ POST /projects/fd6d917f-5942-4c79-86bc-c7a614c7afdf 200 in 1540ms
+ POST /api/session/heartbeat 200 in 93ms
+ POST /api/session/heartbeat 200 in 108ms
+ GET /api/me 200 in 193ms
+ GET /api/me 200 in 190ms
+ POST /api/session/heartbeat 200 in 146ms
+ POST /api/session/heartbeat 200 in 138ms
+ POST /api/session/heartbeat 200 in 134ms
+ POST /api/session/heartbeat 200 in 132ms
+ GET /projects 200 in 4641ms
+ POST /api/session/heartbeat 200 in 328ms
+ POST /api/session/heartbeat 200 in 337ms
+ ✓ Compiled in 4.7s (376 modules)
+ ✓ Compiled in 589ms (376 modules)
+ ✓ Compiled in 699ms (376 modules)
+ ✓ Compiled in 988ms (376 modules)
+ ✓ Compiled in 1348ms (376 modules)
+ ✓ Compiled in 835ms (376 modules)
+ POST /api/session/heartbeat 200 in 699ms
+ POST /api/session/heartbeat 200 in 196ms
+ POST /api/session/heartbeat 200 in 423ms

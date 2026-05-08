@@ -13,6 +13,8 @@ type UploadProject = {
   name: string;
   credits: {
     id: string;
+    project_credit_id: string;
+    status: string;
     credit_code: string;
     credit_name: string;
     doc_types: string[];
@@ -30,11 +32,13 @@ type PendingFile = {
   projectId: string;
   projectName: string;
   creditId: string;
+  projectCreditId: string;
   creditName: string;
   docType: string;
   requirementSlot: string;
   notes: string;
   file: File;
+  fileHash?: string;
 };
 
 export function GeneralUploadDocumentForm({
@@ -54,6 +58,8 @@ export function GeneralUploadDocumentForm({
   const [lastUploadedFileName, setLastUploadedFileName] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const [retryQueue, setRetryQueue] = useState<PendingFile[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -103,6 +109,53 @@ export function GeneralUploadDocumentForm({
     setRequirementSlot(slot);
   }, [matchingRequirement, docType]);
 
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  const compressImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith("image/") || file.size < 1 * 1024 * 1024) {
+      return file;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1600;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg" }));
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.8,
+        );
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const normalizeFiles = useCallback((incomingFiles: File[]) => {
     const deduped = new Map<string, File>();
     for (const file of incomingFiles) {
@@ -127,20 +180,32 @@ export function GeneralUploadDocumentForm({
       setLoading(true);
       setError("");
       setSuccessMessage("");
+      setBatchProgress(0);
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setRetryQueue(pendingItems);
+        throw new Error("You are offline. Files were queued and will retry automatically when internet returns.");
+      }
       try {
-        for (const pending of pendingItems) {
+        for (let index = 0; index < pendingItems.length; index += 1) {
+          const pending = pendingItems[index];
           const formData = new FormData();
           formData.set("project_id", pending.projectId);
           formData.set("credit_id", pending.creditId);
+          formData.set("project_credit_id", pending.projectCreditId);
           formData.set("doc_category", pending.docType);
           formData.set("requirement_slot", pending.requirementSlot);
           formData.set("notes", pending.notes);
+          formData.set("file_hash", pending.fileHash ?? "");
           formData.set("file", pending.file);
           const result = await uploadDocumentAction(formData);
+          if (!result || typeof result.ok !== "boolean") {
+            throw new Error(`Upload action returned an invalid response for ${pending.file.name}.`);
+          }
           if (!result.ok) {
             throw new Error(result.error ?? `Upload failed for ${pending.file.name}`);
           }
           setLastUploadedFileName(pending.file.name);
+          setBatchProgress(Math.round(((index + 1) / pendingItems.length) * 100));
         }
 
         setSuccessMessage(
@@ -156,9 +221,18 @@ export function GeneralUploadDocumentForm({
           cameraInputRef.current.value = "";
         }
         setPendingQueue(null);
+        setRetryQueue(null);
         router.refresh();
       } catch (uploadError) {
-        setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
+        const message = uploadError instanceof Error ? uploadError.message : "Upload failed";
+        const shouldQueueForRetry =
+          message.toLowerCase().includes("network") ||
+          message.toLowerCase().includes("offline") ||
+          message.toLowerCase().includes("fetch");
+        if (shouldQueueForRetry) {
+          setRetryQueue(pendingItems);
+        }
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -193,13 +267,26 @@ export function GeneralUploadDocumentForm({
     };
   }, [pendingQueue, submitPendingQueue]);
 
+  useEffect(() => {
+    function onOnline() {
+      if (!retryQueue?.length || loading) {
+        return;
+      }
+      setError("");
+      setSuccessMessage("Connection restored. Retrying queued uploads.");
+      void submitPendingQueue(retryQueue);
+    }
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [retryQueue, loading, submitPendingQueue]);
+
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
     const files = selectedFiles.filter((entry) => entry.size > 0);
 
-    if (!files.length || !projectId || !creditId || !docType) {
+    if (!files.length || !projectId || !creditId || !docType || !currentCredit?.project_credit_id) {
       setError("Step 3 needs at least one file selected after credit and document type are set.");
       return;
     }
@@ -233,18 +320,34 @@ export function GeneralUploadDocumentForm({
 
     setError("");
     setSuccessMessage("");
-    const notes = String(formData.get("notes") ?? "").trim();
-    const pendingItems: PendingFile[] = files.map((file) => ({
-      projectId,
-      projectName: currentProject?.name ?? "Selected project",
-      creditId,
-      creditName: `${currentCredit?.credit_code ?? ""} - ${currentCredit?.credit_name ?? ""}`.trim(),
-      docType,
-      requirementSlot,
-      notes,
-      file,
-    }));
-    setPendingQueue(pendingItems);
+    setLoading(true); // Start loading during compression/hashing
+    
+    try {
+      const notes = String(formData.get("notes") ?? "").trim();
+      const processedItems: PendingFile[] = [];
+      
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        const hash = await calculateFileHash(compressed);
+        processedItems.push({
+          projectId,
+          projectName: currentProject?.name ?? "Selected project",
+          creditId,
+          projectCreditId: currentCredit?.project_credit_id ?? "",
+          creditName: `${currentCredit?.credit_code ?? ""} - ${currentCredit?.credit_name ?? ""}`.trim(),
+          docType,
+          requirementSlot,
+          notes,
+          file: compressed,
+          fileHash: hash,
+        });
+      }
+      
+      setPendingQueue(processedItems);
+    } catch (err) {
+      setError("Failed to process files for upload.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -410,6 +513,17 @@ export function GeneralUploadDocumentForm({
       </div>
 
       {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      {loading ? (
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
+          <p className="text-[11px] text-[var(--color-text-secondary)]">Upload progress: {batchProgress}%</p>
+          <div className="mt-1 h-2 rounded bg-[var(--color-surface)]">
+            <div
+              className="h-2 rounded bg-[var(--color-green)] transition-all"
+              style={{ width: `${Math.max(0, Math.min(batchProgress, 100))}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
       {selectedFiles.length ? (
         <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
           <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
@@ -493,6 +607,34 @@ export function GeneralUploadDocumentForm({
               }}
             >
               Cancel upload
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {retryQueue?.length ? (
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-primary)]">
+          <p>
+            <strong>{retryQueue.length}</strong> upload(s) are queued for retry when internet is available.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 rounded-md px-3 text-[11px]"
+              onClick={() => void submitPendingQueue(retryQueue)}
+              disabled={loading}
+            >
+              Retry now
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 rounded-md px-3 text-[11px]"
+              onClick={() => setRetryQueue(null)}
+              disabled={loading}
+            >
+              Clear queue
             </Button>
           </div>
         </div>

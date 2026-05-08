@@ -5,19 +5,54 @@ import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { CreditWorkspace, ProjectWorkspace } from "@/lib/types";
 
+const fileSafeSegment = /[^a-z0-9._-]+/gi;
+
+function resolvedCreditStatus(credit: Pick<CreditWorkspace, "state" | "status">) {
+  return String(credit.state ?? credit.status ?? "pending").toUpperCase();
+}
+
+export function sanitizePathSegment(value: string) {
+  return value
+    .trim()
+    .replace(fileSafeSegment, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "unknown";
+}
+
+export function buildSubmissionZipEntryPath(args: {
+  creditCode: string;
+  docCategory: string;
+  fileName: string;
+}) {
+  const creditFolder = sanitizePathSegment(args.creditCode);
+  const categoryFolder = sanitizePathSegment(args.docCategory);
+  const safeFileName = sanitizePathSegment(args.fileName.replace(/\.[^.]+$/, ""));
+  const extension = args.fileName.includes(".") ? args.fileName.slice(args.fileName.lastIndexOf(".")) : ".bin";
+  return `${creditFolder}/${categoryFolder}/${safeFileName}${extension}`;
+}
+
 export function isSubmissionExportReady(workspace: Pick<ProjectWorkspace, "credits">) {
   const mandatoryCredits = workspace.credits.filter((credit) => credit.is_mandatory);
   if (!mandatoryCredits.length) {
     return false;
   }
-  return mandatoryCredits.every((credit) => credit.status === "complete");
+  return mandatoryCredits.every((credit) => {
+    const state = resolvedCreditStatus(credit);
+    return state === "APPROVED" || state === "CLOSED" || state === "COMPLETE";
+  });
 }
 
 export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "credits">) {
   return workspace.credits
     .map((credit) => ({
       ...credit,
-      documents: credit.documents.filter((document) => document.status === "approved"),
+      documents: credit.documents.filter(
+        (document) =>
+          ((document.workflow_state ?? "").toUpperCase() === "APPROVED" ||
+            String(document.status ?? "").toLowerCase() === "approved") &&
+          document.is_latest !== false,
+      ),
     }))
     .filter((credit) => credit.documents.length > 0);
 }
@@ -94,7 +129,7 @@ export function buildTrackerWorkbook(workspace: ProjectWorkspace) {
       credit.credit_code,
       1,
       Number((credit.completion_pct / 100).toFixed(2)),
-      credit.status === "in_progress" ? 1 : 0,
+      resolvedCreditStatus(credit) === "IN_PROGRESS" ? 1 : 0,
       credit.documents_required.filter((item) => item.required).length,
       credit.documents_required.filter((item) => !item.required).length,
     ]),
@@ -131,7 +166,7 @@ export async function buildProjectSummaryPdf(workspace: ProjectWorkspace) {
     page.drawText(credit.credit_code, { x: 48, y, size: 10, font: bold });
     page.drawText(credit.credit_name.slice(0, 40), { x: 130, y, size: 10, font });
     page.drawText(`${Math.round(credit.completion_pct)}%`, { x: 460, y, size: 10, font });
-    page.drawText(credit.status, { x: 540, y, size: 10, font });
+    page.drawText(resolvedCreditStatus(credit).toLowerCase(), { x: 540, y, size: 10, font });
     y -= 18;
   }
 
@@ -145,21 +180,24 @@ export async function buildSubmissionZip(workspace: ProjectWorkspace) {
   const approvedCredits = getApprovedSubmissionCredits(workspace);
   for (const credit of approvedCredits) {
     for (const document of credit.documents) {
-      const folder = zip.folder(`${credit.credit_code}/${document.doc_category}`);
-      if (!folder) {
-        continue;
-      }
+      const stage = String((document as any).source_stage ?? "DESIGN").toUpperCase() === "CONSTRUCTION" ? "CONSTRUCTION" : "DESIGN";
+      const zipEntryPath = buildSubmissionZipEntryPath({
+        creditCode: credit.credit_code,
+        docCategory: document.doc_category,
+        fileName: document.file_name,
+      });
+      const stagePath = `${stage}/${zipEntryPath}`;
 
       if (client) {
         const { data, error } = await client.storage.from("project-documents").download(document.file_path);
         if (!error && data) {
           const bytes = Buffer.from(await data.arrayBuffer());
-          folder.file(document.file_name, bytes);
+          zip.file(stagePath, bytes);
           continue;
         }
       }
 
-      folder.file(document.file_name, `Placeholder for ${document.file_name}`);
+      zip.file(stagePath, `Placeholder for ${document.file_name}`);
     }
   }
 

@@ -2,12 +2,38 @@ import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { buildTrackerWorkbook } from "@/lib/exports";
+import { logSystemActivity } from "@/lib/services/activity-service";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { canExportProjectArtifacts } from "@/lib/rbac";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const throttled = checkRateLimit(request, {
+    key: "api:project:tracker-export",
+    limit: 12,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
   const workspace = await getProjectWorkspaceForApi(params.id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+  if (!canExportProjectArtifacts(workspace.userRole)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  // Audit Log
+  const admin = createAdminClient();
+  await logSystemActivity(admin, {
+    projectId: params.id,
+    entityType: "project",
+    action: "export_tracker",
+    summary: `Exported document tracker for ${workspace.project.name}`,
+  });
+
   const workbook = buildTrackerWorkbook(workspace);
   const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
 

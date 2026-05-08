@@ -4,24 +4,32 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createProjectForCurrentUser,
-  createProjectTopupInvoiceForCurrentUser,
   deleteProjectForCurrentUser,
   getCurrentUser,
   getOrCreateOnboardingChecklist,
   getProjectWorkspace,
-  logConsultantSessionForCurrentUser,
   updateOnboardingChecklistForCurrentUser,
-  updateProjectBillingSettingsForCurrentUser,
   updateProjectForCurrentUser,
 } from "@/lib/data";
 import { env } from "@/lib/env";
-import { recordDocumentReviewEvent } from "@/lib/services/review-service";
+import { projectService } from "@/lib/services/project-service";
+import { billingService } from "@/lib/services/billing-service";
+import { memberService } from "@/lib/services/member-service";
+import { documentService } from "@/lib/services/document-service";
+import { creditService } from "@/lib/services/credit-service";
+import { reviewService } from "@/lib/services/review-service";
+import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
+import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+
 import {
+  canAccessBillingAndInvoice,
+  canManageTokens,
+  canEditPlanControls,
   canCreateProjects,
   canDeleteProjects,
-  canEditDocumentStatusAtAnyStage,
-  canEditOwnDocumentBeforeFinalApproval,
-  canUploadProjectDocuments,
+  canManageProject,
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -42,202 +50,102 @@ export type TeamMemberActionState = {
 
 const uploadAllowedExtensions = [".pdf", ".docx", ".png", ".jpg", ".jpeg"] as const;
 const uploadMaxBytes = 10 * 1024 * 1024;
-const rejectionTemplateLibrary: Record<string, string> = {
-  missing_data: "Missing required information. Please resubmit with all mandatory values clearly visible.",
-  incorrect_format: "Document format is incorrect for this requirement. Upload the required format with readable structure.",
-  wrong_document: "Wrong document type for this credit. Please upload the exact required evidence for this credit slot.",
-  poor_quality: "Document image/scan quality is unclear. Please upload a readable, high-clarity file.",
-  outdated_document: "Document is outdated for current review cycle. Please upload the latest valid certificate/record.",
-  wrong_credit_mapping: "Document is mapped to the wrong credit. Please remap and resubmit under the correct credit requirement.",
-};
 
-async function notifyUsers(
-  writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
-  {
-    projectId,
-    creditId,
-    documentId,
-    userIds,
-    body,
-  }: {
-    projectId: string;
-    creditId?: string | null;
-    documentId?: string | null;
-    userIds: string[];
-    body: string;
-  },
-) {
-  const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
-  if (!uniqueUserIds.length || !body.trim()) {
-    return;
-  }
-  await writer.from("notifications").insert(
-    uniqueUserIds.map((userId) => ({
-      project_id: projectId,
-      credit_id: creditId ?? null,
-      document_id: documentId ?? null,
-      user_id: userId,
-      body,
-    })),
-  );
-}
 
-async function getProjectMembersByRoles(
-  writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
-  projectId: string,
-  roles: string[],
-) {
-  const { data } = await writer
-    .from("project_members")
-    .select("user_id")
-    .eq("project_id", projectId)
-    .in("role", roles);
-  return (data ?? []).map((row: any) => row.user_id).filter(Boolean) as string[];
-}
 
-async function getActorProjectRole(projectId: string) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return null;
-  }
-  if (user.role === "super_user") {
-    return "super_user";
-  }
 
-  const client = createClient();
-  const { data: membership } = await client
-    .from("project_members")
-    .select("role")
-    .eq("project_id", projectId)
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
 
-  return membership?.role ?? user.role;
-}
 
-async function getClientUserForProject(writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>, projectId: string) {
-  const { data } = await writer
-    .from("project_members")
-    .select("user_id")
-    .eq("project_id", projectId)
-    .eq("role", "client")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return data?.user_id ?? null;
-}
-
-async function logDocumentActivity(
-  writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
-  {
-    documentId,
-    projectId,
-    action,
-    actorId,
-    actorRole,
-    summary,
-    details = {},
-  }: {
-    documentId?: string | null;
-    projectId: string;
-    action: "uploaded" | "metadata_updated" | "status_updated" | "deleted";
-    actorId?: string | null;
-    actorRole?: string | null;
-    summary: string;
-    details?: Record<string, unknown>;
-  },
-) {
-  await writer.from("document_activity_logs").insert({
-    document_id: documentId ?? null,
-    project_id: projectId,
-    action,
-    actor_id: actorId ?? null,
-    actor_role: actorRole ?? null,
-    summary,
-    details,
-  });
-}
-
-async function logSystemActivity(
-  writer: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
-  {
-    projectId,
-    entityType,
-    entityId,
-    action,
-    actorId,
-    actorRole,
-    summary,
-    details = {},
-  }: {
-    projectId?: string | null;
-    entityType: "project" | "credit" | "document" | "team" | "billing" | "auth";
-    entityId?: string | null;
-    action: string;
-    actorId?: string | null;
-    actorRole?: string | null;
-    summary: string;
-    details?: Record<string, unknown>;
-  },
-) {
-  await writer.from("system_activity_logs").insert({
-    project_id: projectId ?? null,
-    entity_type: entityType,
-    entity_id: entityId ?? null,
-    action,
-    actor_id: actorId ?? null,
-    actor_role: actorRole ?? null,
-    summary,
-    details,
-  });
-}
 
 export async function createProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const clientName = String(formData.get("client") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
-  const ratingSystem = String(formData.get("rating_system") ?? "").trim();
-  const projectType = String(formData.get("project_type") ?? "commercial");
-  const status = String(formData.get("status") ?? "active");
-  const greenCertification = String(formData.get("green_certification") ?? "IGBC");
-  const igbcVariant = String(formData.get("igbc_variant") ?? "new");
-  const targetRating = String(formData.get("target_rating") ?? "Certified");
+  const ratingSystemId = String(formData.get("rating_system_id") ?? "").trim();
+  const ratingSystemName = String(formData.get("rating_system") ?? "").trim();
+
   const user = await getCurrentUser();
-  if (!canCreateProjects(user?.role)) {
-    return;
-  }
-  if (!name || !clientName || !location || !ratingSystem) {
-    return;
+  if (!user) {
+    redirect("/login?next=/projects");
   }
 
-  const project = await createProjectForCurrentUser({
-    name,
-    ratingSystem,
-    targetRating,
-    clientName,
-    location,
-    projectType,
-    status,
-    greenCertification,
-    igbcVariant,
-  });
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  await logSystemActivity(writer, {
-    projectId: project.id,
-    entityType: "project",
-    entityId: project.id,
-    action: "created",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: `Created project ${name}.`,
-    details: { name, client: clientName, location, rating_system: ratingSystem },
-  });
-  pathFor(project.id).forEach((path) => revalidatePath(path));
-  revalidatePath("/projects");
-  revalidatePath("/documents");
-  revalidatePath("/credits");
-  redirect(`/projects/${project.id}`);
+  const targetRating = String(formData.get("target_rating") ?? "Certified").trim();
+  const projectType = String(formData.get("project_type") ?? "commercial").trim();
+  const status = String(formData.get("status") ?? "active").trim();
+  const greenCertification = String(formData.get("green_certification") ?? "IGBC").trim();
+  const igbcVariant = String(formData.get("igbc_variant") ?? "new").trim();
+
+  let newProjectId: string | undefined;
+  try {
+    const project = await projectService.createProject(user, {
+      name,
+      ratingSystemId: ratingSystemId || undefined,
+      ratingSystemName: ratingSystemName || undefined,
+      targetRating,
+      clientName,
+      location,
+      projectType,
+      state: status, // Map status to state in DB
+      greenCertification,
+      igbcVariant,
+    });
+
+    pathFor(project.id).forEach((path) => revalidatePath(path));
+    revalidatePath("/projects");
+    revalidatePath("/documents");
+    revalidatePath("/credits");
+
+    newProjectId = project.id;
+  } catch (err: any) {
+    console.error("Project creation failed:", err);
+    redirect(`/projects?error=${err.message}`);
+  }
+
+  if (newProjectId) {
+    redirect(`/projects/${newProjectId}`);
+  }
+}
+
+export async function joinProjectAction(formData: FormData) {
+  const projectCode = String(formData.get("projectCode") ?? "").trim().toUpperCase();
+  if (!projectCode) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  let project;
+  try {
+    project = await projectService.joinProjectByCode(user, projectCode);
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+  } catch (error: any) {
+    console.error("[Actions] Join project failed:", error);
+    redirect(`/projects?error=${encodeURIComponent(error.message || "invalid_code")}`);
+  }
+
+  if (project) {
+    redirect(`/projects/${project.id}`);
+  }
+}
+
+export async function leaveProjectAction(formData: FormData) {
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  if (!projectId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await memberService.removeMember(user, {
+      projectId,
+      userId: user.id,
+    });
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+  } catch (error: any) {
+    console.error("[Actions] Leave project failed:", error);
+    // You could redirect with an error message here if needed
+  }
 }
 
 export async function updateProjectAction(formData: FormData) {
@@ -248,36 +156,28 @@ export async function updateProjectAction(formData: FormData) {
   const ratingSystem = String(formData.get("rating_system") ?? "").trim();
   const status = String(formData.get("status") ?? "active").trim();
 
-  if (!projectId || !name || !clientName || !location || !ratingSystem) {
-    return;
-  }
+  if (!projectId || !name || !clientName || !location || !ratingSystem) return;
 
-  await updateProjectForCurrentUser({
-    projectId,
-    name,
-    clientName,
-    location,
-    ratingSystem,
-    status,
-  });
   const user = await getCurrentUser();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  await logSystemActivity(writer, {
-    projectId,
-    entityType: "project",
-    entityId: projectId,
-    action: "updated",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: `Updated project profile.`,
-    details: { name, client: clientName, location, rating_system: ratingSystem, status },
-  });
+  if (!user) return;
 
-  pathFor(projectId).forEach((path) => revalidatePath(path));
-  revalidatePath("/projects");
-  revalidatePath("/dashboard");
-  revalidatePath("/documents");
-  revalidatePath("/credits");
+  try {
+    await projectService.updateProject(user, projectId, {
+      name,
+      clientName,
+      location,
+      ratingSystem,
+      state: status,
+    });
+
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    revalidatePath("/documents");
+    revalidatePath("/credits");
+  } catch (error) {
+    // Handle error
+  }
 }
 
 export async function updateProjectPlanSettingsAction(formData: FormData) {
@@ -288,35 +188,19 @@ export async function updateProjectPlanSettingsAction(formData: FormData) {
   const topupDocumentCredits = Number(formData.get("topup_document_credits") ?? 0);
   const topupConsultantCredits = Number(formData.get("topup_consultant_credits") ?? 0);
 
-  if (!projectId || !planCode) {
-    return;
-  }
+  if (!projectId || !planCode) return;
 
-  await updateProjectBillingSettingsForCurrentUser({
+  const user = await getCurrentUser();
+  if (!user) return;
+  if (!canEditPlanControls(user.role)) return;
+
+  await billingService.updateBillingSettings(user, {
     projectId,
     planCode,
     documentCreditLimit,
     consultantCreditLimit,
     topupDocumentCredits,
     topupConsultantCredits,
-  });
-  const user = await getCurrentUser();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  await logSystemActivity(writer, {
-    projectId,
-    entityType: "billing",
-    entityId: projectId,
-    action: "plan_updated",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: "Updated project billing plan settings.",
-    details: {
-      plan_code: planCode,
-      document_credit_limit: documentCreditLimit,
-      consultant_credit_limit: consultantCreditLimit,
-      topup_document_credits: topupDocumentCredits,
-      topup_consultant_credits: topupConsultantCredits,
-    },
   });
 
   pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -331,47 +215,17 @@ export async function logConsultantSessionAction(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim();
   const creditsBurned = Number(formData.get("credits_burned") ?? 1);
 
-  if (!projectId) {
-    return;
-  }
+  if (!projectId) return;
 
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  const currentUser = await getCurrentUser();
-  const clientUserId = await getClientUserForProject(writer, projectId);
-  if (!clientUserId) {
-    return;
-  }
-  try {
-    const { error: tokenError } = await writer.rpc("consume_client_tokens", {
-      p_client_user_id: clientUserId,
-      p_project_id: projectId,
-      p_tokens: Math.max(1, Math.trunc(creditsBurned || 1)) * 50,
-      p_reason: "Consulting session token burn",
-      p_actor_id: currentUser?.id ?? null,
-      p_meta: { source, notes, hours: Math.max(1, Math.trunc(creditsBurned || 1)) },
-    });
-    if (tokenError) {
-      return;
-    }
-    await logConsultantSessionForCurrentUser({
-      projectId,
-      source,
-      notes,
-      creditsBurned,
-    });
-  } catch {
-    return;
-  }
-  const user = currentUser;
-  await logSystemActivity(writer, {
+  const user = await getCurrentUser();
+  if (!user) return;
+  if (!canManageTokens(user.role)) return;
+
+  await billingService.consumeConsultantTokens(user, {
     projectId,
-    entityType: "billing",
-    entityId: projectId,
-    action: "consultant_session_logged",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: "Logged consultant interaction session.",
-    details: { source, credits_burned: creditsBurned, notes },
+    source,
+    notes,
+    creditsBurned,
   });
 
   pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -386,32 +240,18 @@ export async function createProjectTopupInvoiceAction(formData: FormData) {
   const amountInr = Number(formData.get("amount_inr") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!projectId) {
-    return;
-  }
+  if (!projectId) return;
 
-  try {
-    await createProjectTopupInvoiceForCurrentUser({
-      projectId,
-      documentCredits,
-      consultantCredits,
-      amountInr,
-      notes,
-    });
-  } catch {
-    return;
-  }
   const user = await getCurrentUser();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  await logSystemActivity(writer, {
+  if (!user) return;
+  if (!canManageTokens(user.role)) return;
+
+  await billingService.createTopupInvoice(user, {
     projectId,
-    entityType: "billing",
-    entityId: projectId,
-    action: "topup_invoiced",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: "Created top-up invoice.",
-    details: { document_credits: documentCredits, consultant_credits: consultantCredits, amount_inr: amountInr, notes },
+    documentCredits,
+    consultantCredits,
+    amountInr,
+    notes,
   });
 
   pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -447,291 +287,140 @@ export async function updateOnboardingChecklistAction(formData: FormData) {
 export async function deleteProjectAction(formData: FormData) {
   const projectId = String(formData.get("project_id") ?? "").trim();
   const user = await getCurrentUser();
-  if (!projectId || !canDeleteProjects(user?.role)) {
-    return;
-  }
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  await logSystemActivity(writer, {
-    projectId,
-    entityType: "project",
-    entityId: projectId,
-    action: "deleted",
-    actorId: user?.id ?? null,
-    actorRole: user?.role ?? null,
-    summary: "Deleted project.",
-  });
+  if (!projectId || !user) return;
 
-  await deleteProjectForCurrentUser(projectId);
-  revalidatePath("/projects");
-  revalidatePath("/dashboard");
-  revalidatePath("/documents");
-  revalidatePath("/credits");
-  redirect("/projects");
+  try {
+    await projectService.deleteProject(user, projectId);
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    revalidatePath("/documents");
+    revalidatePath("/credits");
+    redirect("/projects");
+  } catch (error) {
+    // Handle error
+  }
 }
 
 export async function addRemarkAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
-  const client = createClient();
   const user = await getCurrentUser();
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   const projectId = String(formData.get("project_id"));
   const creditId = String(formData.get("credit_id"));
   const roleValue = String(formData.get("role") ?? "consultant");
-  const role = ["super_user", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"].includes(roleValue)
+  const role = ["super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"].includes(roleValue)
     ? roleValue
     : "consultant";
   const body = String(formData.get("body") ?? "").trim();
-  if (!body) {
-    return;
+  if (!body) return;
+
+  try {
+    await reviewService.addRemark(user, { projectId, creditId, role, body });
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
   }
-
-  const { error } = await client.from("remarks").insert({
-    credit_id: creditId,
-    author_id: user.id,
-    role,
-    body,
-  });
-
-  if (error) {
-    return;
-  }
-
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
 export async function setDocumentStatusAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const projectId = String(formData.get("project_id"));
   const documentId = String(formData.get("document_id"));
   const status = String(formData.get("status")) as RawDocumentStatus;
   const rejectionRemark = String(formData.get("rejection_remark") ?? "").trim();
-  const creditId = String(formData.get("credit_id"));
   const rejectionType = String(formData.get("rejection_type") ?? "").trim();
-  
+
+
   const user = await getCurrentUser();
   if (!user) return;
   const actorProjectRole = projectId ? await getActorProjectRole(projectId) : user?.role ?? null;
   const actorRole = actorProjectRole ?? user?.role ?? "consultant";
-  
-  const { data: currentDocument } = await client
-    .from("documents")
-    .select("status")
-    .eq("id", documentId)
-    .maybeSingle();
 
-  if (!currentDocument) return;
+  // Map status to workflow state
+  const mappedWorkflowState: WorkflowState =
+    status === "owner_approved"
+      ? "UNDER_REVIEW"
+      : status === "approved"
+        ? "APPROVED"
+        : status === "rejected"
+          ? (rejectionRemark ? "CLARIFICATION" : "REJECTED")
+          : "READY";
 
-  const result = await executeDocumentTransition({
-    writer,
-    client,
-    documentId,
-    projectId,
-    creditId,
-    currentStatus: currentDocument.status,
-    targetStatus: status,
-    actorId: user.id,
-    actorRole,
-    rejectionRemark,
-    rejectionType
-  });
+  const formattedRemark = rejectionType && rejectionRemark ? `[${rejectionType}] ${rejectionRemark}` : rejectionRemark;
 
-  if (!result.error) {
+  try {
+    await reviewService.transitionDocument(user, {
+      documentId,
+      projectId,
+      newState: mappedWorkflowState,
+      manualSubmit: true,
+      updatedEvidence: Boolean(rejectionRemark),
+      remarks: formattedRemark || null,
+    });
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
   }
 }
 
 export async function bulkReviewDocumentsAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
-  const action = String(formData.get("bulk_action") ?? "").trim();
+  const action = String(formData.get("bulk_action") ?? "").trim() as "approve" | "reject";
   const rejectionType = String(formData.get("rejection_type") ?? "").trim();
   const remark = String(formData.get("rejection_remark") ?? "").trim();
   const documentIds = formData
     .getAll("document_ids")
     .map((value) => String(value))
     .filter(Boolean);
-  if (!documentIds.length || !["approve", "reject"].includes(action)) {
-    return;
-  }
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
+  if (!documentIds.length || !["approve", "reject"].includes(action)) return;
+
   const user = await getCurrentUser();
-  if (!user) {
-    return;
+  if (!user) return;
+  if (user.role === "project_admin" || user.role === "super_admin") return;
+
+  try {
+    const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+    const { data: docs } = await reader
+      .from("project_document")
+      .select("id, project_id")
+      .in("id", documentIds);
+
+    for (const doc of docs ?? []) {
+      const projectId = String((doc as any).project_id ?? "").trim();
+      if (!projectId) continue;
+
+      const newState =
+        action === "approve"
+          ? "APPROVED"
+          : (remark ? "CLARIFICATION" : "REJECTED");
+
+      const formattedRemark =
+        action === "reject" && rejectionType && remark
+          ? `[${rejectionType}] ${remark}`
+          : remark;
+
+      await reviewService.transitionDocument(user, {
+        documentId: String((doc as any).id),
+        projectId,
+        newState,
+        manualSubmit: true,
+        updatedEvidence: action === "reject" && Boolean(remark),
+        remarks: action === "reject" ? (formattedRemark || null) : null,
+      });
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/documents");
+    revalidatePath("/review-queue");
+  } catch (error) {
+    // Handle error
   }
-
-  for (const documentId of documentIds) {
-    const { data: currentDocument } = await client
-      .from("documents")
-      .select("id, status, project_id, credit_id")
-      .eq("id", documentId)
-      .maybeSingle();
-    if (!currentDocument) {
-      continue;
-    }
-    const actorProjectRole = await getActorProjectRole(currentDocument.project_id);
-    if (!actorProjectRole) {
-      continue;
-    }
-    const canOwnerReview = actorProjectRole === "owner" || actorProjectRole === "super_user";
-    const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(actorProjectRole);
-
-    if (action === "approve") {
-      const nextStatus = canOwnerReview ? "owner_approved" : canFinalReview ? "approved" : null;
-      if (!nextStatus) {
-        continue;
-      }
-      if (
-        !canTransitionDocument({
-          fromStatus: currentDocument.status,
-          toStatus: nextStatus as "owner_approved" | "approved",
-          actorRole: actorProjectRole,
-        })
-      ) {
-        continue;
-      }
-      if (canOwnerReview && currentDocument.status !== "uploaded") {
-        continue;
-      }
-      if (canFinalReview && currentDocument.status !== "owner_approved") {
-        continue;
-      }
-      const payload =
-        nextStatus === "owner_approved"
-          ? {
-              status: "owner_approved",
-              rejection_reason: "",
-              owner_reviewed_by: user.id,
-              owner_reviewed_at: new Date().toISOString(),
-            }
-          : {
-              status: "approved",
-              rejection_reason: "",
-              reviewed_by: user.id,
-              reviewed_at: new Date().toISOString(),
-            };
-      const { error } = await writer.from("documents").update(payload).eq("id", documentId);
-      if (error) {
-        continue;
-      }
-      await logDocumentActivity(writer, {
-        documentId,
-        projectId: currentDocument.project_id,
-        action: "status_updated",
-        actorId: user.id,
-        actorRole: actorProjectRole,
-        summary:
-          nextStatus === "owner_approved"
-            ? "Bulk-approved to Project Admin review."
-            : "Bulk-approved for submission pack.",
-        details: { to_status: nextStatus, bulk: true },
-      });
-      await recordDocumentReviewEvent({
-        documentId,
-        projectId: currentDocument.project_id,
-        reviewerId: user.id,
-        reviewerRole: actorProjectRole,
-        action: nextStatus === "owner_approved" ? "owner_forward" : "admin_approve",
-        statusAfter: nextStatus,
-      });
-      pathFor(currentDocument.project_id).forEach((path) => revalidatePath(path));
-      continue;
-    }
-
-    const templateMessage = rejectionType ? rejectionTemplateLibrary[rejectionType] ?? "" : "";
-    const baseMessage = remark || templateMessage;
-    if (!baseMessage || baseMessage.length < 20 || !rejectionType) {
-      continue;
-    }
-    if (!(canOwnerReview || canFinalReview)) {
-      continue;
-    }
-    if (
-      !canTransitionDocument({
-        fromStatus: currentDocument.status,
-        toStatus: "rejected",
-        actorRole: actorProjectRole,
-      })
-    ) {
-      continue;
-    }
-    const formattedRemark = rejectionType
-      ? `[${rejectionType}] ${baseMessage}`
-      : baseMessage;
-    const { error } = await writer
-      .from("documents")
-      .update({
-        status: "rejected",
-        rejection_reason: formattedRemark,
-        owner_reviewed_by: canOwnerReview ? user.id : null,
-        owner_reviewed_at: canOwnerReview ? new Date().toISOString() : null,
-        reviewed_by: canFinalReview ? user.id : null,
-        reviewed_at: canFinalReview ? new Date().toISOString() : null,
-      })
-      .eq("id", documentId);
-    if (error) {
-      continue;
-    }
-    await logDocumentActivity(writer, {
-      documentId,
-      projectId: currentDocument.project_id,
-      action: "status_updated",
-      actorId: user.id,
-      actorRole: actorProjectRole,
-      summary: "Bulk-rejected with review remark.",
-      details: { to_status: "rejected", rejection_type: rejectionType || null, rejection_remark: formattedRemark, bulk: true },
-    });
-    await recordDocumentReviewEvent({
-      documentId,
-      projectId: currentDocument.project_id,
-      reviewerId: user.id,
-      reviewerRole: actorProjectRole,
-      action: canOwnerReview ? "owner_reject" : "admin_reject",
-      statusAfter: "rejected",
-      remarks: formattedRemark,
-    });
-    if (currentDocument.credit_id) {
-      await client.from("remarks").insert({
-        credit_id: currentDocument.credit_id,
-        document_id: documentId,
-        author_id: user.id,
-        role: actorProjectRole,
-        body: formattedRemark,
-      });
-    }
-    const uploaderRecord = await client
-      .from("documents")
-      .select("uploaded_by")
-      .eq("id", documentId)
-      .maybeSingle();
-    await notifyUsers(writer, {
-      projectId: currentDocument.project_id,
-      creditId: currentDocument.credit_id ?? null,
-      documentId,
-      userIds: uploaderRecord.data?.uploaded_by ? [uploaderRecord.data.uploaded_by] : [],
-      body: `Document sent back: ${formattedRemark}`,
-    });
-    pathFor(currentDocument.project_id).forEach((path) => revalidatePath(path));
-  }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/documents");
-  revalidatePath("/review-queue");
 }
 
 export async function uploadDocumentAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
@@ -741,9 +430,11 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
 
   const projectId = String(formData.get("project_id") ?? "").trim();
   const creditId = String(formData.get("credit_id") ?? "").trim();
+  const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
   const docCategory = String(formData.get("doc_category") ?? "").trim();
   const requirementSlot = String(formData.get("requirement_slot") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
+  const fileHash = String(formData.get("file_hash") ?? "").trim();
   const file = formData.get("file");
 
   if (!projectId || !creditId || !docCategory || !(file instanceof File)) {
@@ -760,124 +451,27 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
     return { ok: false, error: "File is too large. The limit is 10 MB. Compress and re-upload." };
   }
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const user = await getCurrentUser();
-  if (!user) {
-    return { ok: false, error: "Your session expired. Sign in again." };
-  }
-  const actorProjectRole = await getActorProjectRole(projectId);
-  if (!actorProjectRole || !canUploadProjectDocuments(actorProjectRole as any)) {
-    return { ok: false, error: "You do not have upload access for this project." };
-  }
-  const clientUserId = await getClientUserForProject(writer, projectId);
-  if (!clientUserId) {
-    return { ok: false, error: "Client wallet is not linked for this project yet." };
-  }
-  const { data: usage } = await writer
-    .from("project_usage_summary")
-    .select("documents_used, document_credit_limit, topup_document_credits")
-    .eq("project_id", projectId)
-    .maybeSingle();
-  const allowedDocuments =
-    Number(usage?.document_credit_limit ?? 0) + Number(usage?.topup_document_credits ?? 0);
-  const usedDocuments = Number(usage?.documents_used ?? 0);
-  if (allowedDocuments > 0 && usedDocuments >= allowedDocuments) {
-    return { ok: false, error: "Document credit limit reached for this project plan. Increase plan quota or add top-up credits." };
-  }
-  const { data: duplicate } = await writer
-    .from("documents")
-    .select("id, file_name, status")
-    .eq("project_id", projectId)
-    .eq("credit_id", creditId)
-    .eq("doc_category", docCategory)
-    .ilike("file_name", file.name)
-    .in("status", ["uploaded", "owner_approved", "approved"])
-    .limit(1)
-    .maybeSingle();
-  if (duplicate?.id) {
-    return {
-      ok: false,
-      error: "Possible duplicate file already exists for this credit/doc type. Open existing document or rename before uploading.",
-    };
-  }
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const safeDocType = docCategory.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
-  const baseName = file.name.replace(/\.[^.]+$/, "");
-  const safeBaseName = baseName.replace(/[^a-z0-9_-]+/gi, "_").replace(/_+/g, "_").slice(0, 80) || "file";
-  const filePath = `${projectId}/${creditId}/${safeDocType}/${crypto.randomUUID()}-${safeBaseName}.${extension}`;
+  if (!user) return { ok: false, error: "Your session expired. Sign in again." };
 
-  const { error: storageError } = await writer.storage.from("project-documents").upload(filePath, file, {
-    upsert: false,
-    contentType: file.type || undefined,
-  });
-  if (storageError) {
-    return { ok: false, error: storageError.message };
+  try {
+    const result = await documentService.uploadDocument(user, {
+      projectId,
+      creditId,
+      projectCreditId,
+      docCategory,
+      requirementSlot,
+      notes,
+      file,
+      fileHash: fileHash || null,
+    } as any);
+
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message || "Upload failed." };
   }
-
-  const mergedNotes = [notes, requirementSlot ? `Requirement slot: ${requirementSlot}` : ""].filter(Boolean).join("\n");
-  const { data: documentRow, error: dbError } = await writer
-    .from("documents")
-    .insert({
-      project_id: projectId,
-      credit_id: creditId,
-      uploaded_by: user.id,
-      file_name: file.name,
-      file_path: filePath,
-      file_type: extension,
-      doc_category: docCategory,
-      notes: mergedNotes,
-      status: "uploaded",
-    })
-    .select("id")
-    .single();
-  if (dbError || !documentRow) {
-    await writer.storage.from("project-documents").remove([filePath]);
-    return { ok: false, error: dbError?.message ?? "Upload record could not be saved." };
-  }
-
-  const { error: tokenError } = await writer.rpc("consume_client_tokens", {
-    p_client_user_id: clientUserId,
-    p_project_id: projectId,
-    p_tokens: 1,
-    p_reason: "Document upload token burn",
-    p_actor_id: user.id,
-    p_meta: { file_name: file.name, doc_category: docCategory, credit_id: creditId, document_id: documentRow.id },
-  });
-  if (tokenError) {
-    await writer.from("documents").delete().eq("id", documentRow.id);
-    await writer.storage.from("project-documents").remove([filePath]);
-    return { ok: false, error: "Insufficient client tokens. Ask Project Admin to load more tokens." };
-  }
-
-  await logDocumentActivity(writer, {
-    documentId: documentRow.id,
-    projectId,
-    action: "uploaded",
-    actorId: user.id,
-    actorRole: actorProjectRole,
-    summary: `Uploaded ${file.name} under ${docCategory}.`,
-    details: {
-      file_name: file.name,
-      doc_category: docCategory,
-      credit_id: creditId,
-      file_type: extension,
-      bytes: file.size,
-      requirement_slot: requirementSlot || null,
-    },
-  });
-  const ownerIds = await getProjectMembersByRoles(writer, projectId, ["owner"]);
-  await notifyUsers(writer, {
-    projectId,
-    creditId,
-    documentId: documentRow.id,
-    userIds: ownerIds,
-    body: `New upload received for owner review: ${file.name}`,
-  });
-
-  revalidatePath("/documents");
-  pathFor(projectId).forEach((path) => revalidatePath(path));
-  return { ok: true };
 }
 
 export async function loadClientTokensAction(formData: FormData) {
@@ -885,45 +479,26 @@ export async function loadClientTokensAction(formData: FormData) {
   const projectId = String(formData.get("project_id") ?? "").trim();
   const tokens = Number(formData.get("tokens") ?? 0);
   const reason = String(formData.get("reason") ?? "Project Admin top-up").trim();
-  if (!clientUserId || !projectId || !tokens || tokens <= 0) {
-    return;
-  }
-  const actor = await getCurrentUser();
-  const role = await getActorProjectRole(projectId);
-  if (!(role === "project_admin" || role === "super_admin" || role === "super_user")) {
-    return;
-  }
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  const { error } = await writer.rpc("credit_client_tokens", {
-    p_client_user_id: clientUserId,
-    p_project_id: projectId,
-    p_tokens: Math.trunc(tokens),
-    p_reason: reason || "Project Admin top-up",
-    p_actor_id: actor?.id ?? null,
-    p_meta: { loaded_by_role: role },
-  });
-  if (error) {
-    return;
-  }
-  await logSystemActivity(writer, {
+
+  if (!clientUserId || !projectId || !tokens || tokens <= 0) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  await billingService.loadClientTokens(user, {
     projectId,
-    entityType: "billing",
-    entityId: clientUserId,
-    action: "client_tokens_loaded",
-    actorId: actor?.id ?? null,
-    actorRole: role,
-    summary: `Loaded ${Math.trunc(tokens)} tokens to client wallet.`,
-    details: { client_user_id: clientUserId, reason },
+    clientUserId,
+    tokens,
+    reason,
   });
+
   revalidatePath("/team");
   revalidatePath("/projects");
   revalidatePath("/documents");
 }
 
 export async function updateDocumentMetadataAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
   const documentId = String(formData.get("document_id") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
@@ -931,483 +506,233 @@ export async function updateDocumentMetadataAction(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim();
   const docCategory = String(formData.get("doc_category") ?? "").trim();
 
-  if (!documentId || !projectId || !creditId || !docCategory) {
-    return;
-  }
+  if (!documentId || !projectId || !creditId || !docCategory) return;
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const user = await getCurrentUser();
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
-  const actorProjectRole = await getActorProjectRole(projectId);
-  if (!actorProjectRole) {
-    return;
-  }
-
-  const { data: document } = await client
-    .from("documents")
-    .select("id, uploaded_by, status, project_id, credit_id, doc_category, notes")
-    .eq("id", documentId)
-    .maybeSingle();
-
-  if (!document || document.project_id !== projectId) {
-    return;
-  }
-
-  const canAdminEdit = canEditDocumentStatusAtAnyStage(actorProjectRole as any);
-  const canOwnEdit =
-    document.uploaded_by === user.id &&
-    document.status === "uploaded" &&
-    canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
-
-  if (!canAdminEdit && !canOwnEdit) {
-    return;
-  }
-
-  const { data: credit } = await client
-    .from("credits")
-    .select("id, project_id, documents_required")
-    .eq("id", creditId)
-    .maybeSingle();
-
-  if (!credit || credit.project_id !== projectId) {
-    return;
-  }
-
-  const allowedTypes = Array.from(
-    new Set(
-      ((credit.documents_required ?? []) as Array<{ type?: string; required?: boolean }>)
-        .filter((item) => item.type)
-        .map((item) => item.type as string),
-    ),
-  );
-
-  if (allowedTypes.length && !allowedTypes.includes(docCategory)) {
-    return;
-  }
-
-  const { error } = await writer
-    .from("documents")
-    .update({
-      credit_id: creditId,
-      doc_category: docCategory,
+  try {
+    await documentService.updateMetadata(user, {
+      documentId,
+      projectId,
+      creditId,
+      docCategory,
       notes,
-    })
-    .eq("id", documentId);
+    });
 
-  if (error) {
-    return;
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle or log error
   }
-  await logDocumentActivity(writer, {
-    documentId,
-    projectId,
-    action: "metadata_updated",
-    actorId: user.id,
-    actorRole: actorProjectRole,
-    summary: "Updated document mapping details.",
-    details: {
-      from_credit_id: document.credit_id,
-      to_credit_id: creditId,
-      from_doc_category: document.doc_category,
-      to_doc_category: docCategory,
-      from_notes: document.notes ?? "",
-      to_notes: notes,
-    },
-  });
-
-  revalidatePath("/documents");
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
-export async function deleteDocumentAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+export async function moveDocumentAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  if (!env.isConfigured) return { ok: false, error: "Not configured." };
 
   const documentId = String(formData.get("document_id") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
-  if (!documentId || !projectId) {
-    return;
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+
+  if (!documentId || !projectId || !creditId || !docCategory) {
+    return { ok: false, error: "Missing document, project, or target mapping." };
   }
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const user = await getCurrentUser();
-  if (!user) {
-    return;
+  if (!user) return { ok: false, error: "Session expired." };
+
+  try {
+    await documentService.updateMetadata(user, {
+      documentId,
+      projectId,
+      creditId,
+      docCategory,
+      notes: "Moved mapping to another credit.",
+    });
+
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error.message || "Move failed." };
   }
+}
 
-  const actorProjectRole = await getActorProjectRole(projectId);
-  if (!actorProjectRole) {
-    return;
+export async function deleteDocumentAction(formData: FormData) {
+  if (!env.isConfigured) return;
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  if (!documentId || !projectId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await documentService.deleteDocument(user, { documentId, projectId });
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
   }
-
-  const { data: existing } = await client
-    .from("documents")
-    .select("id, project_id, file_name, status, credit_id, doc_category, uploaded_by")
-    .eq("id", documentId)
-    .maybeSingle();
-
-  if (!existing || existing.project_id !== projectId) {
-    return;
-  }
-
-  const canAdminDelete =
-    actorProjectRole === "super_user" || actorProjectRole === "super_admin" || actorProjectRole === "project_admin";
-  const canOwnWithdrawUnreviewed =
-    existing.uploaded_by === user.id &&
-    existing.status === "uploaded" &&
-    canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
-
-  if (!canAdminDelete && !canOwnWithdrawUnreviewed) {
-    return;
-  }
-
-  if (canOwnWithdrawUnreviewed) {
-    const clientUserId = await getClientUserForProject(writer, projectId);
-    if (clientUserId) {
-      await writer.rpc("credit_client_tokens", {
-        p_client_user_id: clientUserId,
-        p_project_id: projectId,
-        p_tokens: 1,
-        p_reason: "Token refund for unreviewed document delete",
-        p_actor_id: user.id,
-        p_meta: { document_id: existing.id, file_name: existing.file_name },
-      });
-    }
-  }
-
-  await logDocumentActivity(writer, {
-    documentId,
-    projectId,
-    action: "deleted",
-    actorId: user.id,
-    actorRole: actorProjectRole,
-    summary: `Deleted document ${existing.file_name}.`,
-    details: {
-      file_name: existing.file_name,
-      status: existing.status,
-      credit_id: existing.credit_id,
-      doc_category: existing.doc_category,
-      refund_applied: canOwnWithdrawUnreviewed,
-    },
-  });
-
-  const { error } = await writer.from("documents").delete().eq("id", documentId);
-  if (error) {
-    return;
-  }
-
-  revalidatePath("/documents");
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
 export async function resubmitDocumentAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
   const documentId = String(formData.get("document_id") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
   const resubmitNote = String(formData.get("resubmit_note") ?? "").trim();
-  if (!documentId || !projectId) {
-    return;
+  if (!documentId || !projectId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    await documentService.resubmitDocument(user, {
+      documentId,
+      projectId,
+      resubmitNote,
+    });
+
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
+  }
+}
+
+export async function setCreditStateAction(formData: FormData) {
+  if (!env.isConfigured) return;
+
+  const projectId = String(formData.get("project_id"));
+  const creditId = String(formData.get("credit_id"));
+  const action = String(formData.get("action")) as "complete" | "blocked";
+  const blockedBy = String(formData.get("blocked_by") ?? "").trim();
+
+  const user = await getCurrentUser();
+  if (!user) return;
+  if (user.role !== "super_user") return;
+
+  try {
+    const state = action === "complete" ? "CLOSED" : "REJECTED";
+    await creditService.setCreditState(user, {
+      projectId,
+      creditId,
+      state,
+      remarks: blockedBy || undefined,
+    });
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
+  }
+}
+
+export async function uploadProjectGuidebookAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const file = formData.get("guidebook");
+
+  if (!projectId) {
+    redirect(`/projects?error=${encodeURIComponent("Missing project id for guidebook upload.")}`);
+  }
+  if (!(file instanceof File) || file.size <= 0) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent("Please choose a valid guidebook file before uploading.")}`);
   }
 
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const user = await getCurrentUser();
   if (!user) {
     return;
   }
 
-  const actorProjectRole = await getActorProjectRole(projectId);
-  if (!actorProjectRole) {
-    return;
+  try {
+    await projectService.uploadProjectGuidebook(user, {
+      projectId,
+      file,
+      title: title || undefined,
+    });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+    redirect(`/projects/${projectId}?success=${encodeURIComponent("Guidebook uploaded and instantiation checked.")}`);
+  } catch (error: any) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Guidebook upload failed.")}`);
   }
-
-  const { data: documentRow } = await client
-    .from("documents")
-    .select("id, uploaded_by, status, project_id, credit_id, notes, rejection_reason")
-    .eq("id", documentId)
-    .maybeSingle();
-
-  if (!documentRow || documentRow.project_id !== projectId || documentRow.status !== "rejected") {
-    return;
-  }
-
-  const canAdminEdit = canEditDocumentStatusAtAnyStage(actorProjectRole as any);
-  const canOwnEdit =
-    documentRow.uploaded_by === user.id &&
-    canEditOwnDocumentBeforeFinalApproval(actorProjectRole as any);
-  const transitionAllowed = canTransitionDocument({
-    fromStatus: documentRow.status,
-    toStatus: "uploaded",
-    actorRole: actorProjectRole,
-    allowOverride: canAdminEdit,
-  });
-  if (!transitionAllowed) {
-    return;
-  }
-
-  if (!canAdminEdit && !canOwnEdit) {
-    return;
-  }
-
-  const nextNotes = [documentRow.notes ?? "", resubmitNote ? `Resubmission note: ${resubmitNote}` : ""]
-    .filter(Boolean)
-    .join("\n\n");
-
-  const { error } = await writer
-    .from("documents")
-    .update({
-      status: "uploaded",
-      notes: nextNotes,
-      rejection_reason: "",
-      owner_reviewed_by: null,
-      owner_reviewed_at: null,
-      reviewed_by: null,
-      reviewed_at: null,
-    })
-    .eq("id", documentId);
-
-  if (error) {
-    return;
-  }
-
-  await logDocumentActivity(writer, {
-    documentId,
-    projectId,
-    action: "status_updated",
-    actorId: user.id,
-    actorRole: actorProjectRole,
-    summary: "Resubmitted document for Project Owner review.",
-    details: {
-      from_status: "rejected",
-      to_status: "uploaded",
-      previous_rejection_reason: documentRow.rejection_reason ?? "",
-      resubmit_note: resubmitNote,
-    },
-  });
-  await recordDocumentReviewEvent({
-    documentId,
-    projectId,
-    reviewerId: user.id,
-    reviewerRole: actorProjectRole,
-    action: "resubmit",
-    statusAfter: "uploaded",
-    remarks: resubmitNote || null,
-  });
-  const ownerIds = await getProjectMembersByRoles(writer, projectId, ["owner"]);
-  await notifyUsers(writer, {
-    projectId,
-    creditId: documentRow.credit_id ?? null,
-    documentId,
-    userIds: ownerIds,
-    body: "A rejected document has been resubmitted and is ready for owner review.",
-  });
-
-  revalidatePath("/documents");
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
-export async function setCreditStateAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
+export async function importProjectTrackerBaselineAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const file = formData.get("tracker_file");
+  if (!projectId) {
+    redirect(`/projects?error=${encodeURIComponent("Missing project id for tracker import.")}`);
+  }
+  if (!(file instanceof File) || file.size <= 0) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent("Please choose a valid tracker file before importing.")}`);
   }
 
-  const client = createClient();
-  const projectId = String(formData.get("project_id"));
-  const creditId = String(formData.get("credit_id"));
-  const action = String(formData.get("action"));
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const user = await getCurrentUser();
+  if (!user) return;
 
-  if (action === "complete") {
-    const workspace = await getProjectWorkspace(projectId);
-    const credit = workspace.credits.find((item) => item.id === creditId);
-    if (!credit || credit.documents_required.some((doc) => doc.required && !credit.documents.some((file) => file.doc_category === doc.type && file.status === "approved"))) {
-      return;
-    }
-    const { error } = await client
-      .from("credits")
-      .update({ status: "complete", blocked_by: null })
-      .eq("id", creditId);
-    if (error) {
-      return;
-    }
-    await logSystemActivity(writer, {
+  try {
+    await projectService.importTrackerBaseline(user, {
       projectId,
-      entityType: "credit",
-      entityId: creditId,
-      action: "status_complete",
-      actorId: user?.id ?? null,
-      actorRole: user?.role ?? null,
-      summary: "Marked credit as complete.",
+      file,
     });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+    revalidatePath("/credits");
+    redirect(`/projects/${projectId}?success=${encodeURIComponent("Tracker baseline imported.")}`);
+  } catch (error: any) {
+    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Tracker baseline import failed.")}`);
   }
-
-  if (action === "blocked") {
-    const blockedBy = String(formData.get("blocked_by") ?? "consultant");
-    const { error } = await client
-      .from("credits")
-      .update({ status: "blocked", blocked_by: blockedBy })
-      .eq("id", creditId);
-    if (error) {
-      return;
-    }
-    await logSystemActivity(writer, {
-      projectId,
-      entityType: "credit",
-      entityId: creditId,
-      action: "status_blocked",
-      actorId: user?.id ?? null,
-      actorRole: user?.role ?? null,
-      summary: "Marked credit as blocked.",
-      details: { blocked_by: blockedBy },
-    });
-  }
-
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
 export async function updateCreditDocumentRequirementsAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
   const projectId = String(formData.get("project_id") ?? "").trim();
   const creditId = String(formData.get("credit_id") ?? "").trim();
-  if (!projectId || !creditId) {
-    return;
-  }
+  const selectedTypes = formData.getAll("required_doc_types").map((v) => String(v));
 
-  const actorRole = await getActorProjectRole(projectId);
-  if (!(actorRole === "project_admin" || actorRole === "super_user")) {
-    return;
-  }
+  if (!projectId || !creditId) return;
 
-  const selectedTypes = new Set(
-    formData
-      .getAll("required_doc_types")
-      .map((value) => String(value))
-      .filter(Boolean),
-  );
-
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
-  const { data: credit } = await client
-    .from("credits")
-    .select("id, project_id, documents_required")
-    .eq("id", creditId)
-    .maybeSingle();
-
-  if (!credit || credit.project_id !== projectId) {
-    return;
-  }
-
-  const nextRequirements = ((credit.documents_required ?? []) as Array<{ type: string; label: string }>).map((item) => {
-    const required = selectedTypes.has(item.type);
-    return {
-      ...item,
-      required,
-      requirement: required ? "Required" : "NA",
-    };
-  });
-
-  const { error } = await writer
-    .from("credits")
-    .update({
-      documents_required: nextRequirements,
-    })
-    .eq("id", creditId);
-
-  if (error) {
-    return;
-  }
   const user = await getCurrentUser();
-  await logSystemActivity(writer, {
-    projectId,
-    entityType: "credit",
-    entityId: creditId,
-    action: "requirements_updated",
-    actorId: user?.id ?? null,
-    actorRole: actorRole,
-    summary: "Updated required document types for credit.",
-    details: { required_types: Array.from(selectedTypes) },
-  });
+  if (!user) return;
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/documents");
+  try {
+    await creditService.updateRequirements(user, { projectId, creditId, selectedTypes });
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
+  }
 }
 
 export async function updateCreditGuidanceAction(formData: FormData) {
-  if (!env.isConfigured) {
-    return;
-  }
+  if (!env.isConfigured) return;
 
   const projectId = String(formData.get("project_id") ?? "").trim();
   const creditId = String(formData.get("credit_id") ?? "").trim();
   const whatToSubmit = String(formData.get("what_to_submit") ?? "").trim();
   const effortLevel = String(formData.get("effort_level") ?? "moderate").trim();
   const effortGuidance = String(formData.get("effort_guidance") ?? "").trim();
-  if (!projectId || !creditId) {
-    return;
-  }
 
-  const actorRole = await getActorProjectRole(projectId);
-  if (!(actorRole === "project_admin" || actorRole === "super_user")) {
-    return;
-  }
+  if (!projectId || !creditId) return;
 
-  const safeEffortLevel =
-    effortLevel === "easy" || effortLevel === "moderate" || effortLevel === "hard"
-      ? effortLevel
-      : "moderate";
-
-  const client = createClient();
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
-  const { data: credit } = await client
-    .from("credits")
-    .select("id, project_id")
-    .eq("id", creditId)
-    .maybeSingle();
-
-  if (!credit || credit.project_id !== projectId) {
-    return;
-  }
-
-  const { error } = await writer
-    .from("credits")
-    .update({
-      what_to_submit: whatToSubmit,
-      effort_level: safeEffortLevel,
-      effort_guidance: effortGuidance,
-    })
-    .eq("id", creditId);
-
-  if (error) {
-    return;
-  }
   const user = await getCurrentUser();
-  await logSystemActivity(writer, {
-    projectId,
-    entityType: "credit",
-    entityId: creditId,
-    action: "guidance_updated",
-    actorId: user?.id ?? null,
-    actorRole: actorRole,
-    summary: "Updated client guidance and effort profile.",
-    details: { effort_level: safeEffortLevel },
-  });
+  if (!user) return;
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/documents");
+  try {
+    await creditService.updateGuidance(user, {
+      projectId,
+      creditId,
+      whatToSubmit,
+      effortLevel,
+      effortGuidance,
+    });
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+  } catch (error) {
+    // Handle error
+  }
 }
 
 export async function createTeamMemberAction(
@@ -1420,6 +745,7 @@ export async function createTeamMemberAction(
   const role = String(formData.get("role") ?? "client");
   const password = String(formData.get("password") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
+
   if (!fullName || !email || !password) {
     return { status: "error", message: "Name, email, and temporary password are required." };
   }
@@ -1721,7 +1047,7 @@ export async function createTaskAction(formData: FormData) {
   if (!user) return { error: "Not authenticated" };
 
   const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
-  
+
   try {
     await createTask(writer, {
       projectId,
@@ -1825,7 +1151,7 @@ export async function assignTaskAction(formData: FormData) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingTask.id);
-        
+
       await logTaskHistory(writer, {
         taskId: existingTask.id,
         actionType: "reassigned",

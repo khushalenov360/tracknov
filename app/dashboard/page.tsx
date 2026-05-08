@@ -1,26 +1,34 @@
 import Link from "next/link";
-import { createProjectAction, updateOnboardingChecklistAction } from "@/app/actions";
+import { createProjectAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser, getRoleTasks, getRuntimeDesyncSummary } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
+import { getRoiSnapshot } from "@/lib/services/roi-service";
+import { RefreshTrigger } from "@/components/refresh-trigger";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  const [user, projects, ownerQueue, insights, myTasks] = await Promise.all([
+  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, checklist] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
     getExecutiveInsights(),
     getTasksForUser(),
+    getRoleTasks(),
+    getRuntimeDesyncSummary(),
+    getOrCreateOnboardingChecklist(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
@@ -31,35 +39,33 @@ export default async function DashboardPage({
       limit: 80,
     }),
   ]);
+  const roi = await getRoiSnapshot();
   const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
   const clientMode = activeRole === "client";
   const primaryProjectId = projects[0]?.id ?? null;
-  const onboarding = primaryProjectId ? await getOrCreateOnboardingChecklist(primaryProjectId) : null;
-  const checklist = onboarding?.checklist ?? null;
-  const checklistDone = checklist ? Object.values(checklist).filter(Boolean).length : 0;
   const isOwner = activeRole === "owner";
 
   const totals = {
-    totalCredits: projects.reduce((sum, project) => sum + project.totalCredits, 0),
-    uploadedDocs: projects.reduce((sum, project) => sum + project.uploadedDocs, 0),
-    mandatoryCreditsMet: projects.reduce((sum, project) => sum + project.mandatoryCreditsMet, 0),
-    openRemarks: projects.reduce((sum, project) => sum + project.openRemarks, 0),
+    totalCredits: projects.reduce((sum, project) => sum + (project.totalCredits || 0), 0),
+    uploadedDocs: projects.reduce((sum, project) => sum + (project.uploadedDocs || 0), 0),
+    mandatoryCreditsMet: projects.reduce((sum, project) => sum + (project.mandatoryCreditsMet || 0), 0),
+    openRemarks: projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0),
   };
 
   const totalTokensLoaded = projects.reduce((sum, project) => {
-    const used = Math.max(project.documentCreditsUsed ?? 0, 0);
-    const remaining = Math.max(project.documentCreditsRemaining ?? 0, 0);
+    const used = Math.max(project.documentCreditsUsed || 0, 0);
+    const remaining = Math.max(project.documentCreditsRemaining || 0, 0);
     return sum + used + remaining;
   }, 0);
-  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
-  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
+  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
+  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
   const weeklyTokenBurn = Math.max(
     1,
     Math.round(
       projects.reduce((sum, project) => {
-        const docs = Math.max(project.documentCreditsUsed ?? 0, 0);
-        const consult = Math.max(project.consultantCreditsUsed ?? 0, 0);
+        const docs = Math.max(project.documentCreditsUsed || 0, 0);
+        const consult = Math.max(project.consultantCreditsUsed || 0, 0);
         return sum + docs + consult;
       }, 0) / 4,
     ),
@@ -70,7 +76,7 @@ export default async function DashboardPage({
   const portfolioInProgress = Math.max(projects.length - portfolioCompleted, 0);
   const atRiskCount = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
   const overallCompletionPct = projects.length
-    ? Math.round(projects.reduce((sum, project) => sum + project.overallCompletion, 0) / projects.length)
+    ? Math.round(projects.reduce((sum, project) => sum + (project.overallCompletion || 0), 0) / projects.length)
     : 0;
   const projectedRating = overallCompletionPct >= 80 ? "Gold" : overallCompletionPct >= 60 ? "Silver" : "Certified";
   const projectedOutcome =
@@ -80,10 +86,10 @@ export default async function DashboardPage({
         ? "Moderate confidence: needs steady weekly closure."
         : "At risk: improve upload and review velocity.";
   const approvalBase = projects.reduce(
-    (sum, project) => sum + Math.max((project.pendingReviewsCount ?? 0) + (project.rejectedCount ?? 0), 0),
+    (sum, project) => sum + Math.max((project.pendingReviewsCount || 0) + (project.rejectedCount || 0), 0),
     0,
   );
-  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount ?? 0, 0), 0);
+  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount || 0, 0), 0);
   const rejectionRate = approvalBase > 0 ? Math.round((rejectionTotal / approvalBase) * 100) : 0;
   const firstTimeApprovalRate = Math.max(100 - rejectionRate, 0);
   const avgTokensPerProject = projects.length ? Math.round(totalTokensUsed / projects.length) : 0;
@@ -133,6 +139,8 @@ export default async function DashboardPage({
   });
   const nextBestActions = (() => {
     const stuckTop = insights.stuckItems[0];
+    const atRiskCount = projects.filter((p) => (p.statusFlag ?? "green") !== "green").length;
+
     if (activeRole === "owner") {
       return [
         `Clear your review queue (${ownerQueue.length} pending) to keep vendor submissions moving.`,
@@ -143,9 +151,8 @@ export default async function DashboardPage({
       ];
     }
     if (activeRole === "project_admin" || activeRole === "super_admin") {
-      const highRisk = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
       return [
-        `Prioritize ${highRisk} at-risk project(s) first in validation queue.`,
+        `Prioritize ${atRiskCount} at-risk project(s) first in validation queue.`,
         stuckTop
           ? `Resolve top blocker: ${stuckTop.projectName} / ${stuckTop.creditCode} (${stuckTop.responsibleRole}).`
           : "No blocker cluster detected. Push owner-approved documents to final decision.",
@@ -155,7 +162,7 @@ export default async function DashboardPage({
     if (activeRole === "client") {
       return [
         `Review ${atRiskCount} at-risk location(s) and escalate delayed vendors.`,
-        `Token runway is ${exhaustionWeeks} week(s); plan top-up before freeze.`,
+        "Portfolio health is being monitored; ensure all stakeholders are active.",
         "Use project comparison board to prioritize leadership reviews this week.",
       ];
     }
@@ -168,9 +175,10 @@ export default async function DashboardPage({
     ];
   })();
 
-  const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining ?? 0, 0), 0);
-  const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed ?? 0, 0), 0);
-  const weeklyUsage = projects.reduce((sum, project) => sum + Math.max(project.consultantCreditsUsed ?? 0, 0), 0);
+
+  const totalDocTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
+  const totalDocTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
+  const weeklyUsage = projects.reduce((sum, project) => sum + Math.max(project.consultantCreditsUsed || 0, 0), 0);
 
   return (
     <Shell
@@ -181,62 +189,41 @@ export default async function DashboardPage({
           : "Overview of active projects, documentation progress, and review status."
       }
       role={activeRole}
-      notificationCount={projects.reduce((sum, project) => sum + project.openRemarks, 0)}
+      email={user?.email}
+      notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
-      {primaryProjectId && checklist ? (
+      <RefreshTrigger intervalMs={60000} />
+      {["super_user", "super_admin"].includes(activeRole) ? (
         <section className="surface-card mb-4 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2">
             <div>
-              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Onboarding checklist</h2>
+              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Runtime desync monitor</h2>
               <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                {checklistDone}/4 completed for your active project.
+                Open desync entities are certification blockers until reconciliation completes.
               </p>
             </div>
-            <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
-              {checklistDone === 4 ? "Completed" : "In progress"}
-            </Badge>
+            <form action="/api/jobs/runtime/reconcile" method="post">
+              <Button type="submit" variant="secondary" className="h-[30px] rounded-md px-3 text-[12px]">
+                Run repair
+              </Button>
+            </form>
           </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {[
-              ["profile_completed", "Confirm profile details"],
-              ["project_scope_confirmed", "Confirm project scope"],
-              ["first_document_uploaded", "Upload first mapped document"],
-              ["first_review_completed", "Complete first review handoff"],
-            ].map(([key, label]) => {
-              const checked = Boolean((checklist as any)[key]);
-              if (clientMode) {
-                return (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 opacity-80"
-                  >
-                    <span className="text-[12px] text-[var(--color-text-secondary)]">{label}</span>
-                    <Badge className={checked ? "bg-[var(--color-green-light)] text-[var(--color-green)]" : "bg-[var(--color-surface-2)] text-[var(--color-text-tertiary)]"}>
-                      {checked ? "Done" : "Pending"}
-                    </Badge>
-                  </div>
-                );
-              }
-              return (
-                <form
-                  key={key}
-                  action={updateOnboardingChecklistAction}
-                  className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
-                >
-                  <input type="hidden" name="project_id" value={primaryProjectId} />
-                  <input type="hidden" name="key" value={key} />
-                  <input type="hidden" name="value" value={checked ? "false" : "true"} />
-                  <span className="text-[12px] text-[var(--color-text-primary)]">{label}</span>
-                  <Button type="submit" variant={checked ? "secondary" : "default"} className="h-[28px] rounded-md px-2.5 text-[11px]">
-                    {checked ? "Done" : "Mark done"}
-                  </Button>
-                </form>
-              );
-            })}
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Open desync</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.openDesyncCount}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Queued repairs</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.queuedRepairs}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Projects impacted</p>
+              <p className="mono mt-1 text-[18px] text-[var(--color-text-primary)]">{runtimeSummary.projectsImpacted}</p>
+            </div>
           </div>
         </section>
       ) : null}
-
       {isOwner ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -336,27 +323,85 @@ export default async function DashboardPage({
       )}
 
       <section className="surface-card mb-4 p-4">
-        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Next best actions</h2>
+        <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My Priority Tasks</h2>
         <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-          Role-guided actions based on live backlog, blockers, and project risk.
+          Real-time backlog for your project role: {roleLabels[activeRole] || activeRole}.
         </p>
         <div className="mt-3 grid gap-2">
-          {nextBestActions.map((action) => (
-            <div key={action} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] text-[var(--color-text-primary)]">
-              {action}
-            </div>
-          ))}
+          {roleTasks.length > 0 ? (
+            roleTasks.map((task) => (
+              <Link
+                key={task.id}
+                href={task.actionUrl}
+                className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 transition-colors hover:border-[var(--color-border-strong)]"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-text-primary)]">
+                    {task.priority === "high" && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-red)]" />
+                    )}
+                    {task.title}
+                  </p>
+                  <p className="truncate text-[11px] text-[var(--color-text-secondary)]">
+                    {task.projectName} • {task.subtitle}
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    task.type === "clarification_needed"
+                      ? "bg-[var(--color-amber-soft)] text-[var(--color-amber)]"
+                      : task.type === "review_pending"
+                        ? "bg-[var(--color-blue-soft)] text-[var(--color-blue)]"
+                        : "bg-[var(--color-surface)] text-[var(--color-text-tertiary)]"
+                  }
+                >
+                  {task.type.replace("_", " ")}
+                </Badge>
+              </Link>
+            ))
+          ) : (
+            <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center text-[11px] text-[var(--color-text-tertiary)]">
+              All caught up! No pending tasks for your role right now.
+            </p>
+          )}
         </div>
       </section>
 
-      {clientMode ? (
+      {(activeRole === "client" || activeRole === "super_user" || activeRole === "super_admin") ? (
+        <section className="surface-card mb-4 p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">ROI Intelligence</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Time and cost impact from workflow automation and reduced rework.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Projects analyzed</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.projects}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Time saved</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.timeSavedHours} hrs</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Cost saved</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">INR {roi.totals.costSavedInr}</p>
+            </div>
+            <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
+              <p className="dense-label">Rejection reduction</p>
+              <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{roi.totals.rejectionReductionPct}%</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {clientMode || isOwner ? (
         <section className="surface-card mb-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Executive Control View</h2>
           <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
             30-second status for certification progress, portfolio risk, and token usage.
           </p>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div id="executive-cards" className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
               { label: "Overall status", value: atRiskCount > 0 ? "Attention needed" : "On Track", meta: `${atRiskCount} at risk` },
               { label: "Projected rating", value: projectedRating, meta: `${overallCompletionPct}% complete` },
@@ -450,6 +495,11 @@ export default async function DashboardPage({
                     <Link href={`/api/projects/${project.id}/summary`}>Export {project.name} PDF</Link>
                   </Button>
                 ))}
+                {projects[0] ? (
+                  <Button asChild variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                    <Link href={`/api/sales/case-study/${projects[0].id}?download=1`}>Export case study</Link>
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>

@@ -43,6 +43,26 @@ export function canUploadProjectDocuments(role?: MemberRole | null) {
   );
 }
 
+export function isL0Role(role?: MemberRole | null) {
+  return role === "consultant" || role === "architect" || role === "mep" || role === "contractor";
+}
+
+export function isL1Role(role?: MemberRole | null) {
+  return role === "owner";
+}
+
+export function isL2Role(role?: MemberRole | null) {
+  return role === "client";
+}
+
+export function isL3Role(role?: MemberRole | null) {
+  return role === "project_admin" || role === "super_admin";
+}
+
+export function isL5Role(role?: MemberRole | null) {
+  return role === "super_user";
+}
+
 export function canManageTeamFromRole(role?: MemberRole | null) {
   return (
     role === "super_user" ||
@@ -51,6 +71,38 @@ export function canManageTeamFromRole(role?: MemberRole | null) {
     role === "owner"
   );
 }
+
 export function canAssignTasks(role?: MemberRole | null) {
   return role === "super_user" || role === "super_admin" || role === "project_admin" || role === "owner";
+}
+
+export function canEditPlanControls(role?: MemberRole | null) {
+  return role === "super_user" || role === "project_admin";
+}
+
+export function canAccessBillingAndInvoice(role?: MemberRole | null) {
+  return (
+    role === "super_user" ||
+    role === "super_admin" ||
+    role === "project_admin" ||
+    role === "client"
+  );
+}
+
+export function canManageTokens(role?: MemberRole | null) {
+  return role === "super_user";
+}
+
+export function canManageProjectGuidebook(role?: MemberRole | null) {
+  return role === "super_user" || role === "project_admin";
+}
+
+export function canExportProjectArtifacts(role?: MemberRole | null) {
+  return (
+    role === "super_user" ||
+    role === "super_admin" ||
+    role === "project_admin" ||
+    role === "owner" ||
+    role === "client"
+  );
 }

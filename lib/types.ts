@@ -1,5 +1,6 @@
 export type MemberRole =
   | "super_user"
+  | "l4_reserved"
   | "owner"
   | "client"
   | "consultant"
@@ -9,10 +10,30 @@ export type MemberRole =
   | "project_admin"
   | "super_admin";
 export type CreditStatus = "pending" | "in_progress" | "blocked" | "complete";
-export type DocumentStatus = "uploaded" | "owner_approved" | "approved" | "rejected";
+export type DocumentStatus =
+  | "uploaded"
+  | "owner_approved"
+  | "approved"
+  | "rejected"
+  | "DRAFT"
+  | "READY"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "CLARIFICATION"
+  | "RESUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "ELIMINATED";
 export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
 export type ProjectType = "residential" | "commercial" | "industrial" | "infrastructure" | "mixed_use";
 export type IgbcVariant = "new" | "existing";
+
+export type ProjectRatingSystem = {
+  id: string;
+  name: string;
+  version: string;
+  description?: string | null;
+};
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type TaskState =
@@ -63,6 +84,10 @@ export type DocumentRequirement = {
   label: string;
   requirement: "Required" | "NA";
   required: boolean;
+  assigned_user_id?: string | null;
+  assigned_role?: MemberRole | null;
+  assigned_email?: string | null;
+  assigned_name?: string | null;
 };
 
 export type CatalogCredit = {
@@ -79,6 +104,7 @@ export type CatalogCredit = {
 export type DocumentRecord = {
   id: string;
   credit_id?: string | null;
+  project_credit_id?: string | null;
   project_id: string;
   uploaded_by?: string | null;
   file_name: string;
@@ -91,7 +117,12 @@ export type DocumentRecord = {
   owner_reviewed_at?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
-  status: DocumentStatus;
+  state: DocumentStatus;
+  status?: DocumentStatus;
+  workflow_state?: string | null;
+  version?: number;
+  is_latest?: boolean;
+  parent_document_id?: string | null;
   uploaded_at: string;
 };
 
@@ -135,14 +166,17 @@ export type RemarkRecord = {
 
 export type CreditWorkspace = {
   id: string;
+  project_credit_id?: string | null;
   project_id: string;
+  assigned_user_id?: string | null;
   credit_code: string;
   category: string;
   credit_name: string;
   responsible_role?: MemberRole | null;
   is_mandatory: boolean;
   documents_required: DocumentRequirement[];
-  status: CreditStatus;
+  state: CreditStatus;
+  status?: CreditStatus;
   blocked_by?: string | null;
   completion_pct: number;
   documentation_summary?: string | null;
@@ -161,7 +195,8 @@ export type ProjectSummary = {
   client: string;
   location: string;
   project_type: ProjectType;
-  status: ProjectStatus;
+  state: ProjectStatus;
+  status?: ProjectStatus;
   green_certification: string;
   igbc_variant: IgbcVariant;
   certification_type: string;
@@ -186,6 +221,12 @@ export type ProjectSummary = {
   pendingReviewsCount?: number;
   rejectedCount?: number;
   statusFlag?: "green" | "amber" | "red";
+  projectCode: string;
+  ratingSystemId?: string | null;
+  projectState?: string;
+  submissionFlag?: boolean;
+  lockFlag?: boolean;
+  projectCodeActual?: string;
 };
 
 export type ProjectInviteRecord = {
@@ -217,13 +258,17 @@ export type ProjectWorkspace = {
     client: string;
     location: string;
     project_type: ProjectType;
-    status: ProjectStatus;
+    state: ProjectStatus;
     green_certification: string;
     igbc_variant: IgbcVariant;
     certification_type: string;
     target_rating: string;
     created_at: string;
     created_by?: string | null;
+    rating_system_id?: string | null;
+    submission_flag?: boolean;
+    lock_flag?: boolean;
+    project_code?: string;
   };
   userRole: MemberRole;
   credits: CreditWorkspace[];
@@ -232,17 +277,40 @@ export type ProjectWorkspace = {
   notifications: {
     id: string;
     body: string;
+    action_url?: string | null;
     created_at: string;
     read_at?: string | null;
   }[];
   activityLogs?: SystemActivityLog[];
   tasks?: (TaskRecord & { history: TaskHistoryRecord[] })[];
+  guidebooks?: {
+    id: string;
+    title: string;
+    file_name: string;
+    file_path: string;
+    signed_url?: string | null;
+    uploaded_by?: string | null;
+    created_at: string;
+  }[];
+  validationRules?: {
+    id: string;
+    project_credit_id?: string | null;
+    credit_id?: string | null;
+    doc_category?: string | null;
+    rule_name: string;
+    required_keywords?: string[];
+    severity: "error" | "warning";
+    is_active: boolean;
+    created_at: string;
+  }[];
 };
 
 export type DocumentLibraryRecord = DocumentRecord & {
   project_name: string;
   credit_code?: string | null;
   credit_name?: string | null;
+  credit_what_to_submit?: string | null;
+  credit_sample_document_url?: string | null;
   uploaded_by_name?: string | null;
   project_role?: MemberRole;
   can_edit_metadata?: boolean;
@@ -261,8 +329,11 @@ export type TeamMemberRecord = {
   company?: string | null;
   role: MemberRole;
   project_names: string[];
+  project_ids?: string[];
   created_at: string;
   token_balance?: number;
+  disabled_at?: string | null;
+  disabled_reason?: string | null;
 };
 
 export type OnboardingChecklist = {

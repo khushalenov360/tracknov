@@ -7,6 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage } from "@/lib/assistant";
 import { cn } from "@/lib/utils";
+type CopilotAttachment = {
+  name: string;
+  mimeType: string;
+  size: number;
+  base64: string;
+};
+type FormFieldMeta = {
+  key: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+};
 
 type AssistantAction = {
   label: string;
@@ -20,7 +32,7 @@ type AiGuidePanelProps = {
   storageKey: string;
   title?: string;
   description?: string;
-  prompts: string[];
+  prompts?: string[];
   suggestedActions?: AssistantAction[];
 };
 
@@ -57,7 +69,6 @@ export function AiGuidePanel({
   storageKey,
   title = "AI guide",
   description,
-  prompts,
   suggestedActions = [],
 }: AiGuidePanelProps) {
   const fallbackMessages = useMemo<AssistantMessage[]>(
@@ -74,7 +85,11 @@ export function AiGuidePanel({
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [fillingForm, setFillingForm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setMessages(loadMessages(storageKey, fallbackMessages));
@@ -137,6 +152,7 @@ export function AiGuidePanel({
         body: JSON.stringify({
           context,
           messages: nextMessages.slice(0, -1),
+          attachments: attachment ? [attachment] : [],
         }),
       });
       if (!response.ok) {
@@ -163,6 +179,7 @@ export function AiGuidePanel({
           return copy;
         });
       }
+      setAttachment(null);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Assistant request failed.");
       setMessages((current) => current.slice(0, -1));
@@ -174,6 +191,215 @@ export function AiGuidePanel({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void sendMessage(input);
+  }
+
+  function collectVisibleFormFields(): FormFieldMeta[] {
+    const controls = Array.from(document.querySelectorAll("input, textarea, select")) as Array<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >;
+    const fields: FormFieldMeta[] = [];
+    for (const control of controls) {
+      if (control.disabled) {
+        continue;
+      }
+      const rect = control.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        continue;
+      }
+      const type = control instanceof HTMLSelectElement ? "select" : control.type || control.tagName.toLowerCase();
+      if (type === "hidden" || type === "password" || type === "file") {
+        continue;
+      }
+      const idKey = control.getAttribute("name") || control.getAttribute("id") || control.getAttribute("aria-label");
+      if (!idKey) {
+        continue;
+      }
+      const linkedLabel =
+        (control.getAttribute("id") && document.querySelector(`label[for="${control.getAttribute("id")}"]`)?.textContent) ||
+        control.closest("label")?.textContent ||
+        control.getAttribute("aria-label") ||
+        control.getAttribute("placeholder") ||
+        idKey;
+      fields.push({
+        key: idKey.trim(),
+        label: linkedLabel.trim(),
+        type,
+        placeholder: "placeholder" in control ? control.placeholder : undefined,
+      });
+    }
+    return fields.slice(0, 40);
+  }
+
+  function parseJsonObject(text: string): Record<string, string> | null {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+      const values: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "string" && value.trim()) {
+          values[key] = value.trim();
+        }
+      }
+      return values;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyFormValues(values: Record<string, string>) {
+    let applied = 0;
+    for (const [fieldKey, value] of Object.entries(values)) {
+      const selector = `[name="${fieldKey}"], #${CSS.escape(fieldKey)}, [aria-label="${fieldKey}"]`;
+      const target = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (!target || target.disabled) {
+        continue;
+      }
+      if (target instanceof HTMLSelectElement) {
+        const option = Array.from(target.options).find((opt) => opt.value === value || opt.text.trim().toLowerCase() === value.toLowerCase());
+        if (option) {
+          target.value = option.value;
+          target.dispatchEvent(new Event("change", { bubbles: true }));
+          applied += 1;
+        }
+        continue;
+      }
+      target.value = value;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+      applied += 1;
+    }
+    return applied;
+  }
+
+  async function assistFormFill() {
+    if (isLoading || fillingForm) {
+      return;
+    }
+    const fields = collectVisibleFormFields();
+    if (!fields.length) {
+      setError("No editable form fields found on this page.");
+      return;
+    }
+    const userGoal = input.trim() || "Fill this form with sensible values based on current page context.";
+    setFillingForm(true);
+    setError("");
+    try {
+      const assistPrompt = `${userGoal}
+
+You are helping fill a web form.
+Return ONLY a JSON object mapping field keys to values.
+Do not include markdown or explanation.
+Only include fields you are confident about.
+
+Form fields:
+${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${field.type}" placeholder="${field.placeholder ?? ""}"`).join("\n")}`;
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context,
+          messages: [{ role: "user", content: assistPrompt }],
+          tone: "Guided",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Copilot could not generate form suggestions.");
+      }
+      const raw = await response.text();
+      const parsed = parseJsonObject(raw);
+      if (!parsed || Object.keys(parsed).length === 0) {
+        throw new Error("Copilot returned no usable form suggestions.");
+      }
+      const count = applyFormValues(parsed);
+      if (count === 0) {
+        throw new Error("No matching form fields were updated.");
+      }
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: `I filled ${count} form fields for you. Please review before submitting.` },
+      ]);
+    } catch (formError) {
+      setError(formError instanceof Error ? formError.message : "Could not assist with form filling.");
+    } finally {
+      setFillingForm(false);
+    }
+  }
+
+  async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      const bytes = await file.arrayBuffer();
+      let binary = "";
+      const view = new Uint8Array(bytes);
+      for (let i = 0; i < view.length; i += 1) {
+        binary += String.fromCharCode(view[i]);
+      }
+      setAttachment({
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        base64: btoa(binary),
+      });
+      setAttachmentFile(file);
+      setError("");
+    } catch {
+      setError("Could not read the selected file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function uploadAttachmentToProject() {
+    if (!attachmentFile) {
+      setError("Attach a file first.");
+      return;
+    }
+    const match = window.location.pathname.match(/^\/projects\/([^/]+)/);
+    const projectId = match?.[1];
+    if (!projectId) {
+      setError("Open a project workspace to upload this file to project context.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("project_id", projectId);
+      formData.append("file", attachmentFile);
+      formData.append("title", attachmentFile.name.replace(/\.[^.]+$/, ""));
+      const response = await fetch("/api/assistant/project-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; mode?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? "Upload failed.");
+      }
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content:
+            payload.mode === "guidebook"
+              ? "Guidebook uploaded successfully. Workspace instantiation has been triggered."
+              : "Tracker baseline uploaded successfully and mapped to project credits.",
+        },
+      ]);
+      setAttachment(null);
+      setAttachmentFile(null);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -223,20 +449,6 @@ export function AiGuidePanel({
       </div>
 
       <div className="space-y-3 border-t border-[var(--color-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)] px-4 py-4">
-        <div className="flex flex-wrap gap-2">
-          {prompts.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              onClick={() => void sendMessage(prompt)}
-              disabled={isLoading}
-              className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1.5 text-left text-[11px] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-
         {suggestedActions.length > 0 ? (
           <div className="space-y-2">
             <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Suggested actions</p>
@@ -259,6 +471,32 @@ export function AiGuidePanel({
         ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="space-y-1">
+            <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-8 rounded-md"
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                Attach File
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 rounded-md"
+                onClick={() => void uploadAttachmentToProject()}
+              >
+                Upload To Project
+              </Button>
+            </div>
+            {attachment ? (
+              <p className="text-[10px] text-[var(--color-text-tertiary)]">
+                Attached to Copilot: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+              </p>
+            ) : null}
+          </div>
           <Textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -266,6 +504,9 @@ export function AiGuidePanel({
             className="min-h-[92px] resize-none"
           />
           {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+          <Button type="button" variant="secondary" className="h-8 w-full rounded-md" disabled={isLoading || fillingForm} onClick={() => void assistFormFill()}>
+            {fillingForm ? "Filling form..." : "Fill Form With Copilot"}
+          </Button>
           <Button type="submit" className="h-8 w-full rounded-md" disabled={isLoading || !input.trim() || !enabled}>
             <Send className="mr-2 h-3.5 w-3.5" />
             {enabled ? "Ask AI guide" : "Connect Gemini first"}

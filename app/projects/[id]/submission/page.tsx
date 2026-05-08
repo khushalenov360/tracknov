@@ -6,13 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getSubmissionWorkspace } from "@/lib/data";
 import { getApprovedSubmissionCredits, isSubmissionExportReady } from "@/lib/exports";
+import { runReviewerSimulation } from "@/lib/services/reviewer-simulation-service";
 
 export const dynamic = "force-dynamic";
 
-export default async function SubmissionPage({ params }: { params: { id: string } }) {
+export default async function SubmissionPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { runCheck?: string };
+}) {
   const workspace = await getSubmissionWorkspace(params.id);
+  if (!workspace) {
+    return (
+      <Shell title="Project Not Found" description="The requested project could not be found." role="consultant" notificationCount={0}>
+        <div className="surface-card p-8 text-center">
+          <p className="text-[14px] text-[var(--color-text-secondary)]">Project not found or you do not have access.</p>
+          <Link href="/dashboard"><Button variant="secondary" className="mt-4">Back to Dashboard</Button></Link>
+        </div>
+      </Shell>
+    );
+  }
+
   const mandatoryReady = isSubmissionExportReady(workspace);
   const exportCredits = getApprovedSubmissionCredits(workspace);
+  const shouldRunCheck = String(searchParams?.runCheck ?? "") === "1";
+  const reviewerCheck = shouldRunCheck ? runReviewerSimulation(workspace) : null;
 
   return (
     <Shell
@@ -75,6 +95,37 @@ export default async function SubmissionPage({ params }: { params: { id: string 
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Button asChild className="h-8 w-full rounded-md" variant="secondary">
+              <Link href={`/projects/${params.id}/submission?runCheck=1`}>Run Check</Link>
+            </Button>
+            {reviewerCheck ? (
+              <div
+                className={`rounded-lg border p-3 text-[11px] ${
+                  reviewerCheck.status === "pass"
+                    ? "border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                    : reviewerCheck.status === "warning"
+                      ? "border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]"
+                      : "border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                }`}
+              >
+                <p className="font-medium">
+                  Reviewer Simulation: {reviewerCheck.status.toUpperCase()}
+                </p>
+                <p className="mt-1">
+                  Checked {reviewerCheck.summary.creditsChecked} credits, found {reviewerCheck.summary.findings} issues
+                  ({reviewerCheck.summary.failed} fail, {reviewerCheck.summary.warnings} warning).
+                </p>
+                {reviewerCheck.findings.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-1 pl-4">
+                    {reviewerCheck.findings.slice(0, 5).map((finding) => (
+                      <li key={`${finding.creditId}-${finding.message}`}>
+                        {finding.creditCode}: {finding.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             {exportCredits.length === 0 ? (
               <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)]">
                 No completed credits are available for this rating system yet.

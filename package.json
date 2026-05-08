@@ -53,6 +53,7 @@
     "tsconfig.json"
   ],
   "scripts": {
+    "predev": "node scripts/clean-next-cache.mjs",
     "dev": "next dev",
     "dev:guided": "bun run scripts/dev-guided.ts",
     "build": "next build",
@@ -64,6 +65,11 @@
     "onboard": "node bin/tracknov.mjs",
     "smoke": "playwright test",
     "qa:ux": "playwright test tests/ux-quality-gates.spec.ts",
+    "qa:rbac": "playwright test tests/rbac-matrix.spec.ts",
+    "qa:exports": "playwright test tests/export-structure.spec.ts",
+    "qa:events": "playwright test tests/event-bus.spec.ts",
+    "qa:workflow": "playwright test tests/workflow-state-machine.spec.ts",
+    "qa:runtime-audit": "node scripts/runtime-audit-automation.mjs",
     "smoke:headed": "playwright test --headed"
   },
   "dependencies": {
@@ -71,6 +77,7 @@
     "@supabase/supabase-js": "^2.104.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "next": "^14.2.35",
@@ -96,3 +103,4 @@
     "typescript": "^5"
   }
 }
+ 
