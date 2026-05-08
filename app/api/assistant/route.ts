@@ -9,6 +9,8 @@ import {
 } from "@/lib/assistant";
 import { ragService } from "@/lib/services/rag-service";
 import { toneService, type AssistantTone } from "@/lib/services/tone-service";
+import { sessionMemory } from "@/lib/services/session-memory-service";
+import { knowledgeEngine } from "@/lib/services/knowledge-engine";
 import {
   getUnknownDataResponse,
   normalizeCopilotResponse,
@@ -33,6 +35,7 @@ type AssistantRequest = {
   context?: AssistantContext;
   messages?: AssistantMessage[];
   tone?: "Executive" | "Guided" | "Fast";
+  pickedIntent?: "analysis" | "workflow";
   attachments?: Array<{
     name: string;
     mimeType: string;
@@ -445,14 +448,31 @@ function isFileQuestion(query: string) {
   );
 }
 
-function isUploadMappingIntent(query: string) {
-  const q = query.toLowerCase();
+function isUploadMappingIntent(
+  query: string,
+  options?: {
+    analysisOnly?: boolean;
+    hasAttachments?: boolean;
+  },
+) {
+  // HARD BLOCK:
+  // If attachment was added only for analysis,
+  // NEVER enter workflow execution routing.
+  if (options?.analysisOnly === true) {
+    return false;
+  }
+
+  const q = query.toLowerCase().trim();
+
+  // Explicit user execution intent only.
   return (
-    q.includes("map this to") ||
-    q.includes("map to ") ||
-    q.includes("upload") ||
-    q.includes("submit this file") ||
-    q.includes("push it to workflow")
+    q.startsWith("upload this") ||
+    q.startsWith("map this to") ||
+    q.startsWith("submit this") ||
+    q.startsWith("push this") ||
+    q.includes("confirm upload") ||
+    q.includes("upload this to") ||
+    q.includes("map this file to")
   );
 }
 
@@ -506,7 +526,7 @@ function buildAttachmentAnalysisReply(
     "Likely credit matches:",
     ...creditLines,
     "",
-    "What would you like to do next: map and upload this now, or ask me to compare it against one specific credit?",
+    "You can now ask me to analyse relevance, compare against credits, or explicitly instruct me to upload/map the file.",
   ].join("\n");
 }
 
@@ -1126,7 +1146,14 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(message));
   }
 
-  if (requiresExplicitConfirmationForExecution(latestPrompt)) {
+  const isAnalysisAttachmentFlow =
+    Boolean(attachments?.length) &&
+    !isUploadMappingIntent(latestPrompt ?? "", {
+      analysisOnly: body.pickedIntent === "analysis",
+      hasAttachments: true,
+    });
+
+  if (!isAnalysisAttachmentFlow && requiresExplicitConfirmationForExecution(latestPrompt)) {
     const confirmReply = "I can prepare this upload flow, but execution needs explicit confirmation. Please reply: 'Confirm upload this to <credit code> as <document type>' to proceed.";
     await logAiInteraction({
       userId: user.id,
@@ -1145,7 +1172,8 @@ export async function POST(request: Request) {
     // Fall back to attachment analysis or generic reply if possible
     if (attachments.length > 0) {
       const file = attachments[0];
-      const attachmentReply = !isUploadMappingIntent(latestPrompt) || isFileQuestion(latestPrompt)
+      const isAnalysisRequest = !isUploadMappingIntent(latestPrompt, { analysisOnly: body.pickedIntent === "analysis" }) || isFileQuestion(latestPrompt);
+      const attachmentReply = isAnalysisRequest
         ? buildAttachmentAnalysisReply(userName, file, ragMatches)
         : [
             `Hi ${userName}, I can see your attached file: ${file.name}.`,
@@ -1168,10 +1196,11 @@ export async function POST(request: Request) {
   const toneInstructions = toneService.getToneInstructions(resolvedTone);
 
   // PHASE 4: Role-Aware Context Builder — inject safe capability context
-  const capabilitiesContext = getSafeCapabilitiesContext(
-    (context.surface as any) ?? "dashboard",
-    role as any,
-  );
+  const capabilitiesContext = [
+      getSafeCapabilitiesContext((context.surface as any) ?? "dashboard", role as any),
+      knowledgeEngine.getPlatformRoadmapContext(),
+      knowledgeEngine.getConstructionStageGateRules(),
+    ].join("\n\n");
 
   const enrichedContext: AssistantContext = {
     ...context,
@@ -1264,7 +1293,7 @@ export async function POST(request: Request) {
     // Fall through to the local fallback.
   }
 
-  if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt))) {
+  if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt, { analysisOnly: body.pickedIntent === "analysis" }))) {
     const fallbackAttachment = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
     await logAiInteraction({
       userId: user.id,

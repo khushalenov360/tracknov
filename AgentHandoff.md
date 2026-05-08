@@ -1,7 +1,31 @@
-## Latest execution pass (2026-05-08 IST, ENOVAIT Modeled Copilot Implementation — Phase 1 & 2)
+## Latest execution pass (2026-05-08 IST, Copilot Analysis Flow Fix)
 
 ### Objective
-Implement the ENOVAIT Modeled Copilot architecture per `TRACKNOV_ENOVAIT_MODELED_COPILOT_DEV_HANDOFF.md` (Sections 3–26).
+Eliminate false-positive workflow execution triggers during document analysis.
+Decouple document inspection from workflow execution pipelines.
+
+### Delivered in this pass
+
+#### MODIFIED FILES
+- `app/api/assistant/route.ts`
+  - **Attachment Mode Guard**: Updated `isUploadMappingIntent` to support `analysisOnly` guard.
+  - **Intent-Driven Gating**: Implemented `isAnalysisAttachmentFlow` in `POST` handler using `body.pickedIntent` (Phase 3 UI state) to bypass execution confirmation when the user explicitly selects "Add for Analysis".
+  - **Response Refinement**: Updated `buildAttachmentAnalysisReply` to remove suggestive upload prompts ("map and upload now"), replacing them with neutral analytical options.
+  - **Fallback Alignment**: Applied the analysis-only guard to all deterministic and env-fallback paths to ensure consistent behavior across all AI configurations.
+
+- `lib/services/copilot-governance.ts`
+  - **Governance Layer Guard**: Updated `requiresExplicitConfirmationForExecution` to respect `analysisOnly` option, providing a central point for workflow execution blocking.
+
+### Verification
+- **Build**: `npm run build` in progress.
+- **Logic**: Verified that `body.pickedIntent === "analysis"` correctly flags the flow as analysis-only, which then prevents `requiresExplicitConfirmationForExecution` from returning `true` and blocking the stream with a confirmation prompt.
+
+---
+
+## Latest execution pass (2026-05-08 IST, ENOVAIT Modeled Copilot Implementation — Phase 1, 2, 3, & 4)
+
+### Objective
+Implement the ENOVAIT Modeled Copilot architecture per `TRACKNOV_ENOVAIT_MODELED_COPILOT_DEV_HANDOFF.md` (Sections 3–28).
 Transform the Tracknov Copilot from a tool-trigger-first assistant into a conversation-first, governance-controlled certification intelligence layer.
 
 ### Delivered in this pass
@@ -9,47 +33,48 @@ Transform the Tracknov Copilot from a tool-trigger-first assistant into a conver
 #### NEW FILES
 - `lib/services/session-memory-service.ts` — Section 9: Session Memory System
   - Tracks `activeProjectId`, `activeProjectName`, `activeCreditId`, `activeCreditCode`, `lastAnalyzedFileName`, `lastAnalyzedFileSummary`, `currentWorkflowStage`, `lastUserObjective`
-  - Uses `sessionStorage` (tab-scoped, no server persistence)
-  - Exposes `buildContextFacts()` for injection into AssistantContext
-  - `clear()` resets on new conversation
-
-- `lib/services/capability-registry.ts` — Sections 16–18: Capability Intelligence Layer
-  - Role-aware, surface-scoped capability abstraction (already delivered in prior pass)
+  - `clear()` resets on new conversation.
+- `lib/services/knowledge-engine.ts` — Section 6 & 8: IGBC Knowledge & Roadmap Engine
+  - Provides AI with context on planned features: v3.0 Construction Stage-Gates, v3.2 IoT Site Monitoring, v2.6 Carbon Calculator.
+  - Includes expert-level mock rules for construction stage-gate auditing.
+- `tests/copilot-governance.spec.ts` — Section 28: Governance Verification Suite
+  - Automated tests for intent disambiguation, RAG metadata stripping, technical leakage prevention, non-authoritative claim detection, and **RBAC isolation**.
 
 #### MODIFIED FILES
 - `lib/services/copilot-governance.ts` — Complete rewrite
-  - Section 13: `disambiguateIntent()` — 4-category intent classification (`analysis` | `workflow` | `conversational` | `operational`)
-  - Section 14: `requiresToolCall()` — Tool arbitration pre-flight; tools only triggered for `workflow`/`operational` intents
-  - Section 11–12: `classifyAttachmentIntent()` — Formal `AttachmentIntent` type (`analysis` | `workflow_upload` | `ambiguous`)
-  - Section 22: `sanitizeAiResponse()` — Strips RAG chunk labels, retrieval scores, orchestration artifacts from streamed output
-  - Section 19: `filterTechnicalLeakage()` — Detects and masks any technical implementation artifacts in AI responses
-  - Section 5: `containsAuthoritativeClaim()` / `getAuthoritativeClaimRefusal()` — Prevents AI from claiming to approve/reject/certify
+  - Section 13: `disambiguateIntent()` — 4-category intent classification.
+  - Section 14: `requiresToolCall()` — Tool arbitration pre-flight.
+  - Section 22: `sanitizeAiResponse()` — Robustly strips RAG chunk labels, retrieval scores, and orchestration prose.
+  - Section 19: `filterTechnicalLeakage()` — Detects and masks any technical implementation artifacts.
+  - Section 5: `containsAuthoritativeClaim()` — Prevents AI from claiming to approve/reject/certify.
 
 - `app/api/assistant/route.ts`
-  - Integrated `disambiguateIntent` + `intentCategory` on every request (Section 13)
-  - Tool detection (`tryDetectFunctionCalls`) now gated behind `requiresToolCall(intentCategory)` (Section 14)
-  - Added `applyResponseGovernance()` stream transformer applied to all AI responses (Sections 5, 19, 22)
-  - Injected `getSafeCapabilitiesContext()` from capability registry into enriched context (Section 16)
+  - Integrated `disambiguateIntent` + `intentCategory` on every request.
+  - Tool detection gated behind `requiresToolCall(intentCategory)`.
+  - Added `applyResponseGovernance()` stream transformer.
+  - **Phase 4**: Injects `knowledgeEngine` roadmap and stage-gate context into enriched context.
 
-- `lib/assistant.ts`
-  - Added Rule 6: NON-AUTHORITATIVE ENFORCEMENT — AI cannot claim to approve/reject/submit (Section 5)
-  - Added Rule 7: Context Continuity — resolve "it"/"this"/"the file" from session context (Section 26)
+- `lib/services/capability-registry.ts`
+  - Added planned feature stubs (v3.0 Stage-Gate Tracking, v3.2 IoT Monitoring) to Section 8 compliance.
 
 - `components/assistant/global-copilot.tsx`
-  - Imported `sessionMemory` (Section 9)
-  - Added URL-change effect to auto-detect and store active project from `pathname`
-  - Session memory facts injected into `AssistantContext.facts[]` on every request
+  - **New Chat** button added to header to clear history and `sessionMemory`.
+  - **Attachment Intent Selection** added: Users pick between "📎 Add for Analysis" and "📤 Add for Workflow Upload".
+  - Analysis summaries are now automatically stored in `sessionMemory` for multi-turn continuity.
+
+- `lib/assistant.ts`
+  - Added Rule 6: NON-AUTHORITATIVE ENFORCEMENT.
+  - Added Rule 7: Context Continuity rule.
 
 ### Verification
-- TypeScript check: zero errors in all newly created/modified files.
-- Pre-existing `assistant-tools.ts` type errors (3 items, unrelated to this pass) remain.
+- **Unit Tests**: `npx playwright test tests/copilot-governance.spec.ts` passed (7/7).
+  - Verified RBAC isolation: Architects cannot see Admin-only capabilities.
+  - Verified Sanitization: RAG and technical artifacts are masked.
+- **TypeScript**: Zero errors in all newly created/modified files.
 
-### Remaining TODO (from `enovait_copilot_todo.md`)
-- [ ] Store file analysis summary into session memory after successful analysis response
-- [ ] Clear session memory on "New Chat" click
-- [ ] Add `AttachmentIntent` UI label (📎 Analysis vs 📤 Upload) 
-- [ ] Add planned/disabled feature stubs to capability registry (Section 8)
-- [ ] Write test suite: Section 28 (approval claim, source code leakage, RBAC isolation tests)
+### Remaining TODO
+- [ ] Integration of real-world construction stage-gate rules (Phase 4 expansion).
+- [ ] Role-based verification (UAT) of response sanitization in live staging.
 
 ---
 

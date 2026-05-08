@@ -64,12 +64,20 @@ export function sanitizeAiResponse(text: string): string {
     .replace(/RAG\s+\d+\s*\[[^\]]*\]\s*score=[\d.]+:?\s*/gi, "")
     // Strip standalone score lines
     .replace(/score=[\d.]+/gi, "")
-    // Strip orchestration engine references
+    // Strip orchestration engine references and accompanying prose
+    .replace(/(Using|Triggering|Switched to)\s+(deterministic route|multi-provider|fallback engine|tool-call phase|function call)[^.]*\.?/gi, "")
     .replace(/\b(deterministic route|multi-provider|fallback engine|tool-call phase|function call)\b:?/gi, "")
     // Strip retrieval metadata labels
     .replace(/\b(vector metadata|context_id|embedding|rag match|retrieved context)\b:?/gi, "")
     // Strip debug trace labels
     .replace(/\b(debug|trace|diagnostic|runtime log)\b:?\s*/gi, "")
+    // Final cleanup of double spaces or leading/trailing punctuation artifacts
+    .replace(/\s\s+/g, " ")
+    .replace(/\.\s+\./g, ".")
+    .replace(/\(\s+\)/g, "()")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .replace(/^\.\s*/, "") // Remove leading dot
     .trim();
 }
 
@@ -181,7 +189,7 @@ export function disambiguateIntent(query: string): CopilotIntentCategory {
     q.includes("summarize") || q.includes("explain") ||
     q.includes("read this file") || q.includes("what is this file") ||
     q.includes("tell me about the attachment") || q.includes("compare") ||
-    q.includes("identify gaps") || q.includes("check compliance");
+    q.includes("identify gaps") || q.includes("compliance gaps") || q.includes("gap") || q.includes("check compliance");
 
   if (isAnalysis) return "analysis";
 
@@ -190,7 +198,7 @@ export function disambiguateIntent(query: string): CopilotIntentCategory {
     q.includes("navigate to") || q.includes("go to ") ||
     q.includes("add member") || q.includes("invite ") ||
     q.includes("filter by") || q.includes("show all credits") ||
-    q.includes("assign credit to");
+    q.includes("assign credit");
 
   if (isOperational) return "operational";
 
@@ -270,7 +278,8 @@ export function normalizeCopilotResponse(input: Partial<NormalizedCopilotRespons
   ].join("\n\n");
 }
 
-export function requiresExplicitConfirmationForExecution(query: string) {
+export function requiresExplicitConfirmationForExecution(query: string, options?: { analysisOnly?: boolean }) {
+  if (options?.analysisOnly === true) return false;
   const q = query.toLowerCase();
   const hasAction = q.includes("upload") || q.includes("map") || q.includes("submit");
   const hasConfirmation = q.includes("confirm") || q.includes("yes upload") || q.includes("proceed upload") || q.includes("and upload");

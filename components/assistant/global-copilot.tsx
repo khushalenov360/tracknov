@@ -117,6 +117,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const [fillingForm, setFillingForm] = useState(false);
   const [availableCredits, setAvailableCredits] = useState<CopilotCreditOption[]>([]);
   const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
+  const [pickedIntent, setPickedIntent] = useState<"analysis" | "workflow" | null>(null);
 
   const canManageGuidebookTracker = ["super_user", "project_admin"].includes(role ?? "");
   const docCategories = ["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing", "Calculation & Tables", "Invoice", "Pic/Video"];
@@ -564,6 +565,15 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         setUploadMode("document");
       }
 
+      // Phase 3: Only trigger analysis if intent is 'analysis' or 'ambiguous' (null)
+      if (pickedIntent === "workflow") {
+        setMessages((current) => [...current, { 
+          role: "assistant", 
+          content: `I've attached "${file.name}" for workflow upload. Tell me which credit it belongs to and the document type (e.g. Drawing, Narrative), then say "Confirm upload".` 
+        }]);
+        return;
+      }
+
       const analysisPrompt = `You are helping a user after they attached a file in Tracknov.
 Write a natural, human response (not a rigid template) with:
 - detected document type
@@ -594,12 +604,28 @@ Important:
         const trimmed = summary.trim();
         if (trimmed) {
           setMessages((current) => [...current, { role: "assistant", content: trimmed }]);
+          // SECTION 9 & Phase 3: Store analysis summary in session memory
+          sessionMemory.setLastAnalyzedFile(file.name, trimmed);
         }
       }
     } catch {
       setError("Could not read the selected file.");
     } finally {
       event.target.value = "";
+    }
+  }
+
+  function clearHistory() {
+    setMessages([{ role: "assistant", content: personalizedGreeting }]);
+    setAttachment(null);
+    setAttachmentFile(null);
+    setInput("");
+    setError("");
+    // SECTION 9 & Phase 3: Clear session memory on "New Chat"
+    sessionMemory.clear();
+    // Also clear localStorage history
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
     }
   }
 
@@ -710,6 +736,15 @@ Important:
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onClick={clearHistory}
+            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+            title="New Chat"
+            aria-label="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => setCollapsed(true)}
             className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
             aria-label="Collapse Copilot"
@@ -769,13 +804,27 @@ Important:
                   >
                     <button
                       type="button"
-                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)]"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
                       onClick={() => {
                         setShowAttachMenu(false);
+                        setPickedIntent("analysis");
                         uploadInputRef.current?.click();
                       }}
                     >
-                      Add files
+                      <Bot className="h-3.5 w-3.5 text-[var(--color-green)]" />
+                      Add for Analysis (Chat)
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        setPickedIntent("workflow");
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 text-[var(--color-blue)]" />
+                      Add for Workflow Upload
                     </button>
                   </div>
                 ) : null}

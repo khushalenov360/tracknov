@@ -59,6 +59,22 @@ const REGISTRY: Capability[] = [
     supportedSurfaces: ["documents", "credits"],
     requiredRoles: ["super_user", "super_admin", "project_admin", "owner", "mep", "architect", "contractor", "consultant"],
     enabled: true,
+  },
+  {
+    id: "construction_stagegate",
+    name: "Construction Stage-Gate Tracking (v3.0)",
+    businessDescription: "Planned feature: Automated verification of sustainability criteria at specific construction milestones (Foundation, Structure, Finishing).",
+    supportedSurfaces: ["project"],
+    requiredRoles: ["super_user", "owner"],
+    enabled: false,
+  },
+  {
+    id: "iot_monitoring",
+    name: "Live Site Monitoring via Sensor API (v3.2)",
+    businessDescription: "Planned feature: Real-time air quality and energy consumption monitoring via on-site IoT sensors integrated directly into the certification dashboard.",
+    supportedSurfaces: ["dashboard"],
+    requiredRoles: ["super_user"],
+    enabled: false,
   }
 ];
 
