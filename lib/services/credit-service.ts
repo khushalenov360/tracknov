@@ -142,6 +142,7 @@ export class CreditService {
     projectId: string;
     projectCreditId: string;
     assignedUserId: string | null;
+    documentType?: string | null;
     reason?: string | null;
   }) {
     const actorRole = await projectService.getActorProjectRole(params.projectId, user);
@@ -165,30 +166,39 @@ export class CreditService {
 
     if (member) {
       const normalizedRole = String(member.role ?? "").toLowerCase();
-      const l0Roles = ["consultant", "architect", "mep", "contractor"];
-      if (!l0Roles.includes(normalizedRole)) {
-        throw new Error("Only contributor roles (Consultant/Architect/MEP/Contractor) can be assigned.");
+      const assignableRoles = ["owner", "consultant", "architect", "mep", "contractor"];
+      if (!assignableRoles.includes(normalizedRole)) {
+        throw new Error("Only L0 contributors or L1 Project Owner can be assigned.");
       }
     }
 
-    const { error } = await this.admin
-      .from("project_credits")
-      .update({
-        assigned_user_id: params.assignedUserId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", params.projectCreditId)
-      .eq("project_id", params.projectId);
+    const documentType = String(params.documentType ?? "").trim() || null;
+    const now = new Date().toISOString();
 
-    if (error) throw error;
+    if (!documentType) {
+      const { error } = await this.admin
+        .from("project_credits")
+        .update({
+          assigned_user_id: params.assignedUserId,
+          updated_at: now,
+        })
+        .eq("id", params.projectCreditId)
+        .eq("project_id", params.projectId);
+
+      if (error) throw error;
+    }
 
     // Keep DB-level assignment ledger in sync (single active assignee policy).
-    await this.admin
+    let assignmentUpdate = this.admin
       .from("assignments")
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update({ is_active: false, updated_at: now })
       .eq("project_id", params.projectId)
       .eq("project_credit_id", params.projectCreditId)
       .eq("is_active", true);
+    assignmentUpdate = documentType
+      ? assignmentUpdate.eq("document_type", documentType)
+      : assignmentUpdate.is("document_type", null);
+    await assignmentUpdate;
 
     if (params.assignedUserId) {
       const { error: assignmentError } = await this.admin
@@ -196,6 +206,7 @@ export class CreditService {
         .insert({
           project_id: params.projectId,
           project_credit_id: params.projectCreditId,
+          document_type: documentType,
           user_id: params.assignedUserId,
           role: member?.role ?? "consultant",
           is_active: true,
@@ -216,7 +227,7 @@ export class CreditService {
         projectCreditId: params.projectCreditId,
         assignedUserId: params.assignedUserId,
         createdBy: user.id,
-        title: `Upload required evidence for ${creditMeta?.credit_code ?? "assigned credit"}`,
+        title: `Upload ${documentType ?? "required evidence"} for ${creditMeta?.credit_code ?? "assigned credit"}`,
         description: `Credit: ${creditMeta?.credit_name ?? "Assigned credit"} — upload pending required documents.`,
         priority: "high",
       });
@@ -234,8 +245,8 @@ export class CreditService {
       action: "credit_assignee_updated",
       actorId: user.id,
       actorRole: actorRole ?? user.role,
-      summary: params.assignedUserId ? "Assigned contributor to credit." : "Cleared contributor assignment for credit.",
-      details: { assigned_user_id: params.assignedUserId },
+      summary: params.assignedUserId ? "Assigned owner to credit document requirement." : "Cleared credit document requirement assignment.",
+      details: { assigned_user_id: params.assignedUserId, document_type: documentType },
     });
 
   }

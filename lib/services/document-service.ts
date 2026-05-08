@@ -101,10 +101,26 @@ export class DocumentService {
     actorRole: string;
     actorUserId: string;
     mappedCredit: any;
+    docCategory?: string;
   }) {
     if (!this.isL0Role(args.actorRole)) return;
     const projectCreditId = String(args.mappedCredit?.id ?? "").trim();
+    const docCategory = String(args.docCategory ?? "").trim();
     if (projectCreditId) {
+      if (docCategory) {
+        const { data: slotAssignments, error: slotError } = await this.admin
+          .from("assignments")
+          .select("user_id")
+          .eq("project_credit_id", projectCreditId)
+          .eq("document_type", docCategory)
+          .eq("is_active", true);
+        if (!slotError && (slotAssignments ?? []).length > 0) {
+          if ((slotAssignments ?? []).some((assignment: any) => assignment.user_id === args.actorUserId)) {
+            return;
+          }
+          throw new Error("This document requirement is assigned to a different owner.");
+        }
+      }
       const { data: assignmentMatch, error: assignmentError } = await this.admin.rpc("is_assigned_user", {
         p_project_credit_id: projectCreditId,
         p_user_id: args.actorUserId,
@@ -162,6 +178,7 @@ export class DocumentService {
       actorRole: String(actorRole),
       actorUserId: user.id,
       mappedCredit,
+      docCategory: params.docCategory,
     });
 
     const validation = await aiService.validateUploadCandidate({
@@ -437,6 +454,7 @@ export class DocumentService {
       actorRole: String(actorRole),
       actorUserId: user.id,
       mappedCredit,
+      docCategory: params.docCategory,
     });
 
     const { error } = await this.admin

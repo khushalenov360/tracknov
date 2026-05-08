@@ -923,6 +923,7 @@ export async function assignCreditContributorAction(formData: FormData): Promise
   const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
   const assignedUserIdRaw = String(formData.get("assigned_user_id") ?? "").trim();
   const assignedUserId = assignedUserIdRaw || null;
+  const documentType = String(formData.get("document_type") ?? "").trim() || null;
 
   if (!projectId || !projectCreditId) return;
 
@@ -934,6 +935,7 @@ export async function assignCreditContributorAction(formData: FormData): Promise
       projectId,
       projectCreditId,
       assignedUserId,
+      documentType,
     });
 
     pathFor(projectId).forEach((path) => revalidatePath(path));

@@ -109,6 +109,10 @@ function normalizeDocumentsRequired(value: unknown): DocumentRequirement[] {
       label: typeof item.label === "string" ? item.label : (typeof item.type === "string" ? item.type : "Document"),
       requirement: typeof item.requirement === "string" ? item.requirement : (item.required ? "Required" : "NA"),
       required: Boolean(item.required),
+      assigned_user_id: typeof item.assigned_user_id === "string" ? item.assigned_user_id : null,
+      assigned_role: item.assigned_role ? normalizeRole(item.assigned_role) : null,
+      assigned_email: typeof item.assigned_email === "string" ? item.assigned_email : null,
+      assigned_name: typeof item.assigned_name === "string" ? item.assigned_name : null,
     }))
     .filter((item) => Boolean(item.type));
 }
@@ -159,10 +163,23 @@ function mapCredit(
   credit: Record<string, any>,
   documents: Record<string, any>[],
   remarks: Record<string, any>[],
+  assignments: Record<string, any>[] = [],
 ): CreditWorkspace {
   const creditDocuments = documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[];
   const derived = deriveCreditLifecycleState(credit, creditDocuments as unknown as Record<string, any>[]);
-  const normalizedRequirements = normalizeDocumentsRequired(credit.documents_required);
+  const activeAssignments = assignments.filter((assignment) => assignment.project_credit_id === credit.id && assignment.is_active);
+  const normalizedRequirements = normalizeDocumentsRequired(credit.documents_required).map((requirement) => {
+    const assignment = activeAssignments.find((item) => String(item.document_type ?? "") === requirement.type);
+    return assignment
+      ? {
+          ...requirement,
+          assigned_user_id: assignment.user_id ?? null,
+          assigned_role: assignment.role ? normalizeRole(assignment.role) : null,
+          assigned_email: assignment.member_email ?? null,
+          assigned_name: assignment.full_name ?? null,
+        }
+      : requirement;
+  });
   return {
     id: credit.id,
     project_credit_id: credit.project_credit_id ?? credit.id,
@@ -224,15 +241,16 @@ async function getProjectMembers(
   const rows = memberships ?? [];
   const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
   const { data: profiles } = userIds.length
-    ? await client.from("profiles").select("user_id, email").in("user_id", userIds)
+    ? await client.from("profiles").select("user_id, email, full_name").in("user_id", userIds)
     : { data: [] };
-  const emailByUserId = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile.email]));
+  const profileByUserId = new Map<string, any>((profiles ?? []).map((profile: any) => [profile.user_id, profile]));
 
   return rows.map((row: any) => ({
     id: row.id,
     project_id: row.project_id,
     user_id: row.user_id,
-    member_email: emailByUserId.get(row.user_id) ?? null,
+    member_email: profileByUserId.get(row.user_id)?.email ?? null,
+    full_name: profileByUserId.get(row.user_id)?.full_name ?? null,
     role: normalizeRole(row.role),
     created_at: row.created_at,
   }));
@@ -565,7 +583,7 @@ export async function getProjectWorkspace(projectId: string) {
   const currentUser = await getCurrentUser();
   if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
-    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, members, invites] =
+    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, { data: assignments }, members, invites] =
       await Promise.all([
         admin.from("projects").select("*").eq("id", projectId).single(),
         admin.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -598,6 +616,11 @@ export async function getProjectWorkspace(projectId: string) {
           .eq("is_active", true)
           .order("created_at", { ascending: false })
           .limit(200),
+        admin
+          .from("assignments")
+          .select("id, project_id, project_credit_id, document_type, user_id, role, is_active")
+          .eq("project_id", projectId)
+          .eq("is_active", true),
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
@@ -622,7 +645,13 @@ export async function getProjectWorkspace(projectId: string) {
       ? await admin.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
       : { data: [] };
 
-    const mappedCredits = effectiveCredits.map((credit: any) => mapCredit(credit, documents ?? [], remarks ?? []));
+    const memberByUserId = new Map(members.map((member) => [member.user_id, member]));
+    const mappedAssignments = ((assignments ?? []) as any[]).map((assignment) => ({
+      ...assignment,
+      member_email: memberByUserId.get(assignment.user_id)?.member_email ?? null,
+      full_name: memberByUserId.get(assignment.user_id)?.full_name ?? null,
+    }));
+    const mappedCredits = effectiveCredits.map((credit: any) => mapCredit(credit, documents ?? [], remarks ?? [], mappedAssignments));
     const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
 
     return {
@@ -653,7 +682,7 @@ export async function getProjectWorkspace(projectId: string) {
     return null;
   }
 
-  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, members, invites] =
+  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, { data: assignments }, members, invites] =
     await Promise.all([
       client.from("projects").select("*").eq("id", projectId).single(),
       client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -686,6 +715,11 @@ export async function getProjectWorkspace(projectId: string) {
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(200),
+      admin
+        .from("assignments")
+        .select("id, project_id, project_credit_id, document_type, user_id, role, is_active")
+        .eq("project_id", projectId)
+        .eq("is_active", true),
       getProjectMembers(client, projectId),
       getProjectInvites(client, projectId),
     ]);
@@ -710,7 +744,13 @@ export async function getProjectWorkspace(projectId: string) {
     ? await client.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
     : { data: [] };
 
-  const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, documents ?? [], remarks ?? []));
+  const memberByUserId = new Map(members.map((member) => [member.user_id, member]));
+  const mappedAssignments = ((assignments ?? []) as any[]).map((assignment) => ({
+    ...assignment,
+    member_email: memberByUserId.get(assignment.user_id)?.member_email ?? null,
+    full_name: memberByUserId.get(assignment.user_id)?.full_name ?? null,
+  }));
+  const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, documents ?? [], remarks ?? [], mappedAssignments));
   const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
 
   return {

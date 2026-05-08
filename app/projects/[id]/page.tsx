@@ -164,7 +164,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
   const canAssignContributors = ["owner", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
   const contributorMembers = workspace.members.filter((member) =>
-    ["consultant", "architect", "mep", "contractor"].includes(String(member.role)),
+    ["owner", "consultant", "architect", "mep", "contractor"].includes(String(member.role)),
   );
   const roleScopedCredits = isL0Contributor
     ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
@@ -398,42 +398,48 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       </section>
       ) : null}
 
-      <section id="pending-list" className="mb-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {categoryProgress.map((item) => {
-          const meta = categoryMeta[item.key as keyof typeof categoryMeta] ?? defaultCategoryMeta;
-          return (
-            <Link
-              key={item.key}
-              href={`/projects/${params.id}${queryString({
-                category: item.key,
-                status: searchParams?.status,
-                credit: searchParams?.credit,
-              })}`}
-              className="surface-card block p-4 hover:border-[var(--color-border-strong)]"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-[12px] font-medium text-[var(--color-text-primary)]">
-                    <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                    {item.completed}/{item.count} complete
-                  </p>
+      <details id="pending-list" className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-[var(--color-text-primary)]">
+          <span>Category progress</span>
+          <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">Collapse / expand</span>
+        </summary>
+        <section className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+          {categoryProgress.map((item) => {
+            const meta = categoryMeta[item.key as keyof typeof categoryMeta] ?? defaultCategoryMeta;
+            return (
+              <Link
+                key={item.key}
+                href={`/projects/${params.id}${queryString({
+                  category: item.key,
+                  status: searchParams?.status,
+                  credit: searchParams?.credit,
+                })}`}
+                className="surface-card block p-4 hover:border-[var(--color-border-strong)]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-[12px] font-medium text-[var(--color-text-primary)]">
+                      <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                      {item.completed}/{item.count} complete
+                    </p>
+                  </div>
+                  <span className="mono text-[12px] text-[var(--color-text-secondary)]">{item.avgCompletion}%</span>
                 </div>
-                <span className="mono text-[12px] text-[var(--color-text-secondary)]">{item.avgCompletion}%</span>
-              </div>
-              <div className="mt-3">
-                <Progress value={item.avgCompletion} />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-                <span>{item.inProgress} in progress</span>
-                <span>{item.blocked} blocked</span>
-              </div>
-            </Link>
-          );
-        })}
-      </section>
+                <div className="mt-3">
+                  <Progress value={item.avgCompletion} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-[var(--color-text-tertiary)]">
+                  <span>{item.inProgress} in progress</span>
+                  <span>{item.blocked} blocked</span>
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+      </details>
 
       <div className="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)_280px]">
         <aside className="rounded-xl border-r border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-4">
@@ -649,6 +655,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       </td>
                       {trackerColumns.map((column) => {
                         const cell = resolveTrackerCellStatus(credit, column.aliases);
+                        const columnAliases = column.aliases as readonly string[];
+                        const requirementSlot = (credit.documents_required ?? []).find((doc: any) =>
+                          columnAliases.includes(String(doc.type)) || columnAliases.includes(String(doc.label)),
+                        );
                         const tone =
                           cell === "Received"
                             ? "border border-[var(--color-green)] bg-[var(--color-green-light)] text-[var(--color-green)]"
@@ -661,9 +671,41 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                                   : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-70";
                         return (
                           <td key={`${credit.id}-${column.label}`} className="px-2 py-2 align-middle">
-                            <span className={`inline-flex rounded-[3px] px-[6px] py-[2px] text-[9px] ${tone}`}>
-                              {cell}
-                            </span>
+                            <div className="flex min-w-[112px] flex-col gap-1">
+                              <span className={`inline-flex w-fit rounded-[3px] px-[6px] py-[2px] text-[9px] ${tone}`}>
+                                {cell}
+                              </span>
+                              {canAssignContributors && cell === "Required" && requirementSlot?.required ? (
+                                <form action={assignCreditContributorAction} className="flex flex-col gap-1">
+                                  <input type="hidden" name="project_id" value={params.id} />
+                                  <input type="hidden" name="project_credit_id" value={credit.id} />
+                                  <input type="hidden" name="document_type" value={requirementSlot.type} />
+                                  <select
+                                    name="assigned_user_id"
+                                    defaultValue={requirementSlot.assigned_user_id ?? ""}
+                                    aria-label={`Assign ${requirementSlot.label} for ${credit.credit_code}`}
+                                    className="h-7 w-[132px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] text-[var(--color-text-primary)]"
+                                  >
+                                    <option value="">Assign...</option>
+                                    {contributorMembers.map((member) => (
+                                      <option key={`${credit.id}-${requirementSlot.type}-${member.user_id}`} value={member.user_id}>
+                                        {(member.full_name || member.member_email || member.role).slice(0, 28)} ({String(member.role).replace("_", " ")})
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="submit"
+                                    className="h-6 w-[132px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[10px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-green)]"
+                                  >
+                                    Save
+                                  </button>
+                                </form>
+                              ) : requirementSlot?.assigned_user_id ? (
+                                <span className="max-w-[132px] truncate text-[9px] text-[var(--color-text-tertiary)]">
+                                  {requirementSlot.assigned_name || requirementSlot.assigned_email || "Assigned"}
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                         );
                       })}

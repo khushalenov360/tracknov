@@ -40,6 +40,10 @@ export type DocumentRequirement = {
   label: string;
   requirement: "Required" | "NA";
   required: boolean;
+  assigned_user_id?: string | null;
+  assigned_role?: MemberRole | null;
+  assigned_email?: string | null;
+  assigned_name?: string | null;
 };
 
 export type CatalogCredit = {
@@ -197,6 +201,7 @@ export type ProjectMemberRecord = {
   project_id: string;
   user_id: string;
   member_email?: string | null;
+  full_name?: string | null;
   role: MemberRole;
   created_at: string;
 };
