@@ -1719,9 +1719,21 @@ export async function getTeamMembers() {
     return Array.from(grouped.values());
   }
 
+  const { data: userMemberships } = await client
+    .from("project_users")
+    .select("project_id")
+    .eq("user_id", user.id);
+
+  const accessibleProjectIds = Array.from(new Set((userMemberships ?? []).map((m: any) => m.project_id).filter(Boolean)));
+
+  if (accessibleProjectIds.length === 0) {
+    return [];
+  }
+
   const { data: memberships } = await client
     .from("project_users")
     .select("id, project_id, user_id, role, created_at, projects(name)")
+    .in("project_id", accessibleProjectIds)
     .order("created_at", { ascending: false });
 
   const rows = memberships ?? [];
@@ -2412,8 +2424,8 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
   for (const project of projects) {
     const role = project.role as MemberRole;
 
-    if (['architect', 'mep', 'contractor', 'consultant'].includes(role)) {
-      const workspace = await getProjectWorkspace(project.id); if (!workspace) continue;
+    const workspace = await getProjectWorkspace(project.id);
+    if (workspace) {
       const myCredits = workspace.credits.filter((credit) => {
         const status = String(credit.status ?? "").toLowerCase();
         if (status === "complete" || status === "closed" || status === "approved") return false;
@@ -2423,18 +2435,37 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
           return assignedUserId === user.id;
         }
 
-        return credit.responsible_role === role;
+        const requirements = normalizeDocumentsRequired(credit.documents_required);
+        const hasAssignedDoc = requirements.some((r) => r.assigned_user_id === user.id);
+        if (hasAssignedDoc) return true;
+
+        if (['architect', 'mep', 'contractor', 'consultant'].includes(role)) {
+          return credit.responsible_role === role;
+        }
+
+        return false;
       });
       
       for (const credit of myCredits) {
-        const missingCount = normalizeDocumentsRequired(credit.documents_required).filter(
+        const requirements = normalizeDocumentsRequired(credit.documents_required);
+        const missingDocs = requirements.filter(
           (r) => r.required && !credit.documents.some((d) => d.doc_category === r.type && d.status === "approved"),
-        ).length;
-        if (missingCount > 0) {
+        );
+        
+        const myMissingDocs = missingDocs.filter(r => {
+           if (r.assigned_user_id) return r.assigned_user_id === user.id;
+           if ((credit as any).assigned_user_id) return (credit as any).assigned_user_id === user.id;
+           if (['architect', 'mep', 'contractor', 'consultant'].includes(role)) {
+             return credit.responsible_role === role;
+           }
+           return false;
+        });
+
+        if (myMissingDocs.length > 0) {
           tasks.push({
             id: 'upload-' + credit.id,
             type: 'upload_pending',
-            title: 'Upload ' + missingCount + ' document(s)',
+            title: 'Upload ' + myMissingDocs.length + ' document(s)',
             subtitle: credit.credit_code + ': ' + credit.credit_name,
             projectId: project.id,
             projectName: project.name,
@@ -2497,6 +2528,7 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
     if (!projectId) continue;
     const projectName = projectNameById.get(projectId) ?? "Project";
     const taskType = String((item as any).task_type ?? "");
+    if (taskType === "assignment_upload") continue;
     const actionUrl =
       taskType === "clarification_fix"
         ? `/documents?project=${projectId}&document=${(item as any).document_id ?? ""}`

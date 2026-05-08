@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/assistant";
 import type { MemberRole } from "@/lib/types";
+import { sessionMemory } from "@/lib/services/session-memory-service";
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
 type CopilotAttachment = {
@@ -91,6 +92,8 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
         `Current tab: ${surface}`,
         `Role: ${role ?? "unknown"}`,
         `Page title: ${title}`,
+        // SECTION 9: Inject session memory facts for context continuity
+        ...sessionMemory.buildContextFacts(),
       ],
       nextSteps: [
         "Answer the user's exact question first.",
@@ -183,6 +186,15 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     }
     fetchProfile();
   }, []);
+
+  // SECTION 9: Auto-detect active project from URL and store in session memory
+  useEffect(() => {
+    const match = pathname.match(/^\/projects\/([^/?#]+)/);
+    if (match?.[1]) {
+      // Extract project name from page title if available
+      sessionMemory.setActiveProject(match[1], title || match[1]);
+    }
+  }, [pathname, title]);
 
   const personalizedGreeting = useMemo(() => {
     const greeting = userName ? `Hi ${userName}` : "Hi there";
@@ -359,7 +371,6 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
       const navigateTo = response.headers.get("X-Copilot-Navigate");
       if (navigateTo) {
         router.push(navigateTo);
-      }
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
@@ -568,7 +579,7 @@ Important:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context,
-          messages: [{ role: "user", content: analysisPrompt }],
+          messages: [...messages, { role: "user", content: analysisPrompt }],
           tone: "Guided",
           attachments: [{
             name: file.name,

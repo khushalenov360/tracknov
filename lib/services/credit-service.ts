@@ -164,13 +164,7 @@ export class CreditService {
       throw new Error("Selected contributor is not a member of this project.");
     }
 
-    if (member) {
-      const normalizedRole = String(member.role ?? "").toLowerCase();
-      const assignableRoles = ["owner", "consultant", "architect", "mep", "contractor"];
-      if (!assignableRoles.includes(normalizedRole)) {
-        throw new Error("Only L0 contributors or L1 Project Owner can be assigned.");
-      }
-    }
+    // Any valid member of the project can now be assigned to credit tasks.
 
     const documentType = String(params.documentType ?? "").trim() || null;
     const now = new Date().toISOString();

@@ -163,9 +163,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
   const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
   const canAssignContributors = ["owner", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
-  const contributorMembers = workspace.members.filter((member) =>
-    ["owner", "consultant", "architect", "mep", "contractor"].includes(String(member.role)),
-  );
+  const contributorMembers = workspace.members;
   const roleScopedCredits = isL0Contributor
     ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
     : workspace.credits;

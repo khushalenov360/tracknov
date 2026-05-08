@@ -14,11 +14,18 @@ import {
   normalizeCopilotResponse,
   requiresExplicitConfirmationForExecution,
   routeCopilotIntent,
+  disambiguateIntent,
+  requiresToolCall,
   sanitizeContextText,
   sanitizeUserText,
+  sanitizeAiResponse,
+  filterTechnicalLeakage,
+  containsAuthoritativeClaim,
+  getAuthoritativeClaimRefusal,
 } from "@/lib/services/copilot-governance";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
+import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +159,42 @@ function createResponseStream(textStream: ReadableStream<Uint8Array>, navigateTo
   }
   return new Response(textStream, { headers });
 }
+
+/**
+ * SECTIONS 5, 19, 22: Post-response governance filter.
+ * Accumulates the full streamed AI response, applies all safety transforms,
+ * then re-emits it as a clean stream. Prevents RAG metadata, technical leakage,
+ * and non-authoritative workflow claims from reaching the user.
+ */
+function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = inputStream.getReader();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+      }
+      fullText += decoder.decode();
+
+      // Apply governance filters in order
+      let safe = sanitizeAiResponse(fullText);      // Section 22: strip RAG/debug labels
+      safe = filterTechnicalLeakage(safe);           // Section 19: strip technical artifacts
+      if (containsAuthoritativeClaim(safe)) {        // Section 5: non-authoritative enforcement
+        safe = getAuthoritativeClaimRefusal();
+      }
+
+      controller.enqueue(encoder.encode(safe));
+      controller.close();
+    },
+  });
+}
+
 
 function buildProviderAttempts() {
   const configuredOrder: AiProvider[] = ["doubleword", "gemini", "groq", "openrouter"];
@@ -976,6 +1019,8 @@ export async function POST(request: Request) {
   const latestPromptRaw = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
   const latestPrompt = sanitizeUserText(latestPromptRaw);
   const intent = routeCopilotIntent(latestPrompt);
+  // SECTION 13: 4-category intent disambiguation
+  const intentCategory = disambiguateIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
   const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
 
@@ -1067,13 +1112,7 @@ export async function POST(request: Request) {
   }
 
   if (isFileQuestion(latestPrompt) && attachments.length === 0) {
-    const normalizedNoAttachment = normalizeCopilotResponse({
-      assessment: "No file is attached in this chat message.",
-      fit: "Not suitable",
-      reason: "File analysis needs an attached file in the current message.",
-      recommendation: "Attach the file with the + button and ask: Analyze this file.",
-      confirm: "Confirm?",
-    });
+    const message = "No file is attached in this chat message. Please attach the file with the + button first.";
     await logAiInteraction({
       userId: user.id,
       intent,
@@ -1084,17 +1123,11 @@ export async function POST(request: Request) {
       fallbackUsed: false,
       latencyMs: Date.now() - startedAt,
     });
-    return createResponseStream(createTextStream(normalizedNoAttachment));
+    return createResponseStream(createTextStream(message));
   }
 
   if (requiresExplicitConfirmationForExecution(latestPrompt)) {
-    const confirmReply = normalizeCopilotResponse({
-      assessment: "I can prepare this upload flow, but execution needs explicit confirmation.",
-      fit: "Medium",
-      reason: "Compliance mode requires confirmation before upload/mapping actions.",
-      recommendation: "Please reply: Confirm upload this to <credit code> as <document type>.",
-      confirm: "Confirm?",
-    });
+    const confirmReply = "I can prepare this upload flow, but execution needs explicit confirmation. Please reply: 'Confirm upload this to <credit code> as <document type>' to proceed.";
     await logAiInteraction({
       userId: user.id,
       intent,
@@ -1118,13 +1151,6 @@ export async function POST(request: Request) {
             `Hi ${userName}, I can see your attached file: ${file.name}.`,
             "Tell me the credit code and document type you want, and I will prepare the workflow upload step.",
           ].join("\n");
-      const normalizedAttachment = normalizeCopilotResponse({
-        assessment: attachmentReply,
-        fit: "Medium",
-        reason: "AI provider is offline, using deterministic attachment analysis fallback.",
-        recommendation: "Share target credit code + document type to continue.",
-        confirm: "Confirm?",
-      });
       await logAiInteraction({
         userId: user.id,
         intent,
@@ -1135,13 +1161,21 @@ export async function POST(request: Request) {
         fallbackUsed: true,
         latencyMs: Date.now() - startedAt,
       });
-      return createResponseStream(createTextStream(normalizedAttachment));
+      return createResponseStream(createTextStream(attachmentReply));
     }
   }
 
   const toneInstructions = toneService.getToneInstructions(resolvedTone);
+
+  // PHASE 4: Role-Aware Context Builder — inject safe capability context
+  const capabilitiesContext = getSafeCapabilitiesContext(
+    (context.surface as any) ?? "dashboard",
+    role as any,
+  );
+
   const enrichedContext: AssistantContext = {
     ...context,
+    capabilities: capabilitiesContext,
     facts: [
       ...context.facts,
       `User: ${userName || userEmail || "Unknown"}`,
@@ -1173,8 +1207,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Phase 1: Detect function calls
-    const functionCalls = await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role);
+    // SECTION 14: Tool Arbitration Pre-flight — only call tools for workflow/operational intents
+    const toolsNeeded = requiresToolCall(intentCategory);
+    const functionCalls = toolsNeeded
+      ? await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role)
+      : null;
 
     if (functionCalls && functionCalls.length > 0) {
       // Phase 2: Execute all function calls
@@ -1218,7 +1255,9 @@ export async function POST(request: Request) {
           fallbackUsed: false,
           latencyMs: Date.now() - startedAt,
         });
-        return createResponseStream(aiStream);
+        // SECTION 5, 19, 22: Apply post-response safety filters before streaming
+        const finalStream = applyResponseGovernance(aiStream);
+        return createResponseStream(finalStream);
       }
     }
   } catch {
@@ -1226,13 +1265,7 @@ export async function POST(request: Request) {
   }
 
   if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt))) {
-    const fallbackAttachment = normalizeCopilotResponse({
-      assessment: buildAttachmentAnalysisReply(userName, attachments[0], ragMatches),
-      fit: "Medium",
-      reason: "AI runtime fallback used for this file-analysis request.",
-      recommendation: "Confirm mapping target to continue with upload flow.",
-      confirm: "Confirm?",
-    });
+    const fallbackAttachment = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
     await logAiInteraction({
       userId: user.id,
       intent,
@@ -1243,18 +1276,10 @@ export async function POST(request: Request) {
       fallbackUsed: true,
       latencyMs: Date.now() - startedAt,
     });
-    return createResponseStream(
-      createTextStream(fallbackAttachment),
-    );
+    return createResponseStream(createTextStream(fallbackAttachment));
   }
 
-  const normalizedFallback = normalizeCopilotResponse({
-    assessment: buildFallbackAssistantReply(context, latestPrompt),
-    fit: "Medium",
-    reason: "AI fallback was used for this request path.",
-    recommendation: "Ask with a specific project + credit code for precise enforcement-safe guidance.",
-    confirm: "Confirm?",
-  });
+  const fallbackText = buildFallbackAssistantReply(context, latestPrompt);
   await logAiInteraction({
     userId: user.id,
     intent,
@@ -1265,7 +1290,7 @@ export async function POST(request: Request) {
     fallbackUsed: true,
     latencyMs: Date.now() - startedAt,
   });
-  return createResponseStream(createTextStream(normalizedFallback));
+  return createResponseStream(createTextStream(fallbackText));
 }
 
 
