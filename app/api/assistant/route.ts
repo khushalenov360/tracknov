@@ -18,6 +18,7 @@ import {
   sanitizeUserText,
 } from "@/lib/services/copilot-governance";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,14 @@ type AssistantRequest = {
     size: number;
     base64: string;
   }>;
+};
+
+type AiProvider = "doubleword" | "gemini" | "groq" | "openrouter";
+
+type ProviderAttempt = {
+  provider: AiProvider;
+  model: string;
+  apiKey: string;
 };
 
 function toGeminiContents(messages: AssistantMessage[], attachments: AssistantRequest["attachments"] = []) {
@@ -55,6 +64,39 @@ function toGeminiContents(messages: AssistantMessage[], attachments: AssistantRe
   }));
 }
 
+function toGeminiMessagesWithFunctionCalls(
+  messages: AssistantMessage[],
+  functionCalls: Array<{ name: string; response: unknown }>,
+) {
+  const geminiMessages = toGeminiContents(messages);
+  const modelPart = {
+    role: "model" as const,
+    parts: functionCalls.map((fc) => ({
+      functionCall: { name: fc.name, args: {} },
+    })),
+  };
+  const functionParts = {
+    role: "function" as const,
+    parts: functionCalls.map((fc) => ({
+      functionResponse: { name: fc.name, response: { result: fc.response } },
+    })),
+  };
+  return [...geminiMessages, modelPart, functionParts];
+}
+
+function toChatMessages(context: AssistantContext, messages: AssistantMessage[], workspaceSnapshot: string, role?: string) {
+  return [
+    {
+      role: "system",
+      content: buildAssistantSystemPrompt(context, workspaceSnapshot, role),
+    },
+    ...messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  ];
+}
+
 function extractText(responseData: any) {
   const candidate = responseData?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(candidate)) {
@@ -64,6 +106,28 @@ function extractText(responseData: any) {
     .map((part: { text?: string }) => part.text ?? "")
     .join("")
     .trim();
+}
+
+function extractFunctionCalls(responseData: any): Array<{ name: string; args: Record<string, unknown> }> {
+  const parts = responseData?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return [];
+  return parts
+    .filter((part: any) => part?.functionCall)
+    .map((part: any) => ({
+      name: part.functionCall.name,
+      args: part.functionCall.args ?? {},
+    }));
+}
+
+function extractOpenAiFunctionCalls(responseData: any): Array<{ name: string; args: Record<string, unknown> }> {
+  const toolCalls = responseData?.choices?.[0]?.message?.tool_calls;
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls
+    .filter((tc: any) => tc.type === "function")
+    .map((tc: any) => ({
+      name: tc.function.name,
+      args: JSON.parse(tc.function.arguments ?? "{}"),
+    }));
 }
 
 function createTextStream(text: string) {
@@ -76,15 +140,46 @@ function createTextStream(text: string) {
   });
 }
 
-function createResponseStream(textStream: ReadableStream<Uint8Array>) {
-  return new Response(textStream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+function createResponseStream(textStream: ReadableStream<Uint8Array>, navigateTo?: string) {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Content-Type-Options": "nosniff",
+  };
+  if (navigateTo) {
+    headers["X-Copilot-Navigate"] = navigateTo;
+  }
+  return new Response(textStream, { headers });
+}
+
+function buildProviderAttempts() {
+  const configuredOrder: AiProvider[] = ["doubleword", "gemini", "groq", "openrouter"];
+  const requestedProvider = env.aiProvider.toLowerCase();
+  const order = configuredOrder.includes(requestedProvider as AiProvider)
+    ? [requestedProvider as AiProvider, ...configuredOrder.filter((provider) => provider !== requestedProvider)]
+    : configuredOrder;
+
+  const keysByProvider: Record<AiProvider, string[]> = {
+    doubleword: env.doublewordApiKeys,
+    gemini: env.geminiApiKeys,
+    groq: env.groqApiKeys,
+    openrouter: env.openRouterApiKeys,
+  };
+  const modelByProvider: Record<AiProvider, string> = {
+    doubleword: env.doublewordModel,
+    gemini: env.geminiModel,
+    groq: env.groqModel,
+    openrouter: env.openRouterModel,
+  };
+
+  return order.flatMap((provider) =>
+    keysByProvider[provider].map((apiKey) => ({
+      provider,
+      model: modelByProvider[provider],
+      apiKey,
+    })),
+  );
 }
 
 type ProjectRow = {
@@ -207,15 +302,19 @@ async function getWorkspaceSnapshot() {
   } = await client.auth.getUser();
 
   if (!user) {
-    return { user: null, snapshot: "User is not signed in." };
+    return { user: null, role: "consultant", projectIds: [], snapshot: "User is not signed in.", userName: "", userEmail: "" };
   }
 
   const { data: profile } = await client
     .from("profiles")
-    .select("global_role")
+    .select("global_role, full_name, email")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const userName = profile?.full_name
+    ?? (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "")
+    ?? "";
+  const userEmail = profile?.email ?? user.email ?? "";
   const metadataRole = typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "";
   const resolvedRole = (profile?.global_role ?? metadataRole ?? "consultant") as string;
   const isSuperUser =
@@ -232,7 +331,7 @@ async function getWorkspaceSnapshot() {
   const projectIds = projects.map((project) => project.id);
 
   if (!projectIds.length) {
-    return { user, role: resolvedRole, projectIds, snapshot: "No projects currently available in the workspace." };
+    return { user, role: resolvedRole, projectIds, snapshot: "No projects currently available in the workspace.", userName, userEmail };
   }
 
   const [{ data: creditsData }, { data: documentsData }] = await Promise.all([
@@ -274,7 +373,7 @@ async function getWorkspaceSnapshot() {
     }
   }
 
-  return { user, role: resolvedRole, projectIds, snapshot };
+  return { user, role: resolvedRole, projectIds, snapshot, userName, userEmail };
 }
 
 function getProjectIdFromContext(context?: AssistantContext) {
@@ -368,26 +467,27 @@ function buildAttachmentAnalysisReply(
   ].join("\n");
 }
 
-async function createGeminiStream(
+// ─── Gemini helpers ───────────────────────────────────────────────────────────
+
+async function callGeminiWithTools(
   context: AssistantContext,
   messages: AssistantMessage[],
   workspaceSnapshot: string,
-  attachments: AssistantRequest["attachments"] = [],
-) {
-  const contents: any[] = toGeminiContents(messages, attachments);
-  const systemInstruction = {
-    parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot) }],
-  };
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.aiModel}:streamGenerateContent?alt=sse`, {
+  role: string,
+  attempt: ProviderAttempt,
+): Promise<{ type: "function_call"; calls: Array<{ name: string; args: Record<string, unknown> }> } | { type: "content"; text: string } | null> {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-api-key": env.geminiApiKey,
+      "x-goog-api-key": attempt.apiKey,
     },
     body: JSON.stringify({
-      systemInstruction,
-      contents,
+      systemInstruction: {
+        parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot, role) }],
+      },
+      contents: toGeminiContents(messages),
+      tools: toGeminiTools(),
       generationConfig: {
         temperature: 0.2,
         topP: 0.9,
@@ -395,6 +495,58 @@ async function createGeminiStream(
         maxOutputTokens: 1200,
       },
     }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json() as any;
+  const functionCalls = extractFunctionCalls(data);
+  if (functionCalls.length > 0) {
+    return { type: "function_call", calls: functionCalls };
+  }
+
+  const text = extractText(data);
+  if (text) {
+    return { type: "content", text };
+  }
+  return null;
+}
+
+
+
+async function createGeminiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  const body: Record<string, unknown> = {
+    systemInstruction: {
+      parts: [{ text: buildAssistantSystemPrompt(context, workspaceSnapshot, role) }],
+    },
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: 500,
+    },
+  };
+
+  if (functionResults?.length) {
+    body.contents = toGeminiMessagesWithFunctionCalls(messages, functionResults);
+  } else {
+    body.contents = toGeminiContents(messages);
+  }
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:streamGenerateContent?alt=sse`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": attempt.apiKey,
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok || !response.body) {
@@ -562,6 +714,240 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
   return null;
 }
 
+// ─── OpenAI-compatible helpers ───────────────────────────────────────────────
+
+function openAiCompatibleEndpoint(provider: AiProvider) {
+  if (provider === "doubleword") {
+    return "https://api.doubleword.ai/v1/chat/completions";
+  }
+  if (provider === "groq") {
+    return "https://api.groq.com/openai/v1/chat/completions";
+  }
+  if (provider === "openrouter") {
+    return "https://openrouter.ai/api/v1/chat/completions";
+  }
+  throw new Error(`Unsupported OpenAI-compatible provider: ${provider}`);
+}
+
+function openAiHeaders(attempt: ProviderAttempt): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${attempt.apiKey}`,
+  };
+  if (attempt.provider === "openrouter") {
+    headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
+    headers["X-Title"] = "Tracknov";
+  }
+  return headers;
+}
+
+async function callOpenAiWithTools(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role: string,
+  attempt: ProviderAttempt,
+): Promise<{ type: "function_call"; calls: Array<{ name: string; args: Record<string, unknown> }> } | { type: "content"; text: string } | null> {
+  const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
+    method: "POST",
+    headers: openAiHeaders(attempt),
+    body: JSON.stringify({
+      model: attempt.model,
+      messages: toChatMessages(context, messages, workspaceSnapshot, role),
+      tools: toOpenAiTools(),
+      temperature: 0.4,
+      max_tokens: 300,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json() as any;
+  const functionCalls = extractOpenAiFunctionCalls(data);
+  if (functionCalls.length > 0) {
+    return { type: "function_call", calls: functionCalls };
+  }
+
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  if (text) {
+    return { type: "content", text };
+  }
+
+  return null;
+}
+
+async function createOpenAiCompatibleStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  let bodyMessages = toChatMessages(context, messages, workspaceSnapshot, role);
+
+  if (functionResults?.length) {
+    const lastAssistantMsg = bodyMessages[bodyMessages.length - 1];
+    bodyMessages = [
+      ...bodyMessages.slice(0, -1),
+      {
+        ...lastAssistantMsg,
+        content: lastAssistantMsg.content,
+        tool_calls: functionResults.map((fr) => ({
+          id: `call_${fr.name}`,
+          type: "function" as const,
+          function: { name: fr.name, arguments: "{}" },
+        })),
+      } as any,
+      ...functionResults.map((fr) => ({
+        role: "tool" as const,
+        tool_call_id: `call_${fr.name}`,
+        content: JSON.stringify(fr.response),
+      })),
+    ];
+  }
+
+  const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
+    method: "POST",
+    headers: openAiHeaders(attempt),
+    body: JSON.stringify({
+      model: attempt.model,
+      messages: bodyMessages,
+      temperature: 0.4,
+      max_tokens: 500,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = "";
+
+      const processEvent = (eventBlock: string) => {
+        const dataLines = eventBlock
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim());
+
+        for (const line of dataLines) {
+          if (!line || line === "[DONE]") {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(line) as any;
+            const text = parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? "";
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          } catch {
+            // Ignore malformed chunks and keep streaming.
+          }
+        }
+      };
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          let separatorIndex = buffer.indexOf("\n\n");
+          while (separatorIndex !== -1) {
+            const eventBlock = buffer.slice(0, separatorIndex).trim();
+            buffer = buffer.slice(separatorIndex + 2);
+            if (eventBlock) {
+              processEvent(eventBlock);
+            }
+            separatorIndex = buffer.indexOf("\n\n");
+          }
+        }
+
+        const tail = buffer.trim();
+        if (tail) {
+          processEvent(tail);
+        }
+
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+}
+
+// ─── Orchestration ────────────────────────────────────────────────────────────
+
+async function tryDetectFunctionCalls(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role: string,
+): Promise<Array<{ name: string; args: Record<string, unknown> }> | null> {
+  const attempts = buildProviderAttempts();
+  for (const attempt of attempts) {
+    try {
+      const result = attempt.provider === "gemini"
+        ? await callGeminiWithTools(context, messages, workspaceSnapshot, role, attempt)
+        : await callOpenAiWithTools(context, messages, workspaceSnapshot, role, attempt);
+
+      if (result?.type === "function_call") {
+        return result.calls;
+      }
+      // Content response means no function call needed
+      if (result?.type === "content") {
+        return [];
+      }
+    } catch (error) {
+      console.warn(`[Assistant] Tool detection ${attempt.provider} failed; trying next.`, error);
+    }
+  }
+  return null;
+}
+
+async function createAiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  const attempts = buildProviderAttempts();
+
+  for (const attempt of attempts) {
+    try {
+      const stream =
+        attempt.provider === "gemini"
+          ? await createGeminiStream(context, messages, workspaceSnapshot, attempt, role, functionResults)
+          : await createOpenAiCompatibleStream(context, messages, workspaceSnapshot, attempt, role, functionResults);
+
+      if (stream) {
+        return stream;
+      }
+    } catch (error) {
+      console.warn(`[Assistant] ${attempt.provider} failed; trying next configured AI key/provider.`, error);
+    }
+  }
+
+  return null;
+}
+
+// ─── POST handler ─────────────────────────────────────────────────────────────
+
 export async function POST(request: Request) {
   const throttled = checkRateLimit(request, {
     key: "api:assistant:chat",
@@ -591,7 +977,8 @@ export async function POST(request: Request) {
   const latestPrompt = sanitizeUserText(latestPromptRaw);
   const intent = routeCopilotIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
-  const { user, role, snapshot, projectIds } = await getWorkspaceSnapshot();
+  const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
+
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -697,9 +1084,7 @@ export async function POST(request: Request) {
       fallbackUsed: false,
       latencyMs: Date.now() - startedAt,
     });
-    return createResponseStream(
-      createTextStream(normalizedNoAttachment),
-    );
+    return createResponseStream(createTextStream(normalizedNoAttachment));
   }
 
   if (requiresExplicitConfirmationForExecution(latestPrompt)) {
@@ -723,7 +1108,8 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(confirmReply));
   }
 
-  if (!env.geminiApiKey) {
+  if (!env.aiReady) {
+    // Fall back to attachment analysis or generic reply if possible
     if (attachments.length > 0) {
       const file = attachments[0];
       const attachmentReply = !isUploadMappingIntent(latestPrompt) || isFileQuestion(latestPrompt)
@@ -751,80 +1137,89 @@ export async function POST(request: Request) {
       });
       return createResponseStream(createTextStream(normalizedAttachment));
     }
-    const fallbackText = normalizeCopilotResponse({
-      assessment: buildFallbackAssistantReply(context, latestPrompt),
-      fit: "Medium",
-      reason: "AI provider is offline. Deterministic guidance is active.",
-      recommendation: "Ask one focused question with project/credit code for precise guidance.",
-      confirm: "Confirm?",
-    });
-    await logAiInteraction({
-      userId: user.id,
-      intent,
-      query: latestPrompt,
-      model: "fallback",
-      contextSize: combinedSnapshot.length,
-      tokenUsage: 0,
-      fallbackUsed: true,
-      latencyMs: Date.now() - startedAt,
-    });
-    return createResponseStream(createTextStream(fallbackText));
+  }
+
+  const toneInstructions = toneService.getToneInstructions(resolvedTone);
+  const enrichedContext: AssistantContext = {
+    ...context,
+    facts: [
+      ...context.facts,
+      `User: ${userName || userEmail || "Unknown"}`,
+      `User email: ${userEmail}`,
+      `Resolved role: ${role}`,
+      `Current Tone: ${resolvedTone}`,
+      "Responses must be grounded in the workspace snapshot attached in system instructions.",
+    ],
+  };
+  const mergedContext = { ...enrichedContext, summary: context.summary + "\n\n" + toneInstructions };
+
+  if (attachments.length > 0) {
+    const lastUserIndex = [...messages]
+      .map((message, index) => ({ message, index }))
+      .reverse()
+      .find((entry) => entry.message.role === "user")?.index;
+    if (typeof lastUserIndex === "number") {
+      const attachmentNote =
+        "\n\nAttached files for this question:\n" +
+        attachments
+          .map((file, index) => `- ${index + 1}. ${file.name} (${file.mimeType})`)
+          .join("\n") +
+        "\nUse these attachments with workspace context before answering.";
+      messages[lastUserIndex] = {
+        ...messages[lastUserIndex],
+        content: `${messages[lastUserIndex].content}${attachmentNote}`,
+      };
+    }
   }
 
   try {
-    const toneInstructions = toneService.getToneInstructions(resolvedTone);
+    // Phase 1: Detect function calls
+    const functionCalls = await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role);
 
-    const enrichedContext: AssistantContext = {
-      ...context,
-      facts: [
-        ...context.facts,
-        `Resolved role: ${role}`,
-        `User Name: ${userName}`,
-        `Current Tone: ${resolvedTone}`,
-        "Responses must be grounded in the workspace snapshot attached in system instructions.",
-      ],
-    };
-    if (attachments.length > 0) {
-      const lastUserIndex = [...messages]
-        .map((message, index) => ({ message, index }))
-        .reverse()
-        .find((entry) => entry.message.role === "user")?.index;
-      if (typeof lastUserIndex === "number") {
-        const attachmentNote =
-          "\n\nAttached files for this question:\n" +
-          attachments
-            .map((file, index) => `- ${index + 1}. ${file.name} (${file.mimeType})`)
-            .join("\n") +
-          "\nUse these attachments with workspace context before answering.";
-        messages[lastUserIndex] = {
-          ...messages[lastUserIndex],
-          content: `${messages[lastUserIndex].content}${attachmentNote}`,
-        };
+    if (functionCalls && functionCalls.length > 0) {
+      // Phase 2: Execute all function calls
+      const results: Array<{ name: string; response: unknown }> = [];
+      let navigateTo: string | undefined;
+
+      for (const fc of functionCalls) {
+        const result = await executeTool(fc.name, fc.args);
+        results.push({ name: fc.name, response: result });
+        if (result.navigateTo) {
+          navigateTo = result.navigateTo;
+        }
       }
-    }
 
-    const geminiStream = await createGeminiStream(
-      {
-        ...enrichedContext,
-        summary: context.summary + "\n\n" + toneInstructions,
-      },
-      messages,
-      combinedSnapshot,
-      attachments,
-    );
-    if (geminiStream) {
-      // Wrap stream with a post-log path by returning directly and logging best-effort now.
-      await logAiInteraction({
-        userId: user.id,
-        intent,
-        query: latestPrompt,
-        model: env.aiModel,
-        contextSize: combinedSnapshot.length,
-        tokenUsage: Math.ceil((latestPrompt.length + combinedSnapshot.length) / 4),
-        fallbackUsed: false,
-        latencyMs: Date.now() - startedAt,
-      });
-      return createResponseStream(geminiStream);
+      // Phase 3: Stream the final response with function results
+      const aiStream = await createAiStream(mergedContext, messages, combinedSnapshot, role, results);
+      if (aiStream) {
+        await logAiInteraction({
+          userId: user.id,
+          intent,
+          query: latestPrompt,
+          model: "multi-provider-tools",
+          contextSize: combinedSnapshot.length,
+          tokenUsage: Math.ceil((latestPrompt.length + combinedSnapshot.length) / 4),
+          fallbackUsed: false,
+          latencyMs: Date.now() - startedAt,
+        });
+        return createResponseStream(aiStream, navigateTo);
+      }
+    } else {
+      // No function calls needed, stream directly
+      const aiStream = await createAiStream(mergedContext, messages, combinedSnapshot, role);
+      if (aiStream) {
+        await logAiInteraction({
+          userId: user.id,
+          intent,
+          query: latestPrompt,
+          model: "multi-provider-stream",
+          contextSize: combinedSnapshot.length,
+          tokenUsage: Math.ceil((latestPrompt.length + combinedSnapshot.length) / 4),
+          fallbackUsed: false,
+          latencyMs: Date.now() - startedAt,
+        });
+        return createResponseStream(aiStream);
+      }
     }
   } catch {
     // Fall through to the local fallback.

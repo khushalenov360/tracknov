@@ -15,7 +15,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 // Routes that are public (login, signup, etc.)
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/_next", "/favicon.ico", "/api/auth"];
+const PUBLIC_PREFIXES = ["/login", "/forgot-password", "/reset-password", "/signup", "/auth", "/_next", "/favicon.ico", "/api/auth"];
 
 function isProtectedRoute(pathname: string): boolean {
   if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {

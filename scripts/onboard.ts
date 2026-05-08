@@ -43,9 +43,15 @@ function parseEnvFile(filePath: string) {
 
 function writeEnvFile(values: EnvMap) {
   const preferredOrder = [
-    "GEMINI_API_KEY",
     "AI_PROVIDER",
-    "AI_MODEL",
+    "DOUBLEWORD_API_KEYS",
+    "DOUBLEWORD_MODEL",
+    "GEMINI_API_KEYS",
+    "GEMINI_MODEL",
+    "GROQ_API_KEYS",
+    "GROQ_MODEL",
+    "OPENROUTER_API_KEYS",
+    "OPENROUTER_MODEL",
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
@@ -92,9 +98,31 @@ async function installDependencies() {
 async function configureEnv() {
   section("Environment");
   const envValues = parseEnvFile(envLocalPath);
-  envValues.GEMINI_API_KEY = await ask("Paste your Gemini API key", envValues.GEMINI_API_KEY ?? "", true);
-  envValues.AI_PROVIDER = "gemini";
-  envValues.AI_MODEL = envValues.AI_MODEL || "gemini-2.5-flash";
+  envValues.AI_PROVIDER = envValues.AI_PROVIDER || "auto";
+  envValues.DOUBLEWORD_API_KEYS = await ask(
+    "Paste your Doubleword API key(s), comma-separated",
+    envValues.DOUBLEWORD_API_KEYS ?? envValues.DOUBLEWORD_API_KEY ?? "",
+    true,
+  );
+  envValues.DOUBLEWORD_MODEL = envValues.DOUBLEWORD_MODEL || "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8";
+  envValues.GEMINI_API_KEYS = await ask(
+    "Paste your Gemini API key(s), comma-separated",
+    envValues.GEMINI_API_KEYS ?? envValues.GEMINI_API_KEY ?? "",
+    true,
+  );
+  envValues.GEMINI_MODEL = envValues.GEMINI_MODEL || envValues.AI_MODEL || "gemini-2.5-flash";
+  envValues.GROQ_API_KEYS = await ask(
+    "Paste your Groq API key(s), comma-separated",
+    envValues.GROQ_API_KEYS ?? envValues.GROQ_API_KEY ?? "",
+    true,
+  );
+  envValues.GROQ_MODEL = envValues.GROQ_MODEL || "llama-3.3-70b-versatile";
+  envValues.OPENROUTER_API_KEYS = await ask(
+    "Paste your OpenRouter API key(s), comma-separated",
+    envValues.OPENROUTER_API_KEYS ?? envValues.OPENROUTER_API_KEY ?? "",
+    true,
+  );
+  envValues.OPENROUTER_MODEL = envValues.OPENROUTER_MODEL || "openai/gpt-4o-mini";
   envValues.NEXT_PUBLIC_SUPABASE_URL = await ask(
     "Paste your Supabase project URL",
     envValues.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -120,7 +148,7 @@ async function configureEnv() {
 
 async function main() {
   console.log("Tracknov onboarding");
-  console.log("This flow asks for your Gemini API key and the Supabase settings needed to run the live workspace.");
+  console.log("This flow asks for AI provider keys and the Supabase settings needed to run the live workspace.");
 
   try {
     await installDependencies();

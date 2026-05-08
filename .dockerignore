@@ -1,0 +1,17 @@
+.git
+.next
+node_modules
+npm-debug.log*
+Dockerfile
+.dockerignore
+.env
+.env.local
+.env.*.local
+devserver*.log
+tracknov-start*.log
+build_output.txt
+playwright-report
+test-results
+coverage
+scratch
+.tmp-*

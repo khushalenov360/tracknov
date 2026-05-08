@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bot, ChevronLeft, ChevronRight, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +74,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
 
 export function GlobalCopilot({ enabled, role, title, description }: GlobalCopilotProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const surface = mapSurface(pathname);
   const storageKey = "tracknov-global-copilot:history";
   const collapseKey = "tracknov-global-copilot-collapsed";
@@ -335,12 +336,14 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           return copy;
         });
       });
+
       const sanitized = assistantText.replace(/\s+/g, " ").toLowerCase();
       const refusalLike =
         sanitized.includes("i can't") ||
         sanitized.includes("i cannot") ||
         sanitized.includes("i do not have the ability") ||
         sanitized.includes("as an ai assistant");
+
       if (refusalLike && attachmentFile) {
         setMessages((current) => {
           const copy = [...current];
@@ -351,6 +354,12 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           };
           return copy;
         });
+      }
+
+      const navigateTo = response.headers.get("X-Copilot-Navigate");
+      if (navigateTo) {
+        router.push(navigateTo);
+      }
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
