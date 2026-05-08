@@ -1,5 +1,15 @@
 # Tracknov Handoff
 
+## Latest execution pass (2026-04-30, Epic C1 Workflow Engine State Machine)
+
+- Completed **Epic C1 - Workflow engine state machine**:
+  - Enhanced `lib/workflow/state-machine.ts` with `getTransitionPayload` and `getTransitionSideEffects` to strictly define database updates and side effects (logs, remarks, notifications) based on state transitions.
+  - Introduced `lib/services/workflow-service.ts` to centralize document status updates and safely dispatch all side effects.
+  - Gutted the monolithic `setDocumentStatusAction` in `app/actions.ts` and replaced it with a clean pass-through invocation to the new workflow service.
+  - Verified TypeScript compilation for full type safety across transitions.
+- Updated `TODO.md`:
+  - Marked `Epic C1` as complete.
+
 ## Latest execution pass (2026-04-30, P0 UX quality gates completion)
 
 - Completed **UX0.12 UX quality/speed gates** with executable checks:

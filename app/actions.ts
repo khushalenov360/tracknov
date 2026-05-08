@@ -26,6 +26,8 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { canTransitionDocument } from "@/lib/workflow/state-machine";
+import type { RawDocumentStatus } from "@/lib/workflow/state-machine";
+import { executeDocumentTransition } from "@/lib/services/workflow-service";
 
 function pathFor(projectId: string) {
   return [`/dashboard`, `/projects/${projectId}`, `/projects/${projectId}/submission`];
@@ -510,274 +512,42 @@ export async function setDocumentStatusAction(formData: FormData) {
   const writer = env.supabaseServiceRoleKey ? createAdminClient() : client;
   const projectId = String(formData.get("project_id"));
   const documentId = String(formData.get("document_id"));
-  const status = String(formData.get("status"));
+  const status = String(formData.get("status")) as RawDocumentStatus;
   const rejectionRemark = String(formData.get("rejection_remark") ?? "").trim();
   const creditId = String(formData.get("credit_id"));
   const rejectionType = String(formData.get("rejection_type") ?? "").trim();
+  
   const user = await getCurrentUser();
+  if (!user) return;
   const actorProjectRole = projectId ? await getActorProjectRole(projectId) : user?.role ?? null;
+  const actorRole = actorProjectRole ?? user?.role ?? "consultant";
+  
   const { data: currentDocument } = await client
     .from("documents")
-    .select("id, status, project_id")
+    .select("status")
     .eq("id", documentId)
     .maybeSingle();
 
-  const currentStatus = currentDocument?.status ?? "";
-  const actorRole = actorProjectRole ?? user?.role ?? "consultant";
-  const canOwnerReview = actorRole === "owner" || actorRole === "super_user";
-  const canStatusEditAtAnyStage = canEditDocumentStatusAtAnyStage(actorRole as any);
-  const canFinalReview = canStatusEditAtAnyStage;
+  if (!currentDocument) return;
 
-  if (status === "owner_approved") {
-    const transitionAllowed = canTransitionDocument({
-      fromStatus: currentStatus,
-      toStatus: "owner_approved",
-      actorRole,
-      allowOverride: canStatusEditAtAnyStage && !canOwnerReview,
-    });
-    if (!transitionAllowed) {
-      return;
-    }
-    if ((!canOwnerReview && !canStatusEditAtAnyStage) || (!canStatusEditAtAnyStage && currentStatus !== "uploaded")) {
-      return;
-    }
-
-    const { error } = await writer
-      .from("documents")
-      .update({
-        status,
-        rejection_reason: "",
-        owner_reviewed_by: user?.id ?? null,
-        owner_reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", documentId);
-    if (error) {
-      return;
-    }
-    await logDocumentActivity(writer, {
-      documentId,
-      projectId,
-      action: "status_updated",
-      actorId: user?.id ?? null,
-      actorRole,
-      summary: `Moved document to Project Admin review.`,
-      details: { from_status: currentStatus, to_status: status },
-    });
-    await recordDocumentReviewEvent({
-      documentId,
-      projectId,
-      reviewerId: user?.id ?? null,
-      reviewerRole: actorRole,
-      action: "owner_forward",
-      statusAfter: "owner_approved",
-      remarks: null,
-    });
-    const projectAdminIds = await getProjectMembersByRoles(writer, projectId, ["project_admin", "super_admin"]);
-    await notifyUsers(writer, {
-      projectId,
-      creditId: creditId || null,
-      documentId,
-      userIds: projectAdminIds,
-      body: "A document is ready for Project Admin review.",
-    });
-
-    revalidatePath("/documents");
-    pathFor(projectId).forEach((path) => revalidatePath(path));
-    return;
-  }
-
-  if (status === "approved") {
-    const transitionAllowed = canTransitionDocument({
-      fromStatus: currentStatus,
-      toStatus: "approved",
-      actorRole,
-      allowOverride: canStatusEditAtAnyStage && !canFinalReview,
-    });
-    if (!transitionAllowed) {
-      return;
-    }
-    if (!canFinalReview || (!canStatusEditAtAnyStage && currentStatus !== "owner_approved")) {
-      return;
-    }
-
-    const { error } = await writer
-      .from("documents")
-      .update({
-        status,
-        rejection_reason: "",
-        reviewed_by: user?.id ?? null,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", documentId);
-    if (error) {
-      return;
-    }
-    await logDocumentActivity(writer, {
-      documentId,
-      projectId,
-      action: "status_updated",
-      actorId: user?.id ?? null,
-      actorRole,
-      summary: `Approved document for submission pack.`,
-      details: { from_status: currentStatus, to_status: status },
-    });
-    await recordDocumentReviewEvent({
-      documentId,
-      projectId,
-      reviewerId: user?.id ?? null,
-      reviewerRole: actorRole,
-      action: "admin_approve",
-      statusAfter: "approved",
-      remarks: null,
-    });
-    const uploaderRecord = await client
-      .from("documents")
-      .select("uploaded_by")
-      .eq("id", documentId)
-      .maybeSingle();
-    const uploaderIds = uploaderRecord.data?.uploaded_by ? [uploaderRecord.data.uploaded_by] : [];
-    await notifyUsers(writer, {
-      projectId,
-      creditId: creditId || null,
-      documentId,
-      userIds: uploaderIds,
-      body: "Your document was approved for submission pack inclusion.",
-    });
-
-    revalidatePath("/documents");
-    pathFor(projectId).forEach((path) => revalidatePath(path));
-    return;
-  }
-
-  if (status !== "rejected") {
-    const transitionAllowed = canTransitionDocument({
-      fromStatus: currentStatus,
-      toStatus: status as any,
-      actorRole,
-      allowOverride: canStatusEditAtAnyStage,
-    });
-    if (!transitionAllowed) {
-      return;
-    }
-    if (!canStatusEditAtAnyStage) {
-      return;
-    }
-
-    const { error } = await writer
-      .from("documents")
-      .update({
-        status,
-        rejection_reason: "",
-        owner_reviewed_by: status === "uploaded" ? null : undefined,
-        owner_reviewed_at: status === "uploaded" ? null : undefined,
-        reviewed_by: status === "approved" ? user?.id ?? null : status === "uploaded" || status === "owner_approved" ? null : undefined,
-        reviewed_at: status === "approved" ? new Date().toISOString() : status === "uploaded" || status === "owner_approved" ? null : undefined,
-      })
-      .eq("id", documentId);
-    if (error) {
-      return;
-    }
-    await logDocumentActivity(writer, {
-      documentId,
-      projectId,
-      action: "status_updated",
-      actorId: user?.id ?? null,
-      actorRole,
-      summary: `Updated review status.`,
-      details: { from_status: currentStatus, to_status: status },
-    });
-    await recordDocumentReviewEvent({
-      documentId,
-      projectId,
-      reviewerId: user?.id ?? null,
-      reviewerRole: actorRole,
-      action: "status_override",
-      statusAfter: status,
-      remarks: null,
-    });
-
-    revalidatePath("/documents");
-    pathFor(projectId).forEach((path) => revalidatePath(path));
-    return;
-  }
-
-  if (!rejectionRemark || (!canOwnerReview && !canFinalReview)) {
-    return;
-  }
-  if (rejectionRemark.length < 20 || !rejectionType) {
-    return;
-  }
-  const formattedRemark = rejectionType
-    ? `[${rejectionType}] ${rejectionRemark}`
-    : rejectionRemark;
-  const transitionAllowed = canTransitionDocument({
-    fromStatus: currentStatus,
-    toStatus: "rejected",
+  const result = await executeDocumentTransition({
+    writer,
+    client,
+    documentId,
+    projectId,
+    creditId,
+    currentStatus: currentDocument.status,
+    targetStatus: status,
+    actorId: user.id,
     actorRole,
-    allowOverride: canStatusEditAtAnyStage && !(canOwnerReview || canFinalReview),
-  });
-  if (!transitionAllowed) {
-    return;
-  }
-
-  const { error } = await writer
-    .from("documents")
-    .update({
-      status,
-      rejection_reason: formattedRemark,
-      owner_reviewed_by: canOwnerReview ? user?.id ?? null : null,
-      owner_reviewed_at: canOwnerReview ? new Date().toISOString() : null,
-      reviewed_by: canFinalReview ? user?.id ?? null : null,
-      reviewed_at: canFinalReview ? new Date().toISOString() : null,
-    })
-    .eq("id", documentId);
-  if (error) {
-    return;
-  }
-  await logDocumentActivity(writer, {
-    documentId,
-    projectId,
-    action: "status_updated",
-    actorId: user?.id ?? null,
-    actorRole,
-      summary: `Rejected document with review note.`,
-      details: { from_status: currentStatus, to_status: status, rejection_type: rejectionType || null, rejection_remark: formattedRemark },
-    });
-  await recordDocumentReviewEvent({
-    documentId,
-    projectId,
-    reviewerId: user?.id ?? null,
-    reviewerRole: actorRole,
-    action: canOwnerReview ? "owner_reject" : "admin_reject",
-    statusAfter: "rejected",
-    remarks: formattedRemark,
+    rejectionRemark,
+    rejectionType
   });
 
-  if (formattedRemark && user) {
-    await client.from("remarks").insert({
-      credit_id: creditId,
-      document_id: documentId,
-      author_id: user.id,
-      role: actorRole,
-      body: formattedRemark,
-    });
+  if (!result.error) {
+    revalidatePath("/documents");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
   }
-  const uploaderId = (
-    await client
-      .from("documents")
-      .select("uploaded_by")
-      .eq("id", documentId)
-      .maybeSingle()
-  ).data?.uploaded_by;
-  await notifyUsers(writer, {
-    projectId,
-    creditId: creditId || null,
-    documentId,
-    userIds: uploaderId ? [uploaderId] : [],
-    body: `Document sent back: ${formattedRemark}`,
-  });
-  revalidatePath("/documents");
-  pathFor(projectId).forEach((path) => revalidatePath(path));
 }
 
 export async function bulkReviewDocumentsAction(formData: FormData) {

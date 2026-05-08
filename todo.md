@@ -184,7 +184,7 @@ Reference: `ARCHITECTURE_GAP_ACTION_PLAN.md`
 
 ## Critical
 
-- [ ] Epic C1 - Workflow engine state machine:
+- [x] Epic C1 - Workflow engine state machine:
   replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
 - [ ] Epic C2 - Event-driven foundation:
   implement `events/event-bus.ts` with producers/consumers and retry/dead-letter behavior.
