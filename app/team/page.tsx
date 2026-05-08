@@ -30,7 +30,6 @@ export default async function TeamPage() {
   const canCreateSystemProfiles = activeRole === "super_user";
   const canCreatePlatformProfiles = activeRole === "super_admin";
   const canCreateProjectMembers = activeRole === "project_admin";
-  const canCreateClientProfiles = activeRole === "client";
   const canCreateOwnerProfiles = activeRole === "owner";
   const allowedRoles = canCreateSystemProfiles
     ? (["super_admin", "project_admin", "client", "owner", "consultant", "architect", "mep", "contractor"] as const)
@@ -38,11 +37,9 @@ export default async function TeamPage() {
       ? (["client", "owner", "consultant", "architect", "mep", "contractor"] as const)
       : canCreateProjectMembers
         ? (["client", "owner", "consultant"] as const)
-        : canCreateClientProfiles
-          ? (["owner"] as const)
-          : canCreateOwnerProfiles
-            ? (["architect", "mep", "contractor"] as const)
-        : [];
+        : canCreateOwnerProfiles
+          ? (["architect", "mep", "contractor"] as const)
+          : [];
   const teamDescription = canCreateSystemProfiles
     ? "Super User is the apex role with full control over platform, project, and client-side hierarchy."
     : canCreatePlatformProfiles

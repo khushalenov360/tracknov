@@ -101,15 +101,17 @@ async function getProjectMembers(
   const rows = memberships ?? [];
   const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
   const { data: profiles } = userIds.length
-    ? await client.from("profiles").select("user_id, email").in("user_id", userIds)
+    ? await client.from("profiles").select("user_id, email, full_name").in("user_id", userIds)
     : { data: [] };
   const emailByUserId = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile.email]));
+  const nameByUserId = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile.full_name]));
 
   return rows.map((row: any) => ({
     id: row.id,
     project_id: row.project_id,
     user_id: row.user_id,
     member_email: emailByUserId.get(row.user_id) ?? null,
+    full_name: nameByUserId.get(row.user_id) ?? null,
     role: normalizeRole(row.role),
     created_at: row.created_at,
   }));
@@ -183,6 +185,26 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     email: user.email ?? "",
     role: normalizeRole(elevatedMembership?.role ?? "consultant"),
   };
+}
+
+export async function getTasksForUser() {
+  if (!env.isConfigured) return [];
+  const client = createClient();
+  const user = await getSupabaseUser(client);
+  if (!user) return [];
+
+  const { data: tasks } = await client
+    .from("tasks")
+    .select("*, projects(name), credits(credit_name, credit_code), task_history(*)")
+    .eq("assigned_to", user.id)
+    .order("created_at", { ascending: false });
+
+  return (tasks ?? []).map((task: any) => ({
+    ...task,
+    project: Array.isArray(task.projects) ? task.projects[0] : task.projects,
+    credit: Array.isArray(task.credits) ? task.credits[0] : task.credits,
+    history: task.task_history ?? []
+  }));
 }
 
 export async function getDashboardProjects() {
@@ -378,7 +400,7 @@ export async function getProjectWorkspace(projectId: string) {
   const currentUser = await getCurrentUser();
   if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
-    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
+    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: tasks }, { data: history }, members, invites] =
       await Promise.all([
         admin.from("projects").select("*").eq("id", projectId).single(),
         admin.from("credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -399,6 +421,8 @@ export async function getProjectWorkspace(projectId: string) {
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
           .limit(25),
+        admin.from("tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
+        admin.from("task_history").select("*").order("created_at", { ascending: true }),
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
@@ -416,6 +440,10 @@ export async function getProjectWorkspace(projectId: string) {
       members,
       invites,
       notifications: notifications ?? [],
+      tasks: (tasks ?? []).map(task => ({
+        ...task,
+        history: (history ?? []).filter(h => h.task_id === task.id)
+      })),
       activityLogs: ((activityLogs ?? []) as Array<SystemActivityLog>).map((row) => ({
         ...row,
         details: row.details ?? {},
@@ -434,7 +462,7 @@ export async function getProjectWorkspace(projectId: string) {
     redirect("/dashboard");
   }
 
-  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, members, invites] =
+  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: tasks }, { data: history }, members, invites] =
     await Promise.all([
       client.from("projects").select("*").eq("id", projectId).single(),
       client.from("credits").select("*").eq("project_id", projectId).order("credit_code"),
@@ -455,6 +483,8 @@ export async function getProjectWorkspace(projectId: string) {
         .eq("project_id", projectId)
         .order("created_at", { ascending: false })
         .limit(25),
+      client.from("tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
+      client.from("task_history").select("*").order("created_at", { ascending: true }),
       getProjectMembers(client, projectId),
       getProjectInvites(client, projectId),
     ]);
@@ -472,6 +502,10 @@ export async function getProjectWorkspace(projectId: string) {
     members,
     invites,
     notifications: notifications ?? [],
+    tasks: (tasks ?? []).map(task => ({
+      ...task,
+      history: (history ?? []).filter(h => h.task_id === task.id)
+    })),
     activityLogs: ((activityLogs ?? []) as Array<SystemActivityLog>).map((row) => ({
       ...row,
       details: row.details ?? {},

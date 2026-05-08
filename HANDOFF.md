@@ -1,5 +1,23 @@
 # Tracknov Handoff
 
+## Latest execution pass (2026-05-08, Hierarchy Correction & RBAC Freeze)
+
+- Implemented **L5-L0 Authority Model** alignment per governance requirements:
+  - **L1 (Project Owner)**: Granted `canAssignTasks` authority. L1 can now coordinate contributors (L0) and manage submittal assignments directly from the project workspace and matrix dropdown.
+  - **L2 (Client)**: Enforced "Strictly Read-Only" state. 
+    - Removed upload permissions (`canUploadProjectDocuments`), edit permissions (`canEditOwnDocumentBeforeFinalApproval`), and team management permissions (`canManageTeamFromRole`).
+    - Hid the "My Active Assignments" queue and onboarding checklist interactions on the Dashboard.
+    - Restricted the ability to add remarks or mutate project/credit states in the Project Workspace.
+  - **L0 (Contributors)**: Verified scoping of workspace views and token-safe upload paths.
+- UI/UX Sanitization:
+  - Removed all residual hierarchy jargon ("L0", "L1", etc.) from the interface.
+  - Standardized role labels across `MatrixAssignmentDropdown`, `TaskDetailPanel`, and `Dashboard`.
+  - Updated `cleanRoleLabel` utility with aggressive regex to strip hierarchical strings from legacy data.
+- Data Layer Enrichment:
+  - Updated `getProjectMembers` and `ProjectMemberRecord` to fetch and display `full_name` from profiles, improving human-readability over technical IDs or emails.
+- Navigation Hardening:
+  - Role-gated the "Review Queue" in the shell navigation to hide it from L2 (Client) and L0 (Contributor) roles.
+
 ## Latest execution pass (2026-04-30, Epic C1 Workflow Engine State Machine)
 
 - Completed **Epic C1 - Workflow engine state machine**:

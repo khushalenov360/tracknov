@@ -125,7 +125,7 @@ Baseline: `tracknov-project-plan.md` (including merged updated scope overlay)
   Supabase storage object exists + matching `documents` row + signed URL opens.
 - [ ] Verify `super_user`-only project delete in live session.
 - [ ] Verify document delete visibility/permissions in live session (`super_user` and `project_admin` policy as implemented).
-- [ ] Verify role-based edit/status restrictions across:
+- [x] Verify role-based edit/status restrictions across:
   `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
 - [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
 

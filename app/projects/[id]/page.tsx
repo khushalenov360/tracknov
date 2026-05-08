@@ -6,8 +6,11 @@ import {
   setDocumentStatusAction,
   updateCreditGuidanceAction,
   updateCreditDocumentRequirementsAction,
+  createTaskAction,
 } from "@/app/actions";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
+import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
+import { MatrixAssignmentDropdown } from "@/components/project/MatrixAssignmentDropdown";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +21,13 @@ import type { AssistantContext } from "@/lib/assistant";
 import { categoryMeta, creditStatuses } from "@/lib/constants";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
-import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
-import { formatDateTimeIST, pct } from "@/lib/utils";
+import { canReviewProjectDocuments, canUploadProjectDocuments, canAssignTasks } from "@/lib/rbac";
+import {
+  formatDateIST,
+  formatDateTimeIST,
+  pct,
+  cleanRoleLabel,
+} from "@/lib/utils";
 
 type PageProps = {
   params: { id: string };
@@ -60,6 +68,7 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
+  const user = await getCurrentUser();
   const workspace = await getProjectWorkspace(params.id);
   const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
   const roleScopedCredits = isL0Contributor
@@ -357,10 +366,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     Credit name
                   </th>
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Doc types
+                    Narrative
                   </th>
-                  <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    % complete
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Tech Spec
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Cert/Decl
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    Drawing
                   </th>
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Status
@@ -413,25 +428,28 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                           {credit.credit_name}
                         </Link>
                       </td>
-                      <td className="px-3 py-2 align-middle">
-                        <div className="flex flex-wrap gap-1">
-                          {credit.documents_required.map((doc) => (
-                            <span
-                              key={doc.type}
-                              className={`inline-flex rounded-[3px] px-[5px] py-[2px] text-[9px] ${
-                                doc.required
-                                  ? "border border-[var(--color-green)] bg-[var(--color-green-light)] text-[var(--color-green)]"
-                                  : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-60"
-                              }`}
-                            >
-                              {docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="mono px-3 py-2 text-right align-middle text-[12px] text-[var(--color-text-secondary)]">
-                        {pct(credit.completion_pct)}
-                      </td>
+                      {["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing"].map((type) => {
+                        const req = credit.documents_required.find((d) => d.type === type);
+                        const task = workspace.tasks?.find(
+                          (t) => t.project_credit_id === credit.id && t.doc_type === type && t.active_flag
+                        );
+                        return (
+                          <td key={type} className="px-2 py-2 align-middle min-w-[120px]">
+                            {req?.required ? (
+                              <MatrixAssignmentDropdown
+                                projectId={params.id}
+                                creditId={credit.id}
+                                docType={type}
+                                currentAssigneeId={task?.assigned_to}
+                                members={workspace.members}
+                                isDisabled={!canAssignTasks(workspace.userRole)}
+                              />
+                            ) : (
+                              <div className="h-7 w-full bg-[var(--color-surface-2)] opacity-30 rounded-md" />
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="px-3 py-2 align-middle">
                         <Badge className={creditStatuses[credit.status]}>{credit.status.replace("_", " ")}</Badge>
                       </td>
@@ -588,6 +606,56 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               </div>
             </section>
 
+            {canAssignTasks(workspace.userRole) && (
+              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Assign Responsibility</p>
+                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                  Assign this credit to a Project Manager or Owner.
+                </p>
+                <form action={createTaskAction} className="mt-3 space-y-2">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                  <input type="hidden" name="task_type" value="credit_documentation" />
+                  
+                  <select 
+                    name="assigned_to" 
+                    required
+                    className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                  >
+                    <option value="">Select Assignee</option>
+                    {workspace.members
+                      .filter(m => ["owner", "project_admin", "client", "consultant"].includes(m.role))
+                      .map(m => (
+                        <option key={m.user_id} value={m.user_id}>
+                          {cleanRoleLabel(m.member_email)} ({cleanRoleLabel(m.role).toUpperCase()})
+                        </option>
+                      ))}
+                  </select>
+
+                  <div className="flex gap-2">
+                    <select 
+                      name="priority" 
+                      className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                    >
+                      <option value="LOW">Low Priority</option>
+                      <option value="MEDIUM" selected>Medium Priority</option>
+                      <option value="HIGH">High Priority</option>
+                      <option value="CRITICAL">Critical</option>
+                    </select>
+                    <input 
+                      type="date" 
+                      name="due_date"
+                      className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                    />
+                  </div>
+
+                  <Button type="submit" className="h-7 w-full rounded-md text-[11px]">
+                    Create Assignment
+                  </Button>
+                </form>
+              </section>
+            )}
+
             {canConfigureDocRequirements ? (
               <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                 <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Document Type Requirements</p>
@@ -635,6 +703,30 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 )}
               </div>
             </section>
+
+            {workspace.tasks && workspace.tasks.length > 0 && (
+              <section className="space-y-3">
+                <p className="dense-label">Active Assignments</p>
+                {workspace.tasks.map(task => (
+                  <TaskDetailPanel 
+                    key={task.id}
+                    task={{
+                      ...task,
+                      project: { name: workspace.project.name },
+                      credit: workspace.credits.find(c => c.id === task.credit_id)
+                    }}
+                    currentUserId={user?.id || ""}
+                    currentUserRole={workspace.userRole}
+                    projectMembers={workspace.members.map(m => ({
+                      user_id: m.user_id,
+                      full_name: m.member_email || "User",
+                      role: m.role,
+                      email: m.member_email || ""
+                    }))}
+                  />
+                ))}
+              </section>
+            )}
 
             {canConfigureDocRequirements ? (
               <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
@@ -828,15 +920,17 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   ))
                 )}
               </div>
-              <form action={addRemarkAction} className="mt-2 space-y-2">
-                <input type="hidden" name="project_id" value={params.id} />
-                <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                <input type="hidden" name="role" value={workspace.userRole} />
-                <Textarea name="body" placeholder="Add a validation note or follow-up" />
-                <Button type="submit" className="h-8 w-full rounded-md">
-                  Add remark
-                </Button>
-              </form>
+              {canReview && (
+                <form action={addRemarkAction} className="mt-2 space-y-2">
+                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                  <input type="hidden" name="role" value={workspace.userRole} />
+                  <Textarea name="body" placeholder="Add a validation note or follow-up" />
+                  <Button type="submit" className="h-8 w-full rounded-md">
+                    Add remark
+                  </Button>
+                </form>
+              )}
             </section>
 
             {canReview ? (

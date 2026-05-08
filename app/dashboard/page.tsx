@@ -5,20 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
+import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  const [user, projects, ownerQueue, insights] = await Promise.all([
+  const [user, projects, ownerQueue, insights, myTasks] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
     getExecutiveInsights(),
+    getTasksForUser(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
@@ -137,7 +139,7 @@ export default async function DashboardPage({
         stuckTop
           ? `Escalate ${stuckTop.projectName} / ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
           : "No major blocker detected. Continue daily owner-review sweeps.",
-        "Use precise send-back remarks so L0 users can resubmit without calls.",
+        "Use precise send-back remarks so contributors can resubmit without calls.",
       ];
     }
     if (activeRole === "project_admin" || activeRole === "super_admin") {
@@ -202,6 +204,19 @@ export default async function DashboardPage({
               ["first_review_completed", "Complete first review handoff"],
             ].map(([key, label]) => {
               const checked = Boolean((checklist as any)[key]);
+              if (clientMode) {
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 opacity-80"
+                  >
+                    <span className="text-[12px] text-[var(--color-text-secondary)]">{label}</span>
+                    <Badge className={checked ? "bg-[var(--color-green-light)] text-[var(--color-green)]" : "bg-[var(--color-surface-2)] text-[var(--color-text-tertiary)]"}>
+                      {checked ? "Done" : "Pending"}
+                    </Badge>
+                  </div>
+                );
+              }
               return (
                 <form
                   key={key}
@@ -298,6 +313,27 @@ export default async function DashboardPage({
           </div>
         </section>
       ) : null}
+
+      {myTasks.length > 0 && (
+        <section className="surface-card mb-4 p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My active assignments</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Tasks assigned or delegated to you across all projects.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {myTasks.map(task => (
+              <TaskDetailPanel 
+                key={task.id}
+                task={task}
+                currentUserId={user?.id || ""}
+                currentUserRole={activeRole}
+                projectMembers={[]} // In dashboard, we don't have project-specific member lists easily available for all tasks yet.
+                // However, TaskDetailPanel can handle it gracefully.
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="surface-card mb-4 p-4">
         <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Next best actions</h2>
@@ -647,6 +683,63 @@ export default async function DashboardPage({
           </table>
         </div>
       </section>
+      
+      {!clientMode && (
+        <section className="mt-4 surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My Active Assignments</h2>
+          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            Queue of document preparation tasks assigned to you.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border-collapse text-[12px]">
+              <thead className="bg-[var(--color-surface-2)]">
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Project</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Credit</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Doc Type</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Status</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Priority</th>
+                  <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myTasks.length > 0 ? (
+                  myTasks.map((task) => (
+                    <tr key={task.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)] transition-colors">
+                      <td className="px-3 py-2 font-medium text-[var(--color-text-primary)]">{task.project?.name || "Unknown Project"}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-secondary)]">{task.credit?.credit_name || "Unknown Credit"}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-secondary)]">{task.doc_type || task.task_type}</td>
+                      <td className="px-3 py-2">
+                        <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+                          {task.workflow_state}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge className={task.priority === "CRITICAL" || task.priority === "HIGH" ? "bg-[var(--color-red-light)] text-[var(--color-red)]" : "bg-[var(--color-surface-2)]"}>
+                          {task.priority}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button asChild variant="secondary" className="h-7 rounded-md px-2 text-[10px]">
+                          <Link href={`/projects/${task.project_id}?credit=${task.project_credit_id}`}>
+                            Go to task
+                          </Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center text-[11px] text-[var(--color-text-tertiary)] italic">
+                      No active assignments found. Good job!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="mt-4 surface-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

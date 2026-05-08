@@ -28,6 +28,8 @@ import { createClient } from "@/lib/supabase/server";
 import { canTransitionDocument } from "@/lib/workflow/state-machine";
 import type { RawDocumentStatus } from "@/lib/workflow/state-machine";
 import { executeDocumentTransition } from "@/lib/services/workflow-service";
+import { createTask, delegateTask, updateTaskState } from "@/lib/services/task-service";
+import { TaskPriority, TaskState } from "@/lib/types";
 
 function pathFor(projectId: string) {
   return [`/dashboard`, `/projects/${projectId}`, `/projects/${projectId}/submission`];
@@ -1705,4 +1707,146 @@ export async function acceptProjectInviteAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath(`/projects/${invite.project_id}`);
   redirect(`/projects/${invite.project_id}`);
+}
+
+export async function createTaskAction(formData: FormData) {
+  const projectId = String(formData.get("project_id"));
+  const creditId = formData.get("credit_id") ? String(formData.get("credit_id")) : null;
+  const taskType = String(formData.get("task_type") ?? "credit_documentation");
+  const assignedTo = String(formData.get("assigned_to"));
+  const priority = (formData.get("priority") as TaskPriority) || "MEDIUM";
+  const dueDate = formData.get("due_date") ? String(formData.get("due_date")) : null;
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  
+  try {
+    await createTask(writer, {
+      projectId,
+      creditId,
+      taskType,
+      assignedBy: user.id,
+      assignedTo,
+      priority,
+      dueDate,
+    });
+
+    revalidatePath("/dashboard");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function delegateTaskAction(formData: FormData) {
+  const taskId = String(formData.get("task_id"));
+  const delegatedTo = String(formData.get("delegated_to"));
+  const notes = formData.get("notes") ? String(formData.get("notes")) : null;
+  const projectId = String(formData.get("project_id"));
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+
+  try {
+    await delegateTask(writer, {
+      taskId,
+      delegatedBy: user.id,
+      delegatedTo,
+      notes,
+    });
+
+    revalidatePath("/dashboard");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function updateTaskStateAction(formData: FormData) {
+  const taskId = String(formData.get("task_id"));
+  const newState = String(formData.get("state")) as TaskState;
+  const notes = formData.get("notes") ? String(formData.get("notes")) : null;
+  const projectId = String(formData.get("project_id"));
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+
+  try {
+    await updateTaskState(writer, {
+      taskId,
+      newState,
+      actorId: user.id,
+      notes,
+    });
+
+    revalidatePath("/dashboard");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function assignTaskAction(formData: FormData) {
+  const projectId = String(formData.get("project_id"));
+  const creditId = String(formData.get("credit_id"));
+  const assignedTo = String(formData.get("assigned_to"));
+  const docType = String(formData.get("doc_type"));
+  const taskType = "DOC_PREPARATION";
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+
+  try {
+    const { data: existingTask } = await writer
+      .from("tasks")
+      .select("id")
+      .eq("project_credit_id", creditId)
+      .eq("doc_type", docType)
+      .eq("active_flag", true)
+      .maybeSingle();
+
+    if (existingTask) {
+      await writer
+        .from("tasks")
+        .update({
+          assigned_to: assignedTo,
+          accountable_user_id: assignedTo,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingTask.id);
+        
+      await logTaskHistory(writer, {
+        taskId: existingTask.id,
+        actionType: "reassigned",
+        performedBy: user.id,
+        newAssignee: assignedTo,
+      });
+    } else {
+      await createTask(writer, {
+        projectId,
+        creditId,
+        taskType,
+        assignedBy: user.id,
+        assignedTo,
+        docType,
+      });
+    }
+
+    revalidatePath("/dashboard");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
 }

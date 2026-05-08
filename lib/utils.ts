@@ -44,3 +44,12 @@ export function formatDateTimeIST(value?: string | null) {
   }
   return `${istDateTimeFormatter.format(new Date(value))} IST`;
 }
+export function cleanRoleLabel(label: string) {
+  if (!label) return "";
+  // Removes strings like "(L0)", "(L1)", " (L2)" etc., even if nested or spaced weirdly
+  return label
+    .replace(/\s*\(L\d\)/gi, "")
+    .replace(/\s*\(\s*L\d\s*\)/gi, "")
+    .replace(/\s*\(\s*\)/g, "")
+    .trim();
+}

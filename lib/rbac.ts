@@ -23,7 +23,6 @@ export function canEditDocumentStatusAtAnyStage(role?: MemberRole | null) {
 export function canEditOwnDocumentBeforeFinalApproval(role?: MemberRole | null) {
   return (
     role === "owner" ||
-    role === "client" ||
     role === "consultant" ||
     role === "architect" ||
     role === "mep" ||
@@ -37,7 +36,6 @@ export function canUploadProjectDocuments(role?: MemberRole | null) {
     role === "super_admin" ||
     role === "project_admin" ||
     role === "owner" ||
-    role === "client" ||
     role === "consultant" ||
     role === "architect" ||
     role === "mep" ||
@@ -50,7 +48,9 @@ export function canManageTeamFromRole(role?: MemberRole | null) {
     role === "super_user" ||
     role === "super_admin" ||
     role === "project_admin" ||
-    role === "client" ||
     role === "owner"
   );
+}
+export function canAssignTasks(role?: MemberRole | null) {
+  return role === "super_user" || role === "super_admin" || role === "project_admin" || role === "owner";
 }
