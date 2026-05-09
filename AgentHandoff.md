@@ -1,4 +1,31 @@
-## Latest execution pass (2026-05-08 IST, Copilot Analysis Flow Fix)
+## Latest execution pass (2026-05-09 IST, V1 Frozen Governance & RLS Hardening)
+
+### Objective
+Enforce the V1 Frozen Governance Baseline by finalized RLS-based security policies for 31 exposed tables and hardening the platform's execution integrity.
+
+### Delivered in this pass
+
+#### MODIFIED FILES
+- `supabase/migrations/0064_rls_governance_enforcement.sql`
+  - **Zero-Exposure Policy**: Enabled RLS on 31 previously exposed tables.
+  - **L0 Isolation**: Implemented isolation in `project_document` ensuring L0 users see only assigned or self-uploaded documents.
+  - **Indirect Lookups**: Resolved visibility for tables missing `project_id` via linked entities.
+- `supabase/migrations/0065_enforce_review_snapshot_law.sql`
+  - **Review Snapshot Law**: Added mandatory `version_number` to `document_reviews`.
+  - **Audit Stamping**: Implemented `tr_stamp_audit_role` to automatically capture actor roles in audit logs.
+- `lib/services/workflow-orchestrator-service.ts`
+  - **Authority Hierarchy**: Hard-coded L0/L1/L3 restrictions for workflow transitions.
+  - **Commentary Law**: Enforced mandatory comments for all validation actions.
+- `lib/services/document-state-service.ts`
+  - **Snapshot Binding**: Updated transition logic to pin reviews to the current document version.
+
+### Verification
+- **Database Integrity**: Verified with SQL query (0 reviews without version pin).
+- **RLS Enforcement**: Confirmed RLS is active on all 31 targeted tables.
+- **Workflow Simulation**: Confirmed authorized transitions and blocked unauthorized ones.
+
+---
+
 
 ### Objective
 Eliminate false-positive workflow execution triggers during document analysis.
