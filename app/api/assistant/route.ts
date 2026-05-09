@@ -30,8 +30,6 @@ import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistan
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
 import { orchestrateCopilotResponse } from "@/lib/copilot/orchestrator";
 import { resolveCopilotMode } from "@/lib/copilot/router/resolveCopilotMode";
-import { WorkflowState } from "@/lib/services/document-state-service";
-
 export const dynamic = "force-dynamic";
 
 type AssistantRequest = {
@@ -45,6 +43,7 @@ type AssistantRequest = {
     size: number;
     base64: string;
   }>;
+  idempotencyKey?: string | null;
 };
 
 type AiProvider = "doubleword" | "gemini" | "groq" | "openrouter";
@@ -1034,6 +1033,7 @@ export async function POST(request: Request) {
   const context = body.context;
   const messages = body.messages ?? [];
   const attachments = (body.attachments ?? []).slice(0, 3);
+  const idempotencyKey = body.idempotencyKey ?? null;
 
   if (!context || !context.title || !context.summary) {
     return new Response("Missing assistant context.", { status: 400 });
@@ -1272,6 +1272,10 @@ export async function POST(request: Request) {
       let navigateTo: string | undefined;
 
       for (const fc of functionCalls) {
+        // SECTION 3: Inject idempotency key for workflow mutations
+        if (idempotencyKey && (fc.name === "reviewDocument" || fc.name.includes("Transition"))) {
+           fc.args.idempotencyKey = fc.args.idempotencyKey || idempotencyKey;
+        }
         const result = await executeTool(fc.name, fc.args);
         results.push({ name: fc.name, response: result });
         if (result.navigateTo) {

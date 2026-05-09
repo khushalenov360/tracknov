@@ -30,28 +30,19 @@ export class CreditService {
       }
     }
 
-    // Update project_credits (the critical layer)
-
-    const { error: pcError } = await this.admin
-      .from("project_credits")
-      .update({ 
-        state: params.state,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", params.creditId);
-
-    if (pcError) throw pcError;
-
-    await logSystemActivity(this.admin, {
-      projectId: params.projectId,
-      entityType: "credit",
-      entityId: params.creditId,
-      action: `state_${params.state.toLowerCase()}`,
-      actorId: user.id,
-      actorRole: user.role,
-      summary: `Transitioned credit to ${params.state}.`,
-      details: params.remarks ? { remarks: params.remarks } : {},
+    // Update project_credits via Atomic Governance RPC
+    const { data: rpcData, error: rpcError } = await this.admin.rpc("execute_governed_transition", {
+      p_entity_type: "credit",
+      p_entity_id: params.creditId,
+      p_target_state: params.state,
+      p_actor_id: user.id,
+      p_actor_role: user.role,
+      p_reason: params.remarks || "State transition",
+      p_idempotency_key: `credit-${params.creditId}-${Date.now()}`, // Or pass from caller
+      p_metadata: { remarks: params.remarks || null }
     });
+
+    if (rpcError) throw rpcError;
   }
 
   async updateRequirements(user: CurrentUser, params: {

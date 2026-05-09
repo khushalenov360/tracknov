@@ -332,6 +332,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
           messages: requestMessages,
           tone: selectedTone !== "Auto" ? selectedTone : undefined,
           attachments: attachment ? [attachment] : [],
+          idempotencyKey: crypto.randomUUID(),
         }),
       });
 

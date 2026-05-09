@@ -17,6 +17,7 @@ export type WorkflowTransitionRequest = {
   action?: string | null;
   reason?: string | null;
   metadata?: Record<string, unknown>;
+  idempotencyKey?: string | null;
   override?: boolean;
   overrideReason?: string | null;
 };
@@ -286,6 +287,7 @@ export class WorkflowOrchestratorService {
       manualSubmit: Boolean(request.metadata?.manualSubmit ?? request.action === "submit"),
       updatedEvidence: Boolean(request.metadata?.updatedEvidence),
       remarks: request.reason ?? null,
+      idempotencyKey: request.idempotencyKey ?? null,
       override,
       overrideReason: request.overrideReason ?? null,
     });

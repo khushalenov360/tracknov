@@ -223,6 +223,7 @@ export async function transitionDocumentState(
     manualSubmit?: boolean;
     updatedEvidence?: boolean;
     remarks?: string | null;
+    idempotencyKey?: string | null;
     override?: boolean;
     overrideReason?: string | null;
   },
@@ -369,112 +370,42 @@ export async function transitionDocumentState(
     return { ok: false as const, error: "Cannot resubmit without updated evidence." };
   }
 
-  // 2. Perform Update
-  const payload: any = { state: newState };
-  let resolvedTargetState: WorkflowState = newState;
-
-  if (remarks) {
-    payload.rejection_reason = remarks;
-  } else if (newState === "RESUBMITTED" || newState === "READY" || newState === "DRAFT") {
-    payload.rejection_reason = "";
-  }
-
-  if (newState === "RESUBMITTED" || newState === "READY" || newState === "DRAFT" || newState === "SUBMITTED") {
-    // Reset review metadata for new cycles
-    payload.owner_reviewed_by = null;
-    payload.owner_reviewed_at = null;
-    payload.reviewed_by = null;
-    payload.reviewed_at = null;
-  }
-
-  // Auditor rule: second rejection/clarification eliminates this evidence node from active workflow.
-  if (newState === "REJECTED" || newState === "CLARIFICATION") {
-    const priorRejections = Number((document as any).rejection_count ?? 0);
-    const nextRejections = priorRejections + 1;
-    payload.rejection_count = nextRejections;
-    if (nextRejections >= 2) {
-      resolvedTargetState = "ELIMINATED";
-      payload.state = "ELIMINATED";
-      payload.is_latest = false;
-      payload.rejection_reason = remarks ?? "Automatically eliminated after second rejection.";
+  // 2. Execute Atomic Transaction via RPC (Section 4: Atomic Governance Transactions)
+  const { data: rpcData, error: rpcError } = await writer.rpc("execute_governed_transition", {
+    p_entity_type: "document",
+    p_entity_id: documentId,
+    p_target_state: newState,
+    p_actor_id: userId ?? null,
+    p_actor_role: actorRole,
+    p_reason: remarks || overrideReason || "Status update",
+    p_idempotency_key: idempotencyKey || `doc-${documentId}-${Date.now()}`,
+    p_metadata: {
+      is_override: isOverride,
+      override_reason: normalizedOverrideReason,
+      manual_submit: manualSubmit,
+      updated_evidence: updatedEvidence
     }
+  });
+
+  if (rpcError) {
+    return { ok: false as const, error: rpcError.message };
   }
 
-  const { error: updateError, data: updatedRows } = await writer
-    .from("project_document")
-    .update(payload)
-    .eq("id", documentId)
-    .eq("state", currentState)
-    .select("id");
-
-  if (updateError) {
-    return { ok: false as const, error: updateError.message };
-  }
-  if (!updatedRows || updatedRows.length === 0) {
-    return { ok: false as const, error: "Concurrent update detected. Reload and retry." };
-  }
-
-  // 3. Side Effects (Logging, Review Recording, Notifications)
+  const result = rpcData as { success: boolean; from: WorkflowState; to: WorkflowState; idempotent?: boolean };
   
-  // State history
-  await writer.from("workflow_logs").insert({
-    project_id: document.project_id,
-    entity_type: "document",
-    entity_id: documentId,
-    state: resolvedTargetState,
-    previous_state: currentState,
-    actor_id: userId ?? null,
-    is_override: isOverride,
-    override_reason: normalizedOverrideReason,
-  });
-
-  // Determine Review Action
-  let reviewAction: "owner_forward" | "admin_approve" | "owner_reject" | "admin_reject" | "resubmit" | "status_override" = "status_override";
-  if (!canStatusEditAtAnyStage || nextAllowed.includes(resolvedTargetState)) {
-    if (currentState === "MAPPED" && resolvedTargetState === "L1_REVIEW") reviewAction = "owner_forward";
-    else if (currentState === "UNDER_L3_REVIEW" && resolvedTargetState === "APPROVED") reviewAction = "admin_approve";
-    else if (currentState === "MAPPED" && (resolvedTargetState === "L1_REJECTED" || resolvedTargetState === "REJECTED")) reviewAction = "owner_reject";
-    else if (currentState === "UNDER_L3_REVIEW" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED")) reviewAction = "admin_reject";
-    else if (currentState === "CLARIFICATION" && resolvedTargetState === "IN_PROGRESS") reviewAction = "resubmit";
+  if (!result.success) {
+    return { ok: false as const, error: "Atomic transition failed." };
   }
 
-  // Record Review Event
-  if (["owner_forward", "admin_approve", "owner_reject", "admin_reject", "resubmit"].includes(reviewAction) || canStatusEditAtAnyStage) {
-    const mappedLegacyStatus = toCanonicalReviewState(resolvedTargetState);
-    await recordDocumentReviewEventDirect(writer, {
-        documentId,
-        projectId: document.project_id,
-        reviewerId: userId,
-        reviewerRole: actorRole,
-        action: reviewAction,
-        statusAfter: mappedLegacyStatus,
-        remarks: remarks,
-        versionNumber: document.version, // SECTION 6: Snapshot Bound Review
-    });
-  }
+  const resolvedTargetState = result.to;
+  const fromState = result.from;
 
-  // Log Activity
-  const summary = `Document workflow state moved from ${currentState} to ${resolvedTargetState}.`;
-  await logDocumentActivity(writer, {
-    documentId,
-    projectId: document.project_id,
-    action: "status_updated",
-    actorId: userId,
-    actorRole,
-    summary,
-      details: {
-        from_state: currentState,
-        to_state: resolvedTargetState,
-        remarks: remarks || null,
-        is_override: isOverride,
-        override_reason: normalizedOverrideReason,
-      },
-  });
-
-  // Notifications
-  if (resolvedTargetState === "UNDER_REVIEW") {
+  // 3. Side Effects (Notifications, Scoring, Metrics) - Non-Atomic but Eventual
+  
+  // Notifications (Async/Background)
+  if (resolvedTargetState === "UNDER_L3_REVIEW") {
     const admins = await getProjectMembersByRoles(writer, document.project_id, ["project_admin", "super_admin", "super_user"]);
-    await notifyUsers(writer, {
+    void notifyUsers(writer, {
       projectId: document.project_id,
       creditId: document.credit_id,
       documentId,
@@ -482,9 +413,9 @@ export async function transitionDocumentState(
       body: `A document (${document.file_name}) is ready for Project Admin review.`,
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
-  } else if (resolvedTargetState === "SUBMITTED") {
+  } else if (resolvedTargetState === "L1_REVIEW") {
     const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
-    await notifyUsers(writer, {
+    void notifyUsers(writer, {
       projectId: document.project_id,
       creditId: document.credit_id,
       documentId,
@@ -492,22 +423,20 @@ export async function transitionDocumentState(
       body: `A document (${document.file_name}) is awaiting Project Owner review.`,
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
-  } else if (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED") {
+  } else if (["CLARIFICATION", "REJECTED", "L1_REJECTED"].includes(resolvedTargetState)) {
     const assignedOwnerId = await getAssignedOwnerForCredit(writer, document.project_credit_id);
     const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     const targetUserId = assignedOwnerId || docData?.uploaded_by || null;
     if (targetUserId) {
-        await notifyUsers(writer, {
+        void notifyUsers(writer, {
             projectId: document.project_id,
             creditId: document.credit_id,
             documentId,
             userIds: [targetUserId],
-            body: resolvedTargetState === "ELIMINATED"
-              ? `Document (${document.file_name}) was eliminated after second rejection.`
-              : `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
+            body: `Document (${document.file_name}) was sent back for clarification: ${remarks || "No reason provided."}`,
             actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });
-        await taskService.upsertClarificationTask({
+        void taskService.upsertClarificationTask({
           projectId: document.project_id,
           documentId,
           assignedUserId: targetUserId,
@@ -516,20 +445,10 @@ export async function transitionDocumentState(
           description: remarks || "Document needs clarification before approval.",
         });
     }
-    // Insert into remarks table for UI display
-    if (remarks && document.credit_id) {
-        await writer.from("remarks").insert({
-            credit_id: document.credit_id,
-            document_id: documentId,
-            author_id: userId,
-            role: actorRole,
-            body: remarks,
-        });
-    }
   } else if (resolvedTargetState === "APPROVED") {
     const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
     if (docData?.uploaded_by) {
-        await notifyUsers(writer, {
+        void notifyUsers(writer, {
             projectId: document.project_id,
             creditId: document.credit_id,
             documentId,
@@ -538,22 +457,11 @@ export async function transitionDocumentState(
             actionUrl: `/documents?project=${document.project_id}&document=${documentId}`,
         });
     }
-  } else if (resolvedTargetState === "RESUBMITTED") {
-    const { data: docData } = await writer.from("project_document").select("uploaded_by").eq("id", documentId).maybeSingle();
-    await taskService.closeClarificationTasks({
-      projectId: document.project_id,
-      documentId,
-      assignedUserId: docData?.uploaded_by ?? null,
-    });
-    const owners = await getProjectMembersByRoles(writer, document.project_id, ["owner"]);
-    await notifyUsers(writer, {
-      projectId: document.project_id,
-      creditId: document.credit_id,
-      documentId,
-      userIds: owners,
-      body: `A corrected document (${document.file_name}) was resubmitted and needs owner review.`,
-      actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
-    });
+  }
+
+  // Scoring update (Async)
+  if (document.project_id) {
+    void writer.rpc("recompute_credit_scores", { p_project_id: document.project_id }).catch(console.error);
   }
 
   eventBus.emit({
@@ -566,49 +474,18 @@ export async function transitionDocumentState(
     },
   });
 
-  // Keep DB-native scoring synced with workflow progression.
-  if (document.project_id) {
-    try {
-      await writer.rpc("recompute_credit_scores", { p_project_id: document.project_id });
-      await runtimeGovernanceService.clearStateDesync(document.project_id, "project", document.project_id);
-    } catch (error: any) {
-      // Keep transition non-blocking but open deterministic repair workflow.
-      await runtimeGovernanceService.markStateDesync({
-        projectId: document.project_id,
-        entityType: "project",
-        entityId: document.project_id,
-        reason: "recompute_credit_scores_failed_after_transition",
-        payload: {
-          documentId,
-          fromState: currentState,
-          toState: resolvedTargetState,
-          error: error?.message ?? "unknown",
-        },
-      });
-    }
-  }
-
   const transitionLatency = Date.now() - transitionStarted;
-  await runtimeGovernanceService.recordMetric({
+  void runtimeGovernanceService.recordMetric({
     projectId: document.project_id ?? null,
     metricName: "transition_latency_ms",
     metricValue: transitionLatency,
     ok: true,
-    details: { documentId, fromState: currentState, toState: resolvedTargetState },
+    details: { documentId, fromState, toState: resolvedTargetState, idempotent: result.idempotent },
   });
-  if (transitionLatency > 1000) {
-    await runtimeGovernanceService.raiseAlert({
-      projectId: document.project_id ?? null,
-      alertType: "transition_latency_slo_breach",
-      severity: "warning",
-      message: "Transition latency exceeded 1 second target.",
-      context: { documentId, latencyMs: transitionLatency },
-    });
-  }
 
   return {
     ok: true as const,
-    fromState: currentState,
+    fromState,
     toState: resolvedTargetState,
     projectId: document.project_id,
     creditId: document.credit_id,

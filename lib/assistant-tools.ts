@@ -197,6 +197,7 @@ export const TOOLS: ToolDefinition[] = [
         projectId: { name: "projectId", type: "string", description: "The project UUID" },
         action: { name: "action", type: "string", description: "Review action", enum: ["approve", "reject", "clarification"] },
         remarks: { name: "remarks", type: "string", description: "Review remarks or rejection reason" },
+        idempotencyKey: { name: "idempotencyKey", type: "string", description: "Optional unique key to prevent duplicate execution" },
       },
       required: ["documentId", "projectId", "action"],
     },
@@ -501,6 +502,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
           newState,
           manualSubmit: true,
           remarks: remarks || null,
+          idempotencyKey: String(args.idempotencyKey ?? ""),
         });
         return { ok: true, data: `Document ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "sent back for clarification"} successfully.` };
       } catch (error: any) {

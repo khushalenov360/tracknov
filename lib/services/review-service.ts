@@ -107,6 +107,7 @@ export class ReviewService {
     manualSubmit?: boolean;
     updatedEvidence?: boolean;
     remarks?: string | null;
+    idempotencyKey?: string | null;
     override?: boolean;
     overrideReason?: string | null;
   }) {
@@ -130,6 +131,7 @@ export class ReviewService {
         manualSubmit: Boolean(params.manualSubmit),
         updatedEvidence: Boolean(params.updatedEvidence),
       },
+      idempotencyKey: params.idempotencyKey ?? null,
       override: Boolean(params.override),
       overrideReason: params.overrideReason ?? null,
     });
