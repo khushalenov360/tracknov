@@ -18,6 +18,7 @@ import { memberService } from "@/lib/services/member-service";
 import { documentService } from "@/lib/services/document-service";
 import { creditService } from "@/lib/services/credit-service";
 import { reviewService } from "@/lib/services/review-service";
+import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
 import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
 import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -31,8 +32,6 @@ import {
   canDeleteProjects,
   canManageProject,
 } from "@/lib/rbac";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { canTransitionDocument } from "@/lib/workflow/state-machine";
 import type { RawDocumentStatus } from "@/lib/workflow/state-machine";
 import { executeDocumentTransition } from "@/lib/services/workflow-service";
@@ -1121,58 +1120,70 @@ export async function updateTaskStateAction(formData: FormData) {
   }
 }
 
-export async function assignTaskAction(formData: FormData) {
-  const projectId = String(formData.get("project_id"));
-  const creditId = String(formData.get("credit_id"));
-  const assignedTo = String(formData.get("assigned_to"));
-  const docType = String(formData.get("doc_type"));
-  const taskType = "DOC_PREPARATION";
-
+export async function assignCreditContributorAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) return { error: "Not authenticated" };
 
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const projectId = String(formData.get("project_id"));
+  const projectCreditId = String(formData.get("project_credit_id") || formData.get("credit_id"));
+  const assignedUserId = String(formData.get("assigned_user_id") || formData.get("assigned_to")) || null;
+  const documentType = String(formData.get("document_type") || formData.get("doc_type")) || null;
+  const reason = String(formData.get("reason")) || null;
 
   try {
-    const { data: existingTask } = await writer
-      .from("tasks")
-      .select("id")
-      .eq("project_credit_id", creditId)
-      .eq("doc_type", docType)
-      .eq("active_flag", true)
-      .maybeSingle();
+    const result = await workflowOrchestratorService.assignContributor(user, {
+      projectId,
+      projectCreditId,
+      assignedUserId,
+      documentType,
+      reason,
+    });
 
-    if (existingTask) {
-      await writer
-        .from("tasks")
-        .update({
-          assigned_to: assignedTo,
-          accountable_user_id: assignedTo,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingTask.id);
-
-      await logTaskHistory(writer, {
-        taskId: existingTask.id,
-        actionType: "reassigned",
-        performedBy: user.id,
-        newAssignee: assignedTo,
-      });
-    } else {
-      await createTask(writer, {
-        projectId,
-        creditId,
-        taskType,
-        assignedBy: user.id,
-        assignedTo,
-        docType,
-      });
+    if (!result.ok) {
+      return { error: result.message || "Assignment failed" };
     }
 
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
     return { success: true };
   } catch (error: any) {
+    console.error("[assignCreditContributorAction] Error:", error);
+    return { error: error.message };
+  }
+}
+
+export async function assignTaskAction(formData: FormData) {
+  return assignCreditContributorAction(formData);
+}
+
+export async function transitionSubmittalAction(
+  projectId: string,
+  submittalId: string,
+  targetState: WorkflowState,
+  reason?: string | null,
+  override?: boolean,
+) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  try {
+    const result = await workflowOrchestratorService.transitionSubmittal(user, {
+      projectId,
+      submittalId,
+      targetState,
+      reason,
+      override,
+    });
+
+    if (!result.ok) {
+      return { error: result.message || "Transition failed" };
+    }
+
+    revalidatePath("/dashboard");
+    pathFor(projectId).forEach((path) => revalidatePath(path));
+    return { success: true };
+  } catch (error: any) {
+    console.error("[transitionSubmittalAction] Error:", error);
     return { error: error.message };
   }
 }

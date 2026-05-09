@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { assignTaskAction } from "@/app/actions";
+import { assignCreditContributorAction } from "@/app/actions";
 import { cleanRoleLabel } from "@/lib/utils";
 import { ProjectMemberRecord } from "@/lib/types";
 import { roleLabels } from "@/lib/constants";
@@ -36,7 +36,7 @@ export const MatrixAssignmentDropdown: React.FC<MatrixAssignmentDropdownProps> =
     formData.append("doc_type", docType);
 
     try {
-      await assignTaskAction(formData);
+      await assignCreditContributorAction(formData);
     } catch (error) {
       console.error("Assignment failed:", error);
     } finally {

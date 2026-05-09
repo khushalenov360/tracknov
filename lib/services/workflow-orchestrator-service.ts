@@ -21,6 +21,23 @@ export type WorkflowTransitionRequest = {
   overrideReason?: string | null;
 };
 
+export type SubmittalTransitionRequest = {
+  projectId: string;
+  submittalId: string;
+  targetState: WorkflowState;
+  reason?: string | null;
+  override?: boolean;
+};
+
+export type AssignmentRequest = {
+  projectId: string;
+  projectCreditId: string;
+  assignedUserId: string | null;
+  documentType: string | null;
+  reason?: string | null;
+  override?: boolean;
+};
+
 export type WorkflowTransitionSuccess = {
   ok: true;
   workflow_state: WorkflowState;
@@ -56,6 +73,12 @@ export type WorkflowTransitionFailure = {
     locked: boolean;
     reason: string | null;
   };
+};
+
+export type AssignmentResult = {
+  ok: boolean;
+  message?: string;
+  status?: "unauthorized" | "validation_failed" | "error";
 };
 
 export type WorkflowTransitionResult = WorkflowTransitionSuccess | WorkflowTransitionFailure;
@@ -293,6 +316,139 @@ export class WorkflowOrchestratorService {
     });
 
     return response;
+  }
+
+  async assignContributor(user: CurrentUser | null, request: AssignmentRequest): Promise<AssignmentResult> {
+    const started = Date.now();
+
+    if (!user) {
+      return { ok: false, status: "unauthorized", message: "Authentication required." };
+    }
+
+    const { projectId, projectCreditId, assignedUserId, documentType, reason, override } = request;
+    const actorRole = await this.getProjectRole(projectId, user);
+
+    if (!actorRole) {
+      await this.logSecurityEvent({
+        projectId,
+        userId: user.id,
+        eventType: "assignment_membership_denied",
+        details: { projectCreditId },
+      });
+      return { ok: false, status: "unauthorized", message: "Project membership is required." };
+    }
+
+    // Role validation (L3 or Owner required for assignment)
+    const isL3 = actorRole === "project_admin" || actorRole === "super_admin" || actorRole === "super_user";
+    const isOwner = actorRole === "owner";
+
+    if (!isL3 && !isOwner && !override) {
+      return { ok: false, status: "unauthorized", message: "Only Project Admin or Owner can manage assignments." };
+    }
+
+    const lockState = await this.getProjectLockState(projectId);
+    if (lockState.locked && !override) {
+      return { ok: false, status: "validation_failed", message: lockState.reason ?? "Project is locked." };
+    }
+
+    try {
+      // Set DB context for trigger-level RBAC and audit
+      await this.setRuntimeContext(actorRole, user.id, Boolean(override));
+
+      // Import service late to avoid circular dependency
+      const { creditService } = await import("./credit-service");
+      
+      await creditService.assignContributor(user, {
+        projectId,
+        projectCreditId,
+        assignedUserId,
+        documentType,
+        reason: reason || null,
+      }, this.writer);
+
+      await runtimeGovernanceService.recordMetric({
+        projectId,
+        metricName: "assignment_latency_ms",
+        metricValue: Date.now() - started,
+        ok: true,
+        details: { projectCreditId, assignedUserId },
+      });
+
+      return { ok: true };
+    } catch (error: any) {
+      console.error("[WorkflowOrchestratorService.assignContributor] Error:", error);
+      return { ok: false, status: "error", message: error.message || "Assignment failed." };
+    }
+  }
+
+  async transitionSubmittal(user: CurrentUser | null, request: SubmittalTransitionRequest): Promise<WorkflowTransitionResult> {
+    const started = Date.now();
+
+    if (!user) {
+      return { ok: false, status: "unauthorized", message: "Authentication required." };
+    }
+
+    const { projectId, submittalId, targetState, reason, override } = request;
+    const actorRole = await this.getProjectRole(projectId, user);
+
+    if (!actorRole) {
+      return { ok: false, status: "unauthorized", message: "Project membership is required." };
+    }
+
+    // Role validation (L3 required for submittal transition to APPROVED)
+    if (targetState === "APPROVED" && actorRole !== "project_admin" && actorRole !== "super_admin" && actorRole !== "super_user" && !override) {
+      return { ok: false, status: "unauthorized", message: "Only Project Admin can approve submittals." };
+    }
+
+    try {
+      await this.setRuntimeContext(actorRole, user.id, Boolean(override));
+
+      const { submittalService } = await import("./submittal-service");
+
+      if (targetState === "APPROVED") {
+        const gate = await submittalService.validateSubmittalGate(submittalId);
+        if (!gate.ok && !override) {
+          return { ok: false, status: "validation_failed", message: gate.message };
+        }
+      }
+
+      const { data: submittal, error: submittalError } = await this.writer
+        .from("submittals")
+        .update({
+          state: targetState,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", submittalId)
+        .eq("project_id", projectId)
+        .select()
+        .single();
+
+      if (submittalError) throw submittalError;
+
+      // Recalculate parent stage
+      if (submittal?.credit_stage_id) {
+        await submittalService.recalculateStageState(submittal.credit_stage_id, this.writer);
+      }
+
+      await runtimeGovernanceService.recordMetric({
+        projectId,
+        metricName: "submittal_transition_latency_ms",
+        metricValue: Date.now() - started,
+        ok: true,
+        details: { submittalId, targetState },
+      });
+
+      return {
+        ok: true,
+        workflow_state: targetState,
+        allowed_actions: [], // TODO: calculate allowed actions
+        lock_state: { locked: false, reason: null },
+        audit_reference: submittalId
+      };
+    } catch (error: any) {
+      console.error("[WorkflowOrchestratorService.transitionSubmittal] Error:", error);
+      return { ok: false, status: "error", message: error.message || "Submittal transition failed." };
+    }
   }
 }
 

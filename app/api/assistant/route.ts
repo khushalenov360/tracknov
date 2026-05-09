@@ -28,6 +28,9 @@ import {
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
+import { orchestrateCopilotResponse } from "@/lib/copilot/orchestrator";
+import { resolveCopilotMode } from "@/lib/copilot/router/resolveCopilotMode";
+import { WorkflowState } from "@/lib/services/document-state-service";
 
 export const dynamic = "force-dynamic";
 
@@ -1042,6 +1045,27 @@ export async function POST(request: Request) {
   // SECTION 13: 4-category intent disambiguation
   const intentCategory = disambiguateIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
+
+  // PHASE 3: EnovAIT Orchestration — strictly route workflow intents through the orchestrator
+  if (intentCategory === "workflow" && focusedProjectId) {
+    const orchestrationResult = await orchestrateCopilotResponse({
+      query: latestPrompt,
+      projectId: focusedProjectId,
+      intentHint: "upload", // Map based on disambiguation in future
+    });
+
+    if ("status" in orchestrationResult && orchestrationResult.status === "fallback") {
+      return createResponseStream(createTextStream(orchestrationResult.message));
+    }
+
+    if ("mode" in orchestrationResult && orchestrationResult.mode === "workflow") {
+      // If we are in workflow mode, we can either short-circuit here 
+      // or prepare the structured prompt. For now, we allow the foundation 
+      // to signal readiness without breaking the legacy flow.
+      console.log("[Phase 3] Workflow Orchestration Active:", orchestrationResult.message);
+    }
+  }
+
   const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
 
   if (!user) {

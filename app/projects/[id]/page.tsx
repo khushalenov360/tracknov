@@ -24,22 +24,17 @@ import type { AssistantContext } from "@/lib/assistant";
 import { categoryMeta, creditStatuses } from "@/lib/constants";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
-<<<<<<< HEAD
-import { canReviewProjectDocuments, canUploadProjectDocuments, canAssignTasks } from "@/lib/rbac";
+import { canManageProjectGuidebook, canReviewProjectDocuments, canUploadProjectDocuments, canAssignTasks } from "@/lib/rbac";
 import {
   formatDateIST,
   formatDateTimeIST,
   pct,
   cleanRoleLabel,
 } from "@/lib/utils";
-=======
-import { canManageProjectGuidebook, canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
-import { formatDateTimeIST, pct } from "@/lib/utils";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
 
 type PageProps = {
   params: { id: string };
@@ -130,12 +125,8 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
-<<<<<<< HEAD
-  const user = await getCurrentUser();
-  const workspace = await getProjectWorkspace(params.id);
-=======
   console.log(">>> LOADING DASHBOARD FOR PROJECT:", params.id);
-  const cookieStore = cookies();
+  const user = await getCurrentUser();
   let workspaceError: string | null = null;
   let workspace = null as Awaited<ReturnType<typeof getProjectWorkspace>>;
   try {
@@ -172,7 +163,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       </Shell>
     );
   }
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
   const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
   const canReview = canReviewProjectDocuments(workspace.userRole);
   const canUpload = canUploadProjectDocuments(workspace.userRole);
@@ -599,19 +589,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Credit name
                   </th>
-<<<<<<< HEAD
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Narrative
-                  </th>
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Tech Spec
-                  </th>
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Cert/Decl
-                  </th>
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                    Drawing
-=======
                   {trackerColumns.map((column) => (
                     <th key={column.label} className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                       {column.label}
@@ -619,7 +596,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   ))}
                   <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     % complete
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
                   </th>
                   <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Documents received
@@ -682,32 +658,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                         >
                           {credit.credit_name}
                         </Link>
-                      </td>
-<<<<<<< HEAD
-                      {["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing"].map((type) => {
-                        const req = credit.documents_required.find((d) => d.type === type);
-                        const task = workspace.tasks?.find(
-                          (t) => t.project_credit_id === credit.id && t.doc_type === type && t.active_flag
-                        );
-                        return (
-                          <td key={type} className="px-2 py-2 align-middle min-w-[120px]">
-                            {req?.required ? (
-                              <MatrixAssignmentDropdown
-                                projectId={params.id}
-                                creditId={credit.id}
-                                docType={type}
-                                currentAssigneeId={task?.assigned_to}
-                                members={workspace.members}
-                                isDisabled={!canAssignTasks(workspace.userRole)}
-                              />
-                            ) : (
-                              <div className="h-7 w-full bg-[var(--color-surface-2)] opacity-30 rounded-md" />
-                            )}
-                          </td>
-                        );
-                      })}
-=======
-                      {trackerColumns.map((column) => {
+                      </td>                      {trackerColumns.map((column) => {
                         const cell = resolveTrackerCellStatus(credit, column.aliases);
                         const columnAliases = column.aliases as readonly string[];
                         const requirementSlot = (credit.documents_required ?? []).find((doc: any) =>
@@ -719,7 +670,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                             : cell === "Under Review"
                               ? "border border-[var(--color-blue)] bg-[var(--color-blue-light)] text-[var(--color-blue)]"
                               : cell === "Clarification"
-                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-soft)] text-[var(--color-red)]"
                                 : cell === "Required"
                                   ? "border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]"
                                   : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-70";
@@ -774,7 +725,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                               .join(", ")}${credit.documents.length > 2 ? "..." : ""}`
                           : "None"}
                       </td>
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
                       <td className="px-3 py-2 align-middle">
                         <Badge className={creditStatuses[creditStatus]}>{creditStatus.replace("_", " ")}</Badge>
                       </td>

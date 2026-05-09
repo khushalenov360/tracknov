@@ -39,7 +39,6 @@ export default async function TeamPage() {
   ]);
   const activeRole = currentUser?.role ?? projects[0]?.role ?? "consultant";
   const canCreateSystemProfiles = activeRole === "super_user";
-<<<<<<< HEAD
   const canCreatePlatformProfiles = activeRole === "super_admin";
   const canCreateProjectMembers = activeRole === "project_admin";
   const canCreateOwnerProfiles = activeRole === "owner";
@@ -52,11 +51,6 @@ export default async function TeamPage() {
         : canCreateOwnerProfiles
           ? (["architect", "mep", "contractor"] as const)
           : [];
-=======
-  const allowedRoles = canCreateSystemProfiles
-    ? (["super_admin", "project_admin", "client", "owner", "consultant", "architect", "mep", "contractor"] as const)
-    : [];
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
   const teamDescription = canCreateSystemProfiles
     ? "Super User is the apex role with full control over platform users and hierarchy."
     : "User profiles are managed from Super User Control Panel. Other roles have view-only access.";

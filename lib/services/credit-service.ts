@@ -142,35 +142,31 @@ export class CreditService {
     projectId: string;
     projectCreditId: string;
     assignedUserId: string | null;
-    documentType?: string | null;
+    documentType: string | null;
     reason?: string | null;
-  }) {
-    const actorRole = await projectService.getActorProjectRole(params.projectId, user);
-    const canAssign = ["owner", "project_admin", "super_admin", "super_user"].includes(String(actorRole));
-    if (!canAssign) {
-      throw new Error("Unauthorized: Only Project Owner/Admin can assign contributors.");
-    }
-
-    const { data: member } = params.assignedUserId
-      ? await this.admin
-          .from("project_users")
-          .select("user_id, role")
-          .eq("project_id", params.projectId)
-          .eq("user_id", params.assignedUserId)
-          .maybeSingle()
-      : { data: null as any };
-
-    if (params.assignedUserId && !member) {
-      throw new Error("Selected contributor is not a member of this project.");
-    }
-
-    // Any valid member of the project can now be assigned to credit tasks.
-
-    const documentType = String(params.documentType ?? "").trim() || null;
+  }, externalWriter?: any) {
+    const writer = externalWriter || this.admin;
+    const documentType = params.documentType || null;
     const now = new Date().toISOString();
 
-    if (!documentType) {
-      const { error } = await this.admin
+    const { data: member } = await this.client
+      .from("project_users")
+      .select("role")
+      .eq("project_id", params.projectId)
+      .eq("user_id", params.assignedUserId)
+      .maybeSingle();
+
+    const { data: actorMembership } = await this.client
+      .from("project_users")
+      .select("role")
+      .eq("project_id", params.projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const actorRole = actorMembership?.role;
+
+    // Use the provided writer (which should have context set) for all mutations
+    if (params.assignedUserId) {
+      const { error } = await writer
         .from("project_credits")
         .update({
           assigned_user_id: params.assignedUserId,
@@ -183,7 +179,7 @@ export class CreditService {
     }
 
     // Keep DB-level assignment ledger in sync (single active assignee policy).
-    let assignmentUpdate = this.admin
+    let assignmentUpdate = writer
       .from("assignments")
       .update({ is_active: false, updated_at: now })
       .eq("project_id", params.projectId)
@@ -195,7 +191,7 @@ export class CreditService {
     await assignmentUpdate;
 
     if (params.assignedUserId) {
-      const { error: assignmentError } = await this.admin
+      const { error: assignmentError } = await writer
         .from("assignments")
         .insert({
           project_id: params.projectId,
@@ -209,7 +205,7 @@ export class CreditService {
       if (assignmentError) throw assignmentError;
     }
 
-    const { data: creditMeta } = await this.admin
+    const { data: creditMeta } = await writer
       .from("project_credits")
       .select("credit_code, credit_name")
       .eq("id", params.projectCreditId)
@@ -221,9 +217,8 @@ export class CreditService {
         projectCreditId: params.projectCreditId,
         assignedUserId: params.assignedUserId,
         createdBy: user.id,
-        title: `Upload ${documentType ?? "required evidence"} for ${creditMeta?.credit_code ?? "assigned credit"}`,
-        description: `Credit: ${creditMeta?.credit_name ?? "Assigned credit"} — upload pending required documents.`,
-        priority: "high",
+        priority: "HIGH",
+        docType: documentType || undefined,
       });
     } else {
       await taskService.closeAssignmentTasks({
@@ -232,7 +227,7 @@ export class CreditService {
       });
     }
 
-    await logSystemActivity(this.admin, {
+    await logSystemActivity(writer, {
       projectId: params.projectId,
       entityType: "credit",
       entityId: params.projectCreditId,

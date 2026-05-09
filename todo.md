@@ -46,7 +46,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 - [x] Enforce RBAC filtering before retrieval, project-scoped context, and prompt-injection defense.
 - [~] Ensure AI answers are evidence-linked and do not expose raw runtime/retrieval internals.
 
-<<<<<<< HEAD
 - [ ] Run full end-to-end live workflow with real role accounts and real data:
   login -> dashboard -> create/open project -> upload -> Project Owner review -> Project Admin review -> included in submission pack -> XLSX/PDF/ZIP export.
 - [ ] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
@@ -57,7 +56,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 - [x] Verify role-based edit/status restrictions across:
   `super_user`, `super_admin`, `project_admin`, `client`, `owner`, `architect`, `mep`, `contractor`.
 - [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
-=======
 ### P1 - Auditor framework alignment
 - [~] Maintain closure evidence for:
   - DB Integrity Audit
@@ -67,7 +65,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
   - RBAC + Security Audit
   - AI Reliability Audit
   - Trust Integrity Audit
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
 
 ---
 
@@ -149,7 +146,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 
 ## UX/UI workflow execution console (from `artifacts/handoff/2/UX_UI_DEVELOPER_HANDOFF.md`)
 
-<<<<<<< HEAD
 - [x] Epic C1 - Workflow engine state machine:
   replace scattered status checks with centralized `workflow/state-machine.ts` and guarded transitions.
 - [ ] Epic C2 - Event-driven foundation:
@@ -158,7 +154,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
   implement `ai-engine` foundation (RAG + validator + rejection intelligence capture).
 - [ ] Epic C4 - Transaction-safe token ledger:
   enforce idempotent upload/token orchestration with immutable debit/credit references.
-=======
 ### P0 - Backend-authoritative UI and review safety
 - [x] Add centralized `workflowStateRenderer()` so state labels, lock behavior, editability, and allowed actions are not scattered through screens.
 - [x] Add reusable `WorkflowStatePanel` for backend-supplied state, lock state, blockers, and allowed actions.
@@ -179,7 +174,6 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
   - assignment-aware
   - stage-aware
 - [x] Implement review auto-dequeue to next relevant submittal after action.
->>>>>>> cbdde66f2aaaf3429e293a673f1ee6c5975f6f18
 
 ### P1 - Frontend trust-boundary hardening
 - [ ] Remove remaining frontend-derived readiness/workflow/completion logic from UI components and route all derived values through backend contracts.
