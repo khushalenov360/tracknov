@@ -236,6 +236,31 @@ export class WorkflowOrchestratorService {
       return this.failure("lock_violation", lockState.reason ?? "Project is locked.", lockState, allowedActions);
     }
 
+    // SECTION 3: Role-Based Execution Restrictions
+    const isL0 = actorRole === "contributor";
+    const isL1 = actorRole === "owner";
+    const isL3 = actorRole === "project_admin" || actorRole === "super_admin" || actorRole === "super_user";
+
+    // L0 Restrictions: No approval, no validation, only upload/mapped transitions
+    if (isL0 && !["IN_PROGRESS", "MAPPED"].includes(request.targetState)) {
+      return this.failure("authorization_failed", "L0 Contributor is restricted to upload and mapping transitions only.", lockState, allowedActions);
+    }
+
+    // L1 Restrictions: No final validation authority (APPROVED/REJECTED/CLARIFICATION)
+    if (isL1 && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(request.targetState)) {
+      return this.failure("authorization_failed", "L1 Project Owner cannot perform final validation actions.", lockState, allowedActions);
+    }
+
+    // L3 Requirements: Validation authority
+    if (["APPROVED", "REJECTED", "CLARIFICATION"].includes(request.targetState) && !isL3 && !override) {
+      return this.failure("authorization_failed", "Only L3 Project Admin can perform validation actions.", lockState, allowedActions);
+    }
+
+    // SECTION 13: Approval without comments = BLOCKED
+    if (request.targetState === "APPROVED" && !request.reason?.trim() && !override) {
+      return this.failure("validation_failed", "Approval requires mandatory comments.", lockState, allowedActions);
+    }
+
     if (override && !isL5Role(actorRole)) {
       await this.logSecurityEvent({
         projectId,

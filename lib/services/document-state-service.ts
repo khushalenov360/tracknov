@@ -17,31 +17,35 @@ export type CanonicalReviewState =
   | "rejected";
 
 export type WorkflowState =
-  | "DRAFT"
-  | "READY"
-  | "SUBMITTED"
-  | "UNDER_REVIEW"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "MAPPED"
+  | "L1_REVIEW"
+  | "L1_REJECTED"
+  | "READY_FOR_L3"
+  | "UNDER_L3_REVIEW"
   | "CLARIFICATION"
-  | "RESUBMITTED"
   | "APPROVED"
   | "REJECTED"
-  | "ELIMINATED";
+  | "REVOKED";
 
 export function toCanonicalReviewState(state: WorkflowState): CanonicalReviewState {
   switch (state) {
-    case "DRAFT":
-    case "READY":
+    case "ASSIGNED":
+    case "IN_PROGRESS":
+    case "MAPPED":
       return "uploaded";
-    case "SUBMITTED":
+    case "L1_REVIEW":
       return "owner_review";
-    case "UNDER_REVIEW":
+    case "READY_FOR_L3":
+    case "UNDER_L3_REVIEW":
     case "CLARIFICATION":
-    case "RESUBMITTED":
       return "admin_review";
     case "APPROVED":
       return "approved";
     case "REJECTED":
-    case "ELIMINATED":
+    case "L1_REJECTED":
+    case "REVOKED":
       return "rejected";
     default:
       return "uploaded";
@@ -51,30 +55,32 @@ export function toCanonicalReviewState(state: WorkflowState): CanonicalReviewSta
 export function fromCanonicalReviewState(state: CanonicalReviewState): WorkflowState {
   switch (state) {
     case "uploaded":
-      return "READY";
+      return "IN_PROGRESS";
     case "owner_review":
-      return "SUBMITTED";
+      return "L1_REVIEW";
     case "admin_review":
-      return "UNDER_REVIEW";
+      return "UNDER_L3_REVIEW";
     case "approved":
       return "APPROVED";
     case "rejected":
       return "REJECTED";
     default:
-      return "READY";
+      return "IN_PROGRESS";
   }
 }
 
 const allowedTransitions: Record<WorkflowState, WorkflowState[]> = {
-  DRAFT: ["READY"],
-  READY: ["SUBMITTED"],
-  SUBMITTED: ["UNDER_REVIEW", "CLARIFICATION", "REJECTED"],
-  UNDER_REVIEW: ["APPROVED", "CLARIFICATION", "REJECTED"],
-  CLARIFICATION: ["RESUBMITTED"],
-  RESUBMITTED: ["UNDER_REVIEW"],
-  APPROVED: [],
-  REJECTED: [],
-  ELIMINATED: [],
+  ASSIGNED: ["IN_PROGRESS"],
+  IN_PROGRESS: ["MAPPED"],
+  MAPPED: ["L1_REVIEW"],
+  L1_REVIEW: ["READY_FOR_L3", "L1_REJECTED", "REJECTED"],
+  L1_REJECTED: ["IN_PROGRESS"],
+  READY_FOR_L3: ["UNDER_L3_REVIEW"],
+  UNDER_L3_REVIEW: ["APPROVED", "CLARIFICATION", "REJECTED"],
+  CLARIFICATION: ["IN_PROGRESS"],
+  APPROVED: ["REVOKED"],
+  REJECTED: ["IN_PROGRESS"],
+  REVOKED: ["ASSIGNED"],
 };
 
 // Consistently using consolidated utility services.
@@ -182,6 +188,7 @@ async function recordDocumentReviewEventDirect(
     action: "owner_forward" | "admin_approve" | "owner_reject" | "admin_reject" | "resubmit" | "status_override";
     statusAfter: string;
     remarks?: string | null;
+    versionNumber?: number | null;
   },
 ) {
   await writer.from("document_reviews").insert({
@@ -192,6 +199,7 @@ async function recordDocumentReviewEventDirect(
     action: input.action,
     status_after: input.statusAfter,
     remarks: input.remarks ?? null,
+    version_number: input.versionNumber ?? null,
   });
 }
 
@@ -222,7 +230,7 @@ export async function transitionDocumentState(
   const transitionStarted = Date.now();
   const { data: document } = await writer
     .from("project_document")
-    .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason, rejection_count")
+    .select("id, project_id, project_credit_id, credit_id, submittal_id, state, file_name, rejection_reason, rejection_count, version")
     .eq("id", documentId)
     .maybeSingle();
 
@@ -289,13 +297,19 @@ export async function transitionDocumentState(
   if (!isOverride && l2Roles.includes(role) && newState !== currentState) {
     return { ok: false as const, error: "L2 role is read-only and cannot change workflow state." };
   }
-  if (!isOverride && l0Roles.includes(role) && !["DRAFT", "READY"].includes(newState)) {
-    return { ok: false as const, error: "L0 role cannot move document beyond READY." };
+  const l0Roles = ["consultant", "architect", "mep", "contractor"];
+  const l1Roles = ["owner"];
+  const l3Roles = ["project_admin", "super_admin"];
+  const l5Roles = ["super_user"];
+
+
+  if (!isOverride && l0Roles.includes(role) && !["IN_PROGRESS", "MAPPED"].includes(newState)) {
+    return { ok: false as const, error: "L0 role is restricted to upload and mapping transitions only." };
   }
-  if (!isOverride && l1Roles.includes(role) && !["UNDER_REVIEW", "CLARIFICATION", "REJECTED"].includes(newState)) {
+  if (!isOverride && l1Roles.includes(role) && !["L1_REVIEW", "READY_FOR_L3", "L1_REJECTED", "REJECTED"].includes(newState)) {
     return { ok: false as const, error: "L1 role can only perform owner-stage review actions." };
   }
-  if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION", "ELIMINATED"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role) || (l1Roles.includes(role) && (newState === "CLARIFICATION" || newState === "REJECTED")))) {
+  if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role))) {
     if (newState === "APPROVED") {
         await runtimeGovernanceService.raiseAlert({
           projectId: document.project_id,
@@ -306,34 +320,43 @@ export async function transitionDocumentState(
         });
         return { ok: false as const, error: "Only L3 roles can approve documents." };
     }
-    if (newState === "ELIMINATED") {
-      return { ok: false as const, error: "Only L3 roles can eliminate a document." };
-    }
   }
-  if (!isOverride && newState === "UNDER_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
-    return { ok: false as const, error: "Only L1 or L5 can move document into admin review." };
+
+  if (!isOverride && newState === "APPROVED" && !remarks) {
+    return { ok: false as const, error: "Approval requires mandatory comments for audit attribution." };
+  }
+
+  if (!isOverride && newState === "L1_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
+    return { ok: false as const, error: "Only L1 or L5 can move document into owner review." };
+  }
+  if (!isOverride && newState === "UNDER_L3_REVIEW" && !(l3Roles.includes(role) || l5Roles.includes(role))) {
+    return { ok: false as const, error: "Only L3 or L5 can move document into admin review." };
   }
 
   // Business rules
-  if (currentState === "DRAFT" && newState === "READY") {
+  if (currentState === "ASSIGNED" && newState === "IN_PROGRESS") {
+    // Initial upload or assignment acceptance logic here if needed
+  }
+
+  if (currentState === "IN_PROGRESS" && newState === "MAPPED") {
     const ready = await hasAllRequiredDocsForCredit(writer, document.project_credit_id);
     if (!ready) {
-      return { ok: false as const, error: "Cannot mark READY until all required document types exist for this credit." };
+      return { ok: false as const, error: "Cannot mark MAPPED until all required document types exist for this credit." };
     }
   }
 
-  if (currentState === "READY" && newState === "SUBMITTED" && !manualSubmit) {
-    return { ok: false as const, error: "READY to SUBMITTED requires manual trigger." };
+  if (currentState === "MAPPED" && newState === "L1_REVIEW" && !manualSubmit) {
+    return { ok: false as const, error: "MAPPED to L1_REVIEW requires manual trigger." };
   }
 
-  if (currentState === "SUBMITTED" && newState === "UNDER_REVIEW") {
+  if (currentState === "L1_REVIEW" && newState === "READY_FOR_L3") {
     const hasReviewer = await hasReviewerAssigned(writer, document.project_id);
     if (!hasReviewer) {
-      return { ok: false as const, error: "Cannot move to UNDER_REVIEW without reviewer assignment." };
+      return { ok: false as const, error: "Cannot move to READY_FOR_L3 without admin reviewer assignment." };
     }
   }
 
-  if ((currentState === "READY" && newState === "SUBMITTED") || (currentState === "RESUBMITTED" && newState === "UNDER_REVIEW")) {
+  if ((currentState === "MAPPED" && newState === "L1_REVIEW") || (currentState === "READY_FOR_L3" && newState === "UNDER_L3_REVIEW")) {
     if (document.submittal_id) {
       const validationGate = await executeValidationGate(writer, document.submittal_id, userId ?? null);
       if (!validationGate.ok) {
@@ -408,18 +431,16 @@ export async function transitionDocumentState(
   // Determine Review Action
   let reviewAction: "owner_forward" | "admin_approve" | "owner_reject" | "admin_reject" | "resubmit" | "status_override" = "status_override";
   if (!canStatusEditAtAnyStage || nextAllowed.includes(resolvedTargetState)) {
-    if (currentState === "SUBMITTED" && resolvedTargetState === "UNDER_REVIEW") reviewAction = "owner_forward";
-    else if (currentState === "UNDER_REVIEW" && resolvedTargetState === "APPROVED") reviewAction = "admin_approve";
-    else if (currentState === "SUBMITTED" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED")) reviewAction = "owner_reject";
-    else if (currentState === "UNDER_REVIEW" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED" || resolvedTargetState === "ELIMINATED")) reviewAction = "admin_reject";
-    else if (currentState === "CLARIFICATION" && resolvedTargetState === "RESUBMITTED") reviewAction = "resubmit";
+    if (currentState === "MAPPED" && resolvedTargetState === "L1_REVIEW") reviewAction = "owner_forward";
+    else if (currentState === "UNDER_L3_REVIEW" && resolvedTargetState === "APPROVED") reviewAction = "admin_approve";
+    else if (currentState === "MAPPED" && (resolvedTargetState === "L1_REJECTED" || resolvedTargetState === "REJECTED")) reviewAction = "owner_reject";
+    else if (currentState === "UNDER_L3_REVIEW" && (resolvedTargetState === "CLARIFICATION" || resolvedTargetState === "REJECTED")) reviewAction = "admin_reject";
+    else if (currentState === "CLARIFICATION" && resolvedTargetState === "IN_PROGRESS") reviewAction = "resubmit";
   }
 
   // Record Review Event
   if (["owner_forward", "admin_approve", "owner_reject", "admin_reject", "resubmit"].includes(reviewAction) || canStatusEditAtAnyStage) {
-    const mappedLegacyStatus = toCanonicalReviewState(
-      resolvedTargetState === "ELIMINATED" ? "REJECTED" : resolvedTargetState,
-    );
+    const mappedLegacyStatus = toCanonicalReviewState(resolvedTargetState);
     await recordDocumentReviewEventDirect(writer, {
         documentId,
         projectId: document.project_id,
@@ -428,6 +449,7 @@ export async function transitionDocumentState(
         action: reviewAction,
         statusAfter: mappedLegacyStatus,
         remarks: remarks,
+        versionNumber: document.version, // SECTION 6: Snapshot Bound Review
     });
   }
 
