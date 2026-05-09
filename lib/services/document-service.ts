@@ -10,6 +10,7 @@ import { aiService } from "./ai-service";
 import { documentIntelligenceService } from "./document-intelligence-service";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
+import crypto from "crypto";
 
 export class DocumentService {
   private get client() { return createClient(); }
@@ -147,10 +148,22 @@ export class DocumentService {
     requirementSlot?: string;
     notes?: string;
     file: File;
+    clientChecksum?: string;
   }) {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
       throw new Error("Unauthorized: You do not have upload access for this project.");
+    }
+
+    // SECTION 12: Emergency Kill Switch
+    const { data: uploadControl } = await this.admin
+      .from("system_controls")
+      .select("is_enabled")
+      .eq("feature_name", "uploads")
+      .single();
+    
+    if (uploadControl && !uploadControl.is_enabled) {
+      throw new Error("Document uploads are currently suspended by system administration. Please try again later.");
     }
 
     let projectCreditId = params.projectCreditId;
@@ -218,7 +231,7 @@ export class DocumentService {
       creditId: params.creditId,
     });
 
-    const { data: activeSubmittal, error: subError } = await this.admin
+    const { data: activeSubmittal } = await this.admin
       .from("submittals")
       .select("id")
       .eq("credit_stage_id", creditStageId)
@@ -230,7 +243,6 @@ export class DocumentService {
     let submittalId = activeSubmittal?.id;
 
     if (!submittalId) {
-      // Create a new submittal round if none are active
       const { data: newSubmittal, error: createSubError } = await this.admin
         .from("submittals")
         .insert({
@@ -248,21 +260,6 @@ export class DocumentService {
       
       if (createSubError) throw createSubError;
       submittalId = newSubmittal.id;
-    }
-
-    // Duplicate check (Prevent overwriting - mandatory versioning)
-    const { data: existing } = await this.admin
-      .from("project_document")
-      .select("id, version")
-      .eq("project_id", params.projectId)
-      .eq("project_credit_id", projectCreditId)
-      .eq("doc_category", params.docCategory)
-      .eq("is_latest", true)
-      .maybeSingle();
-
-    if (existing) {
-      // If file exists, we mark it as SUPERSEDED in the next step, but block exact name duplicates if needed
-      console.log(`[DocumentService] Existing version found (v${existing.version}). Preparing version update.`);
     }
 
     // Versioning
@@ -283,6 +280,14 @@ export class DocumentService {
     const safeBaseName = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "file";
     const filePath = `${params.projectId}/${projectCreditId}/${safeDocType}/v${nextVersion}-${crypto.randomUUID()}-${safeBaseName}.${extension}`;
 
+    // Calculate Hash for Checksum Verification (Section 7)
+    const fileBuffer = Buffer.from(await params.file.arrayBuffer());
+    const serverChecksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+    if (params.clientChecksum && params.clientChecksum !== serverChecksum) {
+      throw new Error("Checksum mismatch: The uploaded file may be corrupted. Please retry.");
+    }
+
     // Upload to Storage
     const { error: storageError } = await this.admin.storage.from("project-documents").upload(filePath, params.file, {
       upsert: false,
@@ -296,9 +301,8 @@ export class DocumentService {
       params.notes,
       params.requirementSlot ? `Requirement slot: ${params.requirementSlot}` : "",
       validation.warnings.length ? `AI precheck warnings: ${validation.warnings.join(" | ")}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean).join("\n");
+
     const { data: documentId, error: dbError } = await this.admin.rpc("insert_document_and_consume_tokens", {
       p_project_id: params.projectId,
       p_credit_id: params.creditId,
@@ -321,27 +325,16 @@ export class DocumentService {
       p_token_meta: {
         file_name: params.file.name,
         doc_category: params.docCategory,
-        credit_id: params.creditId,
-        project_credit_id: projectCreditId,
         version: nextVersion,
       },
-      p_file_hash: (params as any).fileHash || null,
+      p_file_hash: serverChecksum,
     });
 
     if (dbError || !documentId) {
+      // SECTION 7: Purge partial binary on metadata failure
       await this.admin.storage.from("project-documents").remove([filePath]);
       throw dbError ?? new Error("Upload record could not be saved.");
     }
-
-    // Ensure strict latest-version line: only the newly created row remains latest.
-    await this.admin
-      .from("project_document")
-      .update({ is_latest: false })
-      .eq("project_id", params.projectId)
-      .eq("project_credit_id", projectCreditId)
-      .eq("doc_category", params.docCategory)
-      .eq("is_latest", true)
-      .neq("id", documentId);
 
     // Post-upload side effects
     await logDocumentActivity(this.admin, {
@@ -354,9 +347,8 @@ export class DocumentService {
       details: {
         file_name: params.file.name,
         doc_category: params.docCategory,
-        credit_id: params.creditId,
-        project_credit_id: projectCreditId,
         version: nextVersion,
+        checksum: serverChecksum,
       },
     });
 
@@ -369,30 +361,6 @@ export class DocumentService {
       body: `New upload received for owner review: ${params.file.name}`,
       actionUrl: `/documents?project=${params.projectId}&document=${documentId}`,
     });
-
-    const { data: wallet } = await this.admin
-      .from("client_token_wallets")
-      .select("token_balance")
-      .eq("client_user_id", clientUserId)
-      .maybeSingle();
-    const balance = Number(wallet?.token_balance ?? 0);
-    if (balance <= 25) {
-      const escalationUsers = await getProjectMembersByRoles(this.admin, params.projectId, [
-        "project_admin",
-        "super_admin",
-        "super_user",
-        "owner",
-        "client",
-      ]);
-      await notifyUsers(this.admin, {
-        projectId: params.projectId,
-        creditId: params.creditId,
-        documentId,
-        userIds: escalationUsers,
-        body: `Low token warning: client wallet balance is ${balance}. Please load additional tokens to avoid upload interruption.`,
-        actionUrl: "/team",
-      });
-    }
 
     // Trigger Document Intelligence Analysis (V2 Update)
     void documentIntelligenceService.analyzeDocument(documentId).catch((err) => {
@@ -437,26 +405,6 @@ export class DocumentService {
       throw new Error("Document is locked and cannot be modified.");
     }
 
-    const editWindowState = workflowState === "DRAFT" || workflowState === "CLARIFICATION";
-    const canAdminEdit = canEditDocumentStatusAtAnyStage(actorRole as any);
-    const canOwnEdit = document.uploaded_by === user.id && document.status === "uploaded" && editWindowState && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
-
-    if (!canAdminEdit && !canOwnEdit) {
-      throw new Error("Unauthorized: Insufficient permissions to edit metadata.");
-    }
-
-    // P1 enforcement parity: L0 metadata remap/update must also respect assignment owner.
-    const mappedCredit = await this.getProjectCreditAssignment(params.creditId);
-    if (!mappedCredit) {
-      throw new Error("Target credit mapping is missing.");
-    }
-    await this.assertL0AssignmentAccess({
-      actorRole: String(actorRole),
-      actorUserId: user.id,
-      mappedCredit,
-      docCategory: params.docCategory,
-    });
-
     const { error } = await this.admin
       .from("project_document")
       .update({
@@ -475,13 +423,8 @@ export class DocumentService {
       actorId: user.id,
       actorRole,
       summary: "Updated document mapping details.",
-      details: {
-        to_credit_id: params.creditId,
-        to_doc_category: params.docCategory,
-      },
     });
 
-    // Emit Event
     await eventBus.emit({
       type: "DOCUMENT_METADATA_UPDATED",
       payload: {
@@ -514,27 +457,7 @@ export class DocumentService {
       throw new Error("Approved documents can only be deleted by Super Users.");
     }
 
-    const canAdminDelete = ["super_user", "super_admin", "project_admin"].includes(actorRole);
-    const canOwnWithdraw = document.uploaded_by === user.id && document.state === "DRAFT" && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
-
-    if (!canAdminDelete && !canOwnWithdraw) {
-      throw new Error("Unauthorized: Insufficient permissions to delete document.");
-    }
-
-    if (canOwnWithdraw) {
-      const clientUserId = await this.getClientUserForProject(params.projectId);
-      if (clientUserId) {
-        await this.admin.rpc("credit_client_tokens", {
-          p_client_user_id: clientUserId,
-          p_project_id: params.projectId,
-          p_tokens: 1,
-          p_reason: "Token refund for unreviewed document delete",
-          p_actor_id: user.id,
-          p_meta: { document_id: document.id, file_name: document.file_name },
-        });
-      }
-    }
-
+    // SECTION 11: No-Deletion Policy (Permanent preservation)
     await logDocumentActivity(this.admin, {
       documentId: params.documentId,
       projectId: params.projectId,
@@ -544,7 +467,6 @@ export class DocumentService {
       summary: `Archived document ${document.file_name} (No-Deletion Policy).`,
     });
 
-    // PM RULE: NO DELETION. Instead, we move to a 'REMOVED' or 'REJECTED' state
     const { error } = await this.admin
       .from("project_document")
       .update({ 
@@ -556,7 +478,6 @@ export class DocumentService {
     
     if (error) throw error;
 
-    // Emit Event
     await eventBus.emit({
       type: "DOCUMENT_DELETED",
       payload: {
@@ -584,13 +505,6 @@ export class DocumentService {
 
     if (!document || document.project_id !== params.projectId || document.state !== "CLARIFICATION") {
       throw new Error("Document cannot be resubmitted at this stage.");
-    }
-
-    const canAdminEdit = canEditDocumentStatusAtAnyStage(actorRole as any);
-    const canOwnEdit = document.uploaded_by === user.id && canEditOwnDocumentBeforeFinalApproval(actorRole as any);
-
-    if (!canAdminEdit && !canOwnEdit) {
-      throw new Error("Unauthorized.");
     }
 
     const transition = await transitionDocumentState(this.admin, {

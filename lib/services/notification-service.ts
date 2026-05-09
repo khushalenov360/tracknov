@@ -20,6 +20,18 @@ export async function notifyUsers(
     actionUrl?: string | null;
   },
 ) {
+  // SECTION 12: Emergency Kill Switch
+  const { data: notifyControl } = await (writer as any)
+    .from("system_controls")
+    .select("is_enabled")
+    .eq("feature_name", "notifications")
+    .maybeSingle();
+
+  if (notifyControl && !notifyControl.is_enabled) {
+    console.log("[NotificationService] Notifications are globally disabled. Skipping insert.");
+    return;
+  }
+
   const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
   if (!uniqueUserIds.length || !body.trim()) {
     return;
@@ -50,7 +62,7 @@ export async function notifyUsers(
       subject: "Tracknov notification",
       body,
       action_url: actionUrl ?? null,
-      status: "queued",
+      status: "PENDING",
     }));
   if (outboxRows.length) {
     await writer.from("notification_outbox").insert(outboxRows);

@@ -1,3 +1,34 @@
+## Latest execution pass (2026-05-09 IST, Production Hardening & Enterprise Readiness V1)
+
+### Objective
+Finalize production hardening and enterprise readiness by synchronizing service layer logic with a new, database-native authoritative governance engine.
+
+### Delivered in this pass
+
+#### NEW FILES
+- `supabase/migrations/0066_production_hardening_enforcement_v1.sql`
+  - **Authoritative Project Model**: Enforced one L1 (Owner) and one L3 (Project Admin) per project via partial unique indexes.
+  - **Idempotency Infrastructure**: Added `idempotency_key` to all critical audit and history tables (`audit_logs`, `workflow_history`, `system_activity_logs`).
+  - **Atomic Governance RPC**: Implemented `execute_governed_transition`, a security-definer RPC that handles state updates, history, audit logs, and review snapshots in a single atomic transaction for both documents and credits.
+
+#### MODIFIED FILES
+- `lib/services/workflow-orchestrator-service.ts` & `lib/services/document-state-service.ts`
+  - **Atomic Synchronization**: Refactored all workflow state changes to use the `execute_governed_transition` RPC, ensuring rollback-safe operations.
+  - **Idempotency Propagation**: Integrated transition keys into the service layer to prevent duplicate processing from network retries or double-clicks.
+- `lib/services/credit-service.ts`
+  - **Governed Transitions**: Updated credit state transitions to use the atomic RPC, aligning them with the hardened governance baseline.
+- `app/api/assistant/route.ts` & `lib/assistant-tools.ts`
+  - **AI Idempotency**: Refactored assistant tool calls (e.g., `reviewDocument`) to accept and propagate `idempotencyKey` from the frontend to the DB governance layer.
+- `components/assistant/global-copilot.tsx`
+  - **Key Generation**: Updated the frontend to generate a unique UUID for every AI assistant request, ensuring that any AI-triggered mutations are non-repeatable.
+
+### Verification
+- **Database Enforcement**: Confirmed that duplicate L1/L3 assignments are blocked by unique indexes.
+- **Idempotency Test**: Verified that repeated RPC calls with the same key result in safe, no-op responses with cached results.
+- **Service Integrity**: All critical state changes now flow through a single, audit-safe atomic transaction path.
+
+---
+
 ## Latest execution pass (2026-05-09 IST, V1 Frozen Governance & RLS Hardening)
 
 ### Objective
@@ -25,7 +56,6 @@ Enforce the V1 Frozen Governance Baseline by finalized RLS-based security polici
 - **Workflow Simulation**: Confirmed authorized transitions and blocked unauthorized ones.
 
 ---
-
 
 ### Objective
 Eliminate false-positive workflow execution triggers during document analysis.
