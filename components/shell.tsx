@@ -15,13 +15,15 @@ export function Shell({
   email: _email,
   notificationCount,
   children,
+  aiTitle,
 }: {
-  title: string;
+  title: React.ReactNode;
   description: string;
   role?: MemberRole;
   email?: string;
   notificationCount?: number;
   children: React.ReactNode;
+  aiTitle?: string;
 }) {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: FolderKanban },
@@ -92,7 +94,12 @@ export function Shell({
         </div>
         {children}
       </main>
-      <GlobalCopilot enabled={env.aiReady} role={role} title={title} description={description} />
+      <GlobalCopilot 
+        enabled={env.aiReady} 
+        role={role} 
+        title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Workspace')} 
+        description={description} 
+      />
     </div>
   );
 }

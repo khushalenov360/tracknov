@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser, getRoleTasks, getRuntimeDesyncSummary } from "@/lib/data";
+import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser, getRoleTasks, getRuntimeDesyncSummary, getUserActionQueue, getUserReviewQueue, getUserBlockerQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
@@ -20,7 +20,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
 }) {
-  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, checklist] = await Promise.all([
+  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, checklist, actionQueue, reviewQueue, blockerQueue] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
@@ -29,6 +29,9 @@ export default async function DashboardPage({
     getRoleTasks(),
     getRuntimeDesyncSummary(),
     getOrCreateOnboardingChecklist(),
+    getUserActionQueue(),
+    getUserReviewQueue(),
+    getUserBlockerQueue(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
@@ -224,6 +227,63 @@ export default async function DashboardPage({
           </div>
         </section>
       ) : null}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* Action Queue */}
+        <section className="surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
+            My Action Queue
+            <Badge variant="secondary" className="text-[10px]">{actionQueue.length}</Badge>
+          </h2>
+          <div className="space-y-2">
+            {actionQueue.length > 0 ? actionQueue.slice(0, 5).map((item: any, idx: number) => (
+              <div key={idx} className="p-2 rounded border border-[var(--color-border)] text-[11px]">
+                <p className="font-medium truncate">{item.creditId}</p>
+                <p className="text-[var(--color-text-tertiary)] truncate">{item.projectName}</p>
+              </div>
+            )) : (
+              <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No pending uploads assigned.</p>
+            )}
+          </div>
+        </section>
+
+        {/* Review Queue */}
+        <section className="surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
+            Pending Reviews
+            <Badge variant="secondary" className="text-[10px]">{reviewQueue.length}</Badge>
+          </h2>
+          <div className="space-y-2">
+            {reviewQueue.length > 0 ? reviewQueue.slice(0, 5).map((item: any, idx: number) => (
+              <div key={idx} className="p-2 rounded border border-[var(--color-border)] text-[11px]">
+                <p className="font-medium truncate">{item.fileName}</p>
+                <p className="text-[var(--color-text-tertiary)] truncate">{item.projectName} • {item.state}</p>
+              </div>
+            )) : (
+              <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No documents awaiting your review.</p>
+            )}
+          </div>
+        </section>
+
+        {/* Blocker Queue */}
+        <section className="surface-card p-4">
+          <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
+            Blockers & Clarifications
+            <Badge variant="secondary" className="text-[10px]">{blockerQueue.length}</Badge>
+          </h2>
+          <div className="space-y-2">
+            {blockerQueue.length > 0 ? blockerQueue.slice(0, 5).map((item: any, idx: number) => (
+              <div key={idx} className="p-2 rounded border border-red-100 bg-red-50/30 text-[11px]">
+                <p className="font-medium text-red-700 truncate">{item.fileName}</p>
+                <p className="text-[var(--color-text-tertiary)] truncate">{item.reason || "Action required"}</p>
+              </div>
+            )) : (
+              <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No blocking items detected.</p>
+            )}
+          </div>
+        </section>
+      </div>
+
       {isOwner ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -255,6 +315,14 @@ export default async function DashboardPage({
                       <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
                         {project.name}
                       </Link>
+                      {["project_admin", "super_admin", "super_user"].includes(activeRole) && (
+                        <Badge 
+                          variant={project.health_status === 'HEALTHY' ? 'secondary' : project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
+                          className="text-[9px] ml-2 px-1 py-0 h-4"
+                        >
+                          {project.health_status}
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-3 py-2">{pct(project.overallCompletion)}</td>
                     <td className="px-3 py-2">{pendingUploads}</td>

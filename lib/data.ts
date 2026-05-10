@@ -290,6 +290,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return null;
   }
 
+
   const { data: profile } = await client
     .from("profiles")
     .select("global_role, disabled_at")
@@ -381,6 +382,7 @@ export async function getDashboardProjects() {
   const currentUser = await getCurrentUser();
   const elevatedPortfolioRole =
     currentUser?.role === "super_user" || currentUser?.role === "super_admin" || currentUser?.role === "project_admin";
+
 
   if (elevatedPortfolioRole && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
@@ -474,10 +476,14 @@ export async function getDashboardProjects() {
     return summaries;
   }
 
-  const { data: memberships } = await client
+  const { data: memberships, error: membershipsError } = await client
     .from("project_users")
     .select("project_id, role")
     .eq("user_id", user.id);
+
+  if (membershipsError) {
+    console.error(`[getDashboardProjects] Membership lookup error for ${user.id}:`, membershipsError);
+  }
 
   const fallbackMemberships =
     (!memberships || memberships.length === 0) && env.supabaseServiceRoleKey
@@ -489,18 +495,23 @@ export async function getDashboardProjects() {
         ).data
       : null;
 
-  const projectMemberships = ((memberships ?? fallbackMemberships ?? []) as any[]).filter(
-    (membership: any) => membership?.project_id,
-  );
+  const projectMemberships = (memberships?.length ? memberships : (fallbackMemberships ?? [])) as any[];
   const projectIds = Array.from(new Set(projectMemberships.map((membership: any) => membership.project_id)));
+
   const summaryClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
-  const { data: projectRows } = projectIds.length
+  const { data: projectRows, error: projectsError } = projectIds.length
     ? await summaryClient
         .from("projects")
-        .select("id, name, client, location, project_type, state, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code")
+        .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code, health_status")
         .in("id", projectIds)
-    : { data: [] };
+    : { data: [], error: null };
+
+  if (projectsError) {
+    console.error(`[getDashboardProjects] Projects fetch error for ${projectIds.length} IDs:`, projectsError);
+  }
+
   const projectById = new Map((projectRows ?? []).map((project: any) => [project.id, project]));
+
   const { data: usageRows } = projectIds.length
     ? await summaryClient
         .from("project_usage_summary")
@@ -514,6 +525,7 @@ export async function getDashboardProjects() {
       const projectId = membership.project_id;
       const project = projectById.get(projectId);
       if (!project) {
+        console.warn(`[getDashboardProjects] Project metadata missing for ID ${projectId} in user ${user.id} portfolio.`);
         return null;
       }
       const usage = usageByProjectId.get(projectId);
@@ -582,6 +594,7 @@ export async function getDashboardProjects() {
             : Number(rejectedCount ?? 0) >= 1 || Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0) >= 3
               ? "amber"
               : "green",
+        health_status: project.health_status,
       } satisfies ProjectSummary;
     }),
   );
@@ -2692,4 +2705,94 @@ export async function getRuntimeDesyncSummary() {
     queuedRepairs: Number(queuedCount ?? 0),
     projectsImpacted: projectSet.size,
   };
+}
+
+export async function getUserActionQueue() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const client = createClient();
+  
+  const { data: assignments } = await client
+    .from("assignments")
+    .select(`
+      project_id,
+      project_credit_id,
+      projects!inner (name),
+      project_credits!inner (credit_id, status)
+    `)
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  return (assignments ?? []).map((a: any) => ({
+    projectId: a.project_id,
+    projectName: a.projects?.name,
+    projectCreditId: a.project_credit_id,
+    creditId: a.project_credits?.credit_id,
+    status: a.project_credits?.status,
+  }));
+}
+
+export async function getUserReviewQueue() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const client = createClient();
+  
+  const states = ["L1_REVIEW", "READY_FOR_L3", "UNDER_L3_REVIEW", "UNDER_REVIEW"];
+  
+  const { data: docs } = await client
+    .from("project_document")
+    .select(`
+      id,
+      project_id,
+      file_name,
+      doc_category,
+      state,
+      workflow_state,
+      projects!inner (name)
+    `)
+    .in("workflow_state", states)
+    .eq("is_latest", true);
+
+  return (docs ?? []).map((d: any) => ({
+    id: d.id,
+    projectId: d.project_id,
+    projectName: d.projects?.name,
+    fileName: d.file_name,
+    docCategory: d.doc_category,
+    state: d.workflow_state || d.state
+  }));
+}
+
+export async function getUserBlockerQueue() {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const client = createClient();
+  
+  const states = ["REJECTED", "CLARIFICATION"];
+  
+  const { data: docs } = await client
+    .from("project_document")
+    .select(`
+      id,
+      project_id,
+      file_name,
+      doc_category,
+      state,
+      workflow_state,
+      rejection_reason,
+      notes,
+      projects!inner (name)
+    `)
+    .in("workflow_state", states)
+    .eq("is_latest", true);
+
+  return (docs ?? []).map((d: any) => ({
+    id: d.id,
+    projectId: d.project_id,
+    projectName: d.projects?.name,
+    fileName: d.file_name,
+    docCategory: d.doc_category,
+    state: d.workflow_state || d.state,
+    reason: d.rejection_reason || d.notes
+  }));
 }
