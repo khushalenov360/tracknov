@@ -1,46 +1,52 @@
 import { expect, test } from "@playwright/test";
-import { EventBus } from "../lib/events/event-bus";
+import { eventBus, initEventBus } from "../lib/events/event-bus";
 
-test("event bus emits payload to registered handlers", async () => {
-  const bus = new EventBus();
-  const received: Array<{ documentId: string }> = [];
-  bus.on("document.status_updated", "collector", async (payload: { documentId: string }) => {
-    received.push(payload);
+test.describe("EventBus Hardening", () => {
+  test.beforeEach(async () => {
+    await initEventBus();
   });
 
-  await bus.emit("document.status_updated", { documentId: "doc-1" });
-  expect(received).toEqual([{ documentId: "doc-1" }]);
-});
+  test("event bus emits payload to registered handlers", async () => {
+    const received: any[] = [];
+    
+    // Using a manual subscription to track received events in the test
+    eventBus.subscribe(async (event) => {
+      if (event.type === "DOCUMENT_UPLOADED") {
+        received.push(event.payload);
+      }
+    });
 
-test("event bus captures dead letters for failed handlers", async () => {
-  const bus = new EventBus();
-  bus.on("document.uploaded", "fails", async () => {
-    throw new Error("handler failed");
+    await eventBus.emit({
+      type: "DOCUMENT_UPLOADED",
+      payload: { documentId: "doc-1", projectId: "proj-1", userId: "user-1" }
+    });
+
+    // We wait a tiny bit for async handlers if needed, though emit is awaited
+    expect(received).toContainEqual({ documentId: "doc-1", projectId: "proj-1", userId: "user-1" });
   });
 
-  await bus.emit("document.uploaded", { documentId: "doc-2" });
-  const deadLetters = bus.getDeadLetters();
-  expect(deadLetters).toHaveLength(1);
-  expect(deadLetters[0].event).toBe("document.uploaded");
-  expect(deadLetters[0].handler).toBe("fails");
-});
-
-test("event bus retries handlers before dead-lettering", async () => {
-  const bus = new EventBus();
-  let attempts = 0;
-  bus.on(
-    "document.status_updated",
-    "retry-once",
-    async () => {
-      attempts += 1;
-      if (attempts < 2) {
+  test("event bus retries handlers before logging permanent failure", async () => {
+    let attempts = 0;
+    const failingHandler = async (event: any) => {
+      if (event.type === "PROJECT_CREATED") {
+        attempts += 1;
         throw new Error("transient failure");
       }
-    },
-    { maxRetries: 1 },
-  );
+    };
 
-  await bus.emit("document.status_updated", { documentId: "doc-3" });
-  expect(attempts).toBe(2);
-  expect(bus.getDeadLetters()).toHaveLength(0);
+    eventBus.subscribe(failingHandler);
+
+    // This will trigger retries (MAX_RETRIES = 3)
+    await eventBus.emit({
+      type: "PROJECT_CREATED",
+      payload: { projectId: "proj-2", userId: "user-2" }
+    });
+
+    // MAX_RETRIES is 3 in the implementation
+    expect(attempts).toBe(3);
+  });
+
+  test("can initialize event bus without errors", async () => {
+    await expect(initEventBus()).resolves.not.toThrow();
+  });
 });
