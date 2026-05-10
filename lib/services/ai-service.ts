@@ -174,6 +174,16 @@ export class AIService {
       ],
     };
   }
+  async queueRecommendation(projectId: string, action: string, payload: any, reasoning: string) {
+    const { error } = await this.admin.from("ai_recommendation_queue").insert({
+      project_id: projectId,
+      recommended_action: action,
+      payload,
+      reasoning,
+      status: "PENDING_L5_APPROVAL"
+    });
+    if (error) throw error;
+  }
 }
 
 export const aiService = new AIService();

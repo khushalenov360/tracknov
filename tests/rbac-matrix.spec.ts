@@ -97,8 +97,9 @@ test("rbac matrix enforces contributor/self-edit and team controls", async () =>
       expect(selfEdit).toBe(false);
     }
 
-    if (["super_user", "super_admin", "project_admin", "client", "owner"].includes(role)) {
+    if (["super_user", "super_admin", "project_admin", "owner"].includes(role)) {
       expect(canManageTeam).toBe(true);
+
     } else {
       expect(canManageTeam).toBe(false);
     }

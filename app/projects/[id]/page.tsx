@@ -12,6 +12,7 @@ import {
   createTaskAction,
 } from "@/app/actions";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
+import { StageGateTracker } from "@/components/project/StageGateTracker";
 import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
 import { MatrixAssignmentDropdown } from "@/components/project/MatrixAssignmentDropdown";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
@@ -22,7 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext } from "@/lib/assistant";
 import { categoryMeta, creditStatuses } from "@/lib/constants";
-import { creditStats, getProjectWorkspace } from "@/lib/data";
+import { creditStats, getCurrentUser, getProjectWorkspace } from "@/lib/data";
 import { env } from "@/lib/env";
 import { canManageProjectGuidebook, canReviewProjectDocuments, canUploadProjectDocuments, canAssignTasks } from "@/lib/rbac";
 import {
@@ -31,6 +32,7 @@ import {
   pct,
   cleanRoleLabel,
 } from "@/lib/utils";
+import { stageGateService } from "@/lib/services/stage-gate-service";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -182,7 +184,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   if (!selectedCredit) {
     return (
       <Shell
-        title={workspace.project.name}
+        title={
+          <span className="flex items-center gap-3">
+            {workspace.project.name}
+            {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
+              <Badge 
+                variant={workspace.project.health_status === 'HEALTHY' ? 'secondary' : workspace.project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
+                className="text-[10px] px-1.5 py-0 h-5"
+              >
+                {workspace.project.health_status}
+              </Badge>
+            )}
+          </span>
+        }
+        aiTitle={workspace.project.name}
         description={`${workspace.project.certification_type} / ${workspace.project.client || "Client TBD"}`}
         role={workspace.userRole}
         notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
@@ -318,10 +333,25 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     (rule: any) => (rule.project_credit_id && rule.project_credit_id === selectedCredit.id) || rule.credit_id === selectedCredit.id,
   );
 
+  const milestones = await stageGateService.getMilestones(params.id);
+
 
   return (
     <Shell
-      title={workspace.project.name}
+      title={
+        <span className="flex items-center gap-3">
+          {workspace.project.name}
+          {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
+            <Badge 
+              variant={workspace.project.health_status === 'HEALTHY' ? 'secondary' : workspace.project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
+              className="text-[10px] px-1.5 py-0 h-5"
+            >
+              {workspace.project.health_status}
+            </Badge>
+          )}
+        </span>
+      }
+      aiTitle={workspace.project.name}
       description={`${workspace.project.certification_type} / Target ${workspace.project.target_rating}`}
       role={workspace.userRole}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
@@ -783,6 +813,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 </p>
               </div>
             ) : null}
+
+            <StageGateTracker milestones={milestones} />
 
             {canReview ? (
               <AiGuidePanel

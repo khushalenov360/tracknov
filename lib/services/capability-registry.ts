@@ -66,7 +66,7 @@ const REGISTRY: Capability[] = [
     businessDescription: "Planned feature: Automated verification of sustainability criteria at specific construction milestones (Foundation, Structure, Finishing).",
     supportedSurfaces: ["project"],
     requiredRoles: ["super_user", "owner"],
-    enabled: false,
+    enabled: true,
   },
   {
     id: "iot_monitoring",

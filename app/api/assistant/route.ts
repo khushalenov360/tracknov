@@ -30,6 +30,7 @@ import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistan
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
 import { orchestrateCopilotResponse } from "@/lib/copilot/orchestrator";
 import { resolveCopilotMode } from "@/lib/copilot/router/resolveCopilotMode";
+import { copilotRuntimeService } from "@/lib/services/copilot-runtime-service";
 export const dynamic = "force-dynamic";
 
 type AssistantRequest = {
@@ -171,7 +172,7 @@ function createResponseStream(textStream: ReadableStream<Uint8Array>, navigateTo
  * then re-emits it as a clean stream. Prevents RAG metadata, technical leakage,
  * and non-authoritative workflow claims from reaching the user.
  */
-function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>, sessionId?: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -192,6 +193,11 @@ function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>): Reada
       safe = filterTechnicalLeakage(safe);           // Section 19: strip technical artifacts
       if (containsAuthoritativeClaim(safe)) {        // Section 5: non-authoritative enforcement
         safe = getAuthoritativeClaimRefusal();
+      }
+      
+      // Store the final governed response in persistent history if session exists
+      if (sessionId) {
+        void copilotRuntimeService.storeMessage(sessionId, "assistant", safe).catch(() => {});
       }
 
       controller.enqueue(encoder.encode(safe));
@@ -1072,7 +1078,6 @@ export async function POST(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Fetch user name for personalized prompt context
   const supabase = createClient();
   const { data: profile } = await supabase
     .from("profiles")
@@ -1080,6 +1085,16 @@ export async function POST(request: Request) {
     .eq("user_id", user.id)
     .maybeSingle();
   const userName = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "there";
+
+  // Resolve session and augment context with server-side memory
+  const activeProjectId = focusedProjectId || projectIds[0];
+  const session = await copilotRuntimeService.getOrCreateSession(user.id, activeProjectId);
+  
+  // Store user prompt in persistent history
+  await copilotRuntimeService.storeMessage(session.id, "user", latestPrompt);
+
+  // Build augmented context from semantic memory
+  const augmentedContext = await copilotRuntimeService.buildAugmentedContext(user.id, activeProjectId, context);
 
   const ragMatches = await ragService.retrieveContext({
     query: latestPrompt,
@@ -1221,16 +1236,16 @@ export async function POST(request: Request) {
 
   // PHASE 4: Role-Aware Context Builder — inject safe capability context
   const capabilitiesContext = [
-      getSafeCapabilitiesContext((context.surface as any) ?? "dashboard", role as any),
+      getSafeCapabilitiesContext((augmentedContext.surface as any) ?? "dashboard", role as any),
       knowledgeEngine.getPlatformRoadmapContext(),
       knowledgeEngine.getConstructionStageGateRules(),
     ].join("\n\n");
 
   const enrichedContext: AssistantContext = {
-    ...context,
+    ...augmentedContext,
     capabilities: capabilitiesContext,
     facts: [
-      ...context.facts,
+      ...augmentedContext.facts,
       `User: ${userName || userEmail || "Unknown"}`,
       `User email: ${userEmail}`,
       `Resolved role: ${role}`,
@@ -1313,30 +1328,39 @@ export async function POST(request: Request) {
           latencyMs: Date.now() - startedAt,
         });
         // SECTION 5, 19, 22: Apply post-response safety filters before streaming
-        const finalStream = applyResponseGovernance(aiStream);
+        const finalStream = applyResponseGovernance(aiStream, session.id);
         return createResponseStream(finalStream);
       }
     }
-  } catch {
-    // Fall through to the local fallback.
-  }
-
-  if (attachments.length > 0 && (isFileQuestion(latestPrompt) || !isUploadMappingIntent(latestPrompt, { analysisOnly: body.pickedIntent === "analysis" }))) {
-    const fallbackAttachment = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
-    await logAiInteraction({
-      userId: user.id,
-      intent,
-      query: latestPrompt,
-      model: "fallback",
-      contextSize: combinedSnapshot.length,
-      tokenUsage: 0,
-      fallbackUsed: true,
-      latencyMs: Date.now() - startedAt,
-    });
-    return createResponseStream(createTextStream(fallbackAttachment));
+  } catch (error) {
+    console.error("[Assistant] AI pipeline failed:", error);
+    
+    // Fallback: If AI fails but we have an attachment, provide a quick structural analysis
+    if (attachments.length && isFileQuestion(latestPrompt)) {
+      const analysis = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
+      await copilotRuntimeService.storeSemanticMemory(session.id, "analysis", attachments[0].name, {
+        summary: analysis,
+        timestamp: new Date().toISOString()
+      });
+      await copilotRuntimeService.storeMessage(session.id, "assistant", analysis);
+      
+      await logAiInteraction({
+        userId: user.id,
+        intent,
+        query: latestPrompt,
+        model: "fallback-analysis",
+        contextSize: combinedSnapshot.length,
+        tokenUsage: 0,
+        fallbackUsed: true,
+        latencyMs: Date.now() - startedAt,
+      });
+      return createResponseStream(createTextStream(analysis));
+    }
   }
 
   const fallbackText = buildFallbackAssistantReply(context, latestPrompt);
+  await copilotRuntimeService.storeMessage(session.id, "assistant", fallbackText);
+  
   await logAiInteraction({
     userId: user.id,
     intent,

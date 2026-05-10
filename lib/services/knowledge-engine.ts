@@ -55,10 +55,21 @@ export const knowledgeEngine = {
    */
   getConstructionStageGateRules(): string {
     return [
-      "IGBC Construction Stage-Gate Requirements (Mock Engine):",
-      "1. Foundation: Soil erosion control measures must be documented via time-stamped photos.",
-      "2. Structure: RMC (Ready Mix Concrete) invoices must be verified against regional sourcing distance limits (typically < 160km).",
-      "3. Finishing: VOC content labels for all paints and adhesives must be scanned and matched against IGBC limit tables."
+      "IGBC Construction Stage-Gate Requirements:",
+      "1. FOUNDATION MILESTONE:",
+      "   - Soil Erosion Control: Must provide geo-tagged photos of silt fences, sedimentation pits, and mulching.",
+      "   - Excavation Safety: Records of shoring, strutting, and dewatering logs required.",
+      "   - Topsoil Preservation: Evidence of topsoil stockpiling and stabilization.",
+      "",
+      "2. STRUCTURE MILESTONE:",
+      "   - Concrete (RMC): All invoices must prove sourcing within 160km to claim regional material points.",
+      "   - Steel: Mill certificates must show >15% recycled content (post-consumer + half pre-consumer).",
+      "   - Formwork: Evidence of at least 5-time reuse or use of eco-friendly materials.",
+      "",
+      "3. FINISHING MILESTONE:",
+      "   - Low-VOC: Lab reports for all paints, adhesives, and sealants must match IGBC Table 4 limits.",
+      "   - FSC Wood: Chain of custody (CoC) certificates for at least 50% of wood-based materials.",
+      "   - Waste Management: Proof of 75% construction waste diversion from landfills via recycler gate-passes."
     ].join("\n");
   }
 };

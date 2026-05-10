@@ -224,7 +224,7 @@ export async function transitionDocumentState(
     manualSubmit?: boolean;
     updatedEvidence?: boolean;
     remarks?: string | null;
-    idempotencyKey?: string | null;
+    idempotencyKey: string;
     override?: boolean;
     overrideReason?: string | null;
   },
@@ -375,7 +375,7 @@ export async function transitionDocumentState(
     p_actor_id: userId ?? null,
     p_actor_role: actorRole,
     p_reason: remarks || overrideReason || "Status update",
-    p_idempotency_key: idempotencyKey || `doc-${documentId}-${Date.now()}`,
+    p_idempotency_key: idempotencyKey,
     p_metadata: {
       is_override: isOverride,
       override_reason: normalizedOverrideReason,
@@ -459,6 +459,7 @@ export async function transitionDocumentState(
   // Scoring update (Async)
   if (document.project_id) {
     void writer.rpc("recompute_credit_scores", { p_project_id: document.project_id }).catch(console.error);
+    void writer.rpc("recompute_project_health_status", { p_project_id: document.project_id }).catch(console.error);
   }
 
   eventBus.emit({

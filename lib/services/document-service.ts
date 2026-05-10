@@ -149,6 +149,7 @@ export class DocumentService {
     notes?: string;
     file: File;
     clientChecksum?: string;
+    idempotencyKey: string;
   }) {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
@@ -328,6 +329,7 @@ export class DocumentService {
         version: nextVersion,
       },
       p_file_hash: serverChecksum,
+      p_idempotency_key: params.idempotencyKey,
     });
 
     if (dbError || !documentId) {
@@ -493,6 +495,7 @@ export class DocumentService {
     documentId: string;
     projectId: string;
     resubmitNote: string;
+    idempotencyKey: string;
   }) {
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole) throw new Error("Unauthorized.");
@@ -515,6 +518,7 @@ export class DocumentService {
       manualSubmit: true,
       updatedEvidence: true,
       remarks: params.resubmitNote,
+      idempotencyKey: params.idempotencyKey,
     });
 
     if (!transition.ok) throw new Error(transition.error);

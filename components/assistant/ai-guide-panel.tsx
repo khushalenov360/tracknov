@@ -231,13 +231,15 @@ export function AiGuidePanel({
   }
 
   function parseJsonObject(text: string): Record<string, string> | null {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
+    const codeFenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    const candidate = codeFenceMatch?.[1] ?? text;
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
     if (start === -1 || end === -1 || end <= start) {
       return null;
     }
     try {
-      const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+      const parsed = JSON.parse(candidate.slice(start, end + 1)) as Record<string, unknown>;
       const values: Record<string, string> = {};
       for (const [key, value] of Object.entries(parsed)) {
         if (typeof value === "string" && value.trim()) {
@@ -248,6 +250,33 @@ export function AiGuidePanel({
     } catch {
       return null;
     }
+  }
+
+  function parseKeyValueSuggestions(text: string, fields: FormFieldMeta[]): Record<string, string> | null {
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) return null;
+
+    const fieldMap = new Map<string, string>();
+    for (const field of fields) {
+      fieldMap.set(field.key.toLowerCase(), field.key);
+      fieldMap.set(field.label.toLowerCase(), field.key);
+    }
+
+    const out: Record<string, string> = {};
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/^[-*]\s*/, "");
+      const sep = line.includes(":") ? ":" : line.includes("=") ? "=" : null;
+      if (!sep) continue;
+      const [left, ...rest] = line.split(sep);
+      const right = rest.join(sep).trim();
+      const lookup = left.trim().toLowerCase();
+      const key = fieldMap.get(lookup);
+      if (key && right) out[key] = right.replace(/^["'`]|["'`]$/g, "").trim();
+    }
+    return Object.keys(out).length ? out : null;
   }
 
   function applyFormValues(values: Record<string, string>) {
@@ -310,9 +339,9 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         throw new Error("Copilot could not generate form suggestions.");
       }
       const raw = await response.text();
-      const parsed = parseJsonObject(raw);
+      const parsed = parseJsonObject(raw) ?? parseKeyValueSuggestions(raw, fields);
       if (!parsed || Object.keys(parsed).length === 0) {
-        throw new Error("Copilot returned no usable form suggestions.");
+        throw new Error("Copilot could not map suggestions to visible fields. Please provide one-line mapping like: field_name: value.");
       }
       const count = applyFormValues(parsed);
       if (count === 0) {

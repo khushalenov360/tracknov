@@ -107,25 +107,44 @@ export async function createProjectAction(formData: FormData) {
 
 export async function joinProjectAction(formData: FormData) {
   const projectCode = String(formData.get("projectCode") ?? "").trim().toUpperCase();
-  if (!projectCode) return;
+  console.log("[Actions] User attempting to join project with code:", projectCode);
+  
+  if (!projectCode) {
+    console.warn("[Actions] No project code provided.");
+    return;
+  }
 
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user) {
+    console.error("[Actions] User not authenticated during joinProjectAction.");
+    redirect("/login?next=/projects");
+    return;
+  }
 
   let project;
   try {
     project = await projectService.joinProjectByCode(user, projectCode);
+    console.log("[Actions] Join project successful, revalidating paths...");
     revalidatePath("/projects");
     revalidatePath("/dashboard");
+    revalidatePath(`/projects/${project.id}`);
   } catch (error: any) {
     console.error("[Actions] Join project failed:", error);
+    // Next.js redirect throws a specific error that should not be caught as a normal error
+    if (error.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
     redirect(`/projects?error=${encodeURIComponent(error.message || "invalid_code")}`);
   }
 
   if (project) {
+    console.log("[Actions] Redirecting to project workspace:", project.id);
     redirect(`/projects/${project.id}`);
+  } else {
+    console.warn("[Actions] Join project returned no project object, staying on page.");
   }
 }
+
 
 export async function leaveProjectAction(formData: FormData) {
   const projectId = String(formData.get("projectId") ?? "").trim();
@@ -332,6 +351,7 @@ export async function setDocumentStatusAction(formData: FormData) {
   const rejectionRemark = String(formData.get("rejection_remark") ?? "").trim();
   const rejectionType = String(formData.get("rejection_type") ?? "").trim();
 
+  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
 
   const user = await getCurrentUser();
   if (!user) return;
@@ -358,6 +378,7 @@ export async function setDocumentStatusAction(formData: FormData) {
       manualSubmit: true,
       updatedEvidence: Boolean(rejectionRemark),
       remarks: formattedRemark || null,
+      idempotencyKey,
     });
     revalidatePath("/documents");
     pathFor(projectId).forEach((path) => revalidatePath(path));
@@ -434,6 +455,7 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
   const requirementSlot = String(formData.get("requirement_slot") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const fileHash = String(formData.get("file_hash") ?? "").trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
   const file = formData.get("file");
 
   if (!projectId || !creditId || !docCategory || !(file instanceof File)) {
@@ -462,7 +484,8 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
       requirementSlot,
       notes,
       file,
-      fileHash: fileHash || null,
+      clientChecksum: fileHash || undefined,
+      idempotencyKey,
     } as any);
 
     revalidatePath("/documents");
@@ -583,6 +606,7 @@ export async function resubmitDocumentAction(formData: FormData) {
   const documentId = String(formData.get("document_id") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
   const resubmitNote = String(formData.get("resubmit_note") ?? "").trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
   if (!documentId || !projectId) return;
 
   const user = await getCurrentUser();
@@ -593,6 +617,7 @@ export async function resubmitDocumentAction(formData: FormData) {
       documentId,
       projectId,
       resubmitNote,
+      idempotencyKey,
     });
 
     revalidatePath("/documents");
@@ -1185,5 +1210,34 @@ export async function transitionSubmittalAction(
   } catch (error: any) {
     console.error("[transitionSubmittalAction] Error:", error);
     return { error: error.message };
+  }
+}
+
+export async function toggleSystemControlAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "super_user") {
+    return { error: "Unauthorized: Only Super User can toggle system controls." };
+  }
+
+  const controlName = formData.get("controlName") as string;
+  const isEnabled = formData.get("isEnabled") === "true";
+
+  if (!["uploads", "exports", "notifications"].includes(controlName)) {
+    return { error: "Invalid or restricted control name. Core engines cannot be toggled." };
+  }
+
+  try {
+    const client = createClient();
+    const { error } = await client
+      .from("system_controls")
+      .update({ is_enabled: isEnabled, updated_by: user.id, updated_at: new Date().toISOString() })
+      .eq("feature_name", controlName);
+
+    if (error) throw error;
+    
+    revalidatePath("/admin/operational-health");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
 }

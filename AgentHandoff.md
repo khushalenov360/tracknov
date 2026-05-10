@@ -1,3 +1,48 @@
+## Latest execution pass (2026-05-10 IST, one-pass orchestration cleanup + runtime crash fix)
+
+### Completed in this pass
+- Removed manual mutation drift in core workflow services:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\review-service.ts`
+    - `transitionSubmittal(...)` now routes through `workflowOrchestratorService.transitionSubmittal(...)` instead of direct `submittals` updates.
+    - `submitProject(...)` now uses governed RPC `execute_governed_transition` for project submission.
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\submittal-service.ts`
+    - replaced manual `submittals.state` and `credit_stages.state` updates with DB recalculation RPCs:
+      - `recalculate_submittal_state`
+      - `recalculate_credit_state`
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\workflow-orchestrator-service.ts`
+    - submittal transitions now execute through `execute_governed_transition` with lock/validation handling and deterministic response payload.
+- Fixed document transition service wiring issues:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\document-state-service.ts`
+    - added missing `idempotencyKey` destructuring.
+    - removed duplicate role declarations inside transition logic.
+- Added DB migration to extend governed transitions:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\supabase\migrations\0069_governed_transition_submittal_project.sql`
+  - Extends `execute_governed_transition(...)` support to:
+    - `submittal`
+    - `project`
+- Tightened runtime audit false-positive scope:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\scripts\runtime-audit-automation.mjs`
+  - manual derived-state scan now targets workflow mutation surfaces only (not broad metadata update surfaces).
+- Updated TODO status:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\todo.md`
+  - marked derived-state mutation proof items as closed (`[x]`).
+- Fixed runtime page crash reported in browser:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\app\projects\[id]\page.tsx`
+  - restored missing import: `getCurrentUser` from `@/lib/data`.
+
+### Verification
+- `npm run qa:runtime-audit` passed.
+- `artifacts/reports/orchestration-reconcile-audit.md` now shows:
+  - `No manual derived-state mutation pattern found` -> `PASS`.
+- `npm run qa:workflow` passed (8/8).
+- Dev server verified reachable:
+  - `http://127.0.0.1:3000/login` returned HTTP 200.
+
+### Source control
+- Commit pushed to `main`:
+  - `683b98d`
+  - message: `Harden workflow orchestration and derived-state governance`
+
 ## Latest execution pass (2026-05-09 IST, Production Hardening & Enterprise Readiness - 100% Alignment)
 
 ### Objective

@@ -360,6 +360,18 @@ export class ProjectService {
       throw new Error("Guidebook file is too large. Max supported size is 50 MB.");
     }
 
+    if (role !== "super_user") {
+      // Guidebook execution freeze check
+      const [ { count: docCount }, { count: assignmentCount } ] = await Promise.all([
+        this.admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", params.projectId),
+        this.admin.from("assignments").select("*", { count: "exact", head: true }).eq("project_id", params.projectId).eq("is_active", true)
+      ]);
+      
+      if ((docCount ?? 0) > 0 || (assignmentCount ?? 0) > 0) {
+        throw new Error("Guidebook is immutable because project execution has already begun. Only a Super User can override this lock.");
+      }
+    }
+
     const safeTitle = (params.title ?? params.file.name.replace(/\.[^.]+$/, "")).trim().slice(0, 200) || "IGBC Guidebook";
     const sanitizedBase = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "guidebook";
     const filePath = `${params.projectId}/guidebooks/${Date.now()}-${crypto.randomUUID()}-${sanitizedBase}.pdf`;
@@ -671,6 +683,72 @@ export class ProjectService {
 
     await ragService.ingestProjectGuidance(params.projectId);
     return { updated };
+  }
+
+  async closeCertification(user: CurrentUser, params: {
+    projectId: string;
+    finalComments: string;
+  }) {
+    const role = await this.getActorProjectRole(params.projectId, user);
+    if (!["project_admin", "super_admin", "super_user"].includes(role)) {
+      throw new Error("Only Project Admin or Super User can close certification.");
+    }
+
+    const { data: project } = await this.admin
+      .from("projects")
+      .select("certification_state")
+      .eq("id", params.projectId)
+      .single();
+
+    if (project?.certification_state === "CERTIFIED_LOCKED") {
+      throw new Error("Project is already certified and locked.");
+    }
+
+    const { data: summary } = await this.admin.rpc("get_project_certification_summary", {
+      p_project_id: params.projectId
+    });
+
+    const snapshotPayload = {
+      summary,
+      finalComments: params.finalComments,
+      closed_by: user.id,
+      closed_at: new Date().toISOString()
+    };
+
+    const hashInput = JSON.stringify(snapshotPayload) + params.projectId;
+    const snapshotHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+
+    const { data: snapshot, error: snapshotError } = await this.admin
+      .from("certification_snapshots")
+      .insert({
+        project_id: params.projectId,
+        certification_snapshot_hash: snapshotHash,
+        snapshot_payload: snapshotPayload,
+        created_by: user.id
+      })
+      .select("id")
+      .single();
+
+    if (snapshotError) throw snapshotError;
+
+    const { error: updateError } = await this.admin
+      .from("projects")
+      .update({
+        certification_state: "CERTIFIED_LOCKED",
+        certification_block_reason: params.finalComments
+      })
+      .eq("id", params.projectId);
+
+    if (updateError) throw updateError;
+    
+    await this.admin.from("audit_logs").insert({
+      action_type: 'CERTIFICATION_CLOSED',
+      entity_type: 'projects',
+      entity_id: params.projectId,
+      actor_id: user.id,
+      project_id: params.projectId,
+      metadata: { snapshot_id: snapshot.id, snapshot_hash: snapshotHash }
+    });
   }
 }
 

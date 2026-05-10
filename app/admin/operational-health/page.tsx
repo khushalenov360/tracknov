@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
+import { toggleSystemControlAction } from "@/app/actions";
 
 export default async function OperationalHealthPage() {
   const supabase = createClient();
@@ -59,15 +60,20 @@ export default async function OperationalHealthPage() {
                 <p className="font-medium capitalize">{control.feature_name}</p>
                 <p className="text-xs text-gray-500">Status: {control.is_enabled ? 'Active' : 'SUSPENDED'}</p>
               </div>
-              <button 
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  control.is_enabled 
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                }`}
-              >
-                {control.is_enabled ? 'Disable' : 'Enable'}
-              </button>
+              <form action={toggleSystemControlAction}>
+                <input type="hidden" name="controlName" value={control.feature_name} />
+                <input type="hidden" name="isEnabled" value={(!control.is_enabled).toString()} />
+                <button 
+                  type="submit"
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    control.is_enabled 
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  }`}
+                >
+                  {control.is_enabled ? 'Disable' : 'Enable'}
+                </button>
+              </form>
             </div>
           ))}
         </div>

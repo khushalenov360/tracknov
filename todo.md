@@ -350,7 +350,7 @@ Priority execution sequence:
 - [x] L2 dashboard summary/progress view.
 
 ### Phase 7 - Stage system
-- [~] Stage gating: Design -> Construction -> Handover.
+- [x] Stage gating: Design -> Construction -> Handover. (Construction stage-gate v3.0 integrated)
 - [x] Stage-wise submission packs.
 
 ### Phase 8 - Reviewer simulation
