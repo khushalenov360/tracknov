@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import JSZip from "jszip";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { CreditWorkspace, ProjectWorkspace } from "@/lib/types";
@@ -57,35 +57,44 @@ export function getApprovedSubmissionCredits(workspace: Pick<ProjectWorkspace, "
     .filter((credit) => credit.documents.length > 0);
 }
 
-function trackerRows(credits: CreditWorkspace[]) {
-  const rows: (string | number)[][] = [
-    [],
-    [
-      "Criteria",
-      "Credit ",
-      "Remarks /Documents Required",
-      "Narrative",
-      "Tech Specs",
-      "Certificates/ Declaration",
-      "Drawings",
-      "Calculations & Tables",
-      "Invoices",
-      "Pic/Video",
-      "% Completion",
-      "Remark",
-    ],
-    [],
-  ];
+export function buildTrackerWorkbook(workspace: ProjectWorkspace) {
+  const workbook = new ExcelJS.Workbook();
+  const trackerSheet = workbook.addWorksheet("Document tracker");
+
+  // Headers
+  trackerSheet.addRow([]); // Row 1: Empty
+  const headerRow = trackerSheet.addRow([
+    "Criteria",
+    "Credit ",
+    "Remarks /Documents Required",
+    "Narrative",
+    "Tech Specs",
+    "Certificates/ Declaration",
+    "Drawings",
+    "Calculations & Tables",
+    "Invoices",
+    "Pic/Video",
+    "% Completion",
+    "Remark",
+  ]);
+  headerRow.font = { bold: true };
+  trackerSheet.addRow([]); // Row 3: Empty
 
   let currentCategory = "";
-  for (const credit of credits) {
+  for (const credit of workspace.credits) {
     if (currentCategory !== credit.category) {
       currentCategory = credit.category;
-      rows.push([credit.category, "", "", "", "", "", "", "", "", "", "", ""]);
+      const catRow = trackerSheet.addRow([credit.category, "", "", "", "", "", "", "", "", "", "", ""]);
+      catRow.font = { bold: true };
+      catRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF0F0F0" },
+      };
     }
 
     const requirementMap = new Map(credit.documents_required.map((doc) => [doc.type, doc.required ? "Required" : "NA"]));
-    rows.push([
+    trackerSheet.addRow([
       credit.credit_code.replace(" C", " Credit ").replace(" MR", " Mandatory Requirement "),
       credit.credit_name,
       credit.documentation_summary ?? "",
@@ -101,42 +110,37 @@ function trackerRows(credits: CreditWorkspace[]) {
     ]);
   }
 
-  return rows;
-}
-
-export function buildTrackerWorkbook(workspace: ProjectWorkspace) {
-  const workbook = XLSX.utils.book_new();
-  const trackerSheet = XLSX.utils.aoa_to_sheet(trackerRows(workspace.credits));
-  trackerSheet["!cols"] = [
-    { wch: 18 },
-    { wch: 34 },
-    { wch: 80 },
-    { wch: 14 },
-    { wch: 12 },
-    { wch: 22 },
-    { wch: 12 },
-    { wch: 22 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 14 },
-    { wch: 30 },
+  trackerSheet.columns = [
+    { width: 18 },
+    { width: 34 },
+    { width: 80 },
+    { width: 14 },
+    { width: 12 },
+    { width: 22 },
+    { width: 12 },
+    { width: 22 },
+    { width: 12 },
+    { width: 12 },
+    { width: 14 },
+    { width: 30 },
   ];
-  XLSX.utils.book_append_sheet(workbook, trackerSheet, "Document tracker");
 
-  const dashboardRows = [
-    ["Section", "Total Credits", "Completed (%)", "In Progress", "Required", "NA"],
-    ...workspace.credits.map((credit) => [
+  const dashboardSheet = workbook.addWorksheet("Dashboard");
+  const dashHeader = dashboardSheet.addRow(["Section", "Total Credits", "Completed (%)", "In Progress", "Required", "NA"]);
+  dashHeader.font = { bold: true };
+
+  for (const credit of workspace.credits) {
+    dashboardSheet.addRow([
       credit.credit_code,
       1,
       Number((credit.completion_pct / 100).toFixed(2)),
       resolvedCreditStatus(credit) === "IN_PROGRESS" ? 1 : 0,
       credit.documents_required.filter((item) => item.required).length,
       credit.documents_required.filter((item) => !item.required).length,
-    ]),
-  ];
-  const dashboardSheet = XLSX.utils.aoa_to_sheet(dashboardRows);
-  dashboardSheet["!cols"] = Array.from({ length: 6 }, () => ({ wch: 18 }));
-  XLSX.utils.book_append_sheet(workbook, dashboardSheet, "Dashboard");
+    ]);
+  }
+
+  dashboardSheet.columns = Array.from({ length: 6 }, () => ({ width: 18 }));
   return workbook;
 }
 

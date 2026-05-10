@@ -6,7 +6,7 @@ import { buildProjectCreditSeedRows, buildSeedCredits } from "@/lib/catalog";
 import { igbcRatingSystems } from "@/lib/constants";
 import { ragService } from "./rag-service";
 import type { CurrentUser, MemberRole } from "@/lib/types";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const GREEN_INTERIORS_SYSTEM = "IGBC Green Interiors";
 
@@ -459,23 +459,34 @@ export class ProjectService {
     await this.instantiateProjectCreditsIfMissing(params.projectId, (projectMeta as any)?.rating_system_id ?? null);
 
     const arrayBuffer = await params.file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    const sheetName = workbook.SheetNames.find((name) => name.toLowerCase().includes("document tracker")) ?? workbook.SheetNames[0];
-    if (!sheetName) throw new Error("No worksheet found in tracker file.");
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Array<any>>(sheet, { header: 1, defval: "" });
-    if (!rows.length || rows.length < 2) throw new Error("Tracker sheet is empty.");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    
+    const trackerSheet = workbook.worksheets.find(ws => ws.name.toLowerCase().includes("document tracker")) || workbook.worksheets[0];
+    if (!trackerSheet) throw new Error("No worksheet found in tracker file.");
 
-    const normalize = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const rows: any[][] = [];
+    trackerSheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      const rowData: any[] = [];
+      // ExcelJS row.values is 1-indexed, first element is null/undefined
+      for (let i = 1; i <= trackerSheet.columnCount; i++) {
+        rowData.push(row.getCell(i).value ?? "");
+      }
+      rows.push(rowData);
+    });
+
+    if (rows.length < 2) throw new Error("Tracker sheet is empty.");
+
+    const normalize = (value: string) => value.toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
     const extractStructuredCode = (value: string) => {
-      const upper = value.toUpperCase();
+      const upper = value.toString().toUpperCase();
       const match = upper.match(/([A-Z]{2,4})\s*(?:CREDIT|C|MR|MREQ|MANDATORY\s+REQUIREMENT)?\s*([0-9]{1,2}(?:\.[0-9]{1,2})?)/);
       if (!match) return null;
       const [, prefix, num] = match;
       return `${prefix} C${num}`;
     };
     const codeVariants = (value: string) => {
-      const original = value.trim();
+      const original = value.toString().trim();
       const upper = original.toUpperCase();
       const variants = new Set<string>();
       const push = (v: string) => {
@@ -508,7 +519,7 @@ export class ProjectService {
       return Array.from(variants);
     };
     const parseRole = (value: string) => {
-      const v = value.toLowerCase();
+      const v = value.toString().toLowerCase();
       if (v.includes("mep")) return "mep";
       if (v.includes("architect")) return "architect";
       if (v.includes("contractor")) return "contractor";
@@ -519,12 +530,12 @@ export class ProjectService {
     };
 
     const statusIsRequired = (value: string) => {
-      const normalized = value.trim().toLowerCase();
+      const normalized = value.toString().trim().toLowerCase();
       if (!normalized || normalized === "na") return false;
       return true;
     };
 
-    const normalizeHeader = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalizeHeader = (value: string) => value.toString().toLowerCase().replace(/[^a-z0-9]/g, "");
     const headerRowIndex = rows.findIndex((row) => {
       const cells = (row ?? []).map((cell: any) => normalizeHeader(String(cell ?? "")));
       return cells.some((cell) => cell.includes("criteria")) && cells.some((cell) => cell.includes("creditname"));

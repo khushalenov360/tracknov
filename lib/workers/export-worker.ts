@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildSubmissionZip, buildProjectSummaryPdf, buildTrackerWorkbook } from "@/lib/exports";
-import * as XLSX from "xlsx";
 
 export async function processExportJobs() {
   const admin = createAdminClient();
@@ -59,7 +58,8 @@ export async function processExportJobs() {
           break;
         case "EXCEL":
           const wb = buildTrackerWorkbook(workspace);
-          buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+          const excelBuffer = await wb.xlsx.writeBuffer();
+          buffer = Buffer.from(excelBuffer);
           extension = "xlsx";
           contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
           break;

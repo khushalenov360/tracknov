@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export class AuditService {
   private get client() { return createClient(); }
@@ -32,19 +32,30 @@ export class AuditService {
   async generateAuditExport(projectId: string) {
     const logs = await this.getProjectAuditLogs(projectId);
     
-    const worksheetData = logs.map(log => ({
-      Timestamp: new Date(log.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      Action: log.action,
-      ActorRole: log.actor_role,
-      Summary: log.summary,
-      Details: JSON.stringify(log.details)
-    }));
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Audit Trail");
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Trail");
+    worksheet.columns = [
+      { header: 'Timestamp', key: 'Timestamp', width: 25 },
+      { header: 'Action', key: 'Action', width: 20 },
+      { header: 'ActorRole', key: 'ActorRole', width: 15 },
+      { header: 'Summary', key: 'Summary', width: 50 },
+      { header: 'Details', key: 'Details', width: 40 }
+    ];
 
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    logs.forEach(log => {
+      worksheet.addRow({
+        Timestamp: new Date(log.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        Action: log.action,
+        ActorRole: log.actor_role,
+        Summary: log.summary,
+        Details: JSON.stringify(log.details)
+      });
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
 

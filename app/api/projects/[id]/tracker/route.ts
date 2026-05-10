@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import * as XLSX from "xlsx";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { buildTrackerWorkbook } from "@/lib/exports";
 import { logSystemActivity } from "@/lib/services/activity-service";
@@ -35,9 +34,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   });
 
   const workbook = buildTrackerWorkbook(workspace);
-  const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
+  const buffer = await workbook.xlsx.writeBuffer();
 
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(new Uint8Array(buffer as ArrayBuffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${workspace.project.name}-tracker.xlsx"`,

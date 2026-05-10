@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { getProjectWorkspace } from "@/lib/data";
 import { computeIgbcScore } from "./igbc-scoring-service";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export class ClientService {
   private get client() { return createClient(); }
@@ -16,30 +16,46 @@ export class ClientService {
     const score = computeIgbcScore(workspace);
     const credits = workspace.credits ?? [];
 
-    const worksheetData = credits.map(credit => ({
-      "Credit Code": credit.credit_code,
-      "Credit Name": credit.credit_name,
-      "Status": credit.status,
-      "Mandatory": credit.is_mandatory ? "Yes" : "No",
-      "Completion %": credit.completion_pct ?? 0,
-    }));
+    const workbook = new ExcelJS.Workbook();
+    
+    // Status Sheet
+    const statusSheet = workbook.addWorksheet("Project Status");
+    statusSheet.columns = [
+      { header: 'Credit Code', key: 'Credit Code', width: 15 },
+      { header: 'Credit Name', key: 'Credit Name', width: 40 },
+      { header: 'Status', key: 'Status', width: 20 },
+      { header: 'Mandatory', key: 'Mandatory', width: 12 },
+      { header: 'Completion %', key: 'Completion %', width: 15 }
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Project Status");
+    credits.forEach(credit => {
+      statusSheet.addRow({
+        "Credit Code": credit.credit_code,
+        "Credit Name": credit.credit_name,
+        "Status": credit.status,
+        "Mandatory": credit.is_mandatory ? "Yes" : "No",
+        "Completion %": credit.completion_pct ?? 0,
+      });
+    });
+    statusSheet.getRow(1).font = { bold: true };
 
-    // Add Summary sheet
-    const summaryData = [
+    // Summary Sheet
+    const summarySheet = workbook.addWorksheet("Executive Summary");
+    summarySheet.columns = [
+      { header: 'Metric', key: 'Metric', width: 30 },
+      { header: 'Value', key: 'Value', width: 40 }
+    ];
+
+    summarySheet.addRows([
       { Metric: "Project Name", Value: workspace.project.name },
       { Metric: "Overall Completion", Value: `${score.overall.scorePct}%` },
       { Metric: "Projected Rating", Value: score.overall.projectedRating },
       { Metric: "Mandatory Credits Approved", Value: `${score.mandatory.approved} / ${score.mandatory.total}` },
       { Metric: "Report Generated At", Value: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) }
-    ];
-    const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "Executive Summary");
+    ]);
+    summarySheet.getRow(1).font = { bold: true };
 
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
 
