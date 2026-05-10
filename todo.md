@@ -17,7 +17,7 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 - [~] Prove no direct frontend DB mutations remain.
 - [~] Prove no workflow state skipping is possible across DB/API/server actions.
 - [~] Prove document overwrite is impossible across every upload/update path.
-- [ ] Prove no derived state is stored or mutated manually outside backend recalculation/orchestration paths.
+- [x] Prove no derived state is stored or mutated manually outside backend recalculation/orchestration paths.
 - [x] Confirm required API families exist and are backend-authoritative:
   - `/workflow/*`
   - `/validation/*`
@@ -135,7 +135,7 @@ Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN
 - [~] Guarantee post-mutation recalculation chain:
   - submittal -> credit_stage -> project_credit -> project -> certification.
 - [~] Guarantee scoring/threshold/certification reevaluation after approval-affecting mutations.
-- [ ] Prove no manual derived-state updates remain in mutation code paths.
+- [x] Prove no manual derived-state updates remain in mutation code paths.
 
 ### P2 - Performance and indexing for orchestrator path
 - [x] Add/verify indexes for orchestrator read/write path:

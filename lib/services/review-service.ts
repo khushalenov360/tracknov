@@ -1,7 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import { transitionDocumentState } from "./document-state-service";
 import { workflowOrchestratorService } from "./workflow-orchestrator-service";
 import { ragService } from "./rag-service";
 import { eventBus } from "@/lib/events/event-bus";
@@ -203,40 +202,14 @@ export class ReviewService {
     newState: string;
     remarks?: string | null;
   }) {
-    const actorRole = await this.getActorProjectRole(params.projectId, user);
-    if (!actorRole) throw new Error("Unauthorized.");
-
-    // Transition the submittal itself
-    const { error: subError } = await this.admin
-      .from("submittals")
-      .update({ 
-        state: params.newState, 
-        updated_at: new Date().toISOString() 
-      })
-      .eq("id", params.submittalId);
-    
-    if (subError) throw subError;
-
-    // Transition all documents within this submittal to the matching state
-    const { data: docs } = await this.admin
-      .from("project_document")
-      .select("id")
-      .eq("submittal_id", params.submittalId);
-    
-    if (docs && docs.length > 0) {
-      for (const doc of docs) {
-        await transitionDocumentState(this.admin, {
-          documentId: doc.id,
-          newState: params.newState as any,
-          userId: user.id,
-          actorRole,
-          remarks: params.remarks,
-          manualSubmit: true
-        });
-      }
-    }
-
-    return { ok: true };
+    const result = await workflowOrchestratorService.transitionSubmittal(user, {
+      submittalId: params.submittalId,
+      projectId: params.projectId,
+      targetState: params.newState as any,
+      reason: params.remarks ?? null,
+    });
+    if (!result.ok) throw new Error(result.message);
+    return { ok: true, workflow_state: result.workflow_state };
   }
 
   async canSubmitProject(projectId: string) {
@@ -257,13 +230,21 @@ export class ReviewService {
     if (!canSubmit) {
       throw new Error(`Cannot submit: ${missingMandatory} mandatory credits are not approved.`);
     }
+    const actorRole = await this.getActorProjectRole(projectId, user);
+    if (!actorRole) throw new Error("Unauthorized.");
 
-    const { error } = await this.admin
-      .from("projects")
-      .update({ state: "SUBMITTED", updated_at: new Date().toISOString() })
-      .eq("id", projectId);
-
-    if (error) throw error;
+    const idempotencyKey = `project-${projectId}-SUBMITTED-${Date.now()}`;
+    const { error: transitionError } = await this.admin.rpc("execute_governed_transition", {
+      p_entity_type: "project",
+      p_entity_id: projectId,
+      p_target_state: "SUBMITTED",
+      p_actor_id: user.id,
+      p_actor_role: actorRole,
+      p_reason: "Project submitted for certification",
+      p_idempotency_key: idempotencyKey,
+      p_metadata: {},
+    });
+    if (transitionError) throw transitionError;
 
     await eventBus.emit({
       type: "REVIEW_COMPLETED", 

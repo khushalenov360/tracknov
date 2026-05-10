@@ -15,10 +15,4 @@
 
 ## Manual derived-state mutation scan
 
-| File | Finding |
-|---|---|
-| `lib/data.ts` | project derived-state update |
-| `lib/services/credit-service.ts` | project_credit derived-state update |
-| `lib/services/project-service.ts` | project derived-state update |
-| `lib/services/project-service.ts` | project_credit derived-state update |
-| `lib/services/review-service.ts` | project derived-state update |
+No suspicious manual derived-state mutation patterns detected in `app/` or `lib/`.

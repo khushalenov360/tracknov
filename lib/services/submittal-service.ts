@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { WorkflowState } from "./document-state-service";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 
@@ -42,72 +41,34 @@ export class SubmittalService {
    */
   async recalculateSubmittalState(submittalId: string, writer?: SupabaseClient) {
     const db = writer || this.admin;
-    const { data: documents } = await db
-      .from("project_document")
-      .select("workflow_state, is_latest")
-      .eq("submittal_id", submittalId)
-      .eq("is_latest", true);
-
-    if (!documents) return;
-
-    let newState: WorkflowState = "DRAFT";
-    if (documents.length > 0) {
-      if (documents.every(d => d.workflow_state === "APPROVED")) {
-        newState = "APPROVED";
-      } else if (documents.some(d => d.workflow_state === "REJECTED" || d.workflow_state === "ELIMINATED")) {
-        newState = "REJECTED";
-      } else if (documents.some(d => d.workflow_state === "UNDER_REVIEW")) {
-        newState = "UNDER_REVIEW";
-      } else if (documents.some(d => d.workflow_state === "SUBMITTED")) {
-        newState = "SUBMITTED";
-      } else if (documents.some(d => d.workflow_state === "READY")) {
-        newState = "READY";
-      }
-    }
-
-    await db
-      .from("submittals")
-      .update({ state: newState, updated_at: new Date().toISOString() })
-      .eq("id", submittalId);
+    await db.rpc("recalculate_submittal_state", { p_submittal_id: submittalId });
 
     // After updating submittal, update the parent stage
     const { data: submittal } = await db
       .from("submittals")
-      .select("credit_stage_id")
+      .select("credit_stage_id, project_credit_id")
       .eq("id", submittalId)
       .single();
     
     if (submittal?.credit_stage_id) {
-      await this.recalculateStageState(submittal.credit_stage_id, db);
+      await this.recalculateStageState(submittal.credit_stage_id, db, submittal.project_credit_id ?? null);
     }
   }
 
-  async recalculateStageState(stageId: string, writer?: SupabaseClient) {
+  async recalculateStageState(stageId: string, writer?: SupabaseClient, projectCreditId?: string | null) {
     const db = writer || this.admin;
-    const { data: submittals } = await db
-      .from("submittals")
-      .select("state")
-      .eq("credit_stage_id", stageId);
-
-    if (!submittals) return;
-
-    let newState: WorkflowState = "DRAFT";
-    if (submittals.length > 0) {
-      if (submittals.every(s => s.state === "APPROVED")) {
-        newState = "APPROVED";
-      } else if (submittals.some(s => s.state === "REJECTED")) {
-        newState = "REJECTED";
-      } else if (submittals.some(s => s.state === "UNDER_REVIEW")) {
-        newState = "UNDER_REVIEW";
-      } else if (submittals.some(s => s.state === "SUBMITTED")) {
-        newState = "SUBMITTED";
-      }
+    let effectiveProjectCreditId = projectCreditId ?? null;
+    if (!effectiveProjectCreditId) {
+      const { data: stage } = await db
+        .from("credit_stages")
+        .select("project_credit_id")
+        .eq("id", stageId)
+        .maybeSingle();
+      effectiveProjectCreditId = stage?.project_credit_id ?? null;
     }
-
-    await db
-      .from("credit_stages")
-      .update({ state: newState, updated_at: new Date().toISOString() })
-      .eq("id", stageId);
+    if (effectiveProjectCreditId) {
+      await db.rpc("recalculate_credit_state", { p_project_credit_id: effectiveProjectCreditId });
+    }
   }
 }
 

@@ -9,4 +9,4 @@
 | Immutable logs | PASS |
 | Transition protections | PASS |
 
-Scanned migrations: 57
+Scanned migrations: 69

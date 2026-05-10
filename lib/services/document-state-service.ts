@@ -210,6 +210,7 @@ export async function transitionDocumentState(
     newState,
     userId,
     actorRole,
+    idempotencyKey,
     manualSubmit = false,
     updatedEvidence = false,
     remarks = null,
@@ -298,10 +299,6 @@ export async function transitionDocumentState(
   if (!isOverride && l2Roles.includes(role) && newState !== currentState) {
     return { ok: false as const, error: "L2 role is read-only and cannot change workflow state." };
   }
-  const l0Roles = ["consultant", "architect", "mep", "contractor"];
-  const l1Roles = ["owner"];
-  const l3Roles = ["project_admin", "super_admin"];
-  const l5Roles = ["super_user"];
 
 
   if (!isOverride && l0Roles.includes(role) && !["IN_PROGRESS", "MAPPED"].includes(newState)) {

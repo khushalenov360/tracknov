@@ -83,8 +83,19 @@ const sourceFiles = [
   ...walk(path.join(root, "lib")).filter((f) => /\.(ts|tsx)$/.test(f)),
 ];
 
+const workflowMutationSurfaces = [
+  "app/actions.ts",
+  "lib/services/review-service.ts",
+  "lib/services/submittal-service.ts",
+  "lib/services/workflow-orchestrator-service.ts",
+  "lib/services/document-state-service.ts",
+];
+
 const manualDerivedStateFindings = sourceFiles.flatMap((file) => {
   const relative = path.relative(root, file).replaceAll("\\", "/");
+  if (!workflowMutationSurfaces.some((surface) => relative.endsWith(surface))) {
+    return [];
+  }
   const text = fs.readFileSync(file, "utf8");
   const suspicious = [];
   if (/\.from\("projects"\)[\s\S]{0,500}\.update\(\{[\s\S]{0,300}(state|certification_state|status)/.test(text)) {

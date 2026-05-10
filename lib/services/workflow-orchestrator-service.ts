@@ -412,19 +412,24 @@ export class WorkflowOrchestratorService {
     const started = Date.now();
 
     if (!user) {
-      return { ok: false, status: "unauthorized", message: "Authentication required." };
+      return this.failure("authentication_failed", "Authentication required.");
     }
 
     const { projectId, submittalId, targetState, reason, override } = request;
     const actorRole = await this.getProjectRole(projectId, user);
+    const lockState = await this.getProjectLockState(projectId);
 
     if (!actorRole) {
-      return { ok: false, status: "unauthorized", message: "Project membership is required." };
+      return this.failure("authorization_failed", "Project membership is required.", lockState);
     }
 
     // Role validation (L3 required for submittal transition to APPROVED)
     if (targetState === "APPROVED" && actorRole !== "project_admin" && actorRole !== "super_admin" && actorRole !== "super_user" && !override) {
-      return { ok: false, status: "unauthorized", message: "Only Project Admin can approve submittals." };
+      return this.failure("authorization_failed", "Only Project Admin can approve submittals.", lockState);
+    }
+
+    if (lockState.locked && !(override && isL5Role(actorRole))) {
+      return this.failure("lock_violation", lockState.reason ?? "Project is locked.", lockState);
     }
 
     try {
@@ -435,27 +440,30 @@ export class WorkflowOrchestratorService {
       if (targetState === "APPROVED") {
         const gate = await submittalService.validateSubmittalGate(submittalId);
         if (!gate.ok && !override) {
-          return { ok: false, status: "validation_failed", message: gate.message };
+          return this.failure("validation_failed", gate.message ?? "Validation failed.", lockState);
         }
       }
 
-      const { data: submittal, error: submittalError } = await this.writer
-        .from("submittals")
-        .update({
-          state: targetState,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", submittalId)
-        .eq("project_id", projectId)
-        .select()
-        .single();
-
-      if (submittalError) throw submittalError;
-
-      // Recalculate parent stage
-      if (submittal?.credit_stage_id) {
-        await submittalService.recalculateStageState(submittal.credit_stage_id, this.writer);
+      const idempotencyKey = `submittal-${submittalId}-${targetState}-${Date.now()}`;
+      const { data: rpcData, error: rpcError } = await this.writer.rpc("execute_governed_transition", {
+        p_entity_type: "submittal",
+        p_entity_id: submittalId,
+        p_target_state: targetState,
+        p_actor_id: user.id,
+        p_actor_role: actorRole,
+        p_reason: reason ?? "Submittal transition",
+        p_idempotency_key: idempotencyKey,
+        p_metadata: {
+          override: Boolean(override),
+        },
+      });
+      if (rpcError) throw rpcError;
+      const transition = (rpcData ?? {}) as { success?: boolean; from?: string; to?: string };
+      if (!transition.success) {
+        return this.failure("workflow_failed", "Submittal transition failed.", lockState);
       }
+
+      await submittalService.recalculateSubmittalState(submittalId, this.writer);
 
       await runtimeGovernanceService.recordMetric({
         projectId,
@@ -468,13 +476,21 @@ export class WorkflowOrchestratorService {
       return {
         ok: true,
         workflow_state: targetState,
-        allowed_actions: [], // TODO: calculate allowed actions
-        lock_state: { locked: false, reason: null },
-        audit_reference: submittalId
+        allowed_actions: workflowAllowedActions(targetState),
+        lock_state: lockState,
+        validation_status: "passed",
+        audit_reference: idempotencyKey,
+        derived_state_summary: {
+          project_id: projectId,
+          entity_type: "submittal",
+          entity_id: submittalId,
+          from_state: (transition.from ?? null) as string | null,
+          to_state: (transition.to ?? targetState) as string,
+        },
       };
     } catch (error: any) {
       console.error("[WorkflowOrchestratorService.transitionSubmittal] Error:", error);
-      return { ok: false, status: "error", message: error.message || "Submittal transition failed." };
+      return this.failure("workflow_failed", error.message || "Submittal transition failed.", lockState);
     }
   }
 }
