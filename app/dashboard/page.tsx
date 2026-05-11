@@ -15,6 +15,35 @@ import { RefreshTrigger } from "@/components/refresh-trigger";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function collapseTimelineRows(rows: any[]) {
+  const collapsed: Array<any & { repeatCount: number }> = [];
+  for (const row of rows) {
+    const previous = collapsed[collapsed.length - 1];
+    const isDuplicate =
+      previous &&
+      previous.project_id === row.project_id &&
+      previous.entity_type === row.entity_type &&
+      previous.action === row.action &&
+      previous.summary === row.summary &&
+      previous.actor_id === row.actor_id;
+    if (isDuplicate) {
+      previous.repeatCount += 1;
+      continue;
+    }
+    collapsed.push({ ...row, repeatCount: 1 });
+  }
+  return collapsed;
+}
+
+function toOperationalWorkflowLabel(state?: string | null) {
+  const value = String(state ?? "").toUpperCase();
+  if (["UNDER_REVIEW", "UNDER_L3_REVIEW", "READY_FOR_L3", "L1_REVIEW", "SUBMITTED"].includes(value)) return "Needs review";
+  if (value === "CLARIFICATION") return "Clarification";
+  if (value === "REJECTED") return "Rejected";
+  if (["APPROVED", "COMPLETE"].includes(value)) return "Approved";
+  return "In progress";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -42,9 +71,11 @@ export default async function DashboardPage({
       limit: 80,
     }),
   ]);
+  const condensedTimelineRows = collapseTimelineRows(timelineRows);
   const roi = await getRoiSnapshot();
   const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
+  const isL3Operational = ["project_admin", "super_admin"].includes(activeRole);
   const clientMode = activeRole === "client";
   const primaryProjectId = projects[0]?.id ?? null;
   const checklist = primaryProjectId ? await getOrCreateOnboardingChecklist(primaryProjectId) : null;
@@ -196,8 +227,8 @@ export default async function DashboardPage({
       email={user?.email}
       notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
-      <RefreshTrigger intervalMs={60000} />
-      {["super_user", "super_admin"].includes(activeRole) ? (
+      <RefreshTrigger intervalMs={isL3Operational ? 15000 : 60000} />
+      {["super_user"].includes(activeRole) ? (
         <section className="surface-card mb-4 p-4">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -239,8 +270,12 @@ export default async function DashboardPage({
           <div className="space-y-2">
             {actionQueue.length > 0 ? actionQueue.slice(0, 5).map((item: any, idx: number) => (
               <div key={idx} className="p-2 rounded border border-[var(--color-border)] text-[11px]">
-                <p className="font-medium truncate">{item.creditId}</p>
-                <p className="text-[var(--color-text-tertiary)] truncate">{item.projectName}</p>
+                <p className="font-medium truncate">
+                  {item.creditCode ? `${item.creditCode} - ${item.documentType ?? "required document"}` : item.documentType ?? "Required document"}
+                </p>
+                <p className="text-[var(--color-text-tertiary)] truncate">
+                  {item.creditName ?? "Credit requirement"} - {item.projectName}
+                </p>
               </div>
             )) : (
               <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No pending uploads assigned.</p>
@@ -258,7 +293,7 @@ export default async function DashboardPage({
             {reviewQueue.length > 0 ? reviewQueue.slice(0, 5).map((item: any, idx: number) => (
               <div key={idx} className="p-2 rounded border border-[var(--color-border)] text-[11px]">
                 <p className="font-medium truncate">{item.fileName}</p>
-                <p className="text-[var(--color-text-tertiary)] truncate">{item.projectName} • {item.state}</p>
+                <p className="text-[var(--color-text-tertiary)] truncate">{item.projectName} - {toOperationalWorkflowLabel(item.state)}</p>
               </div>
             )) : (
               <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No documents awaiting your review.</p>
@@ -422,7 +457,7 @@ export default async function DashboardPage({
                     {task.title}
                   </p>
                   <p className="truncate text-[11px] text-[var(--color-text-secondary)]">
-                    {task.projectName} • {task.subtitle}
+                    {task.projectName} - {task.subtitle}
                   </p>
                 </div>
                 <Badge
@@ -737,6 +772,7 @@ export default async function DashboardPage({
         ))}
       </section>
 
+      {["super_user", "super_admin"].includes(activeRole) ? (
       <section className="surface-card mt-4 p-4">
         <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Visual audit timeline (IST)</h2>
         <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
@@ -789,19 +825,26 @@ export default async function DashboardPage({
               </tr>
             </thead>
             <tbody>
-              {timelineRows.map((row) => (
+              {condensedTimelineRows.map((row) => (
                 <tr key={row.id} className="border-b border-[var(--color-border)]">
                   <td className="px-3 py-2 text-[var(--color-text-secondary)]">{formatDateTimeIST(row.created_at)}</td>
                   <td className="px-3 py-2 text-[var(--color-text-primary)]">{row.project_name}</td>
                   <td className="px-3 py-2 text-[var(--color-text-secondary)]">{row.entity_type}</td>
                   <td className="px-3 py-2 text-[var(--color-text-secondary)]">{row.action}</td>
-                  <td className="px-3 py-2 text-[var(--color-text-primary)]">{row.summary}</td>
+                  <td className="px-3 py-2 text-[var(--color-text-primary)]">
+                    {row.summary}
+                    {row.repeatCount > 1 ? (
+                      <span className="ml-2 inline-flex rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
+                        x{row.repeatCount}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                     {row.actor_name ?? row.actor_role ?? "System"}
                   </td>
                 </tr>
               ))}
-              {timelineRows.length === 0 ? (
+              {condensedTimelineRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-[11px] text-[var(--color-text-tertiary)]">
                     No timeline events match current filters.
@@ -812,6 +855,7 @@ export default async function DashboardPage({
           </table>
         </div>
       </section>
+      ) : null}
       
       {!clientMode && (
         <section className="mt-4 surface-card p-4">
@@ -870,30 +914,6 @@ export default async function DashboardPage({
         </section>
       )}
 
-      <section className="mt-4 surface-card p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Projects</h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-              {clientMode
-                ? "Open a project for simple progress and pending actions."
-                : "Open any project to view section-wise progress and completion."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {projects.length ? (
-              projects.map((project) => (
-                <Button key={project.id} asChild className="rounded-md px-3 text-[12px]">
-                  <Link href={`/projects/${project.id}`}>{project.name}</Link>
-                </Button>
-              ))
-            ) : (
-              <span className="text-[11px] text-[var(--color-text-tertiary)]">No active projects yet.</span>
-            )}
-          </div>
-        </div>
-      </section>
-
       {canCreateProject ? (
         <section className="surface-card mt-4 p-4">
           <form action={createProjectAction} className="grid gap-3 lg:grid-cols-[minmax(260px,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_180px_auto]">
@@ -947,8 +967,8 @@ export default async function DashboardPage({
                 </p>
                 <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
                   {clientMode
-                    ? `${project.totalCredits} checklist items · ${project.uploadedDocs} files · ${project.mandatoryCreditsMet} must-have ready · ${project.openRemarks} pending comments · ${project.membersCount} team members`
-                    : `${project.totalCredits} credits · ${project.uploadedDocs} docs · ${project.mandatoryCreditsMet} mandatory met · ${project.openRemarks} remarks · ${project.membersCount} members`}
+                    ? `${project.totalCredits} checklist items - ${project.uploadedDocs} files - ${project.mandatoryCreditsMet} must-have ready - ${project.openRemarks} pending comments - ${project.membersCount} team members`
+                    : `${project.totalCredits} credits - ${project.uploadedDocs} docs - ${project.mandatoryCreditsMet} mandatory met - ${project.openRemarks} remarks - ${project.membersCount} members`}
                 </p>
                 <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
                   <Progress value={project.overallCompletion} />
@@ -957,7 +977,7 @@ export default async function DashboardPage({
               </div>
               <div className="flex items-center gap-2 lg:justify-end">
                 <Button asChild className="rounded-md px-3 text-[12px]">
-                  <Link href={`/projects/${project.id}`}>Open workspace</Link>
+                  <Link href={`/projects/${project.id}`}>Open Project</Link>
                 </Button>
                 <Button asChild className="rounded-md px-3 text-[12px]">
                   <Link href={`/projects/${project.id}/submission`}>Submission pack</Link>
@@ -971,7 +991,7 @@ export default async function DashboardPage({
             <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
               {canCreateProject
                 ? "Create your first project from the form above to start documentation workflows."
-                : "Ask a Super User or Project Admin to add you to a project workspace."}
+                : "Ask a Super User or Project Admin to add you to a project."}
             </p>
           </article>
         )}

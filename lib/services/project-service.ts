@@ -7,6 +7,7 @@ import { igbcRatingSystems } from "@/lib/constants";
 import { ragService } from "./rag-service";
 import type { CurrentUser, MemberRole } from "@/lib/types";
 import ExcelJS from "exceljs";
+import { createHash } from "node:crypto";
 
 const GREEN_INTERIORS_SYSTEM = "IGBC Green Interiors";
 
@@ -701,7 +702,7 @@ export class ProjectService {
     finalComments: string;
   }) {
     const role = await this.getActorProjectRole(params.projectId, user);
-    if (!["project_admin", "super_admin", "super_user"].includes(role)) {
+    if (!["project_admin", "super_admin", "super_user"].includes(role ?? "")) {
       throw new Error("Only Project Admin or Super User can close certification.");
     }
 
@@ -727,7 +728,7 @@ export class ProjectService {
     };
 
     const hashInput = JSON.stringify(snapshotPayload) + params.projectId;
-    const snapshotHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+    const snapshotHash = createHash("sha256").update(hashInput).digest("hex");
 
     const { data: snapshot, error: snapshotError } = await this.admin
       .from("certification_snapshots")

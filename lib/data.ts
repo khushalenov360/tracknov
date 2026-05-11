@@ -2715,19 +2715,25 @@ export async function getUserActionQueue() {
   const { data: assignments } = await client
     .from("assignments")
     .select(`
+      id,
       project_id,
+      document_type,
       project_credit_id,
       projects!inner (name),
-      project_credits!inner (credit_id, status)
+      project_credits!inner (credit_id, credit_code, credit_name, status)
     `)
     .eq("user_id", user.id)
     .eq("is_active", true);
 
   return (assignments ?? []).map((a: any) => ({
+    id: a.id,
     projectId: a.project_id,
     projectName: a.projects?.name,
     projectCreditId: a.project_credit_id,
+    documentType: a.document_type ?? null,
     creditId: a.project_credits?.credit_id,
+    creditCode: a.project_credits?.credit_code ?? null,
+    creditName: a.project_credits?.credit_name ?? null,
     status: a.project_credits?.status,
   }));
 }

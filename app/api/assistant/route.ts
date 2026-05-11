@@ -28,7 +28,7 @@ import {
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
-import { orchestrateCopilotResponse } from "@/lib/copilot/orchestrator";
+import { executeIntent } from "@/ai/orchestrator/execute-intent";
 import { resolveCopilotMode } from "@/lib/copilot/router/resolveCopilotMode";
 import { copilotRuntimeService } from "@/lib/services/copilot-runtime-service";
 export const dynamic = "force-dynamic";
@@ -1054,22 +1054,20 @@ export async function POST(request: Request) {
 
   // PHASE 3: EnovAIT Orchestration — strictly route workflow intents through the orchestrator
   if (intentCategory === "workflow" && focusedProjectId) {
-    const orchestrationResult = await orchestrateCopilotResponse({
+    const { user: workflowUser, role: workflowRole } = await getWorkspaceSnapshot();
+    if (!workflowUser) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const intentResult = await executeIntent({
+      userId: workflowUser.id,
+      role: workflowRole,
+      projectContext: {
+        projectId: focusedProjectId,
+        projectName: context.title ?? null,
+      },
       query: latestPrompt,
-      projectId: focusedProjectId,
-      intentHint: "upload", // Map based on disambiguation in future
     });
-
-    if ("status" in orchestrationResult && orchestrationResult.status === "fallback") {
-      return createResponseStream(createTextStream(orchestrationResult.message));
-    }
-
-    if ("mode" in orchestrationResult && orchestrationResult.mode === "workflow") {
-      // If we are in workflow mode, we can either short-circuit here 
-      // or prepare the structured prompt. For now, we allow the foundation 
-      // to signal readiness without breaking the legacy flow.
-      console.log("[Phase 3] Workflow Orchestration Active:", orchestrationResult.message);
-    }
+    return createResponseStream(createTextStream(intentResult.message));
   }
 
   const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();

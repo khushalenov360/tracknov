@@ -275,7 +275,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
 
               <div className="flex flex-wrap gap-2">
                 <Button asChild className="rounded-md px-3 text-[12px]">
-                  <Link href={`/projects/${project.id}`}>Open workspace</Link>
+                  <Link href={`/projects/${project.id}`}>Open Project</Link>
                 </Button>
                 <Button asChild variant="secondary" className="rounded-md px-3 text-[12px]">
                   <Link href={`/projects/${project.id}/submission`}>Submission pack</Link>

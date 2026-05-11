@@ -7,7 +7,9 @@ export function createClient() {
   // Opt out of caching/static generation for any route that calls this.
   noStore();
 
-  const cookieStore = cookies();
+  // Next.js may type `cookies()` as async in some build targets; this keeps
+  // our shared server client API stable for existing callsites.
+  const cookieStore = cookies() as any;
 
   return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {

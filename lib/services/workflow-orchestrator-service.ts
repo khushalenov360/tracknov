@@ -61,6 +61,7 @@ export type WorkflowTransitionSuccess = {
 export type WorkflowTransitionFailure = {
   ok: false;
   status:
+    | "invalid_payload"
     | "authentication_failed"
     | "authorization_failed"
     | "validation_failed"
@@ -253,7 +254,7 @@ export class WorkflowOrchestratorService {
     }
 
     // SECTION 3: Role-Based Execution Restrictions
-    const isL0 = actorRole === "contributor";
+    const isL0 = ["architect", "mep", "contractor", "consultant"].includes(actorRole);
     const isL1 = actorRole === "owner";
     const isL3 = actorRole === "project_admin" || actorRole === "super_admin" || actorRole === "super_user";
 
@@ -302,7 +303,7 @@ export class WorkflowOrchestratorService {
       manualSubmit: Boolean(request.metadata?.manualSubmit ?? request.action === "submit"),
       updatedEvidence: Boolean(request.metadata?.updatedEvidence),
       remarks: request.reason ?? null,
-      idempotencyKey: request.idempotencyKey ?? null,
+      idempotencyKey: request.idempotencyKey ?? "",
       override,
       overrideReason: request.overrideReason ?? null,
     });

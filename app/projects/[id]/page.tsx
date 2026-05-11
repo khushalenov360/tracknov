@@ -489,7 +489,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
         </section>
       </details>
 
-      <div className="grid gap-4 xl:grid-cols-[200px_minmax(0,1fr)_280px]">
+      <div className="grid gap-4 2xl:grid-cols-[190px_minmax(0,1fr)_300px]">
         <aside className="rounded-xl border-r border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-4">
           <div className="border-b border-[var(--color-border)] px-2 pb-3">
             <p className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
@@ -602,7 +602,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <div>
               <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Credit tracker</h2>
               <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
-                Dense review grid for approvals, remarks, and owner uploads.
+                Full evidence matrix across all required document columns.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -622,13 +622,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-[12px]">
+            <table className="min-w-[1900px] border-collapse text-[12px]">
               <thead className="sticky top-0 z-10 bg-[var(--color-surface-2)]">
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                  <th className="w-[108px] px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Criteria
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                  <th className="w-[280px] px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     Credit name
                   </th>
                   {trackerColumns.map((column) => (
@@ -717,8 +717,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                                   ? "border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]"
                                   : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-70";
                         return (
-                          <td key={`${credit.id}-${column.label}`} className="px-2 py-2 align-middle">
-                            <div className="flex min-w-[112px] flex-col gap-1">
+                        <td key={`${credit.id}-${column.label}`} className="px-2 py-2 align-middle">
+                            <div className="flex min-w-[168px] flex-col gap-1">
                               <span className={`inline-flex w-fit rounded-[3px] px-[6px] py-[2px] text-[9px] ${tone}`}>
                                 {cell}
                               </span>
@@ -731,7 +731,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                                     name="assigned_user_id"
                                     defaultValue={requirementSlot.assigned_user_id ?? ""}
                                     aria-label={`Assign ${requirementSlot.label} for ${credit.credit_code}`}
-                                    className="h-7 w-[132px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] text-[var(--color-text-primary)]"
+                                    className="h-7 w-[160px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] text-[var(--color-text-primary)]"
                                   >
                                     <option value="">Assign...</option>
                                     {contributorMembers.map((member) => (
@@ -742,13 +742,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                                   </select>
                                   <button
                                     type="submit"
-                                    className="h-6 w-[132px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[10px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-green)]"
+                                    className="h-6 w-[160px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[10px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-green)]"
                                   >
                                     Save
                                   </button>
                                 </form>
                               ) : requirementSlot?.assigned_user_id ? (
-                                <span className="max-w-[132px] truncate text-[9px] text-[var(--color-text-tertiary)]">
+                                <span className="max-w-[160px] truncate text-[9px] text-[var(--color-text-tertiary)]">
                                   {requirementSlot.assigned_name || requirementSlot.assigned_email || "Assigned"}
                                 </span>
                               ) : null}
