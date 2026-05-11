@@ -510,18 +510,21 @@ export class DocumentService {
       throw new Error("Document cannot be resubmitted at this stage.");
     }
 
-    const transition = await transitionDocumentState(this.admin, {
-      documentId: params.documentId,
-      newState: "RESUBMITTED",
-      userId: user.id,
-      actorRole,
-      manualSubmit: true,
-      updatedEvidence: true,
-      remarks: params.resubmitNote,
+    const result = await workflowOrchestratorService.transition(user, {
+      entityType: "document",
+      entityId: params.documentId,
+      projectId: params.projectId,
+      targetState: "RESUBMITTED",
+      action: "submit",
+      reason: params.resubmitNote,
+      metadata: {
+        manualSubmit: true,
+        updatedEvidence: true,
+      },
       idempotencyKey: params.idempotencyKey,
     });
 
-    if (!transition.ok) throw new Error(transition.error);
+    if (!result.ok) throw new Error(result.message);
 
     const nextNotes = [document.notes ?? "", params.resubmitNote ? `Resubmission note: ${params.resubmitNote}` : ""].filter(Boolean).join("\n\n");
     await this.admin.from("project_document").update({ notes: nextNotes }).eq("id", params.documentId);

@@ -197,27 +197,42 @@ export class WorkflowOrchestratorService {
       return this.failure("authentication_failed", "Authentication required.");
     }
 
+    const document = request.entityType === "document" ? await this.getDocumentEnvelope(request.entityId) : null;
+    const projectId = request.projectId ?? document?.project_id ?? null;
+
+    if (!projectId && request.entityType === "submittal") {
+      return this.failure("invalid_payload", "projectId is required for submittal transitions.");
+    }
+
+    if (request.entityType === "submittal") {
+      return this.transitionSubmittal(user, {
+        projectId: projectId!,
+        submittalId: request.entityId,
+        targetState: request.targetState,
+        reason: request.reason,
+        override: request.override,
+      });
+    }
+
     if (request.entityType !== "document") {
       return this.failure(
         "workflow_failed",
-        "Only document workflow transitions are currently available through the orchestrator.",
+        "Only document and submittal workflow transitions are currently available through the orchestrator.",
       );
     }
 
-    const document = await this.getDocumentEnvelope(request.entityId);
     if (!document) {
       return this.failure("not_found", "Workflow entity not found.");
     }
 
-    const projectId = request.projectId ?? document.project_id;
     const currentState = (document.state ?? "DRAFT") as WorkflowState;
     const allowedActions = workflowAllowedActions(currentState);
-    const lockState = await this.getProjectLockState(projectId);
-    const actorRole = await this.getProjectRole(projectId, user);
+    const lockState = await this.getProjectLockState(projectId!);
+    const actorRole = await this.getProjectRole(projectId!, user);
 
     if (!actorRole) {
       await this.logSecurityEvent({
-        projectId,
+        projectId: projectId!,
         userId: user.id,
         eventType: "workflow_membership_denied",
         details: { entityId: request.entityId },

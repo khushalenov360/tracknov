@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         projectCreditId: creditId,
         docCategory,
         file,
+        idempotencyKey: crypto.randomUUID(),
       });
       return NextResponse.json({ ok: true, mode: "document", documentId: result.id });
     }

@@ -8,7 +8,8 @@ import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const throttled = checkRateLimit(request, {
     key: "api:project:tracker-export",
     limit: 12,
@@ -16,7 +17,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   });
   if (throttled) return throttled;
 
-  const workspace = await getProjectWorkspaceForApi(params.id);
+  const workspace = await getProjectWorkspaceForApi(id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   // Audit Log
   const admin = createAdminClient();
   await logSystemActivity(admin, {
-    projectId: params.id,
+    projectId: id,
     entityType: "project",
     action: "export_tracker",
     summary: `Exported document tracker for ${workspace.project.name}`,

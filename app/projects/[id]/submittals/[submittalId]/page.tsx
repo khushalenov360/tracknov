@@ -13,7 +13,7 @@ import { workflowStateRenderer } from "@/lib/workflow/state-renderer";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { id: string; submittalId: string };
+  params: Promise<{ id: string; submittalId: string }>;
 };
 
 async function getReviewEnvelope(projectId: string, submittalId: string) {
@@ -86,7 +86,8 @@ function actionLabel(action: string) {
 }
 
 export default async function SubmittalReviewPage({ params }: PageProps) {
-  const [user, envelope] = await Promise.all([getCurrentUser(), getReviewEnvelope(params.id, params.submittalId)]);
+  const { id: projectId, submittalId } = await params;
+  const [user, envelope] = await Promise.all([getCurrentUser(), getReviewEnvelope(projectId, submittalId)]);
   const role = user?.role ?? "consultant";
 
   if (!envelope) {
@@ -95,7 +96,7 @@ export default async function SubmittalReviewPage({ params }: PageProps) {
         <section className="surface-card p-6">
           <p className="text-[13px] text-[var(--color-text-secondary)]">No matching submittal or document was found for this project.</p>
           <Button asChild variant="secondary" className="mt-4 rounded-md px-3 text-[12px]">
-            <Link href={`/projects/${params.id}`}>Back to project</Link>
+            <Link href={`/projects/${projectId}`}>Back to project</Link>
           </Button>
         </section>
       </Shell>
@@ -125,7 +126,7 @@ export default async function SubmittalReviewPage({ params }: PageProps) {
                 </p>
               </div>
               <Button asChild variant="secondary" className="h-[32px] rounded-md px-3 text-[12px]">
-                <Link href={`/projects/${params.id}`}>Back to credit context</Link>
+                <Link href={`/projects/${projectId}`}>Back to credit context</Link>
               </Button>
             </div>
           </section>
@@ -205,7 +206,7 @@ export default async function SubmittalReviewPage({ params }: PageProps) {
               {allowedActions.length ? (
                 allowedActions.map((item) => (
                   <form key={item.action} action={submitDocumentTransitionAction} className="space-y-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                    <input type="hidden" name="project_id" value={params.id} />
+                    <input type="hidden" name="project_id" value={projectId} />
                     <input type="hidden" name="document_id" value={envelope.document.id} />
                     <input type="hidden" name="new_state" value={item.target} />
                     <input type="hidden" name="manual_submit" value="true" />

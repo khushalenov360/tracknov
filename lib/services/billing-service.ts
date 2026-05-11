@@ -74,6 +74,8 @@ export class BillingService {
 
     const tokensToBurn = Math.max(1, Math.trunc(params.creditsBurned || 1)) * 50;
 
+    const idempotencyKey = `debit_${params.projectId}_${clientUserId}_${tokensToBurn}_${Date.now()}`;
+
     const { error: tokenError } = await this.admin.rpc("consume_client_tokens", {
       p_client_user_id: clientUserId,
       p_project_id: params.projectId,
@@ -85,6 +87,7 @@ export class BillingService {
         notes: params.notes, 
         hours: Math.max(1, Math.trunc(params.creditsBurned || 1)) 
       },
+      p_idempotency_key: idempotencyKey,
     });
 
     if (tokenError) throw tokenError;
@@ -165,6 +168,8 @@ export class BillingService {
       throw new Error("Only Super User can load client tokens.");
     }
 
+    const idempotencyKey = `credit_${params.projectId}_${params.clientUserId}_${Math.trunc(params.tokens)}_${Date.now()}`;
+
     const { error } = await this.admin.rpc("credit_client_tokens", {
       p_client_user_id: params.clientUserId,
       p_project_id: params.projectId,
@@ -172,6 +177,7 @@ export class BillingService {
       p_reason: params.reason || "Super User top-up",
       p_actor_id: user.id,
       p_meta: { loaded_by_role: role },
+      p_idempotency_key: idempotencyKey,
     });
 
     if (error) throw error;

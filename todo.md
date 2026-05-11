@@ -3,10 +3,87 @@
 Last updated: 2026-05-06 IST (Auditor enforcement implementation pass)
 Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
 
+## Normalized Reality Check (2026-05-11 IST)
+
+This TODO has accumulated historical `[~]` carry-over lines across many handoff passes.
+To avoid false pending inflation, use this split:
+
+- **Completed implementation**: major enforcement/workflow/AI/RLS/scoring layers are already in place.
+- **True open items (`[ ]`)**: operational verification and a few remaining implementation closures.
+- **Carry-over partials (`[~]`)**: mostly evidence/UAT/proof closure lines that should be closed after targeted verification.
+
+Current raw counts in file:
+- `done [x]`: 128
+- `open [ ]`: 10
+- `partial [~]`: 109
+
+### True open execution queue (current actionable pending)
+- [ ] Run full end-to-end live workflow with real role accounts and real data.
+- [ ] Apply and verify live migration `supabase/migrations/0009_document_activity_logs.sql` in production Supabase.
+- [ ] Verify upload integrity end-to-end (storage object + `documents` row + signed URL open).
+- [ ] Verify `super_user`-only project delete in live session.
+- [ ] Verify document delete visibility/permissions in live session (`super_user`, `project_admin`).
+- [ ] Verify document activity log visibility only for `super_user` and `project_admin`.
+- [ ] Epic C2: event-driven foundation hard closure (`events/event-bus` producers/consumers + retry/dead-letter verification).
+- [ ] Epic C3: AI subsystem baseline hard closure (RAG/validator/rejection-intelligence completion proof).
+- [ ] Epic C4: transaction-safe token ledger hard closure (idempotent debit/credit references + live proof).
+- [ ] Remove remaining frontend-derived readiness/workflow/completion logic and route to backend-only contracts.
+
 ## Priority
 - `P0` = release blocker
 - `P1` = production must-have
 - `P2` = scale layer
+
+---
+
+## Provable runtime integrity track (from `Handoff/11052026/TRACKNOV_PROVABLE_RUNTIME_INTEGRITY_IMPLEMENTATION_HANDOFF.md`)
+
+### P0 - Runtime integrity enforcement (release blockers)
+- [x] Add central runtime orchestrator module:
+  - `core/runtime/orchestrator.ts`
+  - enforce mutation pipeline: `API -> Orchestrator -> Validation -> RBAC -> Audit -> Derived State Engine -> Commit`.
+- [x] Add deterministic runtime state machine module:
+  - `core/runtime/stateMachine.ts`
+  - explicit transitions only; no inferred transitions.
+- [x] Add derived-state engine module:
+  - `core/runtime/derivedStateEngine.ts`
+  - prevent manual score/readiness/certification mutations outside derived engine.
+- [x] Add dependency invalidation engine:
+  - `core/runtime/dependencyEngine.ts`
+  - on evidence change: invalidate approvals, invalidate scores, queue revalidation.
+- [~] Enforce concurrent-review safety:
+  - optimistic locking
+  - stale review rejection
+  - conflict reconciliation response.
+- [~] Enforce backend-authoritative trust boundary:
+  - no frontend workflow mutation
+  - no frontend score/readiness derivation
+  - no frontend permission inference.
+- [~] Enforce immutable append-only audit event architecture across workflow + review + scoring paths.
+- [~] Enforce no-ship blockers as deployment gate:
+  - frontend controls workflow
+  - manual score editability
+  - non-replayable certification chain
+  - mutable approvals without audit
+  - concurrency-unsafe review mutations.
+
+### P1 - Governance + replay defensibility
+- [~] Add replayable certification reconstruction path from immutable workflow/audit lineage.
+- [~] Add deterministic dependency invalidation + recompute proofs for re-submission flows.
+- [x] Add runtime acceptance matrix suite:
+  - `tests/runtime/runtimeAcceptance.spec.ts`
+  - deterministic transitions
+  - immutable audit lineage
+  - replay reconstruction
+  - concurrency safety
+  - dependency invalidation
+  - derived scoring consistency.
+- [~] Map and validate golden flow end-to-end:
+  - Upload -> Validation -> Mapping -> Submission -> Review -> Clarification -> Resubmission -> Approval -> Derived Scoring -> Certification Snapshot -> Audit Replay.
+
+### P2 - Consolidation / architecture hygiene
+- [ ] Refactor existing orchestration/validation/recalculation logic to align with new `core/runtime/*` module boundaries.
+- [ ] Add explicit runtime authority documentation linking orchestrator, state machine, derived engine, and dependency engine to existing API surfaces.
 
 ---
 

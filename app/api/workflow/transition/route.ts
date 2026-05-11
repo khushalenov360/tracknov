@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
-import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
 import type { WorkflowState } from "@/lib/services/document-state-service";
+import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 
 export const dynamic = "force-dynamic";
 
 const allowedStates = new Set<WorkflowState>([
-  "DRAFT",
-  "READY",
-  "SUBMITTED",
-  "UNDER_REVIEW",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "MAPPED",
+  "L1_REVIEW",
+  "L1_REJECTED",
+  "READY_FOR_L3",
+  "UNDER_L3_REVIEW",
   "CLARIFICATION",
-  "RESUBMITTED",
   "APPROVED",
   "REJECTED",
-  "ELIMINATED",
+  "REVOKED",
 ]);
 
 function failure(status: string, message: string, httpStatus = 400) {
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const user = await getCurrentUser();
-  const result = await workflowOrchestratorService.transition(user, {
+  const result = await runRuntimeTransition(user, {
     entityType,
     entityId,
     projectId,

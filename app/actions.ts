@@ -20,6 +20,7 @@ import { creditService } from "@/lib/services/credit-service";
 import { reviewService } from "@/lib/services/review-service";
 import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
 import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
+import { logSystemActivity } from "@/lib/services/activity-service";
 import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -355,18 +356,18 @@ export async function setDocumentStatusAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
-  const actorProjectRole = projectId ? await getActorProjectRole(projectId) : user?.role ?? null;
+  const actorProjectRole = projectId ? await projectService.getActorProjectRole(projectId, user) : user?.role ?? null;
   const actorRole = actorProjectRole ?? user?.role ?? "consultant";
 
   // Map status to workflow state
   const mappedWorkflowState: WorkflowState =
     status === "owner_approved"
-      ? "UNDER_REVIEW"
+      ? "UNDER_L3_REVIEW"
       : status === "approved"
         ? "APPROVED"
         : status === "rejected"
           ? (rejectionRemark ? "CLARIFICATION" : "REJECTED")
-          : "READY";
+          : "IN_PROGRESS";
 
   const formattedRemark = rejectionType && rejectionRemark ? `[${rejectionType}] ${rejectionRemark}` : rejectionRemark;
 
@@ -1068,8 +1069,7 @@ export async function createTaskAction(formData: FormData) {
   const dueDate = formData.get("due_date") ? String(formData.get("due_date")) : null;
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Not authenticated" };
-
+  if (!user) return;
   const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
 
   try {
@@ -1080,14 +1080,12 @@ export async function createTaskAction(formData: FormData) {
       assignedBy: user.id,
       assignedTo,
       priority,
-      dueDate,
     });
 
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    return;
   }
 }
 
@@ -1098,23 +1096,15 @@ export async function delegateTaskAction(formData: FormData) {
   const projectId = String(formData.get("project_id"));
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  if (!user) return;
 
   try {
-    await delegateTask(writer, {
-      taskId,
-      delegatedBy: user.id,
-      delegatedTo,
-      notes,
-    });
+    await delegateTask(taskId, user.id, delegatedTo);
 
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    return;
   }
 }
 
@@ -1125,29 +1115,24 @@ export async function updateTaskStateAction(formData: FormData) {
   const projectId = String(formData.get("project_id"));
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  if (!user) return;
 
   try {
-    await updateTaskState(writer, {
-      taskId,
-      newState,
-      actorId: user.id,
-      notes,
+    await updateTaskState(taskId, user.id, {
+      status: newState,
+      notes: notes ?? undefined,
     });
 
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    return;
   }
 }
 
 export async function assignCreditContributorAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return;
 
   const projectId = String(formData.get("project_id"));
   const projectCreditId = String(formData.get("project_credit_id") || formData.get("credit_id"));
@@ -1165,20 +1150,19 @@ export async function assignCreditContributorAction(formData: FormData) {
     });
 
     if (!result.ok) {
-      return { error: result.message || "Assignment failed" };
+      return;
     }
 
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
-    return { success: true };
   } catch (error: any) {
     console.error("[assignCreditContributorAction] Error:", error);
-    return { error: error.message };
+    return;
   }
 }
 
 export async function assignTaskAction(formData: FormData) {
-  return assignCreditContributorAction(formData);
+  await assignCreditContributorAction(formData);
 }
 
 export async function transitionSubmittalAction(
@@ -1216,14 +1200,14 @@ export async function transitionSubmittalAction(
 export async function toggleSystemControlAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user || user.role !== "super_user") {
-    return { error: "Unauthorized: Only Super User can toggle system controls." };
+    return;
   }
 
   const controlName = formData.get("controlName") as string;
   const isEnabled = formData.get("isEnabled") === "true";
 
   if (!["uploads", "exports", "notifications"].includes(controlName)) {
-    return { error: "Invalid or restricted control name. Core engines cannot be toggled." };
+    return;
   }
 
   try {
@@ -1236,8 +1220,159 @@ export async function toggleSystemControlAction(formData: FormData) {
     if (error) throw error;
     
     revalidatePath("/admin/operational-health");
-    return { success: true };
   } catch (err: any) {
-    return { error: err.message };
+    return;
   }
+}
+
+export async function submitDocumentTransitionAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const nextState = String(formData.get("target_state") ?? "").trim().toUpperCase() as WorkflowState;
+  const reason = String(formData.get("reason") ?? "").trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
+
+  if (!projectId || !documentId || !nextState) {
+    return { error: "Missing transition payload." };
+  }
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const result = await workflowOrchestratorService.transition(user, {
+    entityType: "document",
+    entityId: documentId,
+    projectId,
+    targetState: nextState,
+    reason: reason || null,
+    idempotencyKey,
+  });
+
+  if (!result.ok) {
+    return { error: result.message };
+  }
+
+  revalidatePath("/review-queue");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/documents");
+  return { success: true };
+}
+
+export async function runNotificationDigestAction() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "super_user") {
+    return { error: "Unauthorized" };
+  }
+
+  await runNotificationDigestJobs();
+  revalidatePath("/team");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function disableTeamMemberAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!userId || !reason) return { error: "User and reason are required." };
+
+  try {
+    await memberService.disableMember(user, { userId, reason });
+    revalidatePath("/team");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message ?? "Disable failed." };
+  }
+}
+
+export async function reactivateTeamMemberAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!userId) return { error: "User is required." };
+
+  try {
+    await memberService.reactivateMember(user, { userId });
+    revalidatePath("/team");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message ?? "Reactivation failed." };
+  }
+}
+
+export async function reassignTeamMemberAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const fromProjectId = String(formData.get("from_project_id") ?? "").trim();
+  const toProjectId = String(formData.get("to_project_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+
+  if (!userId || !fromProjectId || !toProjectId || !role) {
+    return { error: "Incomplete reassignment payload." };
+  }
+
+  try {
+    await memberService.reassignMemberProject(user, {
+      userId,
+      fromProjectId,
+      toProjectId,
+      role: role as any,
+    });
+    revalidatePath("/team");
+    revalidatePath(`/projects/${fromProjectId}`);
+    revalidatePath(`/projects/${toProjectId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message ?? "Reassignment failed." };
+  }
+}
+
+export async function createValidationRuleAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
+  const creditId = String(formData.get("credit_id") ?? "").trim();
+  const docCategory = String(formData.get("doc_category") ?? "").trim();
+  const ruleName = String(formData.get("rule_name") ?? "").trim();
+  const severity = String(formData.get("severity") ?? "warning").trim();
+  const rawKeywords = String(formData.get("required_keywords") ?? "").trim();
+  const requiredKeywords = rawKeywords
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!projectId || !projectCreditId || !creditId || !docCategory || !ruleName) {
+    return;
+  }
+
+  if (!canManageProject(user.role) && user.role !== "owner") {
+    return;
+  }
+
+  const writer = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const { error } = await writer.from("validation_rules").insert({
+    project_id: projectId,
+    project_credit_id: projectCreditId,
+    credit_id: creditId,
+    doc_category: docCategory,
+    rule_name: ruleName,
+    required_keywords: requiredKeywords,
+    severity,
+    is_active: true,
+    created_by: user.id,
+  });
+
+  if (error) {
+    return;
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/credits");
 }

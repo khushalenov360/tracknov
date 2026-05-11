@@ -5,8 +5,9 @@ import { canAccessBillingAndInvoice } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request, { params }: { params: { projectId: string } }) {
-  const workspace = await getProjectWorkspaceForApi(params.projectId);
+export async function GET(request: Request, { params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const workspace = await getProjectWorkspaceForApi(projectId);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { projectId: s
   }
 
   const [projects, roi] = await Promise.all([getDashboardProjects(), getRoiSnapshot()]);
-  const project = projects.find((item) => item.id === params.projectId);
+  const project = projects.find((item) => item.id === projectId);
   if (!project) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }

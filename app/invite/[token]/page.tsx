@@ -9,20 +9,21 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 };
 
 export default async function InvitePage({ params }: PageProps) {
+  const { token } = await params;
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=/invite/${params.token}`);
+    redirect(`/login?next=/invite/${token}`);
   }
 
   const client = createClient();
   const { data: invite } = await client
     .from("project_invites")
     .select("id, project_id, email, role, token, accepted_at, created_at")
-    .eq("token", params.token)
+    .eq("token", token)
     .single();
 
   if (!invite) {

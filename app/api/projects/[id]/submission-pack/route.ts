@@ -7,7 +7,8 @@ import { canExportProjectArtifacts } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { runtimeGovernanceService } from "@/lib/services/runtime-governance-service";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const throttled = checkRateLimit(request, {
     key: "api:project:submission-pack",
     limit: 10,
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   });
   if (throttled) return throttled;
 
-  const workspace = await getProjectWorkspaceForApi(params.id);
+  const workspace = await getProjectWorkspaceForApi(id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
@@ -23,7 +24,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const hasDesync = await runtimeGovernanceService.hasOpenDesync(params.id);
+  const hasDesync = await runtimeGovernanceService.hasOpenDesync(id);
   if (hasDesync) {
     return NextResponse.json(
       { error: "Submission pack is blocked due to STATE_DESYNC. Run reconciliation first." },
@@ -34,7 +35,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   // Audit Log
   const admin = createAdminClient();
   await logSystemActivity(admin, {
-    projectId: params.id,
+    projectId: id,
     entityType: "project",
     action: "export_submission_pack",
     summary: `Exported final submission ZIP pack for ${workspace.project.name}`,

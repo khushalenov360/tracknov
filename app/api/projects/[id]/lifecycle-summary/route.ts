@@ -3,8 +3,9 @@ import { getProjectWorkspaceForApi } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const workspace = await getProjectWorkspaceForApi(params.id);
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const workspace = await getProjectWorkspaceForApi(id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }

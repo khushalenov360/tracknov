@@ -14,10 +14,12 @@ export default async function SubmissionPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { runCheck?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ runCheck?: string }>;
 }) {
-  const workspace = await getSubmissionWorkspace(params.id);
+  const { id } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const workspace = await getSubmissionWorkspace(id);
   if (!workspace) {
     return (
       <Shell title="Project Not Found" description="The requested project could not be found." role="consultant" notificationCount={0}>
@@ -31,7 +33,7 @@ export default async function SubmissionPage({
 
   const mandatoryReady = isSubmissionExportReady(workspace);
   const exportCredits = getApprovedSubmissionCredits(workspace);
-  const shouldRunCheck = String(searchParams?.runCheck ?? "") === "1";
+  const shouldRunCheck = String(resolvedSearchParams.runCheck ?? "") === "1";
   const reviewerCheck = shouldRunCheck ? runReviewerSimulation(workspace) : null;
 
   return (
@@ -96,7 +98,7 @@ export default async function SubmissionPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <Button asChild className="h-8 w-full rounded-md" variant="secondary">
-              <Link href={`/projects/${params.id}/submission?runCheck=1`}>Run Check</Link>
+              <Link href={`/projects/${id}/submission?runCheck=1`}>Run Check</Link>
             </Button>
             {reviewerCheck ? (
               <div
@@ -145,7 +147,7 @@ export default async function SubmissionPage({
             <Button asChild className="h-8 w-full rounded-md" variant={mandatoryReady ? "default" : "secondary"}>
               <Link
                 aria-disabled={!mandatoryReady}
-                href={mandatoryReady ? `/api/projects/${params.id}/submission-pack` : "#"}
+                href={mandatoryReady ? `/api/projects/${id}/submission-pack` : "#"}
                 className={!mandatoryReady ? "pointer-events-none opacity-60" : ""}
               >
                 <Download className="mr-1.5 h-3.5 w-3.5" />

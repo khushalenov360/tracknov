@@ -24,8 +24,9 @@ import { pct } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function ProjectsPage({ searchParams }: { searchParams: { error?: string } }) {
-  const error = searchParams.error;
+export default async function ProjectsPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const error = resolvedSearchParams.error;
   const [user, projects, plans, ratingSystems] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),

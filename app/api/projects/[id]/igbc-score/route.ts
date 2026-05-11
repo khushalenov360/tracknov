@@ -6,13 +6,14 @@ import { runtimeGovernanceService } from "@/lib/services/runtime-governance-serv
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const workspace = await getProjectWorkspaceForApi(params.id);
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const workspace = await getProjectWorkspaceForApi(id);
   if (!workspace) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const hasDesync = await runtimeGovernanceService.hasOpenDesync(params.id);
+  const hasDesync = await runtimeGovernanceService.hasOpenDesync(id);
   if (hasDesync) {
     return NextResponse.json(
       {
@@ -27,7 +28,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   const supabase = createClient();
   const { data: dbScore, error } = await supabase.rpc("get_project_certification_summary", {
-    p_project_id: params.id,
+    p_project_id: id,
   });
 
   if (!error && dbScore) {
@@ -38,7 +39,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   }
 
   await runtimeGovernanceService.raiseAlert({
-    projectId: params.id,
+    projectId: id,
     alertType: "certification_consistency_fallback",
     severity: "warning",
     message: "DB scoring RPC unavailable; service fallback used.",

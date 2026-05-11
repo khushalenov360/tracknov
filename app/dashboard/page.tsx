@@ -18,9 +18,10 @@ export const revalidate = 0;
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: { project?: string; action?: string; entity?: string; actor_role?: string };
+  searchParams?: Promise<{ project?: string; action?: string; entity?: string; actor_role?: string }>;
 }) {
-  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, checklist, actionQueue, reviewQueue, blockerQueue] = await Promise.all([
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, actionQueue, reviewQueue, blockerQueue] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
     getOwnerReviewQueue(),
@@ -28,17 +29,16 @@ export default async function DashboardPage({
     getTasksForUser(),
     getRoleTasks(),
     getRuntimeDesyncSummary(),
-    getOrCreateOnboardingChecklist(),
     getUserActionQueue(),
     getUserReviewQueue(),
     getUserBlockerQueue(),
   ]);
   const [timelineRows] = await Promise.all([
     getAuditTimeline({
-      projectId: searchParams?.project,
-      action: searchParams?.action,
-      entityType: searchParams?.entity,
-      actorRole: searchParams?.actor_role,
+      projectId: resolvedSearchParams?.project,
+      action: resolvedSearchParams?.action,
+      entityType: resolvedSearchParams?.entity,
+      actorRole: resolvedSearchParams?.actor_role,
       limit: 80,
     }),
   ]);
@@ -47,6 +47,7 @@ export default async function DashboardPage({
   const activeRole = user?.role ?? "consultant";
   const clientMode = activeRole === "client";
   const primaryProjectId = projects[0]?.id ?? null;
+  const checklist = primaryProjectId ? await getOrCreateOnboardingChecklist(primaryProjectId) : null;
   const isOwner = activeRole === "owner";
 
   const totals = {
@@ -206,7 +207,7 @@ export default async function DashboardPage({
               </p>
             </div>
             <form action="/api/jobs/runtime/reconcile" method="post">
-              <Button type="submit" variant="secondary" className="h-[30px] rounded-md px-3 text-[12px]">
+              <Button type="submit" className="h-[30px] rounded-md px-3 text-[12px]">
                 Run repair
               </Button>
             </form>
@@ -233,7 +234,7 @@ export default async function DashboardPage({
         <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
             My Action Queue
-            <Badge variant="secondary" className="text-[10px]">{actionQueue.length}</Badge>
+            <Badge className="text-[10px]">{actionQueue.length}</Badge>
           </h2>
           <div className="space-y-2">
             {actionQueue.length > 0 ? actionQueue.slice(0, 5).map((item: any, idx: number) => (
@@ -251,7 +252,7 @@ export default async function DashboardPage({
         <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
             Pending Reviews
-            <Badge variant="secondary" className="text-[10px]">{reviewQueue.length}</Badge>
+            <Badge className="text-[10px]">{reviewQueue.length}</Badge>
           </h2>
           <div className="space-y-2">
             {reviewQueue.length > 0 ? reviewQueue.slice(0, 5).map((item: any, idx: number) => (
@@ -269,7 +270,7 @@ export default async function DashboardPage({
         <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
             Blockers & Clarifications
-            <Badge variant="secondary" className="text-[10px]">{blockerQueue.length}</Badge>
+            <Badge className="text-[10px]">{blockerQueue.length}</Badge>
           </h2>
           <div className="space-y-2">
             {blockerQueue.length > 0 ? blockerQueue.slice(0, 5).map((item: any, idx: number) => (
@@ -316,12 +317,22 @@ export default async function DashboardPage({
                         {project.name}
                       </Link>
                       {["project_admin", "super_admin", "super_user"].includes(activeRole) && (
-                        <Badge 
-                          variant={project.health_status === 'HEALTHY' ? 'secondary' : project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
-                          className="text-[9px] ml-2 px-1 py-0 h-4"
+                        (() => {
+                          const healthStatus = ((project as any).health_status ?? project.statusFlag ?? "green") as string;
+                          return (
+                        <Badge
+                          className={`text-[9px] ml-2 px-1 py-0 h-4 ${
+                            healthStatus === "HEALTHY" || healthStatus === "green"
+                              ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                              : healthStatus === "AT_RISK" || healthStatus === "red"
+                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
+                          }`}
                         >
-                          {project.health_status}
+                          {healthStatus}
                         </Badge>
+                          );
+                        })()
                       )}
                     </td>
                     <td className="px-3 py-2">{pct(project.overallCompletion)}</td>
@@ -559,12 +570,12 @@ export default async function DashboardPage({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {projects.slice(0, 3).map((project) => (
-                  <Button key={project.id} asChild variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                  <Button key={project.id} asChild className="h-[30px] rounded-md px-3 text-[11px]">
                     <Link href={`/api/projects/${project.id}/summary`}>Export {project.name} PDF</Link>
                   </Button>
                 ))}
                 {projects[0] ? (
-                  <Button asChild variant="secondary" className="h-[30px] rounded-md px-3 text-[11px]">
+                  <Button asChild className="h-[30px] rounded-md px-3 text-[11px]">
                     <Link href={`/api/sales/case-study/${projects[0].id}?download=1`}>Export case study</Link>
                   </Button>
                 ) : null}
@@ -734,7 +745,7 @@ export default async function DashboardPage({
         <form className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_180px_180px_auto]">
           <select
             name="project"
-            defaultValue={searchParams?.project ?? ""}
+            defaultValue={resolvedSearchParams?.project ?? ""}
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
           >
             <option value="">All projects</option>
@@ -746,19 +757,19 @@ export default async function DashboardPage({
           </select>
           <input
             name="action"
-            defaultValue={searchParams?.action ?? ""}
+            defaultValue={resolvedSearchParams?.action ?? ""}
             placeholder="Action (optional)"
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
           />
           <input
             name="entity"
-            defaultValue={searchParams?.entity ?? ""}
+            defaultValue={resolvedSearchParams?.entity ?? ""}
             placeholder="Entity (optional)"
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
           />
           <input
             name="actor_role"
-            defaultValue={searchParams?.actor_role ?? ""}
+            defaultValue={resolvedSearchParams?.actor_role ?? ""}
             placeholder="Role (optional)"
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
           />
@@ -838,7 +849,7 @@ export default async function DashboardPage({
                         </Badge>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <Button asChild variant="secondary" className="h-7 rounded-md px-2 text-[10px]">
+                        <Button asChild className="h-7 rounded-md px-2 text-[10px]">
                           <Link href={`/projects/${task.project_id}?credit=${task.project_credit_id}`}>
                             Go to task
                           </Link>
@@ -872,7 +883,7 @@ export default async function DashboardPage({
           <div className="flex flex-wrap gap-2">
             {projects.length ? (
               projects.map((project) => (
-                <Button key={project.id} asChild variant="secondary" className="rounded-md px-3 text-[12px]">
+                <Button key={project.id} asChild className="rounded-md px-3 text-[12px]">
                   <Link href={`/projects/${project.id}`}>{project.name}</Link>
                 </Button>
               ))
@@ -948,7 +959,7 @@ export default async function DashboardPage({
                 <Button asChild className="rounded-md px-3 text-[12px]">
                   <Link href={`/projects/${project.id}`}>Open workspace</Link>
                 </Button>
-                <Button asChild variant="secondary" className="rounded-md px-3 text-[12px]">
+                <Button asChild className="rounded-md px-3 text-[12px]">
                   <Link href={`/projects/${project.id}/submission`}>Submission pack</Link>
                 </Button>
               </div>
@@ -968,3 +979,4 @@ export default async function DashboardPage({
     </Shell>
   );
 }
+

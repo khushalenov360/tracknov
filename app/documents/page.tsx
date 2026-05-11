@@ -28,12 +28,13 @@ function toLegacyDocumentStatus(rawState: string | undefined): keyof typeof docu
 export default async function DocumentsPage({
   searchParams,
 }: {
-  searchParams?: { project?: string; status?: string; search?: string; document?: string };
+  searchParams?: Promise<{ project?: string; status?: string; search?: string; document?: string }>;
 }) {
   cookies(); // Explicitly call cookies to force dynamic behavior
+  const resolvedSearchParams = (await searchParams) ?? {};
   const [projects, documents, uploadProjects] = await Promise.all([
     getDashboardProjects(),
-    getDocumentLibrary(searchParams),
+    getDocumentLibrary(resolvedSearchParams),
     getDocumentUploadOptions(),
   ]);
   const projectOptionsById = new Map(uploadProjects.map((project) => [project.id, project]));
@@ -49,7 +50,7 @@ export default async function DocumentsPage({
           return { total, completed, rejected, incomplete };
         })()
       : null;
-  const focusedDocumentId = (searchParams?.document ?? "").trim();
+  const focusedDocumentId = (resolvedSearchParams.document ?? "").trim();
   const focusedRejectedDocument = focusedDocumentId
     ? documents.find((document) => document.id === focusedDocumentId && (document.state ?? document.status) === "rejected")
     : null;
@@ -106,14 +107,14 @@ export default async function DocumentsPage({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
               name="search"
-              defaultValue={searchParams?.search ?? ""}
+              defaultValue={resolvedSearchParams.search ?? ""}
               placeholder="Search documents, projects, credits, notes"
               className="h-[34px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] pl-9 pr-3 text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-border-strong)]"
             />
           </div>
           <select
             name="status"
-            defaultValue={searchParams?.status ?? ""}
+            defaultValue={resolvedSearchParams.status ?? ""}
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
           >
             <option value="">All statuses</option>
@@ -125,7 +126,7 @@ export default async function DocumentsPage({
           </select>
           <select
             name="project"
-            defaultValue={searchParams?.project ?? ""}
+            defaultValue={resolvedSearchParams.project ?? ""}
             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
           >
             <option value="">All projects</option>

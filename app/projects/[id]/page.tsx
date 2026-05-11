@@ -39,14 +39,14 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type PageProps = {
-  params: { id: string };
-  searchParams?: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{
     category?: string;
     status?: string;
     credit?: string;
     error?: string;
     success?: string;
-  };
+  }>;
 };
 
 const docAbbreviations: Record<string, string> = {
@@ -127,12 +127,14 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps) {
-  console.log(">>> LOADING DASHBOARD FOR PROJECT:", params.id);
+  const { id: projectId } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
+  console.log(">>> LOADING DASHBOARD FOR PROJECT:", projectId);
   const user = await getCurrentUser();
   let workspaceError: string | null = null;
   let workspace = null as Awaited<ReturnType<typeof getProjectWorkspace>>;
   try {
-    workspace = await getProjectWorkspace(params.id);
+    workspace = await getProjectWorkspace(projectId);
   } catch (error: any) {
     workspaceError = error?.message ?? "Could not load project workspace.";
   }
@@ -179,7 +181,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     : workspace.credits;
   const stats = creditStats(roleScopedCredits);
   const selectedCredit =
-    roleScopedCredits.find((credit) => credit.id === searchParams?.credit) ?? roleScopedCredits[0];
+    roleScopedCredits.find((credit) => credit.id === resolvedSearchParams?.credit) ?? roleScopedCredits[0];
 
   if (!selectedCredit) {
     return (
@@ -188,9 +190,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           <span className="flex items-center gap-3">
             {workspace.project.name}
             {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
-              <Badge 
-                variant={workspace.project.health_status === 'HEALTHY' ? 'secondary' : workspace.project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
-                className="text-[10px] px-1.5 py-0 h-5"
+              <Badge
+                className={`text-[10px] px-1.5 py-0 h-5 ${
+                  workspace.project.health_status === "HEALTHY"
+                    ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                    : workspace.project.health_status === "AT_RISK"
+                      ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                      : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
+                }`}
               >
                 {workspace.project.health_status}
               </Badge>
@@ -211,7 +218,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           {canManageGuidebook ? (
             <div className="mt-5 grid gap-2 md:max-w-[760px] md:grid-cols-[minmax(0,1fr)_auto]">
               <form action={uploadProjectGuidebookAction} encType="multipart/form-data" className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-                <input type="hidden" name="project_id" value={params.id} />
+                <input type="hidden" name="project_id" value={projectId} />
                 <input
                   name="guidebook"
                   type="file"
@@ -224,7 +231,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 </button>
               </form>
               <form action={importProjectTrackerBaselineAction} encType="multipart/form-data" className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-                <input type="hidden" name="project_id" value={params.id} />
+                <input type="hidden" name="project_id" value={projectId} />
                 <input
                   name="tracker_file"
                   type="file"
@@ -253,8 +260,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   }
 
   const filteredCredits = roleScopedCredits.filter((credit) => {
-    const categoryOk = searchParams?.category ? credit.category === searchParams.category : true;
-    const statusOk = searchParams?.status ? toLegacyCreditStatus(credit.state ?? credit.status) === searchParams.status : true;
+    const categoryOk = resolvedSearchParams?.category ? credit.category === resolvedSearchParams.category : true;
+    const statusOk = resolvedSearchParams?.status ? toLegacyCreditStatus(credit.state ?? credit.status) === resolvedSearchParams.status : true;
     return categoryOk && statusOk;
   });
   const mandatoryCredits = roleScopedCredits.filter((credit) => credit.is_mandatory);
@@ -333,7 +340,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     (rule: any) => (rule.project_credit_id && rule.project_credit_id === selectedCredit.id) || rule.credit_id === selectedCredit.id,
   );
 
-  const milestones = await stageGateService.getMilestones(params.id);
+  const milestones = await stageGateService.getMilestones(projectId);
 
 
   return (
@@ -342,9 +349,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
         <span className="flex items-center gap-3">
           {workspace.project.name}
           {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
-            <Badge 
-              variant={workspace.project.health_status === 'HEALTHY' ? 'secondary' : workspace.project.health_status === 'AT_RISK' ? 'destructive' : 'outline'}
-              className="text-[10px] px-1.5 py-0 h-5"
+            <Badge
+              className={`text-[10px] px-1.5 py-0 h-5 ${
+                workspace.project.health_status === "HEALTHY"
+                  ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                  : workspace.project.health_status === "AT_RISK"
+                    ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                    : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
+              }`}
             >
               {workspace.project.health_status}
             </Badge>
@@ -356,14 +368,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       role={workspace.userRole}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
-      {searchParams?.error ? (
+      {resolvedSearchParams?.error ? (
         <div className="mb-4 rounded-md border border-[var(--color-red-light)] bg-[var(--color-red-soft)] p-3 text-[12px] text-[var(--color-red)]">
-          {searchParams.error}
+          {resolvedSearchParams.error}
         </div>
       ) : null}
-      {searchParams?.success ? (
+      {resolvedSearchParams?.success ? (
         <div className="mb-4 rounded-md border border-[var(--color-green-light)] bg-[var(--color-green-soft)] p-3 text-[12px] text-[var(--color-green)]">
-          {searchParams.success}
+          {resolvedSearchParams.success}
         </div>
       ) : null}
 
@@ -379,7 +391,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
           {canManageGuidebook ? (
             <div className="flex flex-col gap-2">
               <form action={uploadProjectGuidebookAction} encType="multipart/form-data" className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="project_id" value={params.id} />
+                <input type="hidden" name="project_id" value={projectId} />
                 <input
                   name="title"
                   placeholder="Guidebook title (optional)"
@@ -397,7 +409,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 </button>
               </form>
               <form action={importProjectTrackerBaselineAction} encType="multipart/form-data" className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="project_id" value={params.id} />
+                <input type="hidden" name="project_id" value={projectId} />
                 <input
                   name="tracker_file"
                   type="file"
@@ -445,10 +457,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             return (
               <Link
                 key={item.key}
-                href={`/projects/${params.id}${queryString({
+                href={`/projects/${projectId}${queryString({
                   category: item.key,
-                  status: searchParams?.status,
-                  credit: searchParams?.credit,
+                  status: resolvedSearchParams?.status,
+                  credit: resolvedSearchParams?.credit,
                 })}`}
                 className="surface-card block p-4 hover:border-[var(--color-border-strong)]"
               >
@@ -490,12 +502,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <p className="dense-label px-2">Categories</p>
             <nav className="mt-2 space-y-1">
               <Link
-                href={`/projects/${params.id}${queryString({
-                  status: searchParams?.status,
-                  credit: searchParams?.credit,
+                href={`/projects/${projectId}${queryString({
+                  status: resolvedSearchParams?.status,
+                  credit: resolvedSearchParams?.credit,
                 })}`}
                 className={`flex items-center justify-between rounded-md px-[14px] py-[7px] text-[12px] ${
-                  !searchParams?.category
+                  !resolvedSearchParams?.category
                     ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] ring-1 ring-inset ring-[var(--color-border)]"
                     : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
                 }`}
@@ -510,14 +522,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               </Link>
               {stats.categories.map((item) => {
                 const meta = categoryMeta[item.key as keyof typeof categoryMeta] ?? defaultCategoryMeta;
-                const active = searchParams?.category === item.key;
+                const active = resolvedSearchParams?.category === item.key;
                 return (
                   <Link
                     key={item.key}
-                    href={`/projects/${params.id}${queryString({
+                    href={`/projects/${projectId}${queryString({
                       category: item.key,
-                      status: searchParams?.status,
-                      credit: searchParams?.credit,
+                      status: resolvedSearchParams?.status,
+                      credit: resolvedSearchParams?.credit,
                     })}`}
                     className={`flex items-center justify-between rounded-md border-r-2 px-[14px] py-[7px] text-[12px] ${
                       active
@@ -542,14 +554,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             <p className="dense-label px-2">Status</p>
             <div className="mt-2 space-y-1">
               {Object.entries(creditStatuses).map(([status, classes]) => {
-                const active = searchParams?.status === status;
+                const active = resolvedSearchParams?.status === status;
                 return (
                   <Link
                     key={status}
-                    href={`/projects/${params.id}${queryString({
-                      category: searchParams?.category,
+                    href={`/projects/${projectId}${queryString({
+                      category: resolvedSearchParams?.category,
                       status,
-                      credit: searchParams?.credit,
+                      credit: resolvedSearchParams?.credit,
                     })}`}
                     className={`flex items-center justify-between rounded-md px-[14px] py-[7px] text-[12px] ${
                       active
@@ -595,13 +607,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" asChild className="rounded-md px-3">
-                <Link href={`/api/projects/${params.id}/tracker`}>
+                <Link href={`/api/projects/${projectId}/tracker`}>
                   <Download className="mr-1.5 h-3.5 w-3.5" />
                   Export XLSX
                 </Link>
               </Button>
               <Button variant="secondary" asChild className="rounded-md px-3">
-                <Link href={`/api/projects/${params.id}/summary`}>
+                <Link href={`/api/projects/${projectId}/summary`}>
                   <Download className="mr-1.5 h-3.5 w-3.5" />
                   PDF summary
                 </Link>
@@ -665,9 +677,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                     >
                       <td className="px-3 py-2 align-middle">
                         <Link
-                          href={`/projects/${params.id}${queryString({
-                            category: searchParams?.category,
-                            status: searchParams?.status,
+                          href={`/projects/${projectId}${queryString({
+                            category: resolvedSearchParams?.category,
+                            status: resolvedSearchParams?.status,
                             credit: credit.id,
                           })}`}
                           className={`mono inline-flex min-w-[68px] items-center justify-center rounded-md border px-2 py-1 text-[10px] ${
@@ -679,9 +691,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       </td>
                       <td className="max-w-[200px] truncate px-3 py-2 align-middle text-[13px] text-[var(--color-text-primary)]">
                         <Link
-                          href={`/projects/${params.id}${queryString({
-                            category: searchParams?.category,
-                            status: searchParams?.status,
+                          href={`/projects/${projectId}${queryString({
+                            category: resolvedSearchParams?.category,
+                            status: resolvedSearchParams?.status,
                             credit: credit.id,
                           })}`}
                           className="hover:text-[var(--color-green)]"
@@ -712,7 +724,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                               </span>
                               {canAssignContributors && cell === "Required" && requirementSlot?.required ? (
                                 <form action={assignCreditContributorAction} className="flex flex-col gap-1">
-                                  <input type="hidden" name="project_id" value={params.id} />
+                                  <input type="hidden" name="project_id" value={projectId} />
                                   <input type="hidden" name="project_credit_id" value={credit.id} />
                                   <input type="hidden" name="document_type" value={requirementSlot.type} />
                                   <select
@@ -820,7 +832,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               <AiGuidePanel
                 context={validationAssistantContext}
                 enabled={env.aiReady}
-                storageKey={`tracknov-ai-validation-${params.id}-${selectedCredit.id}`}
+                storageKey={`tracknov-ai-validation-${projectId}-${selectedCredit.id}`}
                 title="AI Validation Assistant"
                 description="Use the current credit checklist, uploaded documents, remarks, and review stage to help decide whether the evidence is ready, incomplete, or should be excluded."
                 prompts={[
@@ -832,12 +844,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                 suggestedActions={[
                   {
                     label: "Open documents library",
-                    href: `/documents?project=${params.id}`,
+                    href: `/documents?project=${projectId}`,
                     description: "Review all uploaded files mapped to this project.",
                   },
                   {
                     label: "Open submission pack",
-                    href: `/projects/${params.id}/submission`,
+                    href: `/projects/${projectId}/submission`,
                     description: "Check what is already eligible for final inclusion.",
                   },
                 ]}
@@ -929,7 +941,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   Assign this credit to a Project Manager or Owner.
                 </p>
                 <form action={createTaskAction} className="mt-3 space-y-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <input type="hidden" name="task_type" value="credit_documentation" />
                   
@@ -943,7 +955,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                       .filter(m => ["owner", "project_admin", "client", "consultant"].includes(m.role))
                       .map(m => (
                         <option key={m.user_id} value={m.user_id}>
-                          {cleanRoleLabel(m.member_email)} ({cleanRoleLabel(m.role).toUpperCase()})
+                          {cleanRoleLabel(m.member_email ?? "unknown")} ({cleanRoleLabel(m.role).toUpperCase()})
                         </option>
                       ))}
                   </select>
@@ -979,7 +991,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   Set active/inactive document blocks for this credit. Active types are required.
                 </p>
                 <form action={updateCreditDocumentRequirementsAction} className="mt-3 space-y-3">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <div className="grid grid-cols-2 gap-2">
                     {selectedCredit.documents_required.map((doc) => (
@@ -1009,7 +1021,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   Add per-credit validation rules used during submission gate checks.
                 </p>
                 <form action={createValidationRuleAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <input
@@ -1064,7 +1076,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   Assign this credit to one contributor. Only the assigned contributor can upload/update documents for this credit.
                 </p>
                 <form action={assignCreditContributorAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
                   <select
                     name="assigned_user_id"
@@ -1131,7 +1143,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                 <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Client Guidance Controls</p>
                 <form action={updateCreditGuidanceAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <Textarea
                     name="what_to_submit"
@@ -1242,7 +1254,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
 
             {canUpload ? (
               <UploadDocumentForm
-                projectId={params.id}
+                projectId={projectId}
                 creditId={selectedCredit.id}
                 projectCreditId={(selectedCredit as any).project_credit_id ?? selectedCredit.id}
                 docTypes={selectedCredit.documents_required.map((doc) => doc.type)}
@@ -1279,7 +1291,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               </div>
               {canReview && (
                 <form action={addRemarkAction} className="mt-2 space-y-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <input type="hidden" name="role" value={workspace.userRole} />
                   <Textarea name="body" placeholder="Add a validation note or follow-up" />
@@ -1293,7 +1305,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
             {canReview ? (
               <section className="space-y-2 border-t border-[var(--color-border)] pt-4">
                 <form action={setCreditStateAction}>
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <input type="hidden" name="action" value="complete" />
                   <Button type="submit" className="h-8 w-full rounded-md">
@@ -1301,7 +1313,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                   </Button>
                 </form>
                 <form action={setCreditStateAction} className="space-y-2">
-                  <input type="hidden" name="project_id" value={params.id} />
+                  <input type="hidden" name="project_id" value={projectId} />
                   <input type="hidden" name="credit_id" value={selectedCredit.id} />
                   <input type="hidden" name="action" value="blocked" />
                   <select
@@ -1325,3 +1337,4 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
     </Shell>
   );
 }
+

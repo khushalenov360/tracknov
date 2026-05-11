@@ -1,3 +1,5 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
 export type TracknovEvent = 
   | { type: "DOCUMENT_UPLOADED"; payload: { documentId: string; projectId: string; userId: string } }
   | { type: "DOCUMENT_METADATA_UPDATED"; payload: { documentId: string; projectId: string; userId: string } }
@@ -27,6 +29,9 @@ class EventBus {
     
     console.log(`[EventBus] Emitting ${event.type}`, event.payload);
     
+    // Persist event for audit trail (Epic C2)
+    await this.persistEvent(event);
+
     // Execute all handlers concurrently with individual retry logic
     const results = await Promise.allSettled(this.handlers.map(handler => this.executeWithRetry(handler, event)));
     
@@ -36,6 +41,35 @@ class EventBus {
         this.logToDeadLetter(event, result.reason);
       }
     });
+  }
+
+  private async persistEvent(event: TracknovEvent) {
+    try {
+      const admin = createAdminClient();
+      const entityTypeMap: Record<string, any> = {
+        DOCUMENT_UPLOADED: "document",
+        DOCUMENT_METADATA_UPDATED: "document",
+        DOCUMENT_DELETED: "document",
+        REVIEW_COMPLETED: "document",
+        DOCUMENT_REJECTED: "document",
+        TOKEN_DEDUCTED: "billing",
+        TOKEN_CREDITED: "billing",
+        PROJECT_CREATED: "project",
+      };
+
+      const payload = event.payload as any;
+      await admin.from("system_activity_logs").insert({
+        project_id: payload.projectId,
+        entity_type: entityTypeMap[event.type] || "project",
+        entity_id: payload.documentId || payload.projectId,
+        action: event.type.toLowerCase(),
+        actor_id: payload.userId,
+        summary: `EventBus: ${event.type}`,
+        details: event.payload,
+      });
+    } catch (err) {
+      console.error("[EventBus] Failed to persist event:", err);
+    }
   }
 
   private async executeWithRetry(handler: EventHandler, event: TracknovEvent, attempt = 1): Promise<void> {
