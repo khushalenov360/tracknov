@@ -221,6 +221,7 @@ export type ProjectSummary = {
   pendingReviewsCount?: number;
   rejectedCount?: number;
   statusFlag?: "green" | "amber" | "red";
+  health_status?: string | null;
   projectCode: string;
   ratingSystemId?: string | null;
   projectState?: string;

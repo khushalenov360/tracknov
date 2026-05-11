@@ -3,6 +3,16 @@
 Last updated: 2026-05-06 IST (Auditor enforcement implementation pass)
 Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
 
+## Latest status update (2026-05-11 IST, execution reality snapshot)
+
+- TODO is **not complete**.
+- Open checkbox items currently present: **24** (`- [ ]` entries).
+- Current immediate engineering blocker before full closure:
+  - `npm run build` fails at lint/type stage due existing ESLint circular config serialization issue (`.eslintrc.json`) and remaining downstream type checks surfaced incrementally by build.
+- Recently resolved in this pass:
+  - added missing clarification task API used by document workflow transitions.
+  - fixed async RPC error handling typing in document state transition service.
+
 ## Normalized Reality Check (2026-05-11 IST)
 
 This TODO has accumulated historical `[~]` carry-over lines across many handoff passes.
@@ -37,6 +47,45 @@ Current raw counts in file:
 ---
 
 ## Provable runtime integrity track (from `Handoff/11052026/TRACKNOV_PROVABLE_RUNTIME_INTEGRITY_IMPLEMENTATION_HANDOFF.md`)
+
+### 2026-05-11 IST gap audit snapshot (this handoff only)
+
+Status summary against `TRACKNOV_PROVABLE_RUNTIME_INTEGRITY_IMPLEMENTATION_HANDOFF.md`:
+- **Implemented**: 9
+- **Partial**: 6
+- **Missing**: 3
+
+Implemented (verified in repo):
+- [x] Central runtime orchestrator exists:
+  - `core/runtime/orchestrator.ts`
+  - wired in `app/api/workflow/transition/route.ts`
+- [x] Deterministic runtime state machine exists:
+  - `core/runtime/stateMachine.ts`
+- [x] Derived state engine exists:
+  - `core/runtime/derivedStateEngine.ts`
+- [x] Dependency invalidation engine exists:
+  - `core/runtime/dependencyEngine.ts`
+- [x] Runtime acceptance suite exists:
+  - `tests/runtime/runtimeAcceptance.spec.ts`
+- [x] AI authority boundary enforced at architecture level (advisory-only; no direct approve/reject/mutate path in orchestrator route).
+
+Partial (implemented but not fully closed as per handoff intent):
+- [~] Universal orchestration still incomplete (not all mutation paths provably routed through `/api/workflow/transition`).
+- [~] Immutable audit lineage is implemented in migrations, but closure proof across all runtime paths is pending.
+- [~] Concurrent review safety is partially implemented (conflict status + stale-attempt handling) but full optimistic-lock proof suite is pending.
+- [~] Replayable certification reconstruction exists via DB/runtime artifacts, but end-to-end replay proof runbook is pending.
+- [~] Derived scoring consistency is partially backend-driven; frontend local scoring surfaces still exist in places (e.g. `app/credits/page.tsx`).
+- [~] No-ship blockers are defined, but enforcement as a strict deployment gate is not yet proven in CI.
+
+Missing / open implementation items from this handoff:
+- [ ] Expand runtime acceptance matrix to include:
+  - immutable audit lineage assertions
+  - dependency invalidation -> queue revalidation assertions
+  - concurrency conflict assertions
+  - replay reconstruction assertions
+  - derived scoring consistency assertions
+- [ ] Remove remaining frontend-derived scoring/readiness calculations and switch those views to backend authoritative contracts only.
+- [ ] Add explicit deterministic fallback/unknown handling enforcement for AI-runtime paths where data is unavailable.
 
 ### P0 - Runtime integrity enforcement (release blockers)
 - [x] Add central runtime orchestrator module:

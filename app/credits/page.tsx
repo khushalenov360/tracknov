@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { categoryMeta } from "@/lib/constants";
 import { getDashboardProjects, getProjectWorkspace } from "@/lib/data";
-import { scoreIgbcCredits } from "@/lib/igbc-scoring";
+import { getAuthoritativeProjectScore } from "@/lib/services/igbc-score-authority";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,10 @@ export default async function CreditsPage() {
   const projects = await getDashboardProjects();
   const workspaces = (await Promise.all(projects.map((project) => getProjectWorkspace(project.id))))
     .filter((w): w is NonNullable<typeof w> => w !== null);
+  const scoreByProject = new Map(
+    (await Promise.all(workspaces.map(async (workspace) => ([workspace.project.id, await getAuthoritativeProjectScore(workspace)] as const))))
+      .map(([projectId, score]) => [projectId, score]),
+  );
 
   return (
     <Shell
@@ -24,7 +28,10 @@ export default async function CreditsPage() {
     >
       <section className="grid gap-4">
         {workspaces.length ? workspaces.map((workspace) => {
-          const score = scoreIgbcCredits(workspace.credits, workspace.project.igbc_variant);
+          const score = scoreByProject.get(workspace.project.id);
+          if (!score) {
+            return null;
+          }
           const mandatory = workspace.credits.filter((credit) => credit.is_mandatory);
           const mandatoryComplete = mandatory.filter((credit) => credit.state === "complete").length;
           return (

@@ -1,4 +1,4 @@
-import type { CopilotMode } from '../types';
+export type CopilotMode = "workflow" | "conversation";
 
 /**
  * Resolve the copilot execution mode based on the detected intent.
@@ -17,6 +17,3 @@ export function resolveCopilotMode(intent: string): CopilotMode {
 
   return workflowIntents.includes(intent) ? 'workflow' : 'conversation';
 }
-
-// Export type for clarity
-export type { CopilotMode } from '../types';

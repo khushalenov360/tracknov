@@ -125,7 +125,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
         <div className="flex items-center gap-1.5">
           <AlertCircle className="h-3.5 w-3.5" />
           <span>Priority: </span>
-          <Badge variant="outline" className={`text-[9px] ${priorityColors[task.priority]}`}>{task.priority}</Badge>
+          <Badge className={`text-[9px] ${priorityColors[task.priority]}`}>{task.priority}</Badge>
         </div>
         {task.due_date && (
           <div className="flex items-center gap-1.5">
@@ -141,7 +141,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
             <input type="hidden" name="task_id" value={task.id} />
             <input type="hidden" name="project_id" value={task.project_id} />
             <input type="hidden" name="state" value="IN_PROGRESS" />
-            <Button size="sm" variant="secondary" className="h-8 text-[11px]">Start Work</Button>
+            <Button variant="secondary" className="h-8 text-[11px]">Start Work</Button>
           </form>
         )}
 
@@ -150,7 +150,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
             <input type="hidden" name="task_id" value={task.id} />
             <input type="hidden" name="project_id" value={task.project_id} />
             <input type="hidden" name="state" value="UPLOADED" />
-            <Button size="sm" variant="secondary" className="h-8 text-[11px]">Submit Evidence</Button>
+            <Button variant="secondary" className="h-8 text-[11px]">Submit Evidence</Button>
           </form>
         )}
 
@@ -162,7 +162,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 <input type="hidden" name="task_id" value={task.id} />
                 <input type="hidden" name="project_id" value={task.project_id} />
                 <input type="hidden" name="state" value="UNDER_REVIEW" />
-                <Button size="sm" variant="outline" className="h-8 text-[11px] border-blue-200 text-blue-700 bg-blue-50">
+                <Button variant="secondary" className="h-8 text-[11px] border-blue-200 text-blue-700 bg-blue-50">
                   Mark Under Review
                 </Button>
               </form>
@@ -174,7 +174,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                   <input type="hidden" name="task_id" value={task.id} />
                   <input type="hidden" name="project_id" value={task.project_id} />
                   <input type="hidden" name="state" value="APPROVED" />
-                  <Button size="sm" className="h-8 text-[11px] bg-green-600 hover:bg-green-700">Approve</Button>
+                  <Button className="h-8 text-[11px] bg-green-600 hover:bg-green-700">Approve</Button>
                 </form>
                 
                 <form action={updateTaskStateAction} className="flex gap-2">
@@ -182,7 +182,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                   <input type="hidden" name="project_id" value={task.project_id} />
                   <input type="hidden" name="state" value="REJECTED" />
                   <input type="text" name="notes" placeholder="Reason..." className="h-8 w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] outline-none" required />
-                  <Button size="sm" variant="destructive" className="h-8 text-[11px]">Reject</Button>
+                  <Button variant="danger" className="h-8 text-[11px]">Reject</Button>
                 </form>
               </div>
             )}
@@ -193,14 +193,14 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 <input type="hidden" name="project_id" value={task.project_id} />
                 <input type="hidden" name="state" value="CLARIFICATION" />
                 <input type="text" name="notes" placeholder="What is missing?" className="h-8 w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] outline-none" required />
-                <Button size="sm" variant="outline" className="h-8 text-[11px]">Need Clarification</Button>
+                <Button variant="secondary" className="h-8 text-[11px]">Need Clarification</Button>
               </form>
             )}
           </>
         )}
 
         {canDelegate && !isDelegating && (
-          <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => setIsDelegating(true)}>
+          <Button variant="secondary" className="h-8 text-[11px]" onClick={() => setIsDelegating(true)}>
             Delegate Execution
           </Button>
         )}
@@ -230,8 +230,8 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 rows={2}
               />
               <div className="flex gap-2">
-                <Button type="submit" size="sm" className="h-7 text-[10px]">Confirm Delegation</Button>
-                <Button type="button" size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => setIsDelegating(false)}>Cancel</Button>
+                <Button type="submit" className="h-7 text-[10px]">Confirm Delegation</Button>
+                <Button type="button" variant="ghost" className="h-7 text-[10px]" onClick={() => setIsDelegating(false)}>Cancel</Button>
               </div>
             </form>
           </div>
@@ -262,9 +262,9 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 </div>
                 {log.old_state && log.new_state && (
                   <div className="mt-1 flex items-center gap-1 text-[10px]">
-                    <Badge variant="outline" className="px-1 py-0 h-4 text-[8px] opacity-60">{log.old_state}</Badge>
+                    <Badge className="px-1 py-0 h-4 text-[8px] opacity-60">{log.old_state}</Badge>
                     <ArrowRight className="h-3 w-3" />
-                    <Badge variant="outline" className="px-1 py-0 h-4 text-[8px]">{log.new_state}</Badge>
+                    <Badge className="px-1 py-0 h-4 text-[8px]">{log.new_state}</Badge>
                   </div>
                 )}
                 {log.notes && (

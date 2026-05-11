@@ -208,10 +208,10 @@ export default async function SubmittalReviewPage({ params }: PageProps) {
                   <form key={item.action} action={submitDocumentTransitionAction} className="space-y-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                     <input type="hidden" name="project_id" value={projectId} />
                     <input type="hidden" name="document_id" value={envelope.document.id} />
-                    <input type="hidden" name="new_state" value={item.target} />
+                    <input type="hidden" name="target_state" value={item.target} />
                     <input type="hidden" name="manual_submit" value="true" />
                     {item.target === "CLARIFICATION" || item.target === "REJECTED" ? (
-                      <Textarea name="remarks" required className="min-h-[72px]" placeholder="Reason is mandatory for rejection or clarification." />
+                      <Textarea name="reason" required className="min-h-[72px]" placeholder="Reason is mandatory for rejection or clarification." />
                     ) : null}
                     <Button type="submit" className="h-[32px] w-full rounded-md px-3 text-[12px]">
                       {item.label}

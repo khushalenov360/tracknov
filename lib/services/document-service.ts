@@ -8,6 +8,7 @@ import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { recordDocumentReviewEvent } from "./review-service";
 import { aiService } from "./ai-service";
 import { documentIntelligenceService } from "./document-intelligence-service";
+import { workflowOrchestratorService } from "./workflow-orchestrator-service";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 import crypto from "crypto";
@@ -514,7 +515,7 @@ export class DocumentService {
       entityType: "document",
       entityId: params.documentId,
       projectId: params.projectId,
-      targetState: "RESUBMITTED",
+      targetState: "UNDER_L3_REVIEW",
       action: "submit",
       reason: params.resubmitNote,
       metadata: {

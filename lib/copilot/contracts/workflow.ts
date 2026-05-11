@@ -15,7 +15,7 @@ export const UIActionSchema = z.object({
     "view_document",
     "retry_validation",
   ]),
-  payload: z.record(z.any()).optional(),
+  payload: z.record(z.string(), z.any()).optional(),
   variant: z.enum(["primary", "secondary", "danger", "ghost"]).default("primary"),
 });
 
@@ -29,8 +29,8 @@ export const WorkflowResponseSchema = z.object({
   intent: z.string(),
   confidence: z.number().min(0).max(1),
   ui_actions: z.array(UIActionSchema),
-  workflow_context: z.record(z.any()).optional(),
-  validation_state: z.record(z.any()).optional(),
+  workflow_context: z.record(z.string(), z.any()).optional(),
+  validation_state: z.record(z.string(), z.any()).optional(),
   requires_confirmation: z.boolean().default(false),
   message: z.string().optional(), // Brief status message (not conversational negotiation)
 });

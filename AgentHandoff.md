@@ -1,4 +1,47 @@
 
+## Latest execution pass (2026-05-11 IST, handoff/todo alignment + build unblocking)
+
+### Objective
+Update execution artifacts to reflect actual implementation state before commit/push, and unblock current typed runtime compile issues.
+
+### Delivered in this pass
+- Verified active repo context is:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita`
+- Verified TODO is **not fully complete**; open items remain in `todo.md` (implementation + live verification closures).
+- Fixed typed runtime blockers in workflow/document transition layer:
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\task-service.ts`
+    - added `upsertClarificationTask(...)` API used by document clarification transitions.
+  - `C:\Users\91922\Documents\Codex\tracknov\harita\lib\services\document-state-service.ts`
+    - replaced invalid `.catch(...)` usage on Supabase RPC builders with async error-checked calls.
+- Preserved prior pass changes in:
+  - `app/actions.ts`
+  - `app/credits/page.tsx`
+  - `app/projects/[id]/submittals/[submittalId]/page.tsx`
+  - `components/project/TaskDetailPanel.tsx`
+  - `copilot/router/resolveCopilotMode.ts`
+  - `lib/assistant-tools.ts`
+  - `lib/assistant.ts`
+  - `lib/copilot/contracts/workflow.ts`
+  - `lib/copilot/fallbacks/deterministicFallback.ts`
+  - `lib/services/document-service.ts`
+  - `lib/services/document-state-service.ts`
+  - `lib/services/igbc-score-authority.ts` (new)
+  - `lib/types.ts`
+  - `tests/runtime/runtimeAcceptance.spec.ts`
+  - `todo.md`
+
+### Verification snapshot
+- `npx playwright test tests/runtime/runtimeAcceptance.spec.ts` (from prior pass): passed.
+- `npm run build` currently still blocked by:
+  - ESLint circular config serialization issue (`.eslintrc.json`) in the existing repo setup.
+  - Additional type checks may still surface after lint stage is resolved.
+
+### Status impact
+- Agent handoff is now aligned with actual repo status.
+- Pending work remains tracked in `todo.md`; not all TODO requirements are closed yet.
+
+---
+
 
 ## Latest execution pass (2026-05-11 IST, provable runtime integrity implementation pass)
 

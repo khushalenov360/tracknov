@@ -25,6 +25,7 @@ export type WorkflowState =
   | "READY_FOR_L3"
   | "UNDER_L3_REVIEW"
   | "CLARIFICATION"
+  | "RESUBMITTED"
   | "APPROVED"
   | "REJECTED"
   | "REVOKED";
@@ -40,6 +41,7 @@ export function toCanonicalReviewState(state: WorkflowState): CanonicalReviewSta
     case "READY_FOR_L3":
     case "UNDER_L3_REVIEW":
     case "CLARIFICATION":
+    case "RESUBMITTED":
       return "admin_review";
     case "APPROVED":
       return "approved";
@@ -77,7 +79,8 @@ const allowedTransitions: Record<WorkflowState, WorkflowState[]> = {
   L1_REJECTED: ["IN_PROGRESS"],
   READY_FOR_L3: ["UNDER_L3_REVIEW"],
   UNDER_L3_REVIEW: ["APPROVED", "CLARIFICATION", "REJECTED"],
-  CLARIFICATION: ["IN_PROGRESS"],
+  CLARIFICATION: ["RESUBMITTED", "IN_PROGRESS"],
+  RESUBMITTED: ["UNDER_L3_REVIEW"],
   APPROVED: ["REVOKED"],
   REJECTED: ["IN_PROGRESS"],
   REVOKED: ["ASSIGNED"],
@@ -458,8 +461,18 @@ export async function transitionDocumentState(
 
   // Scoring update (Async)
   if (document.project_id) {
-    void writer.rpc("recompute_credit_scores", { p_project_id: document.project_id }).catch(console.error);
-    void writer.rpc("recompute_project_health_status", { p_project_id: document.project_id }).catch(console.error);
+    void (async () => {
+      const { error } = await writer.rpc("recompute_credit_scores", { p_project_id: document.project_id });
+      if (error) {
+        console.error("[document-state-service] recompute_credit_scores failed", error);
+      }
+    })();
+    void (async () => {
+      const { error } = await writer.rpc("recompute_project_health_status", { p_project_id: document.project_id });
+      if (error) {
+        console.error("[document-state-service] recompute_project_health_status failed", error);
+      }
+    })();
   }
 
   eventBus.emit({

@@ -440,7 +440,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
           name: String(args.name ?? ""),
           clientName: String(args.clientName ?? ""),
           location: String(args.location ?? ""),
-          ratingSystem: String(args.ratingSystem ?? "IGBC Green Interiors"),
+          ratingSystemName: String(args.ratingSystem ?? "IGBC Green Interiors"),
           projectType: String(args.projectType ?? "commercial"),
           targetRating: String(args.targetRating ?? "Certified"),
         });
@@ -457,7 +457,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
           clientName: String(args.clientName ?? ""),
           location: String(args.location ?? ""),
           ratingSystem: String(args.ratingSystem ?? ""),
-          status: String(args.status ?? "active"),
+          state: String(args.status ?? "active"),
         });
         return { ok: true, data: "Project updated successfully.", navigateTo: `/projects/${args.projectId}` };
       } catch (error: any) {
@@ -518,11 +518,12 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         if (action !== "complete" && action !== "blocked") return { ok: false, error: "Action must be 'complete' or 'blocked'." };
         const creditId = await resolveCreditId(projectId, creditCode.toUpperCase());
         if (!creditId) return { ok: false, error: `Credit ${creditCode} not found.` };
+        const targetState = action === "complete" ? "APPROVED" : "REJECTED";
         await creditService.setCreditState(user, {
           projectId,
           creditId,
-          action,
-          blockedBy: String(args.blockedBy ?? ""),
+          state: targetState,
+          remarks: String(args.blockedBy ?? ""),
         });
         return { ok: true, data: `Credit ${creditCode} marked as ${action}.` };
       } catch (error: any) {

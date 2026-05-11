@@ -12,7 +12,7 @@ export type AssistantContext = {
   summary: string;
   nextSteps: string[];
   facts: string[];
-  capabilities?: string; // Phase 4: Role-Aware capabilities injected into context
+  capabilities?: string;
   currentItem?: string;
 };
 
@@ -26,23 +26,15 @@ function formatList(items: string[]) {
 }
 
 const ROLE_PERSONAS: Record<string, string> = {
-  super_user: `You are a senior certification strategist. Think like a program director — give the highest-level read of the workspace. Flag systemic risks, credit bottlenecks, and submission readiness. You can create projects, manage all members, and override any state. Use direct language. Expect to be treated as a power user.`,
-
-  super_admin: `You are a project operations lead. Focus on admin-level workflows: review queues, member management, and project health. You can approve documents, manage credits, and handle escalations. Speak in operational terms.`,
-
-  project_admin: `You are a project manager embedded in the certification delivery team. Prioritize moving credits forward, unblocking stalled items, and reviewing documentation. You can manage members within your projects and update credit guidance.`,
-
-  owner: `You are a project owner's representative. Your job is quality control — review submitted documents, communicate with consultants, and ensure submissions meet certification standards. Use clear, professional language. Focus on review actions and remarks.`,
-
-  client: `You are a client-side advisor. Help the client understand project progress, certification status, and what actions they need to take. Use plain, non-technical language. Avoid internal admin jargon. Focus on high-level status and next owner actions.`,
-
-  consultant: `You are a certification consultant's assistant. Help with document upload strategy, credit completion, and submission guidance. Focus on what evidence is needed, what's missing, and the next upload priority. Be practical and deadline-aware.`,
-
-  architect: `You are an architect supporting the certification process. Focus on design-stage credits and document requirements relevant to building design. Provide clear upload guidance for design evidence.`,
-
-  mep: `You are an MEP engineer supporting certification. Focus on mechanical, electrical, and plumbing-related credits. Provide clear guidance on MEP documentation requirements.`,
-
-  contractor: `You are a contractor supporting certification. Focus on construction-stage credits and site implementation evidence. Provide practical guidance on what site photos, records, and tests are needed.`,
+  super_user: "You are a senior certification strategist. Think like a program director - give the highest-level read of the workspace. Flag systemic risks, credit bottlenecks, and submission readiness. You can create projects, manage all members, and override any state. Use direct language. Expect to be treated as a power user.",
+  super_admin: "You are a project operations lead. Focus on admin-level workflows: review queues, member management, and project health. You can approve documents, manage credits, and handle escalations. Speak in operational terms.",
+  project_admin: "You are a project manager embedded in the certification delivery team. Prioritize moving credits forward, unblocking stalled items, and reviewing documentation. You can manage members within your projects and update credit guidance.",
+  owner: "You are a project owner's representative. Your job is quality control - review submitted documents, communicate with consultants, and ensure submissions meet certification standards. Use clear, professional language. Focus on review actions and remarks.",
+  client: "You are a client-side advisor. Help the client understand project progress, certification status, and what actions they need to take. Use plain, non-technical language. Avoid internal admin jargon. Focus on high-level status and next owner actions.",
+  consultant: "You are a certification consultant's assistant. Help with document upload strategy, credit completion, and submission guidance. Focus on what evidence is needed, what's missing, and the next upload priority. Be practical and deadline-aware.",
+  architect: "You are an architect supporting the certification process. Focus on design-stage credits and document requirements relevant to building design. Provide clear upload guidance for design evidence.",
+  mep: "You are an MEP engineer supporting certification. Focus on mechanical, electrical, and plumbing-related credits. Provide clear guidance on MEP documentation requirements.",
+  contractor: "You are a contractor supporting certification. Focus on construction-stage credits and site implementation evidence. Provide practical guidance on what site photos, records, and tests are needed.",
 };
 
 const ROLE_BOUNDARIES: Record<string, string> = {
@@ -160,6 +152,7 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
 
 export function buildFallbackAssistantReply(context: AssistantContext, prompt: string) {
   const normalized = prompt.toLowerCase();
+  const unknown = "I cannot confirm this from your project data.";
   const lead = context.nextSteps[0] ?? "Review the current workspace and identify the open items first.";
   const creditMatch = prompt.match(/\b([A-Z]{2,3}\s?[A-Z]?\s?\d{1,2})\b/i);
   const creditCode = creditMatch?.[1]?.replace(/\s+/g, " ").toUpperCase();
@@ -192,9 +185,9 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
     normalized.includes("about the file")
   ) {
     return [
-      "Yes — I can analyze the attached file now.",
+      unknown,
       "",
-      "Tell me what you want next after analysis: map it to a credit, compare with a specific credit, or upload directly.",
+      "Please attach the file in this message, then ask: `Analyze this attached file and suggest likely credit mapping.`",
     ].join("\n");
   }
 
@@ -217,7 +210,7 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
 
   if (normalized.includes("applicable") || normalized.includes("is this file") || normalized.includes("does this file")) {
     return [
-      "I can help verify applicability, but I need either the attached file in this message or the exact credit requirement text.",
+      unknown,
       "",
       "Share one of these and I will give a direct yes/no with reason:",
       "1. Attach the file and ask: `Check if this is valid for <credit code>`",
@@ -225,5 +218,5 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
     ].join("\n");
   }
 
-  return `Thanks — I got your message. To move this forward quickly, ${lead}`;
+  return [unknown, "", `Next best step: ${lead}`].join("\n");
 }

@@ -1233,11 +1233,11 @@ export async function submitDocumentTransitionAction(formData: FormData) {
   const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
 
   if (!projectId || !documentId || !nextState) {
-    return { error: "Missing transition payload." };
+    throw new Error("Missing transition payload.");
   }
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized" };
+  if (!user) throw new Error("Unauthorized");
 
   const result = await workflowOrchestratorService.transition(user, {
     entityType: "document",
@@ -1249,63 +1249,59 @@ export async function submitDocumentTransitionAction(formData: FormData) {
   });
 
   if (!result.ok) {
-    return { error: result.message };
+    throw new Error(result.message);
   }
 
   revalidatePath("/review-queue");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/documents");
-  return { success: true };
 }
 
 export async function runNotificationDigestAction() {
   const user = await getCurrentUser();
   if (!user || user.role !== "super_user") {
-    return { error: "Unauthorized" };
+    throw new Error("Unauthorized");
   }
 
   await runNotificationDigestJobs();
   revalidatePath("/team");
   revalidatePath("/dashboard");
-  return { success: true };
 }
 
 export async function disableTeamMemberAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized" };
+  if (!user) throw new Error("Unauthorized");
 
   const userId = String(formData.get("user_id") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
-  if (!userId || !reason) return { error: "User and reason are required." };
+  if (!userId || !reason) throw new Error("User and reason are required.");
 
   try {
     await memberService.disableMember(user, { userId, reason });
     revalidatePath("/team");
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message ?? "Disable failed." };
+    throw new Error(error?.message ?? "Disable failed.");
   }
 }
 
 export async function reactivateTeamMemberAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized" };
+  if (!user) throw new Error("Unauthorized");
 
   const userId = String(formData.get("user_id") ?? "").trim();
-  if (!userId) return { error: "User is required." };
+  if (!userId) throw new Error("User is required.");
 
   try {
     await memberService.reactivateMember(user, { userId });
     revalidatePath("/team");
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message ?? "Reactivation failed." };
+    throw new Error(error?.message ?? "Reactivation failed.");
   }
 }
 
 export async function reassignTeamMemberAction(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized" };
+  if (!user) throw new Error("Unauthorized");
 
   const userId = String(formData.get("user_id") ?? "").trim();
   const fromProjectId = String(formData.get("from_project_id") ?? "").trim();
@@ -1313,7 +1309,7 @@ export async function reassignTeamMemberAction(formData: FormData) {
   const role = String(formData.get("role") ?? "").trim();
 
   if (!userId || !fromProjectId || !toProjectId || !role) {
-    return { error: "Incomplete reassignment payload." };
+    throw new Error("Incomplete reassignment payload.");
   }
 
   try {
@@ -1326,9 +1322,8 @@ export async function reassignTeamMemberAction(formData: FormData) {
     revalidatePath("/team");
     revalidatePath(`/projects/${fromProjectId}`);
     revalidatePath(`/projects/${toProjectId}`);
-    return { success: true };
   } catch (error: any) {
-    return { error: error.message ?? "Reassignment failed." };
+    throw new Error(error?.message ?? "Reassignment failed.");
   }
 }
 

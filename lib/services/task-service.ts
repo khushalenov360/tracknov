@@ -16,6 +16,15 @@ export interface TaskParams {
   docType?: string;
 }
 
+export interface ClarificationTaskParams {
+  projectId: string;
+  documentId: string;
+  assignedUserId: string;
+  createdBy?: string | null;
+  title?: string;
+  description?: string;
+}
+
 export class TaskService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
@@ -211,6 +220,46 @@ export class TaskService {
       priority: params.priority || "HIGH",
       docType: params.docType,
     });
+  }
+
+  /**
+   * Creates or refreshes a clarification follow-up task for a document owner.
+   * If schema support for per-document task linkage is unavailable, this
+   * gracefully falls back to creating a scoped clarification task.
+   */
+  async upsertClarificationTask(params: ClarificationTaskParams) {
+    const taskType = "clarification_followup";
+    const actorId = params.createdBy ?? params.assignedUserId;
+
+    // Best-effort: close any active clarification tasks for this user/project.
+    await this.admin
+      .from("tasks")
+      .update({ active_flag: false, updated_at: new Date().toISOString() })
+      .eq("project_id", params.projectId)
+      .eq("assigned_to", params.assignedUserId)
+      .eq("task_type", taskType)
+      .eq("active_flag", true);
+
+    const task = await this.createTask({
+      projectId: params.projectId,
+      taskType,
+      assignedBy: actorId,
+      assignedTo: params.assignedUserId,
+      priority: "HIGH",
+      docType: "clarification",
+    });
+
+    await this.logTaskHistory(this.admin, {
+      taskId: task.id,
+      actionType: "clarification_requested",
+      performedBy: actorId,
+      notes:
+        params.description ??
+        params.title ??
+        `Clarification requested for document ${params.documentId}.`,
+    });
+
+    return task;
   }
 
   /**

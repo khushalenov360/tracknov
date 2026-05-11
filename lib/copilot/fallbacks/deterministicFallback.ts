@@ -8,11 +8,12 @@ export function generateDeterministicFallback(
   errorType: "schema_invalid" | "hallucination_detected" | "timeout" | "unauthorized",
   contextMessage?: string
 ): FallbackResponse {
+  const unknownData = "I cannot confirm this from your project data.";
   const messages: Record<typeof errorType, string> = {
-    schema_invalid: "The assistant returned an invalid response format. Please try again or use the manual controls.",
-    hallucination_detected: "The assistant suggested an action that is not supported in the current project context.",
-    timeout: "The assistant is taking too long to respond. Please check your connection and try again.",
-    unauthorized: "You do not have the necessary permissions to perform this action via the assistant.",
+    schema_invalid: `${unknownData} Please retry with one specific question or use the manual controls.`,
+    hallucination_detected: `${unknownData} The previous response could not be grounded in your project context.`,
+    timeout: `${unknownData} Please retry; I will continue with deterministic guidance if AI is unavailable.`,
+    unauthorized: `${unknownData} You do not have permission for this action in the current role.`,
   };
 
   return {
