@@ -27,7 +27,7 @@ class EventBus {
         await initEventBus();
     }
     
-    console.log(`[EventBus] Emitting ${event.type}`, event.payload);
+    
     
     // Persist event for audit trail (Epic C2)
     await this.persistEvent(event);
@@ -124,5 +124,5 @@ export async function initEventBus() {
     }
     
     eventBus.setInitialized();
-    console.log("[EventBus] Initialized.");
+    
 }

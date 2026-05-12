@@ -33,7 +33,10 @@ import {
   cleanRoleLabel,
 } from "@/lib/utils";
 import { stageGateService } from "@/lib/services/stage-gate-service";
+import { resolveTrackerCellStatus, toLegacyCreditStatus } from "@/lib/workflow-utils";
 import { cookies } from "next/headers";
+import { resolveTrackerCellStatus, toLegacyCreditStatus } from "@/lib/workflow-utils";
+
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -62,11 +65,12 @@ const docAbbreviations: Record<string, string> = {
 const trackerColumns = [
   { label: "Narrative", aliases: ["Narrative"] },
   { label: "Tech Specs", aliases: ["Tech Spec", "Tech Specs"] },
-  { label: "Certificates/ Declaration", aliases: ["Certificate/Declaration", "Certificates/ Declaration"] },
+  { label: "Certificates", aliases: ["Certificate/Declaration", "Certificates/ Declaration", "Certificate"] },
   { label: "Drawings", aliases: ["Drawing", "Drawings"] },
-  { label: "Calculations & Tables", aliases: ["Calculation & Tables", "Calculations & Tables"] },
-  { label: "Invoices", aliases: ["Invoice", "Invoices"] },
-  { label: "Pic/Video", aliases: ["Pic/Video"] },
+  { label: "Calculations", aliases: ["Calculation & Tables", "Calculations & Tables", "Calculation"] },
+  { label: "Financials", aliases: ["Invoice", "Invoices", "Purchase Order", "PO"] },
+  { label: "Field Logs", aliases: ["Pic/Video", "Photo", "Video", "Logbook", "Site visit report"] },
+  { label: "Audit Reports", aliases: ["Report", "Reports", "Audit report"] },
 ] as const;
 
 const defaultCategoryMeta = {
@@ -74,38 +78,7 @@ const defaultCategoryMeta = {
   color: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
 };
 
-function resolveTrackerCellStatus(credit: any, aliases: readonly string[]) {
-  const requiredSlots = (credit.documents_required ?? []).filter((doc: any) => aliases.includes(doc.type) || aliases.includes(doc.label));
-  if (!requiredSlots.length || requiredSlots.every((doc: any) => !doc.required)) {
-    return "NA";
-  }
-
-  const linkedDocs = (credit.documents ?? []).filter((doc: any) =>
-    requiredSlots.some((slot: any) => slot.type === doc.doc_category || slot.label === doc.doc_category),
-  );
-
-  if (!linkedDocs.length) return "Required";
-
-  const states = linkedDocs.map((doc: any) => String(doc.state ?? doc.status ?? "").toUpperCase());
-  if (states.some((state: string) => state === "REJECTED" || state === "CLARIFICATION")) return "Clarification";
-  if (states.some((state: string) => state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "READY" || state === "UPLOADED")) return "Under Review";
-  return "Received";
-}
-
-function toLegacyCreditStatus(rawState: string | undefined): keyof typeof creditStatuses {
-  if (!rawState) return "pending";
-  const normalized = rawState.toLowerCase();
-  if (normalized === "complete" || normalized === "approved" || normalized === "closed") return "complete";
-  if (normalized === "blocked" || normalized === "rejected") return "blocked";
-  if (normalized === "in_progress" || normalized === "under_review" || normalized === "submitted" || normalized === "resubmitted") {
-    return "in_progress";
-  }
-  if (normalized === "draft" || normalized === "assigned" || normalized === "not_started" || normalized === "pending" || normalized === "clarification" || normalized === "ready") {
-    return "pending";
-  }
-  if (normalized in creditStatuses) return normalized as keyof typeof creditStatuses;
-  return "pending";
-}
+// resolveTrackerCellStatus and toLegacyCreditStatus moved to shared utils
 
 function queryString(params: Record<string, string | undefined>) {
   const nextParams = new URLSearchParams();
@@ -129,7 +102,7 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
 export default async function ProjectPage({ params, searchParams }: PageProps) {
   const { id: projectId } = await params;
   const resolvedSearchParams = (await searchParams) ?? {};
-  console.log(">>> LOADING DASHBOARD FOR PROJECT:", projectId);
+  
   const user = await getCurrentUser();
   let workspaceError: string | null = null;
   let workspace = null as Awaited<ReturnType<typeof getProjectWorkspace>>;
@@ -700,7 +673,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                         >
                           {credit.credit_name}
                         </Link>
-                      </td>                      {trackerColumns.map((column) => {
+                      </td>
+                      {trackerColumns.map((column) => {
                         const cell = resolveTrackerCellStatus(credit, column.aliases);
                         const columnAliases = column.aliases as readonly string[];
                         const requirementSlot = (credit.documents_required ?? []).find((doc: any) =>
@@ -718,8 +692,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
                                   : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)] opacity-70";
                         return (
                         <td key={`${credit.id}-${column.label}`} className="px-2 py-2 align-middle">
-                            <div className="flex min-w-[168px] flex-col gap-1">
-                              <span className={`inline-flex w-fit rounded-[3px] px-[6px] py-[2px] text-[9px] ${tone}`}>
+                            <div className="flex min-w-[150px] flex-col gap-1">
+                              <span className={`inline-flex w-fit rounded-[3px] px-[5px] py-[1.5px] text-[8px] font-medium uppercase tracking-tight ${tone}`}>
                                 {cell}
                               </span>
                               {canAssignContributors && cell === "Required" && requirementSlot?.required ? (

@@ -269,7 +269,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 )}
                 {log.notes && (
                   <p className="mt-1 text-[10px] italic text-[var(--color-text-secondary)] bg-[var(--color-surface-2)] p-1.5 rounded">
-                    "{log.notes}"
+                    &quot;{log.notes}&quot;
                   </p>
                 )}
               </div>

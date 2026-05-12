@@ -5,7 +5,7 @@ export function registerBillingConsumers() {
   eventBus.subscribe(async (event) => {
     switch (event.type) {
       case "TOKEN_DEDUCTED":
-        console.log(`[BillingConsumer] Token deducted: ${event.payload.amount} for ${event.payload.reason}`);
+        
         // Additional logic like low balance notification can go here
         break;
       case "DOCUMENT_UPLOADED":

@@ -97,7 +97,7 @@ export function Shell({
       <GlobalCopilot 
         enabled={env.aiReady} 
         role={role} 
-        title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Workspace')} 
+        title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Project')} 
         description={description} 
       />
     </div>

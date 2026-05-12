@@ -246,7 +246,7 @@ export class ProjectService {
   async joinProjectByCode(user: CurrentUser, projectCode: string) {
     // Sanitize: Trim, Upper, and handle common delimiters (spaces/hyphens)
     const cleanedCode = projectCode.trim().toUpperCase().replace(/\s+/g, '-');
-    console.log(`[ProjectService] User ${user.email} attempting to join project with code: ${cleanedCode}`);
+    
     
     const { data: project, error: fetchError } = await this.admin
       .from("projects")
@@ -264,7 +264,7 @@ export class ProjectService {
       throw new Error("Invalid project code.");
     }
 
-    console.log(`[ProjectService] Project found: ${project.name} (${project.id}). Linking user...`);
+    
 
     // Ensure profile exists before linking
     const { data: profile } = await this.admin
@@ -274,7 +274,7 @@ export class ProjectService {
       .maybeSingle();
 
     if (!profile) {
-      console.log(`[ProjectService] Creating missing profile for user ${user.id} during join.`);
+      
       await this.admin.from("profiles").insert({
         user_id: user.id,
         email: user.email,
@@ -290,14 +290,14 @@ export class ProjectService {
 
     if (insertError) {
       if (insertError.code === "23505") {
-        console.log("[ProjectService] User is already a member of this project.");
+        
         return project;
       }
       console.error("[ProjectService] Error linking user to project:", insertError);
       throw new Error(`Failed to link user: ${insertError.message}`);
     }
 
-    console.log(`[ProjectService] Successfully joined user ${user.email} to project ${project.name}`);
+    
     return project;
   }
 

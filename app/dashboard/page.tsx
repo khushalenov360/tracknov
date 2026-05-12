@@ -1,4 +1,5 @@
-import Link from "next/link";
+import Link from 'next/link';
+
 import { createProjectAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser, getRoleTasks, getRuntimeDesyncSummary, getUserActionQueue, getUserReviewQueue, getUserBlockerQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
+import { toLegacyCreditStatus } from "@/lib/workflow-utils";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
 import { getRoiSnapshot } from "@/lib/services/roi-service";
@@ -18,18 +20,25 @@ export const revalidate = 0;
 function collapseTimelineRows(rows: any[]) {
   const collapsed: Array<any & { repeatCount: number }> = [];
   for (const row of rows) {
+    // Filter out extremely low-signal "heartbeat", "view", or "session" actions
+    const action = String(row.action ?? "").toUpperCase();
+    if (["HEARTBEAT", "VIEW", "SESSION_START", "NAVIGATE"].includes(action)) continue;
+
     const previous = collapsed[collapsed.length - 1];
     const isDuplicate =
       previous &&
       previous.project_id === row.project_id &&
       previous.entity_type === row.entity_type &&
       previous.action === row.action &&
-      previous.summary === row.summary &&
-      previous.actor_id === row.actor_id;
+      // Smart match: if summaries are mostly similar, group them
+      (previous.summary === row.summary || (row.summary && previous.summary && row.summary.substring(0, 30) === previous.summary.substring(0, 30))) &&
+      (previous.actor_id === row.actor_id || previous.actor_role === row.actor_role);
+
     if (isDuplicate) {
       previous.repeatCount += 1;
       continue;
     }
+    
     collapsed.push({ ...row, repeatCount: 1 });
   }
   return collapsed;
@@ -262,23 +271,44 @@ export default async function DashboardPage({
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Action Queue */}
-        <section className="surface-card p-4">
+                <section className="surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
-            My Action Queue
+            True Open Execution Queue
             <Badge className="text-[10px]">{actionQueue.length}</Badge>
           </h2>
           <div className="space-y-2">
-            {actionQueue.length > 0 ? actionQueue.slice(0, 5).map((item: any, idx: number) => (
-              <div key={idx} className="p-2 rounded border border-[var(--color-border)] text-[11px]">
-                <p className="font-medium truncate">
-                  {item.creditCode ? `${item.creditCode} - ${item.documentType ?? "required document"}` : item.documentType ?? "Required document"}
+            {actionQueue.length > 0 ? actionQueue.slice(0, 6).map((item: any, idx: number) => (
+              <div key={idx} className="p-2.5 rounded border border-[var(--color-border)] text-[11px] hover:border-[var(--color-border-strong)] bg-[var(--color-surface)] transition-all">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-bold text-[var(--color-text-primary)] truncate">
+                    {item.creditCode || "CREDIT"}
+                  </span>
+                  <Badge variant="outline" className="h-4 px-1.5 text-[8px] uppercase tracking-tighter bg-[var(--color-surface-2)]">
+                    {item.documentType || "GENERAL"}
+                  </Badge>
+                </div>
+                <p className="text-[var(--color-text-secondary)] font-medium truncate">
+                  {item.creditName || "Documentation required"}
                 </p>
-                <p className="text-[var(--color-text-tertiary)] truncate">
-                  {item.creditName ?? "Credit requirement"} - {item.projectName}
-                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-[var(--color-text-tertiary)] truncate max-w-[120px]">
+                    {item.projectName}
+                  </span>
+                  <Link 
+                    href={`/projects/${item.projectId}?credit=${item.projectCreditId}&action=upload`} 
+                    className="text-[var(--color-green)] font-semibold hover:underline flex items-center gap-1"
+                  >
+                    Upload Now
+                  </Link>
+                </div>
               </div>
             )) : (
               <p className="text-[11px] text-[var(--color-text-tertiary)] italic">No pending uploads assigned.</p>
+            )}
+            {actionQueue.length > 6 && (
+              <p className="text-[10px] text-center text-[var(--color-text-tertiary)] pt-1">
+                + {actionQueue.length - 6} more items
+              </p>
             )}
           </div>
         </section>

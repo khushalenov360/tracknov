@@ -3,6 +3,48 @@
 Last updated: 2026-05-06 IST (Auditor enforcement implementation pass)
 Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
 
+## 12052026 Runtime Baseline + Acceptance + Golden Flow (new references)
+
+Sources:
+- `C:\Users\91922\Documents\Codex\tracknov\Handoff\12052026\TRACKNOV_EXECUTION_BASELINE_V1_COMPLETE.md`
+- `C:\Users\91922\Documents\Codex\tracknov\Handoff\12052026\TRACKNOV_RUNTIME_ACCEPTANCE_MATRIX_V1.md`
+- `C:\Users\91922\Documents\Codex\tracknov\Handoff\12052026\GOLDEN_FLOW_RUNTIME_PROOF_SUITE.md`
+
+### A) Execution Baseline V1 closure
+- [ ] Enforce full execution chain proof: Frontend -> API -> Auth -> Validation -> Workflow -> Audit -> Derived State -> DB Commit.
+- [ ] Verify workflow state set is fully enforced (DRAFT, READY, SUBMITTED, UNDER_REVIEW, CLARIFICATION, RESUBMITTED, APPROVED, REJECTED).
+- [ ] Verify role model enforcement proof (L0 upload-only, L1 reviewer, L2 read-only, L3 final validator, L5 override).
+- [ ] Verify validation authority proof for readiness, evidence eligibility, scoring eligibility, transition eligibility.
+- [ ] Verify immutable document governance proof: versioning + append-only lineage + hash validation.
+- [ ] Verify audit law proof: actor/before/after/reason/timestamp on sensitive actions, immutable log behavior.
+- [ ] Verify derived state law proof: only derived-state engine can update readiness/scoring/certification.
+- [ ] Verify frontend law proof: no frontend permission/readiness computation, no direct DB mutation.
+- [ ] Verify AI law proof: advisory-only; no approve/reject/override/mutation powers.
+- [ ] Close production blockers audit: workflow bypass, mutable audit, cross-project leakage, derived-state drift, frontend DB mutation.
+
+### B) Runtime Acceptance Matrix V1 (SHIP/NO-SHIP gates)
+- [ ] Workflow integrity tests: duplicate approvals blocked, invalid transitions blocked, stale reviewer actions rejected, certified projects immutable.
+- [ ] Validation integrity tests: missing mandatory evidence blocks submission; invalid evidence blocks approval; threshold failures block certification.
+- [ ] Security integrity tests: cross-project visibility impossible, unauthorized approvals blocked, prompt injection sanitized.
+- [ ] Audit integrity tests: append-only logs, replayable certification history, before/after snapshots mandatory.
+- [ ] Derived-state integrity tests: auto recalculation, dependency invalidation, no manual scoring edits.
+- [ ] Frontend isolation tests: readiness/permission computation and DB mutation blocked at frontend.
+- [ ] Concurrency tests: optimistic locking, stale-state rejection, atomic transitions, idempotent retries.
+- [ ] Golden flow runtime test: Upload -> Validation -> Submission -> Review -> Approval -> Scoring -> Audit Replay.
+- [ ] Enforce NO-SHIP conditions list as release gate.
+
+### C) Golden Flow Runtime Proof Suite (pilot gate)
+- [ ] Step 1 Upload proof: immutable version creation, hash generation, partial upload cleanup, audit creation.
+- [ ] Step 2 Mapping proof: lineage preservation, stale mapping invalidation, downstream recalculation.
+- [ ] Step 3 Validation proof: completeness + mandatory evidence + invalid-state propagation.
+- [ ] Step 4 Submission proof: deterministic transitions + invalid submission blocking + concurrency handling.
+- [ ] Step 5 Review proof: assignment ownership + stale reviewer rejection + duplicate review prevention.
+- [ ] Step 6 Approval proof: immutable workflow history + scoring recalculation + stale export invalidation.
+- [ ] Step 7 Certification proof: deterministic scoring + prerequisite enforcement + downgrade behavior.
+- [ ] Step 8 Audit Replay proof: historical reconstruction + replay determinism + immutable traceability.
+- [ ] Step 9 Hostile Security Testing proof: cross-project/stale-session/API tampering/prompt-injection attempts blocked + audited + isolated.
+- [ ] Pilot readiness signoff only after deterministic runtime, exact replay, authoritative validation, RBAC isolation, and concurrency safety are proven.
+
 ## Latest status update (2026-05-11 IST, execution reality snapshot)
 
 - TODO is **not complete**.

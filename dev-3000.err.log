@@ -2266,3 +2266,158 @@ Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-toke
   530 |     `${prefix}used ${expression}. ` +
   531 |       `\`cookies()\` should be awaited before using its value. ` +
   532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:54:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`
+ ⨯ ./lib/services/project-service.ts
+Error:   [31mx[0m Expression expected
+     ,-[[36;1;4mC:\Users\91922\Documents\Codex\tracknov\harita\lib\services\project-service.ts[0m:267:1]
+ [2m264[0m |       throw new Error("Invalid project code.");
+ [2m265[0m |     }
+ [2m266[0m | 
+ [2m267[0m |     . Linking user...`);
+     : [35;1m    ^[0m
+ [2m268[0m | 
+ [2m269[0m |     // Ensure profile exists before linking
+ [2m269[0m |     const { data: profile } = await this.admin
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./lib/services/project-service.ts
+./app/actions.ts
+./app/dashboard/page.tsx

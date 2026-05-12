@@ -108,7 +108,7 @@ export async function createProjectAction(formData: FormData) {
 
 export async function joinProjectAction(formData: FormData) {
   const projectCode = String(formData.get("projectCode") ?? "").trim().toUpperCase();
-  console.log("[Actions] User attempting to join project with code:", projectCode);
+  
   
   if (!projectCode) {
     console.warn("[Actions] No project code provided.");
@@ -125,7 +125,7 @@ export async function joinProjectAction(formData: FormData) {
   let project;
   try {
     project = await projectService.joinProjectByCode(user, projectCode);
-    console.log("[Actions] Join project successful, revalidating paths...");
+    
     revalidatePath("/projects");
     revalidatePath("/dashboard");
     revalidatePath(`/projects/${project.id}`);
@@ -139,7 +139,7 @@ export async function joinProjectAction(formData: FormData) {
   }
 
   if (project) {
-    console.log("[Actions] Redirecting to project workspace:", project.id);
+    
     redirect(`/projects/${project.id}`);
   } else {
     console.warn("[Actions] Join project returned no project object, staying on page.");
