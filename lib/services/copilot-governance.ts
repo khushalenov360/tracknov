@@ -1,6 +1,8 @@
 /**
  * TRACKNOV — Copilot Governance Service
  * Implements Sections 4, 5, 13, 14, 19, 22 of the ENOVAIT Modeled Copilot Handoff.
+ * Strictly enforces Principle 4 (Human Governance Authority) and Final Governance Law
+ * as defined in TRACKNOV_CANONICAL_GOVERNANCE_MODEL_V1 Section 1.
  */
 
 // ─────────────────────────────────────────────

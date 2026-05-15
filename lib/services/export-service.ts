@@ -25,6 +25,17 @@ export class ExportService {
       throw new Error("Data exports are currently suspended by system administration. Please try again later.");
     }
 
+    // SECTION 13: Certification Immutability Lock Guard
+    const { data: project } = await this.admin
+      .from("projects")
+      .select("certification_state")
+      .eq("id", params.projectId)
+      .single();
+
+    if (project && project.certification_state === "CERTIFIED_LOCKED") {
+      throw new Error("Project is CERTIFIED_LOCKED. Final official certification artifacts are immutable and cannot be regenerated.");
+    }
+
     const { data, error } = await this.admin
       .from("export_jobs")
       .insert({
@@ -50,6 +61,17 @@ export class ExportService {
     
     if (error) throw error;
     return data;
+  }
+
+  async getExportDownloadUrl(jobId: string) {
+    const job = await this.getExportStatus(jobId);
+    if (job.status === "STALE" || job.status === "INVALID") {
+      throw new Error("Export download blocked: the underlying project state has been modified or revoked since this export was generated. Please generate a fresh export.");
+    }
+    if (job.status !== "COMPLETED") {
+      throw new Error(`Export download unavailable: current status is ${job.status}`);
+    }
+    return job.file_path;
   }
 }
 

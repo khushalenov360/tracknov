@@ -1019,6 +1019,203 @@ async function createAiStream(
 
 // ─── POST handler ─────────────────────────────────────────────────────────────
 
+/* Duplicate region removed
+export async function POST(request: Request) {
+  const throttled = checkRateLimit(request, {
+    key: "api:assistant:chat",
+    limit: 40,
+    windowMs: 60_000,
+  });
+  if (throttled) return throttled;
+
+  const startedAt = Date.now();
+  let body: AssistantRequest;
+
+  try {
+    body = (await request.json()) as AssistantRequest;
+  } catch {
+    return new Response("Invalid request body.", { status: 400 });
+  }
+
+  if (text) {
+    return { type: "content", text };
+  }
+
+  return null;
+}
+
+async function createOpenAiCompatibleStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  attempt: ProviderAttempt,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  let bodyMessages = toChatMessages(context, messages, workspaceSnapshot, role);
+
+  if (functionResults?.length) {
+    const lastAssistantMsg = bodyMessages[bodyMessages.length - 1];
+    bodyMessages = [
+      ...bodyMessages.slice(0, -1),
+      {
+        ...lastAssistantMsg,
+        content: lastAssistantMsg.content,
+        tool_calls: functionResults.map((fr) => ({
+          id: `call_${fr.name}`,
+          type: "function" as const,
+          function: { name: fr.name, arguments: "{}" },
+        })),
+      } as any,
+      ...functionResults.map((fr) => ({
+        role: "tool" as const,
+        tool_call_id: `call_${fr.name}`,
+        content: JSON.stringify(fr.response),
+      })),
+    ];
+  }
+
+  const response = await fetch(openAiCompatibleEndpoint(attempt.provider), {
+    method: "POST",
+    headers: openAiHeaders(attempt),
+    body: JSON.stringify({
+      model: attempt.model,
+      messages: bodyMessages,
+      temperature: 0.4,
+      max_tokens: 500,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = "";
+
+      const processEvent = (eventBlock: string) => {
+        const dataLines = eventBlock
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim());
+
+        for (const line of dataLines) {
+          if (!line || line === "[DONE]") {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(line) as any;
+            const text = parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? "";
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          } catch {
+            // Ignore malformed chunks and keep streaming.
+          }
+        }
+      };
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          let separatorIndex = buffer.indexOf("\n\n");
+          while (separatorIndex !== -1) {
+            const eventBlock = buffer.slice(0, separatorIndex).trim();
+            buffer = buffer.slice(separatorIndex + 2);
+            if (eventBlock) {
+              processEvent(eventBlock);
+            }
+            separatorIndex = buffer.indexOf("\n\n");
+          }
+        }
+
+        const tail = buffer.trim();
+        if (tail) {
+          processEvent(tail);
+        }
+
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+}
+
+// ─── Orchestration ────────────────────────────────────────────────────────────
+
+async function tryDetectFunctionCalls(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role: string,
+): Promise<Array<{ name: string; args: Record<string, unknown> }> | null> {
+  const attempts = buildProviderAttempts();
+  for (const attempt of attempts) {
+    try {
+      const result = attempt.provider === "gemini"
+        ? await callGeminiWithTools(context, messages, workspaceSnapshot, role, attempt)
+        : await callOpenAiWithTools(context, messages, workspaceSnapshot, role, attempt);
+
+      if (result?.type === "function_call") {
+        return result.calls;
+      }
+      // Content response means no function call needed
+      if (result?.type === "content") {
+        return [];
+      }
+    } catch (error) {
+      console.warn(`[Assistant] Tool detection ${attempt.provider} failed; trying next.`, error);
+    }
+  }
+  return null;
+}
+
+async function createAiStream(
+  context: AssistantContext,
+  messages: AssistantMessage[],
+  workspaceSnapshot: string,
+  role?: string,
+  functionResults?: Array<{ name: string; response: unknown }>,
+) {
+  const attempts = buildProviderAttempts();
+
+  for (const attempt of attempts) {
+    try {
+      const stream =
+        attempt.provider === "gemini"
+          ? await createGeminiStream(context, messages, workspaceSnapshot, attempt, role, functionResults)
+          : await createOpenAiCompatibleStream(context, messages, workspaceSnapshot, attempt, role, functionResults);
+
+      if (stream) {
+        return stream;
+      }
+    } catch (error) {
+      console.warn(`[Assistant] ${attempt.provider} failed; trying next configured AI key/provider.`, error);
+    }
+  }
+
+  return null;
+}
+*/
+
+// ─── POST handler ─────────────────────────────────────────────────────────────
+
 export async function POST(request: Request) {
   const throttled = checkRateLimit(request, {
     key: "api:assistant:chat",
@@ -1052,6 +1249,46 @@ export async function POST(request: Request) {
   const intentCategory = disambiguateIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
 
+  const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
+
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const supabase = createClient();
+
+  // Enforce Section 10 (Tenant Isolation Law) and Section 27 (Security Event Model) boundaries
+  if (focusedProjectId && !projectIds.includes(focusedProjectId)) {
+    // Attempted cross-project AI context extraction leakage detected!
+    // Persist immutable security trace natively
+    const traceId = crypto.randomUUID();
+    await supabase.from("security_events").insert({
+      id: traceId,
+      project_id: focusedProjectId,
+      actor_id: user.id,
+      event_type: "tenant_isolation_violation",
+      severity: "critical",
+      details: {
+        action: "ai_copilot_context_injection",
+        blocked: true,
+        injected_project_id: focusedProjectId,
+        accessible_projects: projectIds,
+        enforcement_layer: "AI Copilot Route Guard",
+        governance_law: "Section 10 — Tenant Isolation Law",
+        security_model: "Section 27 — Security Event Model",
+      },
+    });
+    return new Response(
+      JSON.stringify({
+        error: "ACCESS DENIED",
+        status: 403,
+        message: "Requested project context violates multi-tenant isolation boundaries. Access strictly denied.",
+        security_trace_captured: true,
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   // PHASE 3: EnovAIT Orchestration — strictly route workflow intents through the orchestrator
   if (intentCategory === "workflow" && focusedProjectId) {
     const { user: workflowUser, role: workflowRole } = await getWorkspaceSnapshot();
@@ -1070,13 +1307,6 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(intentResult.message));
   }
 
-  const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
-
-  if (!user) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")

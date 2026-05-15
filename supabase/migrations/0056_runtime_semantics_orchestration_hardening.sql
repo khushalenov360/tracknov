@@ -382,7 +382,7 @@ create or replace function public.create_certification_snapshot(
 ) returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_manual_version_id uuid;
@@ -407,7 +407,7 @@ begin
     'created_at', now(),
     'previous_hash', v_prev_hash
   )::text;
-  v_hash := encode(digest(v_payload, 'sha256'), 'hex');
+  v_hash := encode(extensions.digest(v_payload, 'sha256'), 'hex');
 
   insert into public.certification_snapshots(
     project_id,
@@ -425,7 +425,7 @@ begin
   values(
     p_project_id,
     v_manual_version_id,
-    coalesce((select jsonb_agg(to_jsonb(dv)) from public.document_versions dv where dv.project_id = p_project_id), '[]'::jsonb),
+    coalesce((select jsonb_agg(to_jsonb(dv)) from public.document_versions dv join public.project_document pd on dv.document_id = pd.id where pd.project_id = p_project_id), '[]'::jsonb),
     coalesce((select jsonb_agg(to_jsonb(vs)) from public.validation_snapshots vs where vs.project_id = p_project_id), '[]'::jsonb),
     coalesce((select public.get_project_certification_summary(p_project_id)), '{}'::jsonb),
     coalesce((select jsonb_agg(to_jsonb(wh)) from public.workflow_history wh where wh.project_id = p_project_id), '[]'::jsonb),

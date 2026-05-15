@@ -70,6 +70,7 @@
     "qa:events": "playwright test tests/event-bus.spec.ts",
     "qa:workflow": "playwright test tests/workflow-state-machine.spec.ts",
     "qa:runtime-audit": "node scripts/runtime-audit-automation.mjs",
+    "qa:governance-check": "npx tsx scripts/check-governance.ts",
     "smoke:headed": "playwright test --headed"
   },
   "dependencies": {
@@ -93,7 +94,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.41",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.5.0",
@@ -101,6 +102,8 @@
     "eslint-config-next": "15.0.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.19",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

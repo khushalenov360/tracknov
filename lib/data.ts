@@ -46,7 +46,7 @@ function normalizeRole(role: string): MemberRole {
   if (role === "admin") {
     return "super_admin";
   }
-  const supported = ["super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
+  const supported = ["L0", "L1", "L2", "L3", "L4", "L5", "super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
   return supported.includes(role) ? (role as MemberRole) : "consultant";
 }
 

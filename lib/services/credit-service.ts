@@ -2,9 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { logSystemActivity } from "./activity-service";
-import { projectService } from "./project-service";
 import { taskService } from "./task-service";
-import type { CurrentUser } from "@/lib/types";
+import { canUser, getRoleLevel } from "@/lib/rbac";
+import { interceptMutation } from "@/lib/governance/governanceMutationInterceptor";
+import type { CurrentUser, MemberRole } from "@/lib/types";
 
 export class CreditService {
   private get client() { return createClient(); }
@@ -13,22 +14,36 @@ export class CreditService {
   async setCreditState(user: CurrentUser, params: {
     projectId: string;
     creditId: string;
-    state: "DRAFT" | "ASSIGNED" | "IN_PROGRESS" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "CLOSED";
+    state: string;
     remarks?: string;
   }) {
-    // params.creditId here is project_credit.id from action payload.
+    const actorRole = (user.role as MemberRole);
+    
+    // Auth Check
+    if (!canUser(actorRole, "APPROVE", "CREDIT")) {
+      throw new Error("Unauthorized: Insufficient role level for credit state transition.");
+    }
+
     if (params.state === "APPROVED") {
       const { data: docs } = await this.admin
         .from("project_document")
-        .select("id, state")
+        .select("id, workflow_state")
         .eq("project_credit_id", params.creditId)
         .eq("is_latest", true);
+      
       const rows = docs ?? [];
-      const hasUnapproved = rows.some((document: any) => String(document.state ?? "").toUpperCase() !== "APPROVED");
+      const hasUnapproved = rows.some((doc: any) => doc.workflow_state !== "APPROVED");
       if (hasUnapproved) {
-        throw new Error("Cannot approve credit until all linked documents are approved.");
+        throw new Error("Section 13 Violation: Cannot approve credit until all linked documents are APPROVED.");
       }
     }
+
+    // SECTION 26: Intercept
+    await interceptMutation({
+      mutationType: "CREDIT_STATE_TRANSITION",
+      sourceLayer: "CreditService",
+      payload: params
+    });
 
     // Update project_credits via Atomic Governance RPC
     const { data: rpcData, error: rpcError } = await this.admin.rpc("execute_governed_transition", {
@@ -36,9 +51,9 @@ export class CreditService {
       p_entity_id: params.creditId,
       p_target_state: params.state,
       p_actor_id: user.id,
-      p_actor_role: user.role,
+      p_actor_role: actorRole,
       p_reason: params.remarks || "State transition",
-      p_idempotency_key: `credit-${params.creditId}-${Date.now()}`, // Or pass from caller
+      p_idempotency_key: `credit-${params.creditId}-${Date.now()}`,
       p_metadata: { remarks: params.remarks || null }
     });
 
@@ -50,8 +65,23 @@ export class CreditService {
     creditId: string;
     selectedTypes: string[];
   }) {
-    const actorRole = await projectService.getActorProjectRole(params.projectId, user);
-    if (!(actorRole === "project_admin" || actorRole === "super_user")) {
+    // SECTION 26: Intercept
+    await interceptMutation({
+      mutationType: "CREDIT_REQUIREMENTS_UPDATE",
+      sourceLayer: "CreditService",
+      payload: params
+    });
+
+    const { data: membership } = await this.client
+      .from("project_users")
+      .select("role")
+      .eq("project_id", params.projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    const actorRole = (membership?.role as MemberRole) || user.role;
+    
+    if (!canUser(actorRole, "EDIT_CONTROLS", "PROJECT")) {
       throw new Error("Unauthorized.");
     }
 
@@ -92,43 +122,6 @@ export class CreditService {
     });
   }
 
-  async updateGuidance(user: CurrentUser, params: {
-    projectId: string;
-    creditId: string;
-    whatToSubmit: string;
-    effortLevel: string;
-    effortGuidance: string;
-  }) {
-    const actorRole = await projectService.getActorProjectRole(params.projectId, user);
-    if (!(actorRole === "project_admin" || actorRole === "super_user")) {
-      throw new Error("Unauthorized.");
-    }
-
-    const safeEffortLevel = ["easy", "moderate", "hard"].includes(params.effortLevel) ? params.effortLevel : "moderate";
-
-    const { error } = await this.admin
-      .from("project_credits")
-      .update({
-        what_to_submit: params.whatToSubmit,
-        effort_level: safeEffortLevel,
-        effort_guidance: params.effortGuidance,
-      })
-      .eq("id", params.creditId);
-
-    if (error) throw error;
-
-    await logSystemActivity(this.admin, {
-      projectId: params.projectId,
-      entityType: "credit",
-      entityId: params.creditId,
-      action: "guidance_updated",
-      actorId: user.id,
-      actorRole,
-      summary: "Updated client guidance and effort profile.",
-      details: { effort_level: safeEffortLevel },
-    });
-  }
-
   async assignContributor(user: CurrentUser, params: {
     projectId: string;
     projectCreditId: string;
@@ -140,22 +133,25 @@ export class CreditService {
     const documentType = params.documentType || null;
     const now = new Date().toISOString();
 
-    const { data: member } = await this.client
-      .from("project_users")
-      .select("role")
-      .eq("project_id", params.projectId)
-      .eq("user_id", params.assignedUserId)
-      .maybeSingle();
+    // SECTION 26: Intercept
+    await interceptMutation({
+      mutationType: "CREDIT_ASSIGNMENT",
+      sourceLayer: "CreditService",
+      payload: params
+    });
 
-    const { data: actorMembership } = await this.client
+    const { data: membership } = await this.client
       .from("project_users")
       .select("role")
       .eq("project_id", params.projectId)
       .eq("user_id", user.id)
       .maybeSingle();
-    const actorRole = actorMembership?.role;
+    const actorRole = (membership?.role as MemberRole) || user.role;
 
-    // Use the provided writer (which should have context set) for all mutations
+    if (!canUser(actorRole, "MANAGE_TEAM", "TEAM")) {
+      throw new Error("Unauthorized: Insufficient role level for management.");
+    }
+
     if (params.assignedUserId) {
       const { error } = await writer
         .from("project_credits")
@@ -169,7 +165,7 @@ export class CreditService {
       if (error) throw error;
     }
 
-    // Keep DB-level assignment ledger in sync (single active assignee policy).
+    // Clear old active assignments
     let assignmentUpdate = writer
       .from("assignments")
       .update({ is_active: false, updated_at: now })
@@ -182,6 +178,13 @@ export class CreditService {
     await assignmentUpdate;
 
     if (params.assignedUserId) {
+      const { data: targetMember } = await this.client
+        .from("project_users")
+        .select("role")
+        .eq("project_id", params.projectId)
+        .eq("user_id", params.assignedUserId)
+        .maybeSingle();
+
       const { error: assignmentError } = await writer
         .from("assignments")
         .insert({
@@ -189,18 +192,12 @@ export class CreditService {
           project_credit_id: params.projectCreditId,
           document_type: documentType,
           user_id: params.assignedUserId,
-          role: member?.role ?? "consultant",
+          role: targetMember?.role ?? "L0",
           is_active: true,
           created_by: user.id,
         });
       if (assignmentError) throw assignmentError;
     }
-
-    const { data: creditMeta } = await writer
-      .from("project_credits")
-      .select("credit_code, credit_name")
-      .eq("id", params.projectCreditId)
-      .maybeSingle();
 
     if (params.assignedUserId) {
       await taskService.upsertAssignmentUploadTask({
@@ -224,11 +221,43 @@ export class CreditService {
       entityId: params.projectCreditId,
       action: "credit_assignee_updated",
       actorId: user.id,
-      actorRole: actorRole ?? user.role,
+      actorRole,
       summary: params.assignedUserId ? "Assigned owner to credit document requirement." : "Cleared credit document requirement assignment.",
       details: { assigned_user_id: params.assignedUserId, document_type: documentType },
     });
+  }
 
+  async updateGuidance(user: CurrentUser, params: {
+    projectId: string;
+    creditId: string;
+    whatToSubmit?: string;
+    sampleDocumentUrl?: string;
+    effortLevel?: string | null;
+    effortGuidance?: string;
+  }) {
+    // SECTION 26: Intercept
+    await interceptMutation({
+      mutationType: "CREDIT_GUIDANCE_UPDATE",
+      sourceLayer: "CreditService",
+      payload: params
+    });
+
+    const actorRole = (user.role as MemberRole);
+    if (!canUser(actorRole, "EDIT_CONTROLS", "PROJECT")) {
+      throw new Error("Unauthorized.");
+    }
+
+    const { error } = await this.admin
+      .from("project_credits")
+      .update({
+        what_to_submit: params.whatToSubmit,
+        sample_document_url: params.sampleDocumentUrl,
+        effort_level: params.effortLevel,
+        effort_guidance: params.effortGuidance,
+      })
+      .eq("id", params.creditId);
+
+    if (error) throw error;
   }
 }
 

@@ -1,18 +1,18 @@
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+import dotenv from "dotenv";
+import path from "path";
 
-function readKeys(primaryName: string, legacyName?: string) {
-  const raw = process.env[primaryName] || (legacyName ? process.env[legacyName] : "") || "";
-  return raw
-    .split(",")
-    .map((key) => key.trim())
-    .filter(Boolean);
-}
+// Explicitly load .env.local (standard for Next.js) or .env
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
-const doublewordApiKeys = readKeys("DOUBLEWORD_API_KEYS", "DOUBLEWORD_API_KEY");
-const geminiApiKeys = readKeys("GEMINI_API_KEYS", "GEMINI_API_KEY");
-const groqApiKeys = readKeys("GROQ_API_KEYS", "GROQ_API_KEY");
-const openRouterApiKeys = readKeys("OPENROUTER_API_KEYS", "OPENROUTER_API_KEY");
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+// In Next.js 15, explicit access to process.env is preferred for static optimization and Edge compatibility.
+const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+const doublewordApiKeys = (process.env.DOUBLEWORD_API_KEYS || process.env.DOUBLEWORD_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+const groqApiKeys = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+const openRouterApiKeys = (process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
 
 export const env = {
   doublewordApiKeys,
@@ -33,3 +33,8 @@ export const env = {
   demoModeEnabled: process.env.DEMO_MODE_ENABLED === "true",
   isConfigured: Boolean(url && anonKey),
 };
+
+// Authoritative environment check
+if (typeof window === "undefined" && !env.isConfigured && process.env.NODE_ENV !== "production") {
+  console.warn("⚠️  [TRACKNOV ENV] Supabase URL or Anon Key is missing. Platform functionality will be restricted.");
+}

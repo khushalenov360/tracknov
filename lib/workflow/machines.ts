@@ -1,96 +1,71 @@
 import { BaseStateMachine } from "@/lib/workflow/base";
+import { getRoleLevel } from "@/lib/rbac";
+import type { MemberRole } from "@/lib/types";
 import type {
-  CreditWorkflowState,
-  DocumentWorkflowState,
-  ProjectWorkflowState,
-  RoleTransitionMap,
+  ProjectCertificationState,
+  SubmittalWorkflowState,
   TransitionMap,
+  RoleTransitionMap,
   WorkflowRole,
 } from "@/lib/workflow/types";
 
-export class ProjectWorkflowMachine extends BaseStateMachine<ProjectWorkflowState> {
-  states = ["draft", "ready", "active", "on_hold", "completed", "archived"] as const;
-  transitions: TransitionMap<ProjectWorkflowState> = {
-    draft: ["ready"],
-    ready: ["active"],
-    active: ["on_hold", "completed"],
-    on_hold: ["active"],
-    completed: ["archived"],
-    archived: [],
+/**
+ * TRACKNOV AUTHORITATIVE WORKFLOW MACHINES
+ * 
+ * Implements Section 3 "DETERMINISTIC RUNTIME GATING" and 
+ * Section 8 "RBAC HIERARCHY (Authoritative)".
+ */
+
+export class ProjectCertificationMachine extends BaseStateMachine<ProjectCertificationState> {
+  states = ["NOT_STARTED", "IN_PROGRESS", "ELIGIBLE", "CERTIFIED", "CERTIFIED_LOCKED"] as const;
+  
+  transitions: TransitionMap<ProjectCertificationState> = {
+    NOT_STARTED: ["IN_PROGRESS"],
+    IN_PROGRESS: ["ELIGIBLE", "NOT_STARTED"],
+    ELIGIBLE: ["CERTIFIED", "IN_PROGRESS"],
+    CERTIFIED: ["CERTIFIED_LOCKED", "ELIGIBLE"],
+    CERTIFIED_LOCKED: [], // Terminal state
   };
-  rolesAllowed: RoleTransitionMap<ProjectWorkflowState> = {
-    "draft->ready": ["admin"],
-    "ready->active": ["admin"],
-    "active->on_hold": ["admin", "reviewer"],
-    "active->completed": ["admin", "reviewer"],
-    "on_hold->active": ["admin", "reviewer"],
-    "completed->archived": ["admin"],
+
+  rolesAllowed: RoleTransitionMap<ProjectCertificationState> = {
+    "NOT_STARTED->IN_PROGRESS": ["L3", "L5"],
+    "IN_PROGRESS->ELIGIBLE": ["L3", "L5"],
+    "ELIGIBLE->CERTIFIED": ["L3", "L5"],
+    "CERTIFIED->CERTIFIED_LOCKED": ["L5"], // Only L5 can seal a project
+    "CERTIFIED->ELIGIBLE": ["L5"],
+    "ELIGIBLE->IN_PROGRESS": ["L3", "L5"],
   };
 }
 
-export class CreditWorkflowMachine extends BaseStateMachine<CreditWorkflowState> {
-  states = ["draft", "assigned", "in_progress", "submitted", "under_review", "approved", "rejected", "closed"] as const;
-  transitions: TransitionMap<CreditWorkflowState> = {
-    draft: ["assigned"],
-    assigned: ["in_progress", "closed", "rejected"],
-    in_progress: ["submitted", "closed", "rejected"],
-    submitted: ["under_review"],
-    under_review: ["approved", "rejected"],
-    approved: ["closed"],
-    rejected: ["in_progress"],
-    closed: [],
+export class SubmittalWorkflowMachine extends BaseStateMachine<SubmittalWorkflowState> {
+  states = ["DRAFT", "READY", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION", "RESUBMITTED", "APPROVED", "REJECTED", "ELIMINATED"] as const;
+
+  transitions: TransitionMap<SubmittalWorkflowState> = {
+    DRAFT: ["READY", "ELIMINATED"],
+    READY: ["SUBMITTED", "DRAFT"],
+    SUBMITTED: ["UNDER_REVIEW"],
+    UNDER_REVIEW: ["CLARIFICATION", "APPROVED", "REJECTED"],
+    CLARIFICATION: ["RESUBMITTED", "ELIMINATED"],
+    RESUBMITTED: ["UNDER_REVIEW"],
+    APPROVED: ["REJECTED"], // Can be revoked
+    REJECTED: ["DRAFT", "ELIMINATED"],
+    ELIMINATED: [],
   };
-  rolesAllowed: RoleTransitionMap<CreditWorkflowState> = {
-    "draft->assigned": ["admin"],
-    "assigned->in_progress": ["consultant", "admin"],
-    "assigned->closed": ["admin", "reviewer"],
-    "assigned->rejected": ["admin", "reviewer"],
-    "in_progress->submitted": ["consultant", "admin"],
-    "in_progress->closed": ["admin", "reviewer"],
-    "in_progress->rejected": ["admin", "reviewer"],
-    "submitted->under_review": ["reviewer", "admin"],
-    "under_review->approved": ["reviewer", "admin"],
-    "under_review->rejected": ["reviewer", "admin"],
-    "approved->closed": ["admin", "reviewer"],
-    "rejected->in_progress": ["consultant", "admin"],
+
+  rolesAllowed: RoleTransitionMap<SubmittalWorkflowState> = {
+    "DRAFT->READY": ["L0", "L1", "L3", "L5"],
+    "READY->SUBMITTED": ["L0", "L1", "L3", "L5"],
+    "SUBMITTED->UNDER_REVIEW": ["L1", "L3", "L5"], // Owner reviews first
+    "UNDER_REVIEW->CLARIFICATION": ["L1", "L3", "L5"],
+    "UNDER_REVIEW->APPROVED": ["L3", "L5"], // Only L3 can formally approve for certification
+    "UNDER_REVIEW->REJECTED": ["L3", "L5"],
+    "CLARIFICATION->RESUBMITTED": ["L0", "L1", "L3", "L5"],
+    "APPROVED->REJECTED": ["L3", "L5"],
+    "REJECTED->DRAFT": ["L0", "L1", "L3", "L5"],
   };
 }
 
-export class DocumentWorkflowMachine extends BaseStateMachine<DocumentWorkflowState> {
-  states = ["uploaded", "tagged", "submitted", "under_review", "approved", "rejected", "revised", "eliminated"] as const;
-  transitions: TransitionMap<DocumentWorkflowState> = {
-    uploaded: ["tagged", "submitted"],
-    tagged: ["submitted"],
-    submitted: ["under_review", "rejected"],
-    under_review: ["approved", "rejected"],
-    approved: [],
-    rejected: ["revised", "eliminated"],
-    revised: ["submitted"],
-    eliminated: [],
-  };
-  rolesAllowed: RoleTransitionMap<DocumentWorkflowState> = {
-    "uploaded->tagged": ["consultant", "admin"],
-    "uploaded->submitted": ["consultant", "admin"],
-    "tagged->submitted": ["consultant", "admin"],
-    "submitted->under_review": ["reviewer", "admin"],
-    "submitted->rejected": ["reviewer", "admin"],
-    "under_review->approved": ["reviewer", "admin"],
-    "under_review->rejected": ["reviewer", "admin"],
-    "rejected->revised": ["consultant", "admin", "client"],
-    "rejected->eliminated": ["reviewer", "admin"],
-    "revised->submitted": ["consultant", "admin"],
-  };
-}
-
-export function mapTracknovRoleToWorkflowRole(role: string): WorkflowRole {
-  if (["super_user", "super_admin", "project_admin"].includes(role)) {
-    return "admin";
-  }
-  if (role === "owner") {
-    return "reviewer";
-  }
-  if (role === "client") {
-    return "client";
-  }
-  return "consultant";
+export function mapTracknovRoleToWorkflowRole(role: MemberRole | null | undefined): WorkflowRole {
+  const level = getRoleLevel(role);
+  return `L${level}` as WorkflowRole;
 }

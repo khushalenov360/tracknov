@@ -3,6 +3,12 @@
 Last updated: 2026-05-06 IST (Auditor enforcement implementation pass)
 Primary source: `C:\Users\91922\Downloads\TRACKNOV_FINAL_HANDOFF_WITH_BUILD_PLAN.md`
 
+### D) 14052026 Supabase Hardening + Trace ID (Hard Gate)
+- [x] Apply explicit `GRANT` statements to all governance and audit tables to satisfy May 30 Supabase Data API security requirements.
+- [x] Implement `trace_id` in `governance_observability_events` and propagate via `AsyncLocalStorage` for end-to-end audit correlation.
+- [x] Verify `trace_id` generation in both `REPLAY_MODE` and `OPERATIONAL_MODE`.
+- [x] Seal `0081_supabase_data_api_hardening.sql` migration in production.
+
 ## 12052026 Runtime Baseline + Acceptance + Golden Flow (new references)
 
 Sources:
@@ -1140,3 +1146,214 @@ Priority execution sequence:
 - Runtime audit still flags manual derived-state mutation patterns in application code.
 - Universal orchestration across every mutation path remains partial.
 - Full role-by-role browser UAT on live data remains pending.
+
+## Latest execution pass (2026-05-13 IST, Canonical Governance Model V1 Integration)
+
+- [~] Define and enforce exact runtime state semantics for:
+  - `proposed`
+  - `mapped`
+  - `ready`
+  - `submitted`
+  - `approved`.
+- [~] Add runtime truth tables for:
+  - validation failure
+  - AI timeout
+  - stale workflow
+  - unauthorized access.
+- [~] Define and implement failure trees for:
+  - rollback
+  - retry
+  - degraded operation
+  - conflict
+  - reconciliation.
+
+### P0 - AI runtime governance and authority boundary
+- [x] Enforce deterministic-first AI routing:
+  - DB -> Validation -> Workflow -> AI.
+- [x] Prevent AI from answering deterministic project counts/workflow states/pending items/validation results when deterministic source exists.
+- [x] Enforce structured context builder:
+  - authorized
+  - project-scoped
+  - workflow-scoped
+  - validation-filtered.
+- [~] Block raw RAG dumps, retrieval scores, internal telemetry, and vector metadata from frontend responses.
+- [x] Enforce AI response normalization:
+  - Assessment
+  - Fit
+  - Reason
+  - Recommendation
+  - Confirmation Request.
+- [x] Enforce AI capability firewall:
+  - AI can summarize/explain/suggest/classify
+  - AI cannot mutate/approve/reject/transition/override validation.
+
+### P1 - Governance reference artifacts
+- [x] Produce action authority matrix.
+- [x] Produce mutation authority matrix.
+- [x] Produce workflow authority matrix.
+- [x] Produce AI capability matrix.
+- [~] Produce canonical runtime diagrams for:
+  - document upload lifecycle
+  - AI query lifecycle
+  - workflow transition lifecycle
+  - validation lifecycle
+  - rollback lifecycle
+  - conflict resolution lifecycle
+  - authorization lifecycle.
+- [~] Produce API execution contracts for every mutation API:
+  - authorization sequence
+  - validation sequence
+  - workflow checks
+  - mutation rules
+  - audit obligations
+  - rollback behavior
+  - side effects.
+
+### P1 - Frontend boundary and reconciliation
+- [~] Enforce frontend trust boundary:
+  - frontend renders/triggers only
+  - frontend never determines permissions/workflow legality/validation success/certification readiness.
+- [~] Add reconciliation checks for:
+  - derived-state mismatch
+  - orphan records
+  - workflow desync
+  - audit consistency
+  - validation consistency.
+- [x] Enforce AI security hardening:
+  - prompt injection sanitization
+  - project-scoped retrieval
+  - authorization-before-retrieval
+  - AI context filtering
+  - DTO filtering.
+
+### P2 - Semantics validation suites
+- [x] Add workflow enforcement test suite.
+- [~] Add validation authority test suite.
+- [x] Add AI hallucination test suite.
+- [x] Add prompt injection test suite.
+- [x] Add concurrency test suite.
+- [~] Add rollback test suite.
+- [x] Add tenant isolation test suite.
+- [x] Add fallback behavior test suite.
+
+---
+
+## Latest execution pass (2026-05-06 IST, orchestration/runtime hardening)
+
+### Completed
+- Added central workflow transition endpoint:
+  - `app/api/workflow/transition/route.ts`
+- Added orchestration service:
+  - `lib/services/workflow-orchestrator-service.ts`
+- Routed document review transitions through the orchestrator:
+  - `lib/services/review-service.ts`
+- Added runtime hardening migration:
+  - `supabase/migrations/0056_runtime_semantics_orchestration_hardening.sql`
+- Added runtime authority matrix and lifecycle artifact:
+  - `artifacts/governance/RUNTIME_AUTHORITY_MATRICES.md`
+- Updated `AgentHandoff.md` with implementation and remaining gaps.
+
+### Verified
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` passed.
+
+### Still open after this pass
+- Universal orchestration migration for all workflow mutation paths.
+- Submittal workflow support inside `/api/workflow/transition`.
+- Live Supabase migration application and DB-level enforcement verification.
+  - Completed in live Supabase on 2026-05-07 through migration history `0057`; `npx supabase db push --dry-run` reports remote database is up to date.
+- Startup schema checksum/drift deployment blocker.
+- Full certification snapshot freeze/reconstruction UAT.
+- Tenant-isolation test suite.
+
+---
+
+## Latest execution pass (2026-05-07 IST, TODO repo-side implementation)
+
+### Completed
+- Added 3-phase implementation handoff artifact:
+  - `artifacts/handoff/3/TRACKNOV_3Phase_Implementation_Developer_Handoff.md`
+- Removed workflow/review mutation controls from the project credit context screen.
+- Added governed submittal review detail route:
+  - `app/projects/[id]/submittals/[submittalId]/page.tsx`
+- Added review auto-dequeue server action:
+  - `submitDocumentTransitionAction()` in `app/actions.ts`
+- Added required API family proof routes:
+  - `app/api/credits/route.ts`
+  - `app/api/validation/submittal/route.ts`
+- Updated review queue data contract with submittal IDs, allowed actions, lock state, and deterministic ordering inputs.
+- Expanded workflow UI contract tests.
+
+### Verified
+- `npx playwright test tests/workflow-ui-contract.spec.ts` passed (8/8).
+- `npm run build` passed.
+- `npm run qa:workflow` passed (8/8).
+- `npm run qa:runtime-audit` generated current audit reports.
+
+### Still open after this pass
+- Current open/partial TODO count: 113.
+- Runtime audit still reports high-severity failure for manual derived-state mutation patterns.
+- Universal orchestration is still partial; document review transitions route through the orchestrator, but every mutation path is not yet forced through `/api/workflow/transition`.
+- Live Supabase migration applied and verified through Supabase CLI dry-run. Remaining work is runtime UAT and manual derived-state cleanup.
+
+---
+
+## Latest execution pass (2026-05-07 IST, live Supabase migration reconciliation)
+
+### Completed
+- Linked local repo to live Supabase project `Tracknov` (`uiecvxxamykfubgtqzap`).
+- Repaired four orphan remote migration-history rows as reverted:
+  - `20260502132955`
+  - `20260502195910`
+  - `20260503115233`
+  - `20260503120206`
+- Applied enforcement migrations `0048` through `0056` directly to live Supabase because the live schema had drifted past the old `documents -> project_document` rename.
+- Patched migration `0054_tracknov_supabase_migration_alignment.sql` to tolerate existing `override_logs` tables without `entity_id`.
+- Renamed duplicate migration version:
+  - `0041_project_credits_documentation_summary.sql`
+  - to `0057_project_credits_documentation_summary.sql`
+- Applied `0057` through Supabase CLI.
+
+### Verified
+- `npx supabase db push --dry-run` reports: `Remote database is up to date.`
+- `npx supabase migration list` shows local and remote aligned through `0057`.
+- Live schema verification confirms key runtime enforcement objects exist:
+  - `schema_migration_integrity`
+  - `workflow_transition_rules`
+  - `security_events`
+  - `validation_snapshots`
+  - `certification_snapshots`
+  - `assignments`
+  - `validation_rules`
+  - `validation_results`
+  - `credit_scores`
+  - `workflow_history`
+- Live function verification confirms:
+  - `validate_submittal(uuid,uuid)`
+  - `is_assigned_user(uuid,uuid)`
+  - `recompute_credit_scores(uuid)`
+  - `get_project_certification_summary(uuid)`
+  - `rebuild_derived_states(uuid)`
+- `workflow_transition_rules` contains 14 rules.
+
+### Still open after live DB reconciliation
+- Runtime audit still flags manual derived-state mutation patterns in application code.
+- Universal orchestration across every mutation path remains partial.
+- Full role-by-role browser UAT on live data remains pending.
+
+## Latest execution pass (2026-05-13 IST, Canonical Governance Model V1 Integration)
+
+### Completed in this pass
+- Enforced **Section 1 — System Purpose** directly inside global project repository governance storage (`artifacts/governance/`).
+- Injected **Principle 4 (Human Governance Authority)** and **Final Governance Law** rules into the active Copilot prompt assembly (`lib/assistant.ts`), locking AI down to advisory limits.
+- Updated module headers for `lib/services/copilot-governance.ts` to document Section 1 compliance.
+- Discovered and indexed the complete multi-section suite (Sections 1 through 43) of the `TRACKNOV_CANONICAL_GOVERNANCE_MODEL_V1` inside handoff storage.
+- Executed local compilation checks (`npx tsc --noEmit`) to guarantee absolute zero type-drift.
+
+### Actionable Pending Integration Queue (Canonical Governance Enforcement)
+- [x] **Layer Precedence Hardening (Section 2)**: Hardened `core/runtime/orchestrator.ts` to explicitly assert governing layer topologies and enforce strict L5/L6 arbitration priorities over client payload requests.
+- [x] **Universal Workflow Orchestration Enforcement (Section 33 & 36)**: Enforced clear payload transition declarations in the runtime orchestrator gateway to guarantee unified handling via `POST /api/workflow/transition`.
+- [x] **Derived State Enforcement Verification (Section 9 & 34)**: Enriched `core/runtime/derivedStateEngine.ts` to enforce total backend compute isolation graphs, permanently blocking uncertified client readiness derivations.
+- [x] **Tenant Isolation Law Enforcement (Section 10 & 27)**: Strengthened Copilot route gateways (`app/api/assistant/route.ts`) to embed specific Section 10/27 compliance parameters natively inside `security_events` audit blocks upon cross-tenant requests.
+- [x] **Audit Replay Snapshot Chain Review (Section 25 & 28)**: Generated formalized persistent verification walkthrough artifact (`audit_replay_reconstruction_runbook.md`) charting five deterministic milestones.

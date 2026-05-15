@@ -29,18 +29,10 @@ export async function updateSession(request: NextRequest) {
 
   // Never block public routes (login/auth/assets) on an auth roundtrip.
   if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    return NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    });
+    return NextResponse.next();
   }
 
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  let response = NextResponse.next();
 
   if (!env.isConfigured) {
     return response;
@@ -48,16 +40,17 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
+      getAll() {
+        return request.cookies.getAll();
       },
-      set(name: string, value: string, options: Record<string, unknown>) {
-        request.cookies.set({ name, value, ...(options as object) });
-        response.cookies.set({ name, value, ...(options as object) });
-      },
-      remove(name: string, options: Record<string, unknown>) {
-        request.cookies.set({ name, value: "", ...(options as object) });
-        response.cookies.set({ name, value: "", ...(options as object) });
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        );
       },
     },
   });

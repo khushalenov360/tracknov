@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { interceptMutation } from "@/lib/governance/governanceMutationInterceptor";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 
@@ -41,6 +42,15 @@ export class SubmittalService {
    */
   async recalculateSubmittalState(submittalId: string, writer?: SupabaseClient) {
     const db = writer || this.admin;
+
+    // SECTION 26: Intercept mutation if in replay mode
+    await interceptMutation({
+      mutationType: "RECALCULATE_SUBMITTAL_STATE",
+      sourceLayer: "SubmittalService",
+      reason: "Automated derived state recalculation",
+      payload: { submittalId }
+    });
+
     await db.rpc("recalculate_submittal_state", { p_submittal_id: submittalId });
 
     // After updating submittal, update the parent stage
@@ -57,6 +67,15 @@ export class SubmittalService {
 
   async recalculateStageState(stageId: string, writer?: SupabaseClient, projectCreditId?: string | null) {
     const db = writer || this.admin;
+
+    // SECTION 26: Intercept mutation if in replay mode
+    await interceptMutation({
+      mutationType: "RECALCULATE_STAGE_STATE",
+      sourceLayer: "SubmittalService",
+      reason: "Automated derived state recalculation",
+      payload: { stageId, projectCreditId }
+    });
+
     let effectiveProjectCreditId = projectCreditId ?? null;
     if (!effectiveProjectCreditId) {
       const { data: stage } = await db

@@ -2421,3 +2421,18 @@ Import trace for requested module:
 ./lib/services/project-service.ts
 ./app/actions.ts
 ./app/dashboard/page.tsx
+Error: Route "/dashboard" used `cookies().get('sb-uiecvxxamykfubgtqzap-auth-token')`. `cookies()` should be awaited before using its value. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at createCookiesAccessError (..\..\..\src\server\request\cookies.ts:529:10)
+    at syncIODev (..\..\..\src\server\request\cookies.ts:517:3)
+    at Promise.get (..\..\..\src\server\request\cookies.ts:332:9)
+    at Object.get (lib\supabase\server.ts:17:28)
+    at createClient (lib\supabase\server.ts:14:28)
+    at getCurrentUser (lib\data.ts:287:30)
+    at DashboardPage (app\dashboard\page.tsx:63:19)
+  527 | ) {
+  528 |   const prefix = route ? `Route "${route}" ` : 'This route '
+> 529 |   return new Error(
+      |          ^
+  530 |     `${prefix}used ${expression}. ` +
+  531 |       `\`cookies()\` should be awaited before using its value. ` +
+  532 |       `Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis`

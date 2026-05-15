@@ -1,6 +1,10 @@
 import type { CreditWorkspace, IgbcVariant } from "@/lib/types";
 
 export const igbcScoreModel = {
+  version: "1.0.0",
+  scoringFormulaVersion: "1.0.0",
+  mandatoryCreditVersion: "1.0.0",
+  thresholdVersion: "1.0.0",
   totalPoints: {
     new: 100,
     existing: 75,
@@ -69,5 +73,11 @@ export function scoreIgbcCredits(credits: CreditWorkspace[], variant: IgbcVarian
       total,
       earned: Math.round(earnedByCategory.get(category) ?? 0),
     })),
+    versionContext: {
+      ruleset_version: igbcScoreModel.version,
+      scoring_formula_version: igbcScoreModel.scoringFormulaVersion,
+      mandatory_credit_version: igbcScoreModel.mandatoryCreditVersion,
+      threshold_version: igbcScoreModel.thresholdVersion,
+    }
   };
 }

@@ -1,4 +1,10 @@
 export type MemberRole =
+  | "L0"
+  | "L1"
+  | "L2"
+  | "L3"
+  | "L4"
+  | "L5"
   | "super_user"
   | "l4_reserved"
   | "owner"

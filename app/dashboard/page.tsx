@@ -283,7 +283,7 @@ export default async function DashboardPage({
                   <span className="font-bold text-[var(--color-text-primary)] truncate">
                     {item.creditCode || "CREDIT"}
                   </span>
-                  <Badge variant="outline" className="h-4 px-1.5 text-[8px] uppercase tracking-tighter bg-[var(--color-surface-2)]">
+                  <Badge className="h-4 px-1.5 text-[8px] uppercase tracking-tighter bg-[var(--color-surface-2)]">
                     {item.documentType || "GENERAL"}
                   </Badge>
                 </div>
