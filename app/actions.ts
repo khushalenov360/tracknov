@@ -24,6 +24,7 @@ import { logSystemActivity } from "@/lib/services/activity-service";
 import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
 
 import {
   canAccessBillingAndInvoice,
@@ -48,8 +49,8 @@ export type TeamMemberActionState = {
   message: string;
 };
 
-const uploadAllowedExtensions = [".pdf", ".docx", ".png", ".jpg", ".jpeg"] as const;
-const uploadMaxBytes = 10 * 1024 * 1024;
+const uploadAllowedExtensions = ALLOWED_UPLOAD_EXTENSIONS;
+const uploadMaxBytes = MAX_SINGLE_UPLOAD_SIZE_BYTES;
 
 
 
@@ -463,18 +464,56 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
     return { ok: false, error: "Choose project, mapped credit, document type, and file." };
   }
 
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Your session expired. Sign in again." };
+
   const fileNameLower = file.name.toLowerCase();
   const hasAllowedExtension = uploadAllowedExtensions.some((extension) => fileNameLower.endsWith(extension));
   if (!hasAllowedExtension) {
+    try {
+      const adminClient = createAdminClient();
+      await adminClient.from("upload_attempts").insert({
+        project_id: projectId,
+        user_id: user.id,
+        file_name: file.name,
+        file_size_bytes: file.size,
+        mime_type: file.type,
+        upload_origin: "web",
+        status: "REJECTED",
+        rejection_reason: "UNSUPPORTED_FILE_TYPE"
+      });
+    } catch (e) {
+      console.error(e);
+    }
+
     return { ok: false, error: "Unsupported file type. Upload PDF, DOCX, PNG, or JPG files only." };
   }
 
   if (file.size > uploadMaxBytes) {
-    return { ok: false, error: "File is too large. The limit is 10 MB. Compress and re-upload." };
+    try {
+      const adminClient = createAdminClient();
+      await adminClient.from("upload_attempts").insert({
+        project_id: projectId,
+        user_id: user.id,
+        file_name: file.name,
+        file_size_bytes: file.size,
+        mime_type: file.type,
+        upload_origin: "web",
+        status: "REJECTED",
+        rejection_reason: "FILE_SIZE_LIMIT_EXCEEDED"
+      });
+    } catch (e) {
+      console.error(e);
+    }
+
+    return {
+      ok: false,
+      error: "File exceeds the maximum allowed size of 10 MB.\nPlease compress the file or split it into smaller documents."
+    };
   }
 
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Your session expired. Sign in again." };
+  // user query already completed earlier
+  // user check completed earlier
 
   try {
     const result = await documentService.uploadDocument(user, {

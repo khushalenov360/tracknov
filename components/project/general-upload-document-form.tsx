@@ -7,6 +7,7 @@ import { uploadDocumentAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
 
 type UploadProject = {
   id: string;
@@ -73,9 +74,9 @@ export function GeneralUploadDocumentForm({
     [creditId, currentProject],
   );
   const [docType, setDocType] = useState(currentCredit?.doc_types[0] ?? "");
-  const maxFileSizeBytes = 10 * 1024 * 1024;
-  const maxFileSizeLabel = "10 MB";
-  const allowedExtensions = useMemo(() => [".pdf", ".docx", ".png", ".jpg", ".jpeg"], []);
+  const maxFileSizeBytes = MAX_SINGLE_UPLOAD_SIZE_BYTES;
+  const maxFileSizeLabel = `${MAX_SINGLE_UPLOAD_SIZE_MB} MB`;
+  const allowedExtensions = useMemo(() => ALLOWED_UPLOAD_EXTENSIONS, []);
   const accept = useMemo(() => allowedExtensions.join(","), [allowedExtensions]);
   const docTypeOptions = useMemo(() => {
     if (!currentCredit?.requirements.length) {
@@ -313,7 +314,7 @@ export function GeneralUploadDocumentForm({
         return;
       }
       if (file.size > maxFileSizeBytes) {
-      setError(`File ${file.name} is too large. The limit is ${maxFileSizeLabel}.`);
+        setError(`File ${file.name} exceeds the maximum allowed size of 10 MB.\nPlease compress the file or split it into smaller documents.`);
         return;
       }
     }

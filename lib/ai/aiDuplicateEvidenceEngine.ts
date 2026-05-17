@@ -11,7 +11,7 @@ export async function detectDuplicates(projectId: string, newDocumentId: string,
 
   // 1. Check for exact hash match (Registry level)
   const { data: exactMatch } = await admin
-    .from("project_documents")
+    .from("project_document")
     .select("id")
     .eq("project_id", projectId)
     .eq("hash", hash)

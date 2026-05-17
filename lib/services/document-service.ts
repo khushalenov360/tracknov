@@ -152,6 +152,7 @@ export class DocumentService {
     clientChecksum?: string;
     idempotencyKey: string;
   }) {
+    const uploadStartTime = Date.now();
     const actorRole = await this.getActorProjectRole(params.projectId, user);
     if (!actorRole || !canUploadProjectDocuments(actorRole as any)) {
       throw new Error("Unauthorized: You do not have upload access for this project.");
@@ -338,6 +339,38 @@ export class DocumentService {
       await this.admin.storage.from("project-documents").remove([filePath]);
       throw dbError ?? new Error("Upload record could not be saved.");
     }
+
+    const uploadDurationMs = Date.now() - uploadStartTime;
+
+    await this.admin
+      .from("project_document")
+      .update({
+        file_size_bytes: params.file.size,
+        mime_type: params.file.type,
+        upload_origin: "web",
+        upload_duration_ms: uploadDurationMs,
+        compression_applied: false
+      })
+      .eq("id", documentId);
+
+    try {
+      await this.admin
+        .from("upload_attempts")
+        .insert({
+          project_id: params.projectId,
+          user_id: user.id,
+          file_name: params.file.name,
+          file_size_bytes: params.file.size,
+          mime_type: params.file.type,
+          upload_origin: "web",
+          status: "SUCCESS",
+          upload_duration_ms: uploadDurationMs,
+          compression_applied: false
+        });
+    } catch (telemetryError) {
+      console.error("Failed to log telemetry:", telemetryError);
+    }
+    // telemetry done
 
     // Post-upload side effects
     await logDocumentActivity(this.admin, {

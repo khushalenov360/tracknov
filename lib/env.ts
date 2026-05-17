@@ -34,7 +34,24 @@ export const env = {
   isConfigured: Boolean(url && anonKey),
 };
 
+import { envConfig } from "./env-config";
+
 // Authoritative environment check
-if (typeof window === "undefined" && !env.isConfigured && process.env.NODE_ENV !== "production") {
-  console.warn("⚠️  [TRACKNOV ENV] Supabase URL or Anon Key is missing. Platform functionality will be restricted.");
+if (typeof window === "undefined") {
+  if (!env.isConfigured && !envConfig.isDevelopment) {
+    throw new Error("🚨 FATAL: Supabase configuration missing in non-development environment.");
+  }
+  
+  if (envConfig.isProduction) {
+    const requiredProductionSecrets = [
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'GEMINI_API_KEY',
+    ];
+    
+    const missing = requiredProductionSecrets.filter(s => !process.env[s]);
+    if (missing.length > 0) {
+      console.error(`❌ SECRETS GOVERNANCE FAILURE: Missing production secrets: ${missing.join(", ")}`);
+      // In a real production build, we might want to throw here.
+    }
+  }
 }

@@ -130,6 +130,13 @@ export type DocumentRecord = {
   is_latest?: boolean;
   parent_document_id?: string | null;
   uploaded_at: string;
+  file_size_bytes?: number | null;
+  compressed_size_bytes?: number | null;
+  upload_origin?: string | null;
+  upload_rejection_reason?: string | null;
+  compression_applied?: boolean | null;
+  mime_type?: string | null;
+  upload_duration_ms?: number | null;
 };
 
 export type DocumentActivityAction = "uploaded" | "metadata_updated" | "status_updated" | "deleted";
@@ -367,4 +374,43 @@ export type AuditTimelineRecord = {
   actor_role: string | null;
   actor_name: string | null;
   created_at: string;
+};
+
+export type ExtractionMethod = "EMBEDDED_TEXT" | "OCR" | "HYBRID";
+export type SemanticType = "HVAC" | "LIGHTING" | "MATERIAL" | "ENERGY" | "UNKNOWN";
+
+export type PositionMap = {
+  page: number;
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type NormalizedDocument = {
+  documentId: string;
+  extractedText: string;
+  confidenceScore: number;
+  extractionMethod: ExtractionMethod;
+  pageCount: number;
+  language: string;
+  positionalMap: PositionMap[];
+};
+
+export type ExtractedTable = {
+  tableId: string;
+  headers: string[];
+  rows: string[][];
+  pageReferences: number[];
+  confidenceScore: number;
+  semanticType: SemanticType;
+};
+
+export type EvidenceRelationship = {
+  sourceDocumentId: string;
+  targetEntityId: string;
+  relationshipType: string;
+  confidenceScore: number;
+  frameworkVersion: string;
 };

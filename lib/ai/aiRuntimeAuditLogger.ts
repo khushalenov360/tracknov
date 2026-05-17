@@ -20,6 +20,12 @@ export async function logAiRecommendation(params: {
   const causalityChainId = context?.causalityChainId || traceId;
   const actorId = context?.actorId;
   const frameworkVersion = context?.frameworkVersion || "UNKNOWN";
+  const replayMode = context?.replayMode || false;
+
+  if (replayMode) {
+    console.log(`[AI_REPLAY_ISOLATION] Skipping DB audit log during replay mode. Trace: ${traceId}`);
+    return { traceId, causalityChainId };
+  }
 
   const { error } = await admin.from("ai_recommendation_logs").insert({
     project_id: params.projectId,
@@ -52,6 +58,12 @@ export async function logAiRiskReport(params: {
 
   const traceId = context?.traceId || crypto.randomUUID();
   const causalityChainId = context?.causalityChainId || traceId;
+  const replayMode = context?.replayMode || false;
+
+  if (replayMode) {
+    console.log(`[AI_REPLAY_ISOLATION] Skipping risk report mutation during replay mode. Trace: ${traceId}`);
+    return;
+  }
 
   const { error } = await admin.from("ai_execution_risk_reports").insert({
     project_id: params.projectId,

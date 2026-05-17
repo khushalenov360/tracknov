@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, UploadCloud } from "lucide-react";
 import { uploadDocumentAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
 
 export function UploadDocumentForm({
   projectId,
@@ -23,9 +24,9 @@ export function UploadDocumentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [docType, setDocType] = useState(docTypes[0] ?? "Narrative");
-  const maxFileSizeBytes = 10 * 1024 * 1024;
-  const maxFileSizeLabel = "10 MB";
-  const allowedExtensions = useMemo(() => [".pdf", ".docx", ".png", ".jpg", ".jpeg"], []);
+  const maxFileSizeBytes = MAX_SINGLE_UPLOAD_SIZE_BYTES;
+  const maxFileSizeLabel = `${MAX_SINGLE_UPLOAD_SIZE_MB} MB`;
+  const allowedExtensions = useMemo(() => ALLOWED_UPLOAD_EXTENSIONS, []);
   const accept = useMemo(() => allowedExtensions.join(","), [allowedExtensions]);
 
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
@@ -50,7 +51,7 @@ export function UploadDocumentForm({
     }
 
     if (file.size > maxFileSizeBytes) {
-      setError(`File is too large. The limit is ${maxFileSizeLabel}. Compress the file and try again.`);
+      setError("File exceeds the maximum allowed size of 10 MB.\nPlease compress the file or split it into smaller documents.");
       return;
     }
 

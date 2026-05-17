@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/data";
 import { documentService } from "@/lib/services/document-service";
 import { projectService } from "@/lib/services/project-service";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB } from "@/lib/governance/uploadGovernance";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,30 @@ export async function POST(request: Request) {
 
     if (!projectId || !(file instanceof File)) {
       return NextResponse.json({ ok: false, error: "Project and file are required." }, { status: 400 });
+    }
+
+    if (file.size > MAX_SINGLE_UPLOAD_SIZE_BYTES) {
+      try {
+        const adminClient = createAdminClient();
+        await adminClient.from("upload_attempts").insert({
+          project_id: projectId,
+          user_id: user.id,
+          file_name: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+          upload_origin: "api",
+          status: "REJECTED",
+          rejection_reason: "FILE_SIZE_LIMIT_EXCEEDED"
+        });
+      } catch (e) {
+        console.error(e);
+      }
+
+      return NextResponse.json({
+        error: "FILE_SIZE_LIMIT_EXCEEDED",
+        max_size_mb: MAX_SINGLE_UPLOAD_SIZE_MB,
+        status: 413
+      }, { status: 413 });
     }
 
     const lower = file.name.toLowerCase();

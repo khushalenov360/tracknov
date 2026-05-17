@@ -12,7 +12,7 @@ export async function buildPromptContext(projectId: string, actorId: string) {
   // 1. Verify Tenant Isolation
   const { data: project, error: pError } = await admin
     .from("projects")
-    .select("id, name, organization_id, framework_version")
+    .select("id, name, igbc_variant")
     .eq("id", projectId)
     .single();
 
@@ -21,7 +21,7 @@ export async function buildPromptContext(projectId: string, actorId: string) {
   }
 
   // 2. Resolve Framework Version
-  const framework = project.framework_version || "Green Interiors V2";
+  const framework = project.igbc_variant || "Green Interiors V2";
 
   // 3. Fetch Relevant State (Limited to project boundary)
   const { data: submittals } = await admin
@@ -32,7 +32,6 @@ export async function buildPromptContext(projectId: string, actorId: string) {
   return {
     projectId: project.id,
     projectName: project.name,
-    organizationId: project.organization_id,
     framework,
     submittals: submittals || [],
     systemContext: `
