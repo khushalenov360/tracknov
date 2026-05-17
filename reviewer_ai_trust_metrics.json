@@ -1,0 +1,9 @@
+{
+  "recommendationAcceptance": 72.4,
+  "overrideFrequency": 9.8,
+  "clarificationDraftUsage": 81.5,
+  "duplicateDetectionAccuracy": 97.2,
+  "reviewerProductivityUplift": 38.5,
+  "falsePositiveRate": 2.8,
+  "reviewerTrustScore": 88
+}

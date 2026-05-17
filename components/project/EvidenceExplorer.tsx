@@ -22,12 +22,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+
 import { formatDistanceToNow } from "date-fns";
 
 interface EvidenceExplorerProps {
@@ -98,14 +93,14 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
           />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3">
             <Filter className="w-3 h-3 mr-1" />
             Types
           </Button>
-          <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-emerald-400">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-emerald-400">
             Verified
           </Button>
-          <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-amber-400">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-amber-400">
             Issues
           </Button>
         </div>
@@ -168,20 +163,12 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
                         </div>
                         
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-white">
+                          <Button variant="ghost" className="w-6 h-6 rounded-lg text-slate-500 hover:text-white p-0">
                             <ExternalLink className="w-3 h-3" />
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-white">
-                                <MoreHorizontal className="w-3 h-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-[#121215] border-white/10 text-slate-400">
-                              <DropdownMenuItem className="hover:text-white hover:bg-white/5 cursor-pointer">View Details</DropdownMenuItem>
-                              <DropdownMenuItem className="hover:text-white hover:bg-white/5 cursor-pointer text-red-400">Flag Issue</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button variant="ghost" className="w-6 h-6 rounded-lg text-slate-500 hover:text-white p-0">
+                            <MoreHorizontal className="w-3 h-3" />
+                          </Button>
                         </div>
                       </div>
                     );

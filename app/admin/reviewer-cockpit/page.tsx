@@ -15,7 +15,7 @@ import {
   LayoutDashboard,
   ClipboardList
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -80,7 +80,7 @@ export default async function ReviewerCockpitPage() {
               className="bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-64"
             />
           </div>
-          <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white">
+          <Button variant="secondary" className="border-white/10 bg-white/5 hover:bg-white/10 text-white">
             <Filter className="w-4 h-4 mr-2" />
             Filter
           </Button>
@@ -96,7 +96,7 @@ export default async function ReviewerCockpitPage() {
                 <Inbox className="w-5 h-5 text-indigo-400" />
                 <h2 className="text-lg font-bold text-white tracking-tight">Active Review Queue</h2>
               </div>
-              <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 {submittalsInQueue?.length || 0} PENDING
               </Badge>
             </div>
@@ -128,7 +128,7 @@ export default async function ReviewerCockpitPage() {
                       <span className="text-[10px] bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5">ROUND {item.iteration}</span>
                       <span className="text-[10px] bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5 font-mono">{item.id.slice(0, 8)}</span>
                     </div>
-                    <Button size="sm" className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg px-4 h-8">
+                    <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg px-4 h-8">
                       EXECUTE
                       <ArrowUpRight className="w-3 h-3 ml-1" />
                     </Button>
@@ -151,7 +151,7 @@ export default async function ReviewerCockpitPage() {
                 <AlertCircle className="w-5 h-5 text-amber-400" />
                 <h2 className="text-lg font-bold text-white tracking-tight">Draft Clarifications</h2>
               </div>
-              <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black uppercase text-[10px]">
+              <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black uppercase text-[10px]">
                 ACTION REQUIRED
               </Badge>
             </div>
@@ -169,8 +169,8 @@ export default async function ReviewerCockpitPage() {
                     <p className="text-xs text-slate-400 leading-relaxed italic line-clamp-2">"{draft.draft_content}"</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-black h-7 border border-amber-500/20">EDIT & SEND</Button>
-                    <Button size="sm" variant="ghost" className="text-slate-500 hover:text-white text-[10px] font-black h-7">DISMISS</Button>
+                    <Button className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-black h-7 border border-amber-500/20 px-3">EDIT & SEND</Button>
+                    <Button variant="ghost" className="text-slate-500 hover:text-white text-[10px] font-black h-7 px-3">DISMISS</Button>
                   </div>
                 </div>
               ))}
@@ -186,10 +186,10 @@ export default async function ReviewerCockpitPage() {
           {/* AI Productivity Widget */}
           <Card className="bg-indigo-600/10 border-indigo-500/30 rounded-3xl overflow-hidden">
             <CardHeader className="border-b border-indigo-500/20 bg-indigo-500/5">
-              <CardTitle className="text-sm font-black uppercase tracking-widest text-indigo-300 flex items-center gap-2">
+              <h3 className="text-sm font-black uppercase tracking-widest text-indigo-300 flex items-center gap-2">
                 <Zap className="w-4 h-4" />
                 AI Efficiency Boost
-              </CardTitle>
+              </h3>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="text-center mb-6">
@@ -232,7 +232,7 @@ export default async function ReviewerCockpitPage() {
                       <p className="text-xs font-bold text-white">{(sub.projects as any)?.name}</p>
                       <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">{(sub.credits as any)?.name}</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-slate-600 group-hover:text-indigo-400">
+                    <Button variant="ghost" className="w-9 h-9 p-0 text-slate-600 group-hover:text-indigo-400">
                       <ArrowUpRight className="w-4 h-4" />
                     </Button>
                   </div>

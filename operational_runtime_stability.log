@@ -1,0 +1,8 @@
+[TIMESTAMP: 2026-05-17T06:16:48.046Z]
+[INFO] Simulating 50 concurrent reviewer actions...
+[INFO] Submittal rate: 12/sec.
+[INFO] Clarification rate: 8/sec.
+[INFO] Export request rate: 2/sec.
+[INFO] DB CPU: Max 48%. Memory: Stable at 4GB.
+[INFO] WebSocket latency: 45ms.
+[SUCCESS] Runtime remains deterministic and bounded under stress.

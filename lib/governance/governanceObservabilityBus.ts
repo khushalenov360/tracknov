@@ -12,6 +12,8 @@ export interface GovernanceObservabilityEvent {
   traceId?: string;
   parentTraceId?: string;
   causalityChainId?: string;
+  replayMode?: boolean;
+  payload?: Record<string, unknown>;
 }
 
 /**

@@ -1,0 +1,6 @@
+{
+  "totalInferenceTokens": 145000000,
+  "cacheHitRatePct": 42.5,
+  "costPerTenantUSD": 14.5,
+  "roiMultiplier": 12.5
+}

@@ -202,8 +202,9 @@ export class ReviewService {
     newState: string;
     remarks?: string | null;
   }) {
-    const result = await workflowOrchestratorService.transitionSubmittal(user, {
-      submittalId: params.submittalId,
+    const result = await workflowOrchestratorService.transition(user, {
+      entityType: "submittal",
+      entityId: params.submittalId,
       projectId: params.projectId,
       targetState: params.newState as any,
       reason: params.remarks ?? null,

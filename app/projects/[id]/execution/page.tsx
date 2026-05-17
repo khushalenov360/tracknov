@@ -76,7 +76,7 @@ export default async function ProjectExecutionPage({ params }: { params: Promise
             </div>
 
             <div className="space-y-6">
-              <Progress value={progress} className="h-3 bg-white/5" indicatorClassName="bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+              <Progress value={progress} />
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -113,11 +113,11 @@ export default async function ProjectExecutionPage({ params }: { params: Promise
                 Execution Queue
               </h2>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7">
+                <Button variant="secondary" className="h-7 px-3 bg-white/5 border-white/10 text-[10px] font-black uppercase">
                   <Search className="w-3 h-3 mr-1" />
                   Search
                 </Button>
-                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7">
+                <Button variant="secondary" className="h-7 px-3 bg-white/5 border-white/10 text-[10px] font-black uppercase">
                   <Filter className="w-3 h-3 mr-1" />
                   Framework
                 </Button>
@@ -167,7 +167,7 @@ export default async function ProjectExecutionPage({ params }: { params: Promise
                     <div className="flex items-center gap-8">
                       <div className="text-right hidden md:block">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                        <Badge variant="outline" className={`text-[10px] font-black uppercase ${
+                        <Badge className={`border text-[10px] font-black uppercase bg-transparent ${
                           status === 'complete' ? 'border-emerald-500/50 text-emerald-400' : 
                           status === 'blocked' ? 'border-red-500/50 text-red-400' : 
                           'border-slate-500/50 text-slate-500'

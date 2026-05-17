@@ -63,7 +63,7 @@ export default async function ReviewerOnboardingPage() {
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Framework Specialization</label>
                 <div className="grid grid-cols-2 gap-3">
                   {['GI_V1 (Bhavarkua)', 'GI_V2 (CCIL)', 'IGBC Health', 'LEED O+M'].map(fw => (
-                    <Button key={fw} variant="outline" className="justify-start gap-3 bg-white/5 border-white/10 hover:bg-blue-500/10 hover:border-blue-500/30 h-14 rounded-2xl group">
+                    <Button key={fw} variant="secondary" className="justify-start gap-3 bg-white/5 border-white/10 hover:bg-blue-500/10 hover:border-blue-500/30 h-14 rounded-2xl group">
                       <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-blue-500/20">
                         <BadgeCheck className="w-4 h-4 text-slate-500 group-hover:text-blue-400" />
                       </div>
@@ -109,7 +109,7 @@ export default async function ReviewerOnboardingPage() {
                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Load</p>
                       <p className="text-xs font-mono font-bold text-white">{(rev.project_users as any[]).length} Projects</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-slate-500 group-hover:text-white">
+                    <Button variant="ghost" className="w-9 h-9 p-0 text-slate-500 group-hover:text-white">
                       <ChevronRight className="w-5 h-5" />
                     </Button>
                   </div>

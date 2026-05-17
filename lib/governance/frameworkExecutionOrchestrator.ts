@@ -3,7 +3,7 @@ import { governanceLocalStorage } from "./governanceContext";
 import { validateEvidence } from "./evidenceValidationEngine";
 import { calculateClarificationRisk } from "./clarificationRiskEngine";
 import { determineReviewerAssignment } from "./reviewerAssignmentEngine";
-import { resolveReplayImpact } from "./replayImpactResolver";
+import { resolveReplayImpact } from "../replay/replayImpactResolver";
 import { emitGovernanceEvent } from "./governanceObservabilityBus";
 import { collectRuntimeProof } from "./runtimeProofCollector";
 

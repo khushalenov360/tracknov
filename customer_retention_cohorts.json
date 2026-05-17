@@ -1,0 +1,14 @@
+{
+  "Month 1": {
+    "retention": 95
+  },
+  "Month 2": {
+    "retention": 91
+  },
+  "Month 3": {
+    "retention": 88
+  },
+  "Month 4": {
+    "retention": 85
+  }
+}

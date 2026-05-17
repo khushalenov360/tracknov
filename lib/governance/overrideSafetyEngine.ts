@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceLocalStorage } from "./governanceContext";
 import { calculateGovernanceImpactBlastRadius, type GovernanceImpactResult } from "./impactGraphEngine";
-import { executeDeterministicReplay } from "./replayEngine";
+import { executeDeterministicReplay } from "../replay/replayEngine";
 
 export interface OverrideValidationResult {
   reportId: string;
@@ -51,7 +51,7 @@ export async function validateOverrideSafety(params: {
       replay_impact_validation: {
         driftDetected: replayDriftDetected,
         executedAt: replayResult.executedAt,
-        contract: replayResult.contract.version
+        contract: replayResult.contract.replayVersion
       }
     })
     .select("report_id")

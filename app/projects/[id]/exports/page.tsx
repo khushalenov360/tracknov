@@ -120,10 +120,10 @@ export default async function ProjectExportsPage({ params }: { params: Promise<{
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" className="text-slate-500 hover:text-white hover:bg-white/5">
+                    <Button variant="ghost" className="h-9 w-9 p-0 text-slate-500 hover:text-white hover:bg-white/5">
                       <RefreshCw className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-slate-500 hover:text-white hover:bg-white/5">
+                    <Button variant="ghost" className="h-9 w-9 p-0 text-slate-500 hover:text-white hover:bg-white/5">
                       <Download className="w-4 h-4" />
                     </Button>
                   </div>

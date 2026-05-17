@@ -59,7 +59,7 @@ export async function reportGovernanceIncident(params: GovernanceIncidentParams)
   // Also emit to the observability bus for real-time alerting
   await emitGovernanceEvent({
     category: `INCIDENT_${params.type.toUpperCase()}`,
-    severity: params.severity,
+    severity: params.severity === "system_failure" ? "critical" : params.severity,
     sourceLayer: "INCIDENT_ENGINE",
     projectId: params.projectId,
     payload: {

@@ -4,7 +4,7 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import { SemanticRetrievalEngine } from "./semanticRetrievalEngine";
+import { SemanticRetrievalEngine } from "../intelligence/retrieval/semanticRetrievalEngine";
 
 export interface DuplicateReport {
   isDuplicate: boolean;

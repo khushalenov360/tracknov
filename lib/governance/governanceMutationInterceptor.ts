@@ -16,6 +16,7 @@ export interface MutationInterceptionEvent {
   traceId?: string;
   parentTraceId?: string;
   causalityChainId?: string;
+  blocked?: boolean;
 }
 
 // Using central GovernanceContext from ./governanceContext

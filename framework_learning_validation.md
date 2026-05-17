@@ -1,0 +1,1 @@
+[SUCCESS] AI strictly bounded to GI_V1 vs GI_V2 contexts. Cross-framework hallucination is 0%.

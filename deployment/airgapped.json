@@ -1,0 +1,22 @@
+{
+  "profile": "airgapped",
+  "tier": "Offline On-Premises Core Infrastructure",
+  "features": {
+    "tenantIsolation": "physical-machine-isolation",
+    "replayVerification": "transactional-ledger-strict",
+    "embeddingProvider": "local-onnx-transformers",
+    "cacheStrategy": "local-sqlite-cache",
+    "auditStorage": "local-encrypted-file-append"
+  },
+  "limits": {
+    "maxDocumentsPerProject": 10000,
+    "maxFileSizeMb": 200,
+    "concurrentReplays": 4,
+    "vectorTtlDays": -1
+  },
+  "redundancy": {
+    "databaseReplication": false,
+    "aiProviderFallback": false,
+    "offlineMode": true
+  }
+}

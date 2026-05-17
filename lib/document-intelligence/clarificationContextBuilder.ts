@@ -3,7 +3,7 @@
  * Assembles a unified context record representing all historical submittals and EPD standards.
  */
 
-import { RetrievedChunk } from "./semanticRetrievalEngine";
+import { RetrievedChunk } from "../intelligence/retrieval/semanticRetrievalEngine";
 import { ClarificationResolutionPattern } from "./clarificationContextEngine";
 
 export interface UnifiedClarificationContext {

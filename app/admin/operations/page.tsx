@@ -12,9 +12,10 @@ import {
   ShieldCheck,
   ZapOff
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatDistanceToNow } from "date-fns";
 
 export default async function OperationsIntelligencePage() {
   const supabase = createClient();
@@ -90,7 +91,7 @@ export default async function OperationsIntelligencePage() {
                 <Clock className="w-12 h-12 text-white" />
               </div>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black text-slate-500 uppercase tracking-widest">Avg. Review Latency</CardTitle>
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Avg. Review Latency</h3>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">4.2h</p>
@@ -106,7 +107,7 @@ export default async function OperationsIntelligencePage() {
                 <PieChart className="w-12 h-12 text-white" />
               </div>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black text-slate-500 uppercase tracking-widest">Clarification Churn</CardTitle>
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Clarification Churn</h3>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">1.8 <span className="text-sm text-slate-500">rounds</span></p>
@@ -119,7 +120,7 @@ export default async function OperationsIntelligencePage() {
                 <Zap className="w-12 h-12 text-indigo-400" />
               </div>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black text-slate-500 uppercase tracking-widest">AI Actionability</CardTitle>
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">AI Actionability</h3>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">92.4%</p>
@@ -225,7 +226,7 @@ export default async function OperationsIntelligencePage() {
                 <span className="text-xs font-bold text-white">Active Certifications</span>
                 <span className="text-2xl font-black text-white">{activeProjects}</span>
               </div>
-              <Progress value={activeProjects} className="h-1.5 bg-white/5" indicatorClassName="bg-blue-500" />
+              <Progress value={activeProjects} />
               
               <div className="flex justify-between items-end mb-1 pt-2">
                 <span className="text-xs font-bold text-red-400 flex items-center gap-2">
@@ -234,7 +235,7 @@ export default async function OperationsIntelligencePage() {
                 </span>
                 <span className="text-2xl font-black text-red-400">{criticalProjects}</span>
               </div>
-              <Progress value={criticalProjects * 10} className="h-1.5 bg-red-500/10" indicatorClassName="bg-red-500" />
+              <Progress value={criticalProjects * 10} />
             </div>
 
             <div className="mt-8 pt-8 border-t border-white/5 space-y-4">

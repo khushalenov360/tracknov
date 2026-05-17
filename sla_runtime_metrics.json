@@ -1,0 +1,6 @@
+{
+  "criticalIncidentResolutionMinutes": 42,
+  "exportRecoveryMinutes": 12,
+  "replayDiagnosticsMinutes": 8,
+  "slaBreaches": 0
+}

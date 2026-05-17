@@ -1,0 +1,3 @@
+[TIMESTAMP: 2026-05-17T07:14:57.454Z]
+[DIAGNOSTIC] Abandonment detected primarily at framework specialization selection.
+[DIAGNOSTIC] Upload failures linked to 50MB+ PDF file sizes. UI needs chunking progress indicators.

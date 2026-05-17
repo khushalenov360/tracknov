@@ -1,0 +1,3 @@
+[TIMESTAMP: 2026-05-17T07:05:23.229Z]
+[INFO] Running churn prediction heuristics.
+[WARN] Flagged 12 tenants with 14+ days of inactivity.

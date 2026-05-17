@@ -54,7 +54,7 @@ export default async function ObservabilityDashboard() {
               <Zap className="w-4 h-4 text-amber-400" />
               <p className="text-2xl font-black text-white">{health?.entropy_score || '0.00'}</p>
             </div>
-            <Progress value={(health?.entropy_score || 0) * 10} className="h-1 mt-4 bg-white/5" indicatorClassName="bg-amber-400" />
+            <Progress value={(health?.entropy_score || 0) * 10} />
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Congestion</p>
@@ -158,7 +158,7 @@ export default async function ObservabilityDashboard() {
                 <div key={incident.incident_id} className="p-4 bg-white/5 rounded-2xl border border-white/5 border-l-2 border-l-red-500 relative group overflow-hidden">
                   <div className="flex justify-between items-start mb-2">
                     <p className="text-xs font-black text-white uppercase">{incident.incident_type.replace(/_/g, ' ')}</p>
-                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase border-red-500/50 text-red-400">
+                    <Badge className="border text-[8px] h-4 font-black uppercase border-red-500/50 text-red-400 bg-transparent">
                       {incident.severity}
                     </Badge>
                   </div>

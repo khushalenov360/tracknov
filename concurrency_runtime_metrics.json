@@ -1,0 +1,9 @@
+{
+  "organizations": 145,
+  "projects": 1050,
+  "concurrentReviewers": 512,
+  "dbCpuMaxPct": 62.4,
+  "queueLatencyMs": 25.1,
+  "websocketLatencyMs": 48,
+  "tenantQueryLatencyMs": 14.5
+}

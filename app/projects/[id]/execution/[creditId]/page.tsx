@@ -62,7 +62,7 @@ export default async function CreditExecutionDetailPage({ params }: { params: Pr
         <div className="flex items-center justify-between mb-6 bg-white/[0.03] border border-white/10 rounded-2xl p-4 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <Link href={`/projects/${projectId}/execution`}>
-              <Button variant="ghost" size="icon" className="text-slate-500 hover:text-white hover:bg-white/5">
+              <Button variant="ghost" className="w-9 h-9 p-0 text-slate-500 hover:text-white hover:bg-white/5">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
@@ -132,15 +132,15 @@ export default async function CreditExecutionDetailPage({ params }: { params: Pr
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4">
-                    <Button variant="outline" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
+                    <Button variant="secondary" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Approve</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
+                    <Button variant="secondary" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
                       <MessageSquare className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Clarify</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
+                    <Button variant="secondary" className="h-20 flex-col gap-2 bg-white/5 border-white/10 hover:bg-white/10 rounded-2xl group">
                       <AlertCircle className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reject</span>
                     </Button>

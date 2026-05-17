@@ -1,0 +1,3 @@
+[TIMESTAMP: 2026-05-17T07:32:07.736Z]
+[INFO] Detected API latency spike > 500ms.
+[SUCCESS] Auto-scaled Edge function concurrency limit. Latency restored to 45ms.

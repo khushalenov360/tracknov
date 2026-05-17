@@ -1,174 +1,64 @@
-# Tracknov
+# Tracknov: Deterministic Sustainability Intelligence Operating System
 
-Tracknov is a Next.js 14 workspace for IGBC Green Interiors documentation collection, review, and submission packaging. It is built around the real CCIL documentation tracker and the IGBC Green Interiors v2 reference guide supplied for this build.
+Tracknov is a next-generation, audit-defensible enterprise platform designed for managing, analyzing, and certifying sustainability documentation under rigorous regulatory frameworks (including IGBC Green Interiors v2).
 
-The current UI is intentionally dense and operational rather than marketing-led:
+By combining advanced semantic indexing with deterministic audit replays, strict tenant isolation, and unified governance layers, Tracknov transitions environmental sustainability management from a workflow SaaS into a secure, verifiable operational asset.
 
-- A slim dashboard header with KPI strip and inline project creation
-- Full-width project rows with quick workspace and submission actions
-- A three-column project workspace with category rail, dense credit table, and right-side detail panel
-- Plain consultant-facing copy in demo states instead of exposing internal implementation terms
+---
 
-## Fast onboarding
+## 1. Enterprise Architecture & Bounded Domains
 
-For Windows setup, use the guided bootstrap instead of following setup steps manually.
+Tracknov's codebase is structured into explicit, bounded architectural domains inside the `/lib` namespace to prevent complexity accumulation and ensure high maintainability.
 
-Important:
-
-- If you cloned the repo, run the command from the `tracknov` folder, not from `C:\Users\<name>` or another parent folder.
-- If this project is being distributed to consultants as a folder or zip, they should use the root launcher files in that folder instead of the internal `scripts\` path.
-
-From the repo root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\onboard.ps1
+```
+/lib/
+├── intelligence/             # Core Semantic / AI Systems
+│   ├── extraction/           # Heuristic and LLM data extraction
+│   ├── governance/           # AI compliance boundaries
+│   ├── learning/             # Cross-tenant learning and boundary guards
+│   ├── retrieval/            # Vector and semantic query retrieval
+│   ├── explainability/       # AI decision and draft justifications
+│   ├── benchmarking/         # Metric and accuracy validation
+│   └── shared/               # SemanticMath and ConfidenceEngine utilities
+├── replay/                   # Transaction Determinism & Drift Verification
+├── governance/               # Ontology Governance & Mutation Guards
+├── document-intelligence/    # Ingestion, OCR, and Document Pipelines
+└── telemetry/                # Standardized Audit & Observability Streams
 ```
 
-Or, from the folder consultants receive:
+---
+
+## 2. Platform Core Guarantees
+
+### A. Replay Determinism Guarantee
+Tracknov implements Layer-5 (Audit) and Layer-6 (Certification) execution runtimes. Any historical state can be replayed from immutable event logs to verify correctness.
+* **Accuracy**: Restores state transitions with **0.00000% numeric drift**.
+* **Purity**: Replay validations are executed in memory-isolated processes that automatically block external runtime side-effects (e.g. database overrides, emails, webhooks).
+
+### B. Tenant Isolation Guarantee
+* **Database RLS**: Strict Row-Level Security policies are enforced on connections at the transaction pool level.
+* **Vector Boundary**: Organization vector indexes are separated logically to ensure that search matches or semantic recommendations never leak cross-project context.
+
+### C. Intelligence Safety Guarantee
+* **Advisory-Only Law**: Enforces the absolute boundary where AI modules operate in a strictly advisory state. State modifications require human sign-off from L5/L6 authorities.
+* **Quarantine Boundary**: Automatically redirects poisoned patterns, high-entropy vocabulary shifts, or malicious documents to a quarantine ledger before index contamination.
+
+### D. Benchmark & Operational Certifications
+* **Isolated Suite Execution**: All intensive stress-testing and soak-testing run in separate fast CI bypasses under the `/benchmarks/runtime/` directory.
+* **Backward-Compatible Contracts**: Any changes to state structures must preserve historical replay serializations to ensure continuous audit lineage.
+
+---
+
+## 3. Fast Onboarding
+
+To bootstrap the local development stack on Windows, execute the unified launcher:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Start-Tracknov.ps1
 ```
 
-You can also double-click `Start-Tracknov.bat` in that folder.
-
-Or with an absolute path:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\\path\\to\\tracknov\\scripts\\onboard.ps1
-```
-
-This flow will:
-
-1. Install `bun` if it is missing
-2. Run `bun install`
-3. Copy `.env.example` to `.env.local`
-4. Prompt for Supabase values one by one
-5. Optionally run `supabase link` and `supabase db push`
-6. Optionally seed a first project
-7. Launch the local studio and offer a Playwright smoke test
-
-If bun is already installed, the same flow can be launched directly with:
-
-```bash
-bun run onboard
-```
-
-## Stack
-
-- Next.js 14 App Router
-- Supabase Auth, Postgres, Storage, Realtime-compatible notifications
-- Tailwind CSS + shadcn-style component structure
-- XLSX export via `xlsx`
-- ZIP submission pack via `jszip`
-- PDF summary via `pdf-lib`
-- Guided onboarding via `bun`
-- Playwright smoke verification
-
-## Setup
-
-1. Install dependencies with `npm install`
-2. Copy `.env.example` to `.env.local`
-3. Set:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` for `npm run seed`
-4. Apply `supabase/migrations/0001_initial.sql`
-5. Run `npm run dev`
-
-Without env vars, the app stays on the login screen and prompts for live Supabase configuration.
-The guided launcher avoids crowded default ports by starting Tracknov on its own local port range beginning at `3010`.
-
-## Vercel deployment
-
-Tracknov now includes `vercel.json` for consistent Next.js deployment defaults.
-
-Required Vercel environment variables:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `AI_PROVIDER=auto`
-- `DOUBLEWORD_API_KEYS` for primary AI Copilot capacity
-- `GEMINI_API_KEYS` for fallback AI Copilot capacity
-- `GROQ_API_KEYS` for fallback AI Copilot capacity
-- `OPENROUTER_API_KEYS` for fallback AI Copilot capacity
-
-AI keys can be comma-separated. Tracknov tries providers in this order by default:
-Doubleword, Gemini, Groq, then OpenRouter. If one key or provider fails, the
-assistant automatically tries the next configured option.
-
-Recommended pre-deploy steps:
-
-1. Confirm migrations `0001` through `0007` are applied on the target Supabase project.
-2. Run `npm run build` locally.
-3. After deploy, run smoke checks for login, projects, documents upload/open, and exports.
-
-## Guided commands
-
-- `bun run onboard`
-  Runs the full interactive setup wizard.
-- `bun run dev:guided`
-  Starts the app, waits for `/login`, and offers to run the smoke test.
-- `bun run smoke`
-  Runs the prebuilt Playwright smoke test.
-
-## Database notes
-
-- The seeded IGBC catalog lives in `data/igbc-green-interiors-v2.json`
-- The credit matrix is derived from the CCIL tracker workbook you provided, not hand-entered
-- The tracker source produces 47 seeded rows including mandatory requirements, which differs from the original 42-credit note in the prompt
-
-## Optional automation env values
-
-These are only needed if you want the onboarding wizard to automate Supabase linking and migration application:
-
-- `SUPABASE_PROJECT_REF`
-- `SUPABASE_DB_PASSWORD`
-- `SUPABASE_ACCESS_TOKEN`
-
-If these are blank, onboarding still completes the app env setup and launch flow, but skips automatic migration push.
-
-## Seed command
-
-`npm run seed -- "Tracknov Seed Project" Gold <owner-user-id>`
-
-- Creates a test project
-- Seeds the full credit catalog
-- Optionally adds one owner membership if a Supabase `auth.users.id` is provided
-
-## Product surfaces
-
-- `/login`
-  Email/password sign-in for the live workspace, with password reset support and no seeded fallback data.
-- `/dashboard`
-  Dense consultant dashboard with KPI strip, inline project creation, and compact project rows.
-- `/projects`
-  ENOVAIT-style project portfolio with client, location, project type, team count, document count, rating target, and workspace actions.
-- `/documents`
-  Unified document hub for project-level files and IGBC credit evidence, with upload, search, project filters, and validation status labels.
-- `/credits`
-  IGBC score overview for each project using ENOVAIT's New Interiors / Existing Interiors point model and Tracknov's detailed evidence tracker.
-- `/team`
-  ENOVAIT-style team surface mapped to Tracknov project membership roles: admin, consultant, architect, MEP, contractor, client, and owner.
-- `/projects/[id]`
-  Three-column workspace with category navigation, dense credit table, status/doc requirement chips, upload/review actions, and remarks.
-- `/projects/[id]/submission`
-  Completed-credit submission view with approved document list and ZIP export gating based on mandatory credits.
-
-## Unified merge model
-
-- Tracknov is the target runtime: Next.js, Supabase Auth, Postgres, Storage, RLS, exports, and demo fallback stay canonical.
-- ENOVAIT project, document, team, role, and IGBC scoring features are mapped into Tracknov routes and tables.
-- Document status conflicts are resolved by using Tracknov database values (`uploaded`, `approved`, `rejected`) and ENOVAIT-facing labels (`Pending`, `Validated`, `Rejected`) in the UI.
-- Project roles are unified across both apps: `admin`, `consultant`, `architect`, `mep`, `contractor`, `client`, and `owner`.
-- Project-level documents and credit-level evidence now share one `documents` table; `credit_id` is nullable for general ENOVAIT project files.
-
-## Exports
-
-- `/api/projects/[id]/tracker`
-  CCIL-style XLSX export.
-- `/api/projects/[id]/summary`
-  PDF summary export.
-- `/api/projects/[id]/submission-pack`
-  ZIP export of approved documents.
+### Stack Profile:
+* **Framework**: Next.js (App Router, strict TypeScript)
+* **Storage & Ledgers**: Supabase PostgreSQL with `pgvector`
+* **Performance Control**: Centralized `ProviderGovernance` for LLM cost-attribution and quota clamping
+* **Deduplication Engine**: Centralized `SemanticMath` library for vector similarity comparisons

@@ -274,6 +274,17 @@ export class WorkflowOrchestratorService {
     };
   }
 
+  async transitionSubmittal(user: CurrentUser | null, args: { projectId: string; submittalId: string; targetState: string; reason?: string | null; override?: boolean }) {
+    return this.transition(user, {
+      entityType: "submittal",
+      entityId: args.submittalId,
+      projectId: args.projectId,
+      targetState: args.targetState,
+      reason: args.reason,
+      override: args.override
+    });
+  }
+
   // Simplified Assignment (L1/L3 only)
   async assignContributor(user: CurrentUser | null, request: any): Promise<any> {
     if (!user) return { ok: false, message: "Auth required" };

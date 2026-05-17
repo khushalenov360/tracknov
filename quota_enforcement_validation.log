@@ -1,0 +1,3 @@
+[TIMESTAMP: 2026-05-17T07:05:23.226Z]
+[INFO] Testing export quota limits.
+[SUCCESS] Blocked export generation at exactly limit + 1. Upsell flow triggered.

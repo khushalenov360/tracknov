@@ -17,7 +17,7 @@ export * from "./semanticCellMapper";
 export * from "./semanticChunkingEngine";
 export * from "./evidenceEmbeddingEngine";
 export * from "./frameworkSemanticTagger";
-export * from "./semanticRetrievalEngine";
+export * from "../intelligence/retrieval/semanticRetrievalEngine";
 export * from "./semanticDuplicateDetector";
 
 export * from "./evidenceRelationshipEngine";
@@ -27,12 +27,11 @@ export * from "./clarificationContextEngine";
 
 export * from "./clarificationContextBuilder";
 export * from "./evidenceGapAnalyzer";
-export * from "./clarificationSemanticEngine";
+export * from "../intelligence/retrieval/clarificationSemanticEngine";
 export * from "./reviewerReasoningExtractor";
 
 export * from "./documentQualityScorer";
 export * from "./evidenceReadabilityAnalyzer";
 export * from "./lowConfidenceDetection";
 export * from "./corruptedDocumentDetector";
-export * from "../extraction-feedback";
 

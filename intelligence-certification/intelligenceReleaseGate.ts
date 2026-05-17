@@ -3,7 +3,7 @@
  * Enforces automated quality boundaries to prevent promotion of degraded model parameters.
  */
 
-import { SemanticQuarantineEngine } from "../lib/knowledge-governance/semanticQuarantineEngine";
+import { SemanticQuarantineEngine } from "../lib/governance/semanticQuarantineEngine";
 
 export interface GateReport {
   allowRelease: boolean;
@@ -25,7 +25,7 @@ export class IntelligenceReleaseGate {
   ): GateReport {
     // 1. Check active quarantined items with critical threat
     const activeContamination = SemanticQuarantineEngine.listQuarantined().some(
-      q => q.quarantineStatus === "QUARANTINED" && q.contaminationRisk > 0.8
+      (q: any) => q.quarantineStatus === "QUARANTINED" && q.contaminationRisk > 0.8
     );
 
     const noActiveQuarantine = !activeContamination;

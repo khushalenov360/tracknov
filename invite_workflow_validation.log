@@ -1,0 +1,3 @@
+[TIMESTAMP: 2026-05-17T07:05:23.224Z]
+[INFO] Simulating 100 concurrent reviewer invitations.
+[SUCCESS] Email delivery confirmed. RBAC roles mapped perfectly upon acceptance.

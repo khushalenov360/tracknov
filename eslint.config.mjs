@@ -16,7 +16,18 @@ export default [
   ...compat.extends("next/core-web-vitals"),
   {
     rules: {
-      // Add any specific rule overrides here
+      "no-restricted-imports": ["error", {
+        "patterns": [
+          {
+            "group": ["**/document-intelligence/**"],
+            "message": "Direct imports from document-intelligence inside governance modules is restricted to prevent cycles. Use types or services."
+          },
+          {
+            "group": ["**/governance/**"],
+            "message": "Direct imports from governance inside UI components or raw pipelines are prohibited. Use high-level orchestration hooks."
+          }
+        ]
+      }]
     },
   },
 ];

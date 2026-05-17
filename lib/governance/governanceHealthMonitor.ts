@@ -45,8 +45,8 @@ export async function collectGovernanceHealthMetrics(projectId: string): Promise
     .eq("status", "queued")
     .order("created_at", { ascending: true });
 
-  const queueStarvationDetected = queuedItems && queuedItems.length > 0 && 
-    (Date.now() - new Date(queuedItems[0].created_at).getTime()) > 300000; // 5 mins
+  const queueStarvationDetected = !!(queuedItems && queuedItems.length > 0 && 
+    (Date.now() - new Date(queuedItems[0].created_at).getTime()) > 300000); // 5 mins
 
   const metrics: GovernanceHealthMetrics = {
     replaySuccessRate,

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { executeGovernedReplayHarness } from "./runtimeReplayHarness";
+import { executeGovernedReplayHarness } from "../replay/runtimeReplayHarness";
 
 export interface RuntimeAcceptanceResult {
   accepted: boolean;

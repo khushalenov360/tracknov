@@ -90,7 +90,7 @@ export default async function ProjectClarificationsPage({ params }: { params: Pr
                 Active Clarification Loops
               </h2>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7">
+                <Button variant="secondary" className="h-7 px-3 bg-white/5 border-white/10 text-[10px] font-black uppercase">
                   <Plus className="w-3 h-3 mr-1" />
                   New Draft
                 </Button>
@@ -140,8 +140,8 @@ export default async function ProjectClarificationsPage({ params }: { params: Pr
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" className="text-slate-500 hover:text-white text-[10px] font-black h-8 px-4">VIEW THREAD</Button>
-                      <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black h-8 px-4 rounded-lg">
+                      <Button variant="ghost" className="text-slate-500 hover:text-white text-[10px] font-black h-8 px-4">VIEW THREAD</Button>
+                      <Button className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black h-8 px-4 rounded-lg">
                         <Send className="w-3 h-3 mr-2" />
                         {clar.status === 'draft' ? 'SEND CLARIFICATION' : 'RESEND'}
                       </Button>

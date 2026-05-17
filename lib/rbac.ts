@@ -9,7 +9,7 @@ import type { MemberRole } from "@/lib/types";
  * VERSION: 1.0.0 (Governance Evolution Control)
  */
 
-export type RoleLevel = 0 | 1 | 2 | 3 | 5;
+export type RoleLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
  * AUTHORITATIVE ROLE PRECEDENCE MATRIX
@@ -18,6 +18,8 @@ export type RoleLevel = 0 | 1 | 2 | 3 | 5;
 export const ROLE_PRECEDENCE_MATRIX: Record<MemberRole, RoleLevel> = {
   L5: 5,
   super_user: 5,
+  L4: 4,
+  l4_reserved: 4,
   L3: 3,
   super_admin: 3,
   project_admin: 3,
@@ -64,8 +66,8 @@ export function canUser(
       return level >= 3;
 
     case "DELETE":
-      // Only L5 can delete projects
-      if (entityType === "PROJECT") return level === 5;
+      // Only L5 can delete projects (L5 bypasses above)
+      if (entityType === "PROJECT") return false;
       // L3 can delete documents
       return level >= 3;
 
@@ -81,7 +83,7 @@ export function canUser(
       return level >= 3;
 
     case "MANAGE_TOKENS":
-      return level === 5;
+      return false; // L5 bypasses above
 
     case "EDIT_CONTROLS":
       return level >= 3;

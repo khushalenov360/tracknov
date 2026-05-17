@@ -1,0 +1,7 @@
+{
+  "totalOnboardings": 1250,
+  "supportAssistedOnboardings": 14,
+  "autonomousCompletionRatePct": 98.8,
+  "avgTimeToFirstProjectMins": 12.5,
+  "avgTimeToFirstUploadMins": 45
+}

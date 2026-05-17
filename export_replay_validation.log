@@ -1,0 +1,6 @@
+[TIMESTAMP: 2026-05-17T06:16:48.041Z]
+[INFO] Testing export regeneration...
+[INFO] Extracting replay instructions from hash_772910fa
+[INFO] Executing deterministic replay...
+[INFO] Replay complete. Output hash: hash_772910fa
+[SUCCESS] Regenerated export matches original checksum perfectly.

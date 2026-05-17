@@ -16,7 +16,7 @@ import { cookies } from "next/headers";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const roleTone = {
+const roleTone: Record<string, string> = {
   super_user: "border border-[#0b1f33] bg-[#0b1f33] text-white",
   l4_reserved: "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]",
   super_admin: "border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white",
@@ -27,7 +27,13 @@ const roleTone = {
   contractor: "border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]",
   client: "border border-[var(--color-olive-light)] bg-[var(--color-olive-light)] text-[var(--color-olive)]",
   owner: "border border-[var(--color-olive-light)] bg-[var(--color-olive-light)] text-[var(--color-olive)]",
-} as const;
+  L5: "border border-[#0b1f33] bg-[#0b1f33] text-white",
+  L4: "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]",
+  L3: "border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white",
+  L2: "border border-[var(--color-olive-light)] bg-[var(--color-olive-light)] text-[var(--color-olive)]",
+  L1: "border border-[var(--color-olive-light)] bg-[var(--color-olive-light)] text-[var(--color-olive)]",
+  L0: "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]",
+};
 
 export default async function TeamPage() {
   cookies();
