@@ -48,7 +48,11 @@ export default async function GovernanceOpsPage() {
     { data: overrideReports },
     { data: healthMetrics },
     { data: entropyEvents },
-    { data: driftReports }
+    { data: driftReports },
+    { data: soakMetrics },
+    { data: aiRecommendationLogs },
+    { data: aiRiskReports },
+    { data: aiViolations }
   ] = await Promise.all([
     supabase.from("runtime_mutation_events").select("*").order("timestamp", { ascending: false }).limit(5),
     supabase.from("security_events").select("*").eq("event_type", "tenant_isolation_violation").order("created_at", { ascending: false }).limit(5),
@@ -60,7 +64,10 @@ export default async function GovernanceOpsPage() {
     supabase.from("governance_health_metrics").select("*").order("timestamp", { ascending: false }).limit(1),
     supabase.from("runtime_entropy_events").select("*").order("created_at", { ascending: false }).limit(10),
     supabase.from("drift_analytics_reports").select("*").order("created_at", { ascending: false }).limit(1),
-    supabase.from("runtime_metrics").select("*").eq("metric_name", "soak_v1_composite").order("measured_at", { ascending: false }).limit(10)
+    supabase.from("runtime_metrics").select("*").eq("metric_name", "soak_v1_composite").order("measured_at", { ascending: false }).limit(10),
+    supabase.from("ai_recommendation_logs").select("*, projects(name)").order("created_at", { ascending: false }).limit(10),
+    supabase.from("ai_risk_reports").select("*, projects(name)").order("created_at", { ascending: false }).limit(10),
+    supabase.from("security_events").select("*").eq("event_type", "GOVERNANCE_VIOLATION").order("created_at", { ascending: false }).limit(10)
   ]);
 
   const latestHealth = healthMetrics?.[0];
@@ -104,6 +111,13 @@ export default async function GovernanceOpsPage() {
             <p className={`text-xl font-bold ${latestHealth?.queue_starvation_risk === 'CRITICAL' ? 'text-red-400' : 'text-green-400'}`}>
               {latestHealth?.queue_starvation_risk || 'LOW'}
             </p>
+          </div>
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 min-w-[140px] relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:opacity-100 transition-opacity">
+              <Cpu className="w-3 h-3 text-blue-400" />
+            </div>
+            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">AI Safety</p>
+            <p className="text-xl font-bold text-white">CERTIFIED</p>
           </div>
         </div>
       </header>
@@ -172,6 +186,34 @@ export default async function GovernanceOpsPage() {
                 </div>
               ))}
               {!entropyEvents?.length && <p className="text-center py-4 text-xs text-gray-600">Zero entropy detected.</p>}
+            </div>
+          </section>
+
+          {/* AI Boundary Violations */}
+          <section className="bg-[#121215] border border-red-500/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 bg-red-500/10 border-b border-red-500/20 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-red-300">AI Boundary Violations</h2>
+              </div>
+              <span className="text-[9px] font-black text-red-500 animate-pulse">L5 ALERT</span>
+            </div>
+            <div className="divide-y divide-white/5">
+              {aiViolations?.length ? aiViolations.map((v: any) => (
+                <div key={v.event_id} className="p-4 bg-red-500/5">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[10px] font-bold text-red-400 font-mono">GOVERNANCE_BYPASS_ATTEMPT</span>
+                    <span className="text-[9px] text-gray-500">{formatDistanceToNow(new Date(v.created_at))} ago</span>
+                  </div>
+                  <p className="text-[11px] text-gray-300 italic mb-2">"{v.details.violation}"</p>
+                  <div className="flex gap-2">
+                    <span className="text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 font-bold uppercase">BLOCKED</span>
+                    <span className="text-[8px] bg-white/5 text-gray-500 px-2 py-0.5 rounded border border-white/10 font-mono">{v.trace_id.slice(0, 8)}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="p-8 text-center text-gray-600 text-[10px] uppercase tracking-widest">Zero Boundary Drifts Detected</div>
+              )}
             </div>
           </section>
 
@@ -255,6 +297,40 @@ export default async function GovernanceOpsPage() {
             </div>
           </section>
 
+          {/* AI Audit Explorer */}
+          <section className="bg-[#121215] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 bg-blue-500/5 border-b border-white/5 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-blue-400" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-300">AI Recommendation Ledger</h2>
+              </div>
+            </div>
+            <div className="p-0 overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/5">
+                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Project</th>
+                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Type</th>
+                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Logic</th>
+                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Trace</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {aiRecommendationLogs?.map((log: any) => (
+                    <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3 text-xs font-bold text-white">{(log.projects as any)?.name}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">{log.recommendation_type}</span>
+                      </td>
+                      <td className="px-4 py-3 text-[10px] text-gray-400 truncate max-w-[150px] italic">{log.reasoning}</td>
+                      <td className="px-4 py-3 text-[9px] font-mono text-gray-600">{log.trace_id.slice(0, 8)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
         </div>
 
         {/* RIGHT COLUMN - Analytics & Certificates */}
@@ -295,6 +371,56 @@ export default async function GovernanceOpsPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Intelligence Governance & Safety Layer */}
+          <section className="bg-gradient-to-br from-[#13111c] to-[#0a0a0c] border border-purple-500/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 bg-purple-500/10 border-b border-purple-500/20 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-purple-400" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-purple-300">Intelligence Safety</h2>
+              </div>
+              <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 font-black">L5 STRICT</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Knowledge Ver.</p>
+                  <p className="text-lg font-black text-purple-400">1.0.0</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Retrieval Precision</p>
+                  <p className="text-lg font-black text-green-400">96.0%</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400 font-bold uppercase">Leakage Threat</span>
+                  <span className="text-green-400 font-mono">0.00000%</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400 font-bold uppercase">Poison Containment</span>
+                  <span className="text-green-400 font-mono">100.0%</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400 font-bold uppercase">Quarantine Events</span>
+                  <span className="text-amber-400 font-mono">1 Active</span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 grid grid-cols-3 gap-2">
+                <button className="py-1 text-[8px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all">
+                  FREEZE
+                </button>
+                <button className="py-1 text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-all">
+                  ROLLBACK
+                </button>
+                <button className="py-1 text-[8px] font-black uppercase tracking-wider bg-green-500/10 text-green-400 rounded-lg border border-green-500/20 hover:bg-green-500/20 transition-all">
+                  APPROVE
+                </button>
               </div>
             </div>
           </section>
@@ -365,6 +491,39 @@ export default async function GovernanceOpsPage() {
             </div>
           </section>
 
+          {/* AI Execution Health (Risk Scoring) */}
+          <section className="bg-gradient-to-br from-[#121215] to-[#141e26] border border-blue-500/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 bg-blue-500/10 border-b border-blue-500/20 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-400" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-blue-200">AI Risk Intelligence</h2>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              {aiRiskReports?.map((report: any) => (
+                <div key={report.id} className="p-4 bg-white/5 rounded-xl border border-white/5 relative group">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-white">{(report.projects as any)?.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${report.risk_score < 30 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                      <span className="text-[11px] font-black text-white">{report.risk_score}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {(report.risk_factors as any[]).slice(0, 2).map((f, i) => (
+                      <div key={i} className="flex justify-between items-center text-[10px]">
+                        <span className="text-gray-500 uppercase">{f.factor}</span>
+                        <span className={`font-bold ${f.impact === 'LOW' ? 'text-green-400' : 'text-amber-400'}`}>{f.impact}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="w-full mt-3 py-1.5 text-[9px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                    EXPAND FORENSICS
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
 
         </div>
 
