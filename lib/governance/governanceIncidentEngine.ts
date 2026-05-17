@@ -9,11 +9,17 @@ export type GovernanceIncidentType =
   | 'tenant_boundary_violation'
   | 'replay_hash_mismatch'
   | 'drift_detection_failure'
-  | 'runtime_entropy_warning';
+  | 'runtime_entropy_warning'
+  | 'export_corruption'
+  | 'framework_leakage'
+  | 'ai_governance_violation'
+  | 'queue_collapse'
+  | 'orphan_locks'
+  | 'runtime_instability';
 
 export interface GovernanceIncidentParams {
   type: GovernanceIncidentType;
-  severity: "info" | "warning" | "critical";
+  severity: "info" | "warning" | "critical" | "system_failure";
   projectId: string;
   replayContext?: Record<string, any>;
   actorId?: string;

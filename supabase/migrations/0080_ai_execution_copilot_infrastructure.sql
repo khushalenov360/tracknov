@@ -43,7 +43,7 @@ create table if not exists public.ai_execution_risk_reports (
 create table if not exists public.ai_evidence_reuse_maps (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
-  source_document_id uuid not null references public.project_documents(id) on delete cascade,
+  source_document_id uuid not null references public.project_document(id) on delete cascade,
   target_credit_id uuid not null,
   confidence_score numeric not null check (confidence_score >= 0 and confidence_score <= 1),
   trace_id uuid not null,
@@ -55,8 +55,8 @@ create table if not exists public.ai_evidence_reuse_maps (
 create table if not exists public.ai_duplicate_evidence_reports (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
-  document_a_id uuid not null references public.project_documents(id) on delete cascade,
-  document_b_id uuid not null references public.project_documents(id) on delete cascade,
+  document_a_id uuid not null references public.project_document(id) on delete cascade,
+  document_b_id uuid not null references public.project_document(id) on delete cascade,
   similarity_score numeric not null check (similarity_score >= 0 and similarity_score <= 1),
   detection_details jsonb not null default '{}'::jsonb,
   trace_id uuid not null,
