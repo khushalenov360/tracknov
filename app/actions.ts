@@ -404,7 +404,7 @@ export async function bulkReviewDocumentsAction(formData: FormData) {
 
   const user = await getCurrentUser();
   if (!user) return;
-  if (user.role === "project_admin" || user.role === "super_admin") return;
+  if (user.role === "project_admin" || user.role === "super_admin" || user.role === "L3" || user.role === "L5" || user.role === "super_user") return;
 
   try {
     const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
@@ -820,11 +820,11 @@ export async function createTeamMemberAction(
   const allowedByProjectAdmin = ["client", "owner", "consultant"];
   const allowedByClient = ["owner"];
   const allowedByOwner = ["architect", "mep", "contractor"];
-  const actingAsSuperUser = currentUser?.role === "super_user";
+  const actingAsSuperUser = currentUser?.role === "super_user" || currentUser?.role === "L5";
   const actingAsSuperAdmin = currentUser?.role === "super_admin";
-  const actingAsProjectAdmin = currentUser?.role === "project_admin";
-  const actingAsClient = currentUser?.role === "client";
-  const actingAsOwner = currentUser?.role === "owner";
+  const actingAsProjectAdmin = currentUser?.role === "project_admin" || currentUser?.role === "L3";
+  const actingAsClient = currentUser?.role === "client" || currentUser?.role === "L2";
+  const actingAsOwner = currentUser?.role === "owner" || currentUser?.role === "L1";
   const normalizedRole = role === "admin" ? "project_admin" : role;
 
   if (!actingAsSuperUser && !actingAsSuperAdmin && !actingAsProjectAdmin && !actingAsClient && !actingAsOwner) {

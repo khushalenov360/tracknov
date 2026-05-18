@@ -47,6 +47,7 @@ type PageProps = {
     credit?: string;
     error?: string;
     success?: string;
+    tab?: string;
   }>;
 };
 
@@ -142,10 +143,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
   const canReview = canReviewProjectDocuments(workspace.userRole);
   const canUpload = canUploadProjectDocuments(workspace.userRole);
   const canManageGuidebook = canManageProjectGuidebook(workspace.userRole);
-  const canOwnerReview = ["owner", "super_user"].includes(workspace.userRole);
-  const canFinalReview = ["project_admin", "super_admin", "super_user"].includes(workspace.userRole);
-  const canConfigureDocRequirements = ["project_admin", "super_user"].includes(workspace.userRole);
-  const canAssignContributors = ["owner", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const canOwnerReview = ["owner", "super_user", "L1", "L5"].includes(workspace.userRole);
+  const canFinalReview = ["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole);
+  const canConfigureDocRequirements = ["project_admin", "super_user", "L3", "L5"].includes(workspace.userRole);
+  const canAssignContributors = ["owner", "project_admin", "super_admin", "super_user", "L1", "L3", "L5"].includes(workspace.userRole);
   const contributorMembers = workspace.members;
   const roleScopedCredits = isL0Contributor
     ? workspace.credits.filter((credit) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
@@ -160,7 +161,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
         title={
           <span className="flex items-center gap-3">
             {workspace.project.name}
-            {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
+            {["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole) && (
               <Badge
                 className={`text-[10px] px-1.5 py-0 h-5 ${
                   workspace.project.health_status === "HEALTHY"
@@ -319,7 +320,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
       title={
         <span className="flex items-center gap-3">
           {workspace.project.name}
-          {["project_admin", "super_admin", "super_user"].includes(workspace.userRole) && (
+          {["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole) && (
             <Badge
               className={`text-[10px] px-1.5 py-0 h-5 ${
                 workspace.project.health_status === "HEALTHY"
@@ -798,8 +799,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               </div>
             ) : null}
 
+            {/* Stage Gate Tracker - Essential project state overview at the top */}
             <StageGateTracker milestones={milestones} />
 
+            {/* AI Assistant Context helper */}
             {canReview ? (
               <AiGuidePanel
                 context={validationAssistantContext}
@@ -828,452 +831,552 @@ export default async function ProjectPage({ params, searchParams }: PageProps) {
               />
             ) : null}
 
-            <section>
-              <p className="dense-label">What to submit</p>
-              <p className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] leading-5 text-[var(--color-text-secondary)]">
-                {selectedCredit.what_to_submit?.trim() || selectedCredit.documentation_summary || "Guidance is not set yet for this credit."}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedCredit.sample_document_url ? (
-                  <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
-                    <Link href={selectedCredit.sample_document_url} target="_blank">
-                      Open sample document
-                    </Link>
-                  </Button>
-                ) : null}
-                <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
-                  <Link href="https://wa.me/?text=Tracknov%20support%20needed%20for%20credit%20upload" target="_blank">
-                    Not sure what to upload? (50 tokens / 1h consult)
-                  </Link>
-                </Button>
-              </div>
-            </section>
+            {/* Governed Client View vs Management Matrix Tabs */}
+            {(() => {
+              const isManagementRole = ["owner", "project_admin", "super_admin", "super_user", "consultant", "L1", "L3", "L5"].includes(workspace.userRole);
+              const activeTab = isManagementRole && resolvedSearchParams?.tab === "management" ? "management" : "client";
+              const clientTabUrl = `/projects/${projectId}${queryString({
+                category: resolvedSearchParams?.category,
+                status: resolvedSearchParams?.status,
+                credit: selectedCredit.id,
+                tab: "client"
+              })}`;
+              const managementTabUrl = `/projects/${projectId}${queryString({
+                category: resolvedSearchParams?.category,
+                status: resolvedSearchParams?.status,
+                credit: selectedCredit.id,
+                tab: "management"
+              })}`;
 
-            <section className="grid gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="dense-label">Effort profile</p>
-                <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
-                  {(selectedCredit.effort_level ?? "moderate").toUpperCase()}
-                </Badge>
-              </div>
-              <p className="text-[11px] leading-5 text-[var(--color-text-secondary)]">
-                {selectedCredit.effort_guidance?.trim() || "Define cost/effort guidance for this credit."}
-              </p>
-            </section>
-
-            <section>
-              <p className="dense-label">Document checklist</p>
-              <div className="mt-2 space-y-2">
-                {selectedCredit.documents_required.map((doc) => {
-                  const matchingDocs = selectedCredit.documents.filter((file) => file.doc_category === doc.type);
-                  const hasApproved = matchingDocs.some((file) => file.status === "approved");
-                  const hasUploaded = matchingDocs.some((file) => file.status === "uploaded");
-                  const hasOwnerApproved = matchingDocs.some((file) => file.status === "owner_approved");
-                  const hasRejected = matchingDocs.some((file) => file.status === "rejected");
-                  const short = docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase();
-                  const checklistState = !matchingDocs.length
-                    ? "Not started"
-                    : hasApproved
-                      ? "Approved"
-                      : hasRejected && !hasUploaded && !hasOwnerApproved
-                        ? "Rejected"
-                        : "Uploaded";
-                  return (
-                    <div key={doc.type} className="flex h-7 items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[var(--color-surface-2)] text-[9px] font-medium text-[var(--color-text-secondary)]">
-                        {short}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11px] text-[var(--color-text-primary)]">{doc.label}</p>
-                        <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">
-                          {doc.required ? "Required for review" : "Not required for this credit"} / {checklistState}
-                        </p>
-                      </div>
-                      {doc.required ? (
-                        checklistState === "Approved" ? (
-                          <CheckCircle2 className="h-4 w-4 text-[var(--color-green)]" />
-                        ) : checklistState === "Rejected" ? (
-                          <AlertTriangle className="h-4 w-4 text-[var(--color-red)]" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-[var(--color-border-strong)]" />
-                        )
-                      ) : (
-                        <span className="mono text-[10px] text-[var(--color-text-tertiary)]">NA</span>
-                      )}
+              return (
+                <>
+                  {isManagementRole && (
+                    <div className="flex border-b border-[var(--color-border)] mb-4">
+                      <Link
+                        href={clientTabUrl}
+                        className={`flex-1 text-center pb-2 text-[12px] font-semibold transition-all ${
+                          activeTab === "client"
+                            ? "border-b-2 border-[var(--color-green)] text-[var(--color-green)]"
+                            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                        }`}
+                      >
+                        Client View
+                      </Link>
+                      <Link
+                        href={managementTabUrl}
+                        className={`flex-1 text-center pb-2 text-[12px] font-semibold transition-all ${
+                          activeTab === "management"
+                            ? "border-b-2 border-[var(--color-green)] text-[var(--color-green)]"
+                            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                        }`}
+                      >
+                        Management Matrix
+                      </Link>
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {canAssignTasks(workspace.userRole) && (
-              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Assign Responsibility</p>
-                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                  Assign this credit to a Project Manager or Owner.
-                </p>
-                <form action={createTaskAction} className="mt-3 space-y-2">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                  <input type="hidden" name="task_type" value="credit_documentation" />
-                  
-                  <select 
-                    name="assigned_to" 
-                    required
-                    className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
-                  >
-                    <option value="">Select Assignee</option>
-                    {workspace.members
-                      .filter(m => ["owner", "project_admin", "client", "consultant"].includes(m.role))
-                      .map(m => (
-                        <option key={m.user_id} value={m.user_id}>
-                          {cleanRoleLabel(m.member_email ?? "unknown")} ({cleanRoleLabel(m.role).toUpperCase()})
-                        </option>
-                      ))}
-                  </select>
-
-                  <div className="flex gap-2">
-                    <select 
-                      name="priority" 
-                      className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
-                    >
-                      <option value="LOW">Low Priority</option>
-                      <option value="MEDIUM" selected>Medium Priority</option>
-                      <option value="HIGH">High Priority</option>
-                      <option value="CRITICAL">Critical</option>
-                    </select>
-                    <input 
-                      type="date" 
-                      name="due_date"
-                      className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
-                    />
-                  </div>
-
-                  <Button type="submit" className="h-7 w-full rounded-md text-[11px]">
-                    Create Assignment
-                  </Button>
-                </form>
-              </section>
-            )}
-
-            {canConfigureDocRequirements ? (
-              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Document Type Requirements</p>
-                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                  Set active/inactive document blocks for this credit. Active types are required.
-                </p>
-                <form action={updateCreditDocumentRequirementsAction} className="mt-3 space-y-3">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedCredit.documents_required.map((doc) => (
-                      <label key={doc.type} className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
-                        <input
-                          type="checkbox"
-                          name="required_doc_types"
-                          value={doc.type}
-                          defaultChecked={doc.required}
-                          className="h-3.5 w-3.5 rounded border-[var(--color-border)]"
-                        />
-                        <span className="truncate">{docAbbreviations[doc.type] ?? doc.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
-                    Save Requirements
-                  </Button>
-                </form>
-              </section>
-            ) : null}
-
-            {canConfigureDocRequirements ? (
-              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Validation Rules</p>
-                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                  Add per-credit validation rules used during submission gate checks.
-                </p>
-                <form action={createValidationRuleAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
-                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                  <input
-                    name="rule_name"
-                    placeholder="Rule name (e.g. Must mention plant count)"
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-                    required
-                  />
-                  <input
-                    name="doc_category"
-                    placeholder="Doc type (optional, e.g. Drawing)"
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-                  />
-                  <input
-                    name="required_keywords"
-                    placeholder="Required keywords (comma-separated)"
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-                  />
-                  <select
-                    name="severity"
-                    defaultValue="error"
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
-                  >
-                    <option value="error">Error (block transition)</option>
-                    <option value="warning">Warning (allow transition)</option>
-                  </select>
-                  <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
-                    Add validation rule
-                  </Button>
-                </form>
-                <div className="mt-2 space-y-1">
-                  {selectedCreditValidationRules.length === 0 ? (
-                    <p className="text-[10px] text-[var(--color-text-tertiary)]">No custom validation rules yet.</p>
-                  ) : (
-                    selectedCreditValidationRules.slice(0, 6).map((rule: any) => (
-                      <div key={rule.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[10px]">
-                        <p className="font-medium text-[var(--color-text-primary)]">{rule.rule_name}</p>
-                        <p className="mt-1 text-[var(--color-text-tertiary)]">
-                          {(rule.doc_category || "Any doc type")} / {rule.severity.toUpperCase()} / keywords: {(rule.required_keywords ?? []).join(", ") || "none"}
-                        </p>
-                      </div>
-                    ))
                   )}
-                </div>
-              </section>
-            ) : null}
 
-            {canAssignContributors ? (
-              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Assign Contributor</p>
-                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                  Assign this credit to one contributor. Only the assigned contributor can upload/update documents for this credit.
-                </p>
-                <form action={assignCreditContributorAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
-                  <select
-                    name="assigned_user_id"
-                    defaultValue={selectedCredit.assigned_user_id ?? ""}
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-                  >
-                    <option value="">Unassigned</option>
-                    {contributorMembers.map((member) => (
-                      <option key={member.user_id} value={member.user_id}>
-                        {(member.member_email ?? member.user_id).toString()} / {String(member.role).toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                    Save assignment
-                  </Button>
-                </form>
-              </section>
-            ) : null}
-
-            <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-              <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Project activity log (IST)</p>
-              <div className="mt-2 space-y-2">
-                {(workspace.activityLogs ?? []).length ? (
-                  (workspace.activityLogs ?? []).slice(0, 8).map((log) => (
-                    <div key={log.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2">
-                      <p className="text-[11px] text-[var(--color-text-primary)]">{log.summary}</p>
-                      <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                        {formatDateTimeIST(log.created_at)} / {log.actor_role ?? "system"}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[11px] text-[var(--color-text-tertiary)]">No project activity recorded yet.</p>
-                )}
-              </div>
-            </section>
-
-            {workspace.tasks && workspace.tasks.length > 0 && (
-              <section className="space-y-3">
-                <p className="dense-label">Active Assignments</p>
-                {workspace.tasks.map(task => (
-                  <TaskDetailPanel 
-                    key={task.id}
-                    task={{
-                      ...task,
-                      project: { name: workspace.project.name },
-                      credit: workspace.credits.find(c => c.id === task.credit_id)
-                    }}
-                    currentUserId={user?.id || ""}
-                    currentUserRole={workspace.userRole}
-                    projectMembers={workspace.members.map(m => ({
-                      user_id: m.user_id,
-                      full_name: m.member_email || "User",
-                      role: m.role,
-                      email: m.member_email || ""
-                    }))}
-                  />
-                ))}
-              </section>
-            )}
-
-            {canConfigureDocRequirements ? (
-              <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Client Guidance Controls</p>
-                <form action={updateCreditGuidanceAction} className="mt-2 grid gap-2">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                  <Textarea
-                    name="what_to_submit"
-                    defaultValue={selectedCredit.what_to_submit ?? selectedCredit.documentation_summary ?? ""}
-                    className="min-h-[78px]"
-                    placeholder="What should the client upload for this credit?"
-                  />
-                  <select
-                    name="effort_level"
-                    defaultValue={selectedCredit.effort_level ?? "moderate"}
-                    className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="moderate">Moderate</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                  <Textarea
-                    name="effort_guidance"
-                    defaultValue={selectedCredit.effort_guidance ?? ""}
-                    className="min-h-[62px]"
-                    placeholder="Cost and effort guidance for this credit."
-                  />
-                  <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                    Save guidance
-                  </Button>
-                </form>
-              </section>
-            ) : null}
-
-            <section>
-              <p className="dense-label">Uploaded files</p>
-              <div className="mt-2 space-y-2">
-                {selectedCredit.documents.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-4 text-center">
-                    <p className="text-[11px] text-[var(--color-text-primary)]">No files uploaded</p>
-                    <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                      Upload a required document to start review.
-                    </p>
-                  </div>
-                ) : (
-                  selectedCredit.documents.map((document) => (
-                    <div key={document.id} className="rounded-lg border border-[var(--color-border)] p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-medium text-[var(--color-text-primary)]">
-                            {document.file_name}
-                          </p>
-                          <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-                            {document.doc_category}
-                          </p>
-                        </div>
-                        <Badge
-                          className={
-                            document.status === "approved"
-                              ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
-                              : document.status === "owner_approved"
-                                ? "border border-[var(--color-blue-light)] bg-[var(--color-blue-light)] text-[var(--color-blue)]"
-                              : document.status === "rejected"
-                                ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
-                                : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
-                          }
-                        >
-                          {document.status === "uploaded"
-                            ? "owner review"
-                            : document.status === "owner_approved"
-                              ? "admin review"
-                              : document.status}
-                        </Badge>
-                      </div>
-
-                      {canReview ? (
-                        <div className="mt-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                              Document preview
-                            </p>
-                            <Link
-                              href={`/api/documents/${document.id}`}
-                              target="_blank"
-                              className="text-[10px] text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
-                            >
-                              Open full screen
+                  {activeTab === "client" && (
+                    <div className="space-y-4">
+                      <section>
+                        <p className="dense-label">What to submit</p>
+                        <p className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] leading-5 text-[var(--color-text-secondary)]">
+                          {selectedCredit.what_to_submit?.trim() || selectedCredit.documentation_summary || "Guidance is not set yet for this credit."}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedCredit.sample_document_url ? (
+                            <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
+                              <Link href={selectedCredit.sample_document_url} target="_blank">
+                                Open sample document
+                              </Link>
+                            </Button>
+                          ) : null}
+                          <Button variant="secondary" asChild className="h-7 rounded-md px-3 text-[11px]">
+                            <Link href="https://wa.me/?text=Tracknov%20support%20needed%20for%20credit%20upload" target="_blank">
+                              Not sure what to upload? (50 tokens / 1h consult)
                             </Link>
-                          </div>
-                          <div className="overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                            <iframe
-                              src={`/api/documents/${document.id}`}
-                              title={`Preview ${document.file_name}`}
-                              className="h-[220px] w-full"
+                          </Button>
+                        </div>
+                      </section>
+
+                      <section className="grid gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="dense-label">Effort profile</p>
+                          <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                            {(selectedCredit.effort_level ?? "moderate").toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] leading-5 text-[var(--color-text-secondary)]">
+                          {selectedCredit.effort_guidance?.trim() || "Define cost/effort guidance for this credit."}
+                        </p>
+                      </section>
+
+                      <section>
+                        <p className="dense-label">Document checklist</p>
+                        <div className="mt-2 space-y-2">
+                          {selectedCredit.documents_required.map((doc) => {
+                            const matchingDocs = selectedCredit.documents.filter((file) => file.doc_category === doc.type);
+                            const hasApproved = matchingDocs.some((file) => file.status === "approved");
+                            const hasUploaded = matchingDocs.some((file) => file.status === "uploaded");
+                            const hasOwnerApproved = matchingDocs.some((file) => file.status === "owner_approved");
+                            const hasRejected = matchingDocs.some((file) => file.status === "rejected");
+                            const short = docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase();
+                            const checklistState = !matchingDocs.length
+                              ? "Not started"
+                              : hasApproved
+                                ? "Approved"
+                                : hasRejected && !hasUploaded && !hasOwnerApproved
+                                  ? "Rejected"
+                                  : "Uploaded";
+                            return (
+                              <div key={doc.type} className="flex h-7 items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[var(--color-surface-2)] text-[9px] font-medium text-[var(--color-text-secondary)]">
+                                  {short}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[11px] text-[var(--color-text-primary)]">{doc.label}</p>
+                                  <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">
+                                    {doc.required ? "Required for review" : "Not required for this credit"} / {checklistState}
+                                  </p>
+                                </div>
+                                {doc.required ? (
+                                  checklistState === "Approved" ? (
+                                    <CheckCircle2 className="h-4 w-4 text-[var(--color-green)]" />
+                                  ) : checklistState === "Rejected" ? (
+                                    <AlertTriangle className="h-4 w-4 text-[var(--color-red)]" />
+                                  ) : (
+                                    <Circle className="h-4 w-4 text-[var(--color-border-strong)]" />
+                                  )
+                                ) : (
+                                  <span className="mono text-[10px] text-[var(--color-text-tertiary)]">NA</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+
+                      <section>
+                        <p className="dense-label">Uploaded files</p>
+                        <div className="mt-2 space-y-2">
+                          {selectedCredit.documents.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-4 text-center">
+                              <p className="text-[11px] text-[var(--color-text-primary)]">No files uploaded</p>
+                              <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                                Upload a required document to start review.
+                              </p>
+                            </div>
+                          ) : (
+                            selectedCredit.documents.map((document) => (
+                              <div key={document.id} className="rounded-lg border border-[var(--color-border)] p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[11px] font-medium text-[var(--color-text-primary)]">
+                                      {document.file_name}
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                                      {document.doc_category}
+                                    </p>
+                                  </div>
+                                  <Badge
+                                    className={
+                                      document.status === "approved"
+                                        ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
+                                        : document.status === "owner_approved"
+                                          ? "border border-[var(--color-blue-light)] bg-[var(--color-blue-light)] text-[var(--color-blue)]"
+                                        : document.status === "rejected"
+                                          ? "border border-[var(--color-red-light)] bg-[var(--color-red-light)] text-[var(--color-red)]"
+                                          : "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
+                                    }
+                                  >
+                                    {document.status === "uploaded"
+                                      ? "owner review"
+                                      : document.status === "owner_approved"
+                                        ? "admin review"
+                                        : document.status}
+                                  </Badge>
+                                </div>
+
+                                {canReview ? (
+                                  <div className="mt-3 space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                        Document preview
+                                      </p>
+                                      <Link
+                                        href={`/api/documents/${document.id}`}
+                                        target="_blank"
+                                        className="text-[10px] text-[var(--color-green)] hover:text-[var(--color-green-dim)]"
+                                      >
+                                        Open full screen
+                                      </Link>
+                                    </div>
+                                    <div className="overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                                      <iframe
+                                        src={`/api/documents/${document.id}`}
+                                        title={`Preview ${document.file_name}`}
+                                        className="h-[220px] w-full"
+                                      />
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {canReview ? (
+                                  <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
+                                    Review actions are handled in the governed review queue so this credit screen remains context-only.
+                                    <Link href="/review-queue" className="ml-1 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+                                      Open review queue
+                                    </Link>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </section>
+
+                      {canUpload ? (
+                        <UploadDocumentForm
+                          projectId={projectId}
+                          creditId={selectedCredit.id}
+                          projectCreditId={(selectedCredit as any).project_credit_id ?? selectedCredit.id}
+                          docTypes={selectedCredit.documents_required.map((doc) => doc.type)}
+                          disabled={!env.isConfigured || !selectedCredit.documents_required.length}
+                        />
+                      ) : null}
+
+                      <section>
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-amber)]" />
+                          <p className="dense-label">Remarks</p>
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {selectedCredit.remarks.length === 0 ? (
+                            <div className="rounded-lg border border-[var(--color-border)] px-3 py-3 text-[11px] text-[var(--color-text-tertiary)]">
+                              No remarks yet.
+                            </div>
+                          ) : (
+                            selectedCredit.remarks.map((remark) => (
+                              <div
+                                key={remark.id}
+                                className={`rounded-lg border border-[var(--color-border)] px-3 py-3 text-[11px] ${
+                                  remark.body ? "border-l-2 border-l-[var(--color-amber)]" : ""
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+                                  <span>{remark.role}</span>
+                                  <span>{formatDateTimeIST(remark.created_at)}</span>
+                                </div>
+                                <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{remark.body}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {canReview && (
+                          <form action={addRemarkAction} className="mt-2 space-y-2">
+                            <input type="hidden" name="project_id" value={projectId} />
+                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                            <input type="hidden" name="role" value={workspace.userRole} />
+                            <Textarea name="body" placeholder="Add a validation note or follow-up" />
+                            <Button type="submit" className="h-8 w-full rounded-md">
+                              Add remark
+                            </Button>
+                          </form>
+                        )}
+                      </section>
+                    </div>
+                  )}
+
+                  {activeTab === "management" && (
+                    <div className="space-y-4">
+                      {/* Document checklist & authority matrix */}
+                      <section>
+                        <p className="dense-label">Document Checklist & Authority Matrix</p>
+                        <div className="mt-3 space-y-3">
+                          {selectedCredit.documents_required.map((doc) => {
+                            const matchingDocs = selectedCredit.documents.filter((file) => file.doc_category === doc.type);
+                            const hasApproved = matchingDocs.some((file) => file.status === "approved");
+                            const hasUploaded = matchingDocs.some((file) => file.status === "uploaded");
+                            const hasOwnerApproved = matchingDocs.some((file) => file.status === "owner_approved");
+                            const hasRejected = matchingDocs.some((file) => file.status === "rejected");
+                            const short = docAbbreviations[doc.type] ?? doc.label.slice(0, 4).toUpperCase();
+                            const checklistState = !matchingDocs.length
+                              ? "Not started"
+                              : hasApproved
+                                ? "Approved"
+                                : hasRejected && !hasUploaded && !hasOwnerApproved
+                                  ? "Rejected"
+                                  : "Uploaded";
+                            return (
+                              <div key={doc.type} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[var(--color-surface)] text-[9px] font-medium text-[var(--color-text-secondary)]">
+                                      {short}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[11px] font-medium text-[var(--color-text-primary)]">{doc.label}</p>
+                                      <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">
+                                        {doc.required ? "Required" : "Optional"} / {checklistState}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    {doc.required ? (
+                                      checklistState === "Approved" ? (
+                                        <CheckCircle2 className="h-4 w-4 text-[var(--color-green)]" />
+                                      ) : checklistState === "Rejected" ? (
+                                        <AlertTriangle className="h-4 w-4 text-[var(--color-red)]" />
+                                      ) : (
+                                        <Circle className="h-4 w-4 text-[var(--color-border-strong)]" />
+                                      )
+                                    ) : (
+                                      <span className="mono text-[10px] text-[var(--color-text-tertiary)]">NA</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <p className="text-[9px] uppercase tracking-[0.05em] text-[var(--color-text-tertiary)] mb-1">
+                                    Assign Document Block Authority
+                                  </p>
+                                  <MatrixAssignmentDropdown
+                                    projectId={projectId}
+                                    creditId={selectedCredit.id}
+                                    docType={doc.type}
+                                    currentAssigneeId={doc.assigned_user_id || undefined}
+                                    members={workspace.members}
+                                    isDisabled={!["owner", "project_admin", "super_user", "super_admin", "L1", "L3", "L5"].includes(workspace.userRole)}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+
+                      {/* Task / Responsibility Assignor */}
+                      {canAssignTasks(workspace.userRole) && (
+                        <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Assign Responsibility</p>
+                          <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                            Assign this credit to a Project Manager or Owner.
+                          </p>
+                          <form action={createTaskAction} className="mt-3 space-y-2">
+                            <input type="hidden" name="project_id" value={projectId} />
+                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                            <input type="hidden" name="task_type" value="credit_documentation" />
+                            
+                            <select 
+                              name="assigned_to" 
+                              required
+                              className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                            >
+                              <option value="">Select Assignee</option>
+                              {workspace.members
+                                .filter(m => ["owner", "project_admin", "client", "consultant", "L0", "L1", "L2", "L3", "L5", "super_user", "super_admin"].includes(m.role))
+                                .map(m => (
+                                  <option key={m.user_id} value={m.user_id}>
+                                    {cleanRoleLabel(m.member_email ?? "unknown")} ({cleanRoleLabel(m.role).toUpperCase()})
+                                  </option>
+                                ))}
+                            </select>
+
+                            <div className="flex gap-2">
+                              <select 
+                                name="priority" 
+                                className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                              >
+                                <option value="LOW">Low Priority</option>
+                                <option value="MEDIUM" selected>Medium Priority</option>
+                                <option value="HIGH">High Priority</option>
+                                <option value="CRITICAL">Critical</option>
+                              </select>
+                              <input 
+                                type="date" 
+                                name="due_date"
+                                className="h-8 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                              />
+                            </div>
+
+                            <Button type="submit" className="h-7 w-full rounded-md text-[11px]">
+                              Create Assignment
+                            </Button>
+                          </form>
+                        </section>
+                      )}
+
+                      {/* Active Assignments */}
+                      {workspace.tasks && workspace.tasks.length > 0 && (
+                        <section className="space-y-3">
+                          <p className="dense-label">Active Assignments</p>
+                          {workspace.tasks.map(task => (
+                            <TaskDetailPanel 
+                              key={task.id}
+                              task={{
+                                ...task,
+                                project: { name: workspace.project.name },
+                                credit: workspace.credits.find(c => c.id === task.credit_id)
+                              }}
+                              currentUserId={user?.id || ""}
+                              currentUserRole={workspace.userRole}
+                              projectMembers={workspace.members.map(m => ({
+                                user_id: m.user_id,
+                                full_name: m.member_email || "User",
+                                role: m.role,
+                                email: m.member_email || ""
+                              }))}
                             />
+                          ))}
+                        </section>
+                      )}
+
+                      {/* Document configuration checklist */}
+                      {canConfigureDocRequirements ? (
+                        <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Document Type Requirements</p>
+                          <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                            Set active/inactive document blocks for this credit. Active types are required.
+                          </p>
+                          <form action={updateCreditDocumentRequirementsAction} className="mt-3 space-y-3">
+                            <input type="hidden" name="project_id" value={projectId} />
+                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                            <div className="grid grid-cols-2 gap-2">
+                              {selectedCredit.documents_required.map((doc) => (
+                                <label key={doc.type} className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
+                                  <input
+                                    type="checkbox"
+                                    name="required_doc_types"
+                                    value={doc.type}
+                                    defaultChecked={doc.required}
+                                    className="h-3.5 w-3.5 rounded border-[var(--color-border)]"
+                                  />
+                                  <span className="truncate">{docAbbreviations[doc.type] ?? doc.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
+                              Save Requirements
+                            </Button>
+                          </form>
+                        </section>
+                      ) : null}
+
+                      {/* Validation Rules */}
+                      {canConfigureDocRequirements ? (
+                        <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Validation Rules</p>
+                          <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                            Add per-credit validation rules used during submission gate checks.
+                          </p>
+                          <form action={createValidationRuleAction} className="mt-2 grid gap-2">
+                            <input type="hidden" name="project_id" value={projectId} />
+                            <input type="hidden" name="project_credit_id" value={selectedCredit.id} />
+                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                            <input
+                              name="rule_name"
+                              placeholder="Rule name (e.g. Must mention plant count)"
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                              required
+                            />
+                            <input
+                              name="doc_category"
+                              placeholder="Doc type (optional, e.g. Drawing)"
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                            />
+                            <input
+                              name="required_keywords"
+                              placeholder="Required keywords (comma-separated)"
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                            />
+                            <select
+                              name="severity"
+                              defaultValue="error"
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none"
+                            >
+                              <option value="error">Error (block transition)</option>
+                              <option value="warning">Warning (allow transition)</option>
+                            </select>
+                            <Button type="submit" variant="secondary" className="h-7 w-full rounded-md text-[11px]">
+                              Add validation rule
+                            </Button>
+                          </form>
+                          <div className="mt-2 space-y-1">
+                            {selectedCreditValidationRules.length === 0 ? (
+                              <p className="text-[10px] text-[var(--color-text-tertiary)]">No custom validation rules yet.</p>
+                            ) : (
+                              selectedCreditValidationRules.slice(0, 6).map((rule: any) => (
+                                <div key={rule.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[10px]">
+                                  <p className="font-medium text-[var(--color-text-primary)]">{rule.rule_name}</p>
+                                  <p className="mt-1 text-[var(--color-text-tertiary)]">
+                                    {(rule.doc_category || "Any doc type")} / {rule.severity.toUpperCase()} / keywords: {(rule.required_keywords ?? []).join(", ") || "none"}
+                                  </p>
+                                </div>
+                              ))
+                            )}
                           </div>
-                        </div>
+                        </section>
                       ) : null}
 
-                      {canReview ? (
-                        <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
-                          Review actions are handled in the governed review queue so this credit screen remains context-only.
-                          <Link href="/review-queue" className="ml-1 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
-                            Open review queue
-                          </Link>
-                        </div>
+                      {/* Client guidance controls */}
+                      {canConfigureDocRequirements ? (
+                        <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Client Guidance Controls</p>
+                          <form action={updateCreditGuidanceAction} className="mt-2 grid gap-2">
+                            <input type="hidden" name="project_id" value={projectId} />
+                            <input type="hidden" name="credit_id" value={selectedCredit.id} />
+                            <Textarea
+                              name="what_to_submit"
+                              defaultValue={selectedCredit.what_to_submit ?? selectedCredit.documentation_summary ?? ""}
+                              className="min-h-[78px]"
+                              placeholder="What should the client upload for this credit?"
+                            />
+                            <select
+                              name="effort_level"
+                              defaultValue={selectedCredit.effort_level ?? "moderate"}
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                            >
+                              <option value="easy">Easy</option>
+                              <option value="moderate">Moderate</option>
+                              <option value="hard">Hard</option>
+                            </select>
+                            <Textarea
+                              name="effort_guidance"
+                              defaultValue={selectedCredit.effort_guidance ?? ""}
+                              className="min-h-[62px]"
+                              placeholder="Cost and effort guidance for this credit."
+                            />
+                            <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                              Save guidance
+                            </Button>
+                          </form>
+                        </section>
                       ) : null}
+
+                      {/* Project activity log */}
+                      <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                        <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Project activity log (IST)</p>
+                        <div className="mt-2 space-y-2">
+                          {(workspace.activityLogs ?? []).length ? (
+                            (workspace.activityLogs ?? []).slice(0, 8).map((log) => (
+                              <div key={log.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2">
+                                <p className="text-[11px] text-[var(--color-text-primary)]">{log.summary}</p>
+                                <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                                  {formatDateTimeIST(log.created_at)} / {log.actor_role ?? "system"}
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[11px] text-[var(--color-text-tertiary)]">No project activity recorded yet.</p>
+                          )}
+                        </div>
+                      </section>
                     </div>
-                  ))
-                )}
-              </div>
-            </section>
+                  )}
+                </>
+              );
+            })()}
 
-            {canUpload ? (
-              <UploadDocumentForm
-                projectId={projectId}
-                creditId={selectedCredit.id}
-                projectCreditId={(selectedCredit as any).project_credit_id ?? selectedCredit.id}
-                docTypes={selectedCredit.documents_required.map((doc) => doc.type)}
-                disabled={!env.isConfigured || !selectedCredit.documents_required.length}
-              />
-            ) : null}
-
-            <section>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-amber)]" />
-                <p className="dense-label">Remarks</p>
-              </div>
-              <div className="mt-2 space-y-2">
-                {selectedCredit.remarks.length === 0 ? (
-                  <div className="rounded-lg border border-[var(--color-border)] px-3 py-3 text-[11px] text-[var(--color-text-tertiary)]">
-                    No remarks yet.
-                  </div>
-                ) : (
-                  selectedCredit.remarks.map((remark) => (
-                    <div
-                      key={remark.id}
-                      className={`rounded-lg border border-[var(--color-border)] px-3 py-3 text-[11px] ${
-                        remark.body ? "border-l-2 border-l-[var(--color-amber)]" : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
-                        <span>{remark.role}</span>
-                        <span>{formatDateTimeIST(remark.created_at)}</span>
-                      </div>
-                      <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{remark.body}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-              {canReview && (
-                <form action={addRemarkAction} className="mt-2 space-y-2">
-                  <input type="hidden" name="project_id" value={projectId} />
-                  <input type="hidden" name="credit_id" value={selectedCredit.id} />
-                  <input type="hidden" name="role" value={workspace.userRole} />
-                  <Textarea name="body" placeholder="Add a validation note or follow-up" />
-                  <Button type="submit" className="h-8 w-full rounded-md">
-                    Add remark
-                  </Button>
-                </form>
-              )}
-            </section>
-
+            {/* Bottom Actions - Mark complete / Set blocked (Only for Review Role) */}
             {canReview ? (
               <section className="space-y-2 border-t border-[var(--color-border)] pt-4">
                 <form action={setCreditStateAction}>

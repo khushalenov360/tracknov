@@ -38,7 +38,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
   const canEditPlan = canEditPlanControls(user?.role);
   const canManageTokenControls = canManageTokens(user?.role);
   const activeRole = user?.role ?? projects[0]?.role ?? "consultant";
-  const isL3OrAbove = ["project_admin", "super_admin", "super_user"].includes(activeRole);
+  const isL3OrAbove = ["project_admin", "super_admin", "super_user", "L3", "L5"].includes(activeRole);
   const billingTotals = projects.reduce(
     (acc, project) => {
       acc.docUsed += project.documentCreditsUsed ?? 0;
@@ -329,218 +329,227 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
               </div>
 
               {canManageProject(project.role) ? (
-                <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Project controls</p>
-                      <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                        {canDeleteAnyProject
-                          ? "Super User can update and delete this project."
-                          : "Project Admin access includes project updates for assigned workspaces."}
-                      </p>
+                <details className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] overflow-hidden group">
+                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
+                    <span>Project Settings & Controls</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Setup</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
+                  </summary>
+                  <div className="border-t border-[var(--color-border)] p-3 space-y-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Project controls</p>
+                        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                          {canDeleteAnyProject
+                            ? "Super User can update and delete this project."
+                            : "Project Admin access includes project updates for assigned workspaces."}
+                        </p>
+                      </div>
+                      <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                        {roleLabels[project.role]}
+                      </Badge>
                     </div>
-                    <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
-                      {roleLabels[project.role]}
-                    </Badge>
-                  </div>
 
-                  <form action={updateProjectAction} className="grid gap-3">
-                    <input type="hidden" name="project_id" value={project.id} />
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Input name="name" defaultValue={project.name} required />
-                      <Input name="client" defaultValue={project.client} required />
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_180px]">
-                      <Input name="location" defaultValue={project.location} required />
-                      <select
-                        name="rating_system"
-                        defaultValue={project.certification_type}
-                        required
-                        className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-                      >
-                        {igbcRatingSystemGroups.map((group) => (
-                          <optgroup key={group.label} label={group.label}>
-                            {group.systems.map((system) => (
-                              <option key={system} value={system}>
-                                {system}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                      <select
-                        name="status"
-                        defaultValue={project.status}
-                        className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
-                      >
-                        {Object.entries(projectStatuses).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                        Update project
-                      </Button>
-                    </div>
-                  </form>
-                  {canDeleteAnyProject ? (
-                    <form action={deleteProjectAction} className="mt-2">
+                    <form action={updateProjectAction} className="grid gap-3">
                       <input type="hidden" name="project_id" value={project.id} />
-                      <Button type="submit" variant="danger" className="rounded-md px-3 text-[12px]">
-                        Delete project
-                      </Button>
-                    </form>
-                  ) : null}
-                  {["project_admin", "super_user"].includes(project.role) ? (
-                    <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-                      <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Manual upload & instantiation</p>
-                      <p className="text-[11px] text-[var(--color-text-secondary)]">
-                        Upload IGBC project manual (PDF), then import tracker sheet (XLSX) to seed credit-level mapping.
-                      </p>
-                      <form action={uploadProjectGuidebookAction} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-                        <input type="hidden" name="project_id" value={project.id} />
-                        <input
-                          name="guidebook"
-                          type="file"
-                          accept=".pdf,application/pdf"
-                          required
-                          className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
-                        />
-                        <Button type="submit" variant="secondary" className="h-[34px] rounded-md px-3 text-[12px]">
-                          Upload Project Manual
-                        </Button>
-                      </form>
-                      <form action={importProjectTrackerBaselineAction} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-                        <input type="hidden" name="project_id" value={project.id} />
-                        <input
-                          name="tracker_file"
-                          type="file"
-                          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                          required
-                          className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
-                        />
-                        <Button type="submit" variant="secondary" className="h-[34px] rounded-md px-3 text-[12px]">
-                          Import Tracker Baseline
-                        </Button>
-                      </form>
-                    </section>
-                  ) : null}
-                  {canEditPlan ? (
-                    <form action={updateProjectPlanSettingsAction} className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-                      <input type="hidden" name="project_id" value={project.id} />
-                      <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
-                      <div className="grid gap-2 md:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input name="name" defaultValue={project.name} required />
+                        <Input name="client" defaultValue={project.client} required />
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_180px]">
+                        <Input name="location" defaultValue={project.location} required />
                         <select
-                          name="plan_code"
-                          defaultValue={project.planCode ?? "starter"}
+                          name="rating_system"
+                          defaultValue={project.certification_type}
+                          required
                           className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
                         >
-                          {plans.map((plan) => (
-                            <option key={plan.code} value={plan.code}>
-                              {plan.name}
+                          {igbcRatingSystemGroups.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.systems.map((system) => (
+                                <option key={system} value={system}>
+                                  {system}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                        <select
+                          name="status"
+                          defaultValue={project.status}
+                          className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                        >
+                          {Object.entries(projectStatuses).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
                             </option>
                           ))}
                         </select>
-                        <Input
-                          name="document_credit_limit"
-                          type="number"
-                          min={0}
-                          defaultValue={project.documentCreditLimit ?? 0}
-                          placeholder="Document credits"
-                        />
-                        <Input
-                          name="consultant_credit_limit"
-                          type="number"
-                          min={0}
-                          defaultValue={project.consultantCreditLimit ?? 0}
-                          placeholder="Consultant credits"
-                        />
-                        <Input
-                          name="topup_document_credits"
-                          type="number"
-                          min={0}
-                          defaultValue={Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}
-                          placeholder="Doc top-up"
-                        />
-                        <Input
-                          name="topup_consultant_credits"
-                          type="number"
-                          min={0}
-                          defaultValue={Math.max((project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0) - (project.consultantCreditLimit ?? 0), 0)}
-                          placeholder="Consultant top-up"
-                        />
                       </div>
-                      <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                        Save plan
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                          Update project
+                        </Button>
+                      </div>
                     </form>
-                  ) : (
-                    <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-                      <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
-                      <p className="text-[11px] text-[var(--color-text-secondary)]">View-only for your role.</p>
-                      <div className="grid gap-2 md:grid-cols-2 text-[11px] text-[var(--color-text-secondary)]">
-                        <p>Plan: <span className="mono">{project.planName ?? "Starter"}</span></p>
-                        <p>Doc limit: <span className="mono">{project.documentCreditLimit ?? 0}</span></p>
-                        <p>Consultant limit: <span className="mono">{project.consultantCreditLimit ?? 0}</span></p>
-                        <p>Doc top-up: <span className="mono">{Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}</span></p>
-                      </div>
-                    </section>
-                  )}
-                  {canManageTokenControls ? (
-                    <>
-                      <form action={logConsultantSessionAction} className="mt-2 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                    {canDeleteAnyProject ? (
+                      <form action={deleteProjectAction} className="mt-2">
                         <input type="hidden" name="project_id" value={project.id} />
-                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Consultant session logger</p>
-                        <div className="grid gap-2 md:grid-cols-[170px_120px_minmax(0,1fr)]">
+                        <Button type="submit" variant="danger" className="rounded-md px-3 text-[12px]">
+                          Delete project
+                        </Button>
+                      </form>
+                    ) : null}
+                    {["project_admin", "super_user", "super_admin", "L3", "L5"].includes(project.role) ? (
+                      <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Manual upload & instantiation</p>
+                        <p className="text-[11px] text-[var(--color-text-secondary)]">
+                          Upload IGBC project manual (PDF), then import tracker sheet (XLSX) to seed credit-level mapping.
+                        </p>
+                        <form action={uploadProjectGuidebookAction} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                          <input type="hidden" name="project_id" value={project.id} />
+                          <input
+                            name="guidebook"
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            required
+                            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                          />
+                          <Button type="submit" variant="secondary" className="h-[34px] rounded-md px-3 text-[12px]">
+                            Upload Project Manual
+                          </Button>
+                        </form>
+                        <form action={importProjectTrackerBaselineAction} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                          <input type="hidden" name="project_id" value={project.id} />
+                          <input
+                            name="tracker_file"
+                            type="file"
+                            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                            required
+                            className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+                          />
+                          <Button type="submit" variant="secondary" className="h-[34px] rounded-md px-3 text-[12px]">
+                            Import Tracker Baseline
+                          </Button>
+                        </form>
+                      </section>
+                    ) : null}
+                    {canEditPlan ? (
+                      <form action={updateProjectPlanSettingsAction} className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                        <input type="hidden" name="project_id" value={project.id} />
+                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
+                        <div className="grid gap-2 md:grid-cols-2">
                           <select
-                            name="source"
-                            defaultValue="manual"
+                            name="plan_code"
+                            defaultValue={project.planCode ?? "starter"}
                             className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
                           >
-                            <option value="manual">Manual</option>
-                            <option value="review_call">Review call</option>
-                            <option value="site_visit">Site visit</option>
-                            <option value="copilot_help">Copilot help</option>
+                            {plans.map((plan) => (
+                              <option key={plan.code} value={plan.code}>
+                                {plan.name}
+                              </option>
+                            ))}
                           </select>
-                          <Input name="credits_burned" type="number" min={1} defaultValue={1} />
-                          <Input name="notes" placeholder="Session context (optional)" />
+                          <Input
+                            name="document_credit_limit"
+                            type="number"
+                            min={0}
+                            defaultValue={project.documentCreditLimit ?? 0}
+                            placeholder="Document credits"
+                          />
+                          <Input
+                            name="consultant_credit_limit"
+                            type="number"
+                            min={0}
+                            defaultValue={project.consultantCreditLimit ?? 0}
+                            placeholder="Consultant credits"
+                          />
+                          <Input
+                            name="topup_document_credits"
+                            type="number"
+                            min={0}
+                            defaultValue={Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}
+                            placeholder="Doc top-up"
+                          />
+                          <Input
+                            name="topup_consultant_credits"
+                            type="number"
+                            min={0}
+                            defaultValue={Math.max((project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0) - (project.consultantCreditLimit ?? 0), 0)}
+                            placeholder="Consultant top-up"
+                          />
                         </div>
                         <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                          Log session
+                          Save plan
                         </Button>
                       </form>
-                      <form action={createProjectTopupInvoiceAction} className="mt-2 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-                        <input type="hidden" name="project_id" value={project.id} />
-                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Billing & invoice</p>
-                        <div className="grid gap-2 md:grid-cols-3">
-                          <Input name="document_credits" type="number" min={0} defaultValue={0} placeholder="Doc credits" />
-                          <Input name="consultant_credits" type="number" min={0} defaultValue={0} placeholder="Consultant credits" />
-                          <Input name="amount_inr" type="number" min={0} step="0.01" defaultValue={0} placeholder="Amount (INR)" />
+                    ) : (
+                      <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                        <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
+                        <p className="text-[11px] text-[var(--color-text-secondary)]">View-only for your role.</p>
+                        <div className="grid gap-2 md:grid-cols-2 text-[11px] text-[var(--color-text-secondary)]">
+                          <p>Plan: <span className="mono">{project.planName ?? "Starter"}</span></p>
+                          <p>Doc limit: <span className="mono">{project.documentCreditLimit ?? 0}</span></p>
+                          <p>Consultant limit: <span className="mono">{project.consultantCreditLimit ?? 0}</span></p>
+                          <p>Doc top-up: <span className="mono">{Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}</span></p>
                         </div>
-                        <Input name="notes" placeholder="Billing note / PO reference" />
-                        <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
-                          Create top-up invoice
-                        </Button>
-                      </form>
-                    </>
-                  ) : null}
-                </section>
-              ) : null}
-              {!canManageProject(project.role) ? (
-                <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                  <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
-                  <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">View-only for your role.</p>
-                  <div className="mt-2 grid gap-2 md:grid-cols-2 text-[11px] text-[var(--color-text-secondary)]">
+                      </section>
+                    )}
+                    {canManageTokenControls ? (
+                      <>
+                        <form action={logConsultantSessionAction} className="mt-2 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                          <input type="hidden" name="project_id" value={project.id} />
+                          <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Consultant session logger</p>
+                          <div className="grid gap-2 md:grid-cols-[170px_120px_minmax(0,1fr)]">
+                            <select
+                              name="source"
+                              defaultValue="manual"
+                              className="h-[34px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)]"
+                            >
+                              <option value="manual">Manual</option>
+                              <option value="review_call">Review call</option>
+                              <option value="site_visit">Site visit</option>
+                              <option value="copilot_help">Copilot help</option>
+                            </select>
+                            <Input name="credits_burned" type="number" min={1} defaultValue={1} />
+                            <Input name="notes" placeholder="Session context (optional)" />
+                          </div>
+                          <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                            Log session
+                          </Button>
+                        </form>
+                        <form action={createProjectTopupInvoiceAction} className="mt-2 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                          <input type="hidden" name="project_id" value={project.id} />
+                          <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Billing & invoice</p>
+                          <div className="grid gap-2 md:grid-cols-3">
+                            <Input name="document_credits" type="number" min={0} defaultValue={0} placeholder="Doc credits" />
+                            <Input name="consultant_credits" type="number" min={0} defaultValue={0} placeholder="Consultant credits" />
+                            <Input name="amount_inr" type="number" min={0} step="0.01" defaultValue={0} placeholder="Amount (INR)" />
+                          </div>
+                          <Input name="notes" placeholder="Billing note / PO reference" />
+                          <Button type="submit" variant="secondary" className="rounded-md px-3 text-[12px]">
+                            Create top-up invoice
+                          </Button>
+                        </form>
+                      </>
+                    ) : null}
+                  </div>
+                </details>
+              ) : (
+                <details className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] overflow-hidden group">
+                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
+                    <span>Project Plan Details</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Details</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
+                  </summary>
+                  <div className="border-t border-[var(--color-border)] p-3 space-y-2 text-[11px] text-[var(--color-text-secondary)]">
                     <p>Plan: <span className="mono">{project.planName ?? "Starter"}</span></p>
                     <p>Doc limit: <span className="mono">{project.documentCreditLimit ?? 0}</span></p>
                     <p>Consultant limit: <span className="mono">{project.consultantCreditLimit ?? 0}</span></p>
                     <p>Doc top-up: <span className="mono">{Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}</span></p>
                   </div>
-                </section>
-              ) : null}
+                </details>
+              )}
             </div>
           </article>
         )) : (

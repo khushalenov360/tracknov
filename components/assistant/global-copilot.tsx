@@ -29,6 +29,7 @@ type GlobalCopilotProps = {
   role?: MemberRole;
   title: string;
   description: string;
+  persistent?: boolean;
 };
 
 function mapSurface(pathname: string): AssistantSurface {
@@ -73,7 +74,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
   }
 }
 
-export function GlobalCopilot({ enabled, role, title, description }: GlobalCopilotProps) {
+export function GlobalCopilot({ enabled, role, title, description, persistent }: GlobalCopilotProps) {
   const pathname = usePathname();
   const router = useRouter();
   const surface = mapSurface(pathname);
@@ -107,6 +108,7 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
   const [collapsed, setCollapsed] = useState(false);
   const [userName, setUserName] = useState<string>("");
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -223,14 +225,15 @@ export function GlobalCopilot({ enabled, role, title, description }: GlobalCopil
     } else {
       setMessages(history);
     }
+    setHistoryLoaded(true);
   }, [personalizedGreeting, storageKey]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!historyLoaded || typeof window === "undefined") {
       return;
     }
     window.localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, storageKey]);
+  }, [messages, storageKey, historyLoaded]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -732,7 +735,138 @@ Important:
 
   // Enabled for all users as requested.
 
-  if (collapsed) {
+  if (persistent) {
+    return (
+      <div className="flex flex-col h-full w-full bg-[var(--color-surface)]">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5 shrink-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-green-light)] text-[var(--color-green)]">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)] inline-flex items-center gap-1.5">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-red-500"}`}
+                  aria-label={enabled ? "AI online" : "AI offline"}
+                  title={enabled ? "AI online" : "AI offline"}
+                />
+                Tracknov Copilot
+              </p>
+              <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={clearHistory}
+              className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+              title="New Chat"
+              aria-label="New Chat"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3 min-h-0">
+          {messages.map((message, index) => (
+            <div
+              key={`${message.role}-${index}`}
+              className={`max-w-[94%] rounded-xl border px-3 py-2 text-[12px] leading-relaxed ${
+                message.role === "user"
+                  ? "ml-auto border-[var(--color-blue-light)] bg-[var(--color-blue-light)] text-[var(--color-blue)]"
+                  : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-primary)]"
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            </div>
+          ))}
+          {loading ? (
+            <p className="text-[11px] text-[var(--color-text-tertiary)] italic">Copilot is thinking...</p>
+          ) : null}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3 bg-[var(--color-surface)] shrink-0">
+          <form onSubmit={onSubmit} className="space-y-2">
+            <div className="space-y-2 relative">
+              <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
+
+              {attachment ? (
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+                  Attached: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+                </div>
+              ) : null}
+
+              <div className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowAttachMenu((current) => !current);
+                  }}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]"
+                  aria-label="Open attachment menu"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                {showAttachMenu ? (
+                  <div
+                    className="absolute bottom-12 left-0 z-10 min-w-[220px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        setPickedIntent("analysis");
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      <Bot className="h-3.5 w-3.5 text-[var(--color-green)]" />
+                      Add for Analysis (Chat)
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[12px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] flex items-center gap-2"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        setPickedIntent("workflow");
+                        uploadInputRef.current?.click();
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 text-[var(--color-blue)]" />
+                      Add for Workflow Upload
+                    </button>
+                  </div>
+                ) : null}
+
+                <Textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      void sendPrompt(input);
+                    }
+                  }}
+                  placeholder="Ask Copilot..."
+                  className="min-h-[80px] resize-none text-[12px]"
+                />
+                <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (collapsed && !persistent) {
     return (
       <button
         type="button"

@@ -98,7 +98,7 @@ export function canUser(
 
 // LEGACY HELPERS (for backward compatibility during migration)
 export function canCreateProjects(role?: MemberRole | null) {
-  return getRoleLevel(role) >= 3;
+  return role ? ["super_user", "super_admin", "L5"].includes(role) : false;
 }
 
 export function canManageProject(role?: MemberRole | null) {
@@ -110,7 +110,7 @@ export function canDeleteProjects(role?: MemberRole | null) {
 }
 
 export function canReviewProjectDocuments(role?: MemberRole | null) {
-  return getRoleLevel(role) >= 1;
+  return role ? ["super_user", "super_admin", "project_admin", "owner", "L5", "L3", "L1"].includes(role) : false;
 }
 
 export function canEditDocumentStatusAtAnyStage(role?: MemberRole | null) {
@@ -118,7 +118,7 @@ export function canEditDocumentStatusAtAnyStage(role?: MemberRole | null) {
 }
 
 export function canUploadProjectDocuments(role?: MemberRole | null) {
-  return getRoleLevel(role) >= 0;
+  return role ? ["super_user", "super_admin", "project_admin", "owner", "consultant", "architect", "mep", "contractor", "L5", "L3", "L1", "L0"].includes(role) : false;
 }
 
 export function isL0Role(role?: MemberRole | null) {
@@ -142,7 +142,7 @@ export function isL5Role(role?: MemberRole | null) {
 }
 
 export function canManageTeamFromRole(role?: MemberRole | null) {
-  return getRoleLevel(role) >= 1;
+  return role ? ["super_user", "super_admin", "project_admin", "owner", "L5", "L3", "L1"].includes(role) : false;
 }
 
 export function canAssignTasks(role?: MemberRole | null) {
@@ -170,5 +170,5 @@ export function canExportProjectArtifacts(role?: MemberRole | null) {
 }
 
 export function canEditOwnDocumentBeforeFinalApproval(role?: MemberRole | null) {
-  return getRoleLevel(role) >= 0;
+  return role ? ["owner", "consultant", "architect", "mep", "contractor", "L1", "L0"].includes(role) : false;
 }

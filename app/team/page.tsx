@@ -44,10 +44,10 @@ export default async function TeamPage() {
     getSuperUserCommandCenter(),
   ]);
   const activeRole = currentUser?.role ?? projects[0]?.role ?? "consultant";
-  const canCreateSystemProfiles = activeRole === "super_user";
-  const canCreatePlatformProfiles = activeRole === "super_admin";
-  const canCreateProjectMembers = activeRole === "project_admin";
-  const canCreateOwnerProfiles = activeRole === "owner";
+  const canCreateSystemProfiles = ["super_user", "L5"].includes(activeRole);
+  const canCreatePlatformProfiles = ["super_admin"].includes(activeRole);
+  const canCreateProjectMembers = ["project_admin", "L3"].includes(activeRole);
+  const canCreateOwnerProfiles = ["owner", "L1"].includes(activeRole);
   const allowedRoles = canCreateSystemProfiles
     ? (["super_admin", "project_admin", "client", "owner", "consultant", "architect", "mep", "contractor"] as const)
     : canCreatePlatformProfiles
