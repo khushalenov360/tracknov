@@ -1,6 +1,6 @@
 # Tracknov Live Extraction Accuracy Benchmark Report
 
-Generated on: 2026-05-17T10:17:43.094Z
+Generated on: 2026-05-18T05:40:57.017Z
 Overall Status: **PASSED** ✓
 
 ## Extraction Accuracy Performance Metrics
