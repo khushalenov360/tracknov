@@ -64,59 +64,96 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
       )}
 
       {isL3OrAbove ? (
-        <section className="surface-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <section className="bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-6 rounded-3xl space-y-4 mb-6 relative overflow-hidden group">
+          {/* Subtle ambient light glow behind card */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-b from-indigo-500/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+          
+          <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
             <div>
-              <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Project Admin command view</h2>
-              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
-                Cross-project validation queue, readiness, and priority signals.
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
+                <h2 className="text-sm font-black uppercase tracking-wider bg-gradient-to-r from-indigo-200 to-slate-200 bg-clip-text text-transparent">
+                  Project Admin Cockpit
+                </h2>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Cross-project validation queue, readiness tracking, and priority signals.
               </p>
             </div>
-            <Button asChild className="h-[32px] rounded-md px-3 text-[12px]">
+            <Button asChild className="h-[34px] rounded-xl px-4 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/10 transition-all hover:scale-[1.02]">
               <Link href="/review-queue">Open validation queue</Link>
             </Button>
           </div>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--color-border)]">
-            <table className="min-w-full border-collapse text-[12px]">
-              <thead className="bg-[var(--color-surface-2)]">
-                <tr className="border-b border-[var(--color-border)]">
-                  {["Project", "Project Code", "Progress", "Pending Validation", "Rejections", "Submission Readiness"].map((heading) => (
-                    <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-850 bg-slate-950/40 backdrop-blur-md relative z-10">
+            <table className="min-w-full border-collapse text-xs text-slate-300">
+              <thead>
+                <tr className="border-b border-slate-850/80 bg-slate-950/60">
+                  {["Project", "Project Code", "Progress", "Pending", "Rejections", "Readiness"].map((heading) => (
+                    <th key={heading} className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-wider text-slate-400">
                       {heading}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-850/60">
                 {projects.map((project) => {
                   const pendingValidation = Number(project.pendingReviewsCount ?? 0);
                   const rejections = Number(project.rejectedCount ?? 0);
                   const ready = pendingValidation === 0 && rejections === 0 && project.overallCompletion >= 95;
                   return (
-                    <tr key={project.id} className="border-b border-[var(--color-border)]">
-                      <td className="px-3 py-2">
-                        <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
-                          {project.name}
+                    <tr key={project.id} className="hover:bg-slate-900/30 transition-all group/row">
+                      <td className="px-4 py-3 font-semibold">
+                        <Link href={`/projects/${project.id}`} className="text-slate-200 hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                          <span>{project.name}</span>
                         </Link>
                       </td>
-                      <td className="px-3 py-2">
-                        <code className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[11px] font-mono text-[var(--color-text-secondary)]">
+                      <td className="px-4 py-3">
+                        <code className="rounded-lg bg-slate-950/80 border border-slate-850/80 px-2 py-0.5 text-[10px] font-mono text-slate-400">
                           {project.projectCode}
                         </code>
                       </td>
-                      <td className="px-3 py-2">{pct(project.overallCompletion)}</td>
-                      <td className="px-3 py-2">{pendingValidation}</td>
-                      <td className="px-3 py-2">{rejections}</td>
-                      <td className="px-3 py-2">
-                        <Badge
-                          className={
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="relative w-16 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
+                            <div 
+                              className={`h-full rounded-full bg-gradient-to-r ${ready ? 'from-emerald-500 to-teal-400' : 'from-indigo-500 to-indigo-400'}`}
+                              style={{ width: `${project.overallCompletion}%` }}
+                            />
+                          </div>
+                          <span className="font-mono font-bold text-slate-400 text-[10px]">
+                            {pct(project.overallCompletion)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold">
+                        {pendingValidation > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px]">
+                            {pendingValidation}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold">
+                        {rejections > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-[10px]">
+                            {rejections}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span 
+                          className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${
                             ready
-                              ? "border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[var(--color-green)]"
-                              : "border border-[var(--color-amber)] bg-[var(--color-amber-soft)] text-[var(--color-amber)]"
-                          }
+                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                              : "border-indigo-500/20 bg-indigo-500/10 text-indigo-400"
+                          }`}
                         >
-                          {ready ? "Ready for submission" : "Validation pending"}
-                        </Badge>
+                          {ready ? "Ready" : "Pending Action"}
+                        </span>
                       </td>
                     </tr>
                   );
