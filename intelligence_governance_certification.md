@@ -1,6 +1,6 @@
 # Tracknov Intelligence Governance Certification
 
-Generated on: 2026-05-17T10:08:15.384Z
+Generated on: 2026-05-18T06:02:35.853Z
 
 ## Certification Attestations
 *   **Phase 1: Canonical Knowledge Governance** — AUTHORIZED ✓
