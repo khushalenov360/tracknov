@@ -425,9 +425,9 @@ export default function CommandCenter({
                   </div>
 
                   <div className="space-y-2">
-                    {taskList.map((task) => (
+                    {taskList.map((task, taskIdx) => (
                       <article
-                        key={task.id}
+                        key={`${task.id}-${taskIdx}`}
                         onClick={() => setSelectedTask(task)}
                         className={`p-3 rounded-xl border transition-all cursor-pointer text-left relative overflow-hidden group ${
                           selectedTask?.id === task.id
