@@ -43,5 +43,6 @@ export async function buildPromptContext(projectId: string, actorId: string) {
 
 export function sanitizePrompt(input: string): string {
   // Prevent prompt injection and remove sensitive patterns
-  return input.replace(/<script.*?>.*?<\/script>/gi, "").trim();
+  // Match <script>...</script> including tolerant malformed closing tags like </script > or </script foo="bar">
+  return input.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "").trim();
 }
