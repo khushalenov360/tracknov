@@ -156,8 +156,31 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
 }
 
 export function buildFallbackAssistantReply(context: AssistantContext, prompt: string) {
-  const normalized = prompt.toLowerCase();
-  const unknown = "I cannot confirm this from your project data.";
+  const normalized = prompt.toLowerCase().trim();
+
+  // Handle greetings naturally
+  const isGreeting =
+    normalized === "hi" ||
+    normalized === "hello" ||
+    normalized === "hey" ||
+    normalized === "hi there" ||
+    normalized.startsWith("hi ") ||
+    normalized.startsWith("hello ");
+  if (isGreeting) {
+    return [
+      "Hi! I'm Harita, your certification workflow assistant.",
+      "",
+      "Here's what I can help you with right now:",
+      `- ${context.nextSteps[0] ?? "Review your action queue and identify open items."}`,
+      "- Check blockers and stalled credits across projects",
+      "- Answer questions about document requirements and IGBC credits",
+      "- Guide you through upload, review, and clarification workflows",
+      "",
+      "What would you like to work on?",
+    ].join("\n");
+  }
+
+  const unknown = "I don't have enough context to answer that precisely.";
   const lead = context.nextSteps[0] ?? "Review the current workspace and identify the open items first.";
   const creditMatch = prompt.match(/\b([A-Z]{2,3}\s?[A-Z]?\s?\d{1,2})\b/i);
   const creditCode = creditMatch?.[1]?.replace(/\s+/g, " ").toUpperCase();
@@ -223,5 +246,13 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
     ].join("\n");
   }
 
-  return [unknown, "", `Next best step: ${lead}`].join("\n");
+  return [
+    unknown,
+    "",
+    "Try asking me:",
+    "- \"What should I do next?\" — I'll prioritise your action queue",
+    "- \"Show blockers\" — I'll surface stalled credits",
+    "- \"Is [document] valid for [credit code]?\" — I'll check applicability",
+    "- Attach a file and say \"Analyze this\" — I'll identify the credit match",
+  ].join("\n");
 }

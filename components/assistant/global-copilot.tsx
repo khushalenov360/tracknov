@@ -903,7 +903,7 @@ Important:
                       void sendPrompt(input);
                     }
                   }}
-                  placeholder="Ask Copilot..."
+                  placeholder="Ask Harita..."
                   className="min-h-[80px] resize-none text-[12px]"
                 />
                 <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
@@ -1058,7 +1058,7 @@ Important:
                       void sendPrompt(input);
                     }
                   }}
-                  placeholder="Ask Copilot..."
+                  placeholder="Ask Harita..."
                   className="min-h-[84px] resize-none"
                 />
                 <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
