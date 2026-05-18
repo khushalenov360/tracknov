@@ -3,10 +3,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Bot, 
-  Search, 
+  Bot,
   Sparkles, 
-  Filter, 
   CheckCircle2, 
   AlertCircle, 
   ArrowRight, 
@@ -26,7 +24,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 
 // Constants & Hard Render Limits
@@ -107,6 +104,17 @@ export default function CommandCenter({
   const [clarificationText, setClarificationText] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [reviewDecision, setReviewDecision] = useState<"approve" | "clarification" | null>(null);
+
+  // Listen for Copilot operational skill commands
+  useEffect(() => {
+    function handleCopilotCommand(event: Event) {
+      const { command } = (event as CustomEvent<{ command: string }>).detail;
+      if (command) executeCommand(command);
+    }
+    window.addEventListener("copilot:operational-command", handleCopilotCommand);
+    return () => window.removeEventListener("copilot:operational-command", handleCopilotCommand);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 2. Synthesize & Normalize Tasks (AI-Compressed Operational Summaries)
   const normalizedTasks = useMemo<ActionTask[]>(() => {
@@ -349,66 +357,6 @@ export default function CommandCenter({
 
   return (
     <div className="space-y-6">
-      
-      {/* 🚀 AICommandBar: Primary Interaction Layer */}
-      <section className="bg-slate-900 border border-slate-850 p-4 rounded-2xl relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 pointer-events-none" />
-        
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-            <Bot className="h-4.5 w-4.5 animate-pulse" />
-          </div>
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && executeCommand(searchQuery)}
-                placeholder="Ask operational AI: 'Show blockers for CCIL', 'Generate readiness summary', or filter tasks..."
-                className="w-full pl-10 pr-24 h-10 border-slate-800 bg-slate-950/80 text-[12px] text-slate-200 placeholder:text-slate-500 rounded-xl focus-visible:ring-1 focus-visible:ring-indigo-500/30"
-              />
-              <button
-                onClick={() => executeCommand(searchQuery)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 text-[10px] font-black uppercase text-indigo-400 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 rounded-md border border-indigo-500/20 transition-all"
-              >
-                Execute
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic status readout */}
-        {isProcessingAi && (
-          <div className="mt-2.5 flex items-center gap-2 text-[10px] text-indigo-400 font-mono pl-12">
-            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-ping" />
-            <span>{aiStatusMessage}</span>
-          </div>
-        )}
-
-        {/* Quick Intel Commands */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-12 text-[10px] text-slate-500">
-          <span className="font-semibold uppercase tracking-wider text-[9px]">Suggest:</span>
-          <button 
-            onClick={() => { setSearchQuery("Show blockers"); executeCommand("Show blockers"); }}
-            className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] text-slate-400 transition-all hover:text-slate-200"
-          >
-            ⚠️ High Risks & Blockers
-          </button>
-          <button 
-            onClick={() => { setSearchQuery("Generate readiness summary"); executeCommand("Generate readiness summary"); }}
-            className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] text-slate-400 transition-all hover:text-slate-200"
-          >
-            📊 Submission Readiness Preflight
-          </button>
-          <button 
-            onClick={() => setSearchQuery("")}
-            className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] text-slate-400 transition-all hover:text-slate-200"
-          >
-            🔄 Reset Filters
-          </button>
-        </div>
-      </section>
 
       {/* 2-COLUMN SPLIT COMMAND CONSOLE */}
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">

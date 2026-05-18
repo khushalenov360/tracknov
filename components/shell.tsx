@@ -132,7 +132,7 @@ export function Shell({
         </Link>
         <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Bot className="h-4.5 w-4.5 text-[var(--color-green)]" />
-          <span className="text-[9px] font-medium">Copilot</span>
+          <span className="text-[9px] font-medium">Harita</span>
         </Link>
         <Link href="/projects" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <ListChecks className="h-4.5 w-4.5" />

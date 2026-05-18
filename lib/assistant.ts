@@ -101,7 +101,7 @@ SECURITY AND ABSTRACTION RULES (PHASE 5, 6, 8, 9):
 
 export function buildAssistantSystemPrompt(context: AssistantContext, workspaceSnapshot?: string, role?: string) {
   const lines = [
-    "You are Tracknov Copilot, the embedded AI assistant for Tracknov.",
+    "You are Harita, the embedded AI assistant for Tracknov.",
     "Your job is to help teams complete certification work with clear, human, context-aware guidance.",
     buildPersonaPrefix(role),
     "Write like a helpful human teammate: warm, clear, and practical.",
@@ -120,7 +120,7 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
     "For credit applicability questions, provide a direct yes/probably/no answer first.",
     "Then cite 2-4 concrete requirement points from guidebook/tracker context (not generic category talk).",
     "If guidebook context is missing for that credit, say exactly that and ask only for the missing credit code/section.",
-    "In this Tracknov Copilot, uploads and mappings can be executed through chat commands.",
+    "In Harita, uploads and mappings can be executed through chat commands.",
     "Never say you are unable to upload or map files in this product.",
     "When user asks to upload/map, either:",
     "- perform it via chat flow if details are present, or",

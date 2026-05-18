@@ -24,6 +24,34 @@ type FormFieldMeta = {
   placeholder?: string;
 };
 
+// Operational AI skills surfaced as quick-fire chips in the Copilot
+const OPERATIONAL_SKILLS = [
+  {
+    id: "blockers",
+    label: "⚠️ Show Blockers",
+    command: "Show blockers",
+    prompt: "Show me all high-risk blockers and stalled items across all active projects. Summarise what needs immediate attention and who is responsible.",
+  },
+  {
+    id: "readiness",
+    label: "📊 Readiness Preflight",
+    command: "Generate readiness summary",
+    prompt: "Generate a submission readiness preflight report. Include overall confidence, hotspots, and the top 3 actions needed to unblock submission.",
+  },
+  {
+    id: "queue",
+    label: "📥 My Action Queue",
+    command: "Show my action queue",
+    prompt: "What are the most urgent items in my action queue right now? List them by priority and tell me which to tackle first.",
+  },
+  {
+    id: "reset",
+    label: "🔄 Reset Filters",
+    command: "reset",
+    prompt: "", // special: no AI message, just resets queue
+  },
+] as const;
+
 type GlobalCopilotProps = {
   enabled: boolean;
   role?: MemberRole;
@@ -78,8 +106,8 @@ export function GlobalCopilot({ enabled, role, title, description, persistent }:
   const pathname = usePathname();
   const router = useRouter();
   const surface = mapSurface(pathname);
-  const storageKey = "tracknov-global-copilot:history";
-  const collapseKey = "tracknov-global-copilot-collapsed";
+  const storageKey = "tracknov-harita:history";
+  const collapseKey = "tracknov-harita-collapsed";
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -341,7 +369,7 @@ export function GlobalCopilot({ enabled, role, title, description, persistent }:
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error ?? "Copilot request failed.");
+        throw new Error(payload.error ?? "Harita request failed.");
       }
 
       let assistantText = "";
@@ -378,7 +406,7 @@ export function GlobalCopilot({ enabled, role, title, description, persistent }:
         router.push(navigateTo);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Copilot request failed.");
+      setError(requestError instanceof Error ? requestError.message : "Harita request failed.");
       setMessages((current) => current.slice(0, -1));
     } finally {
       setLoading(false);
@@ -531,12 +559,12 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         }),
       });
       if (!response.ok) {
-        throw new Error("Copilot could not generate form suggestions.");
+        throw new Error("Harita could not generate form suggestions.");
       }
       const raw = await response.text();
       const parsed = parseJsonObject(raw) ?? parseKeyValueSuggestions(raw, fields);
       if (!parsed || Object.keys(parsed).length === 0) {
-        throw new Error("Copilot could not map suggestions to visible fields. Please provide one-line mapping like: field_name: value.");
+        throw new Error("Harita could not map suggestions to visible fields. Please provide one-line mapping like: field_name: value.");
       }
       const count = applyFormValues(parsed);
       if (count === 0) {
@@ -750,9 +778,9 @@ Important:
                   aria-label={enabled ? "AI online" : "AI offline"}
                   title={enabled ? "AI online" : "AI offline"}
                 />
-                Tracknov Copilot
+              Harita
               </p>
-              <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+              <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Harita ready • ${selectedTone}` : "Fallback guidance mode"}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -766,6 +794,30 @@ Important:
               <Plus className="h-4 w-4" />
             </button>
           </div>
+        </div>
+
+        {/* Operational AI Skill Chips */}
+        <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] shrink-0">
+          <span className="w-full text-[9px] font-black uppercase tracking-widest text-[var(--color-text-tertiary)] mb-0.5">Operational Skills</span>
+          {OPERATIONAL_SKILLS.map((skill) => (
+            <button
+              key={skill.id}
+              type="button"
+              onClick={() => {
+                // Dispatch event to CommandCenter queue filter
+                window.dispatchEvent(
+                  new CustomEvent("copilot:operational-command", { detail: { command: skill.command } })
+                );
+                // If there's a Copilot prompt, inject it as a user message
+                if (skill.prompt) {
+                  void sendPrompt(skill.prompt);
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-all"
+            >
+              {skill.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3 min-h-0">
@@ -782,7 +834,7 @@ Important:
             </div>
           ))}
           {loading ? (
-            <p className="text-[11px] text-[var(--color-text-tertiary)] italic">Copilot is thinking...</p>
+            <p className="text-[11px] text-[var(--color-text-tertiary)] italic">Harita is thinking...</p>
           ) : null}
           <div ref={bottomRef} />
         </div>
@@ -868,15 +920,17 @@ Important:
 
   if (collapsed && !persistent) {
     return (
-      <button
-        type="button"
-        onClick={() => setCollapsed(false)}
-        className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] shadow-[0_12px_30px_rgba(0,0,0,0.16)] hover:bg-[var(--color-surface-2)]"
-      >
-        <Bot className="h-4 w-4 text-[var(--color-green)]" />
-        Copilot
-        <ChevronLeft className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-      </button>
+        <button
+              type="button"
+              onClick={() =>
+                setCollapsed(false)
+              }
+              className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] shadow-[0_12px_30px_rgba(0,0,0,0.16)] hover:bg-[var(--color-surface-2)]"
+            >
+              <Bot className="h-4 w-4 text-[var(--color-green)]" />
+              Harita
+              <ChevronLeft className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+            </button>
     );
   }
 
@@ -894,7 +948,7 @@ Important:
                 aria-label={enabled ? "AI online" : "AI offline"}
                 title={enabled ? "AI online" : "AI offline"}
               />
-              Tracknov Copilot
+              Harita
             </p>
             <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
           </div>
@@ -935,7 +989,7 @@ Important:
             </div>
           ))}
           {loading ? (
-            <p className="text-[11px] text-[var(--color-text-tertiary)]">Copilot is thinking...</p>
+            <p className="text-[11px] text-[var(--color-text-tertiary)]">Harita is thinking...</p>
           ) : null}
           <div ref={bottomRef} />
         </div>
@@ -1012,7 +1066,7 @@ Important:
                 </Button>
               </div>
               <p className="text-[10px] text-[var(--color-text-secondary)]">
-                Ask in chat to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
+                Ask Harita to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
                 {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
               </p>
             </div>
