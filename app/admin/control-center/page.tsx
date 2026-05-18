@@ -32,7 +32,7 @@ export default function ControlCenter() {
     },
     {
       id: "replay-integrity",
-      name: "Replay Integrity",
+      name: "Certification Consistency Verification",
       category: "integrity",
       status: "HEALTHY",
       uptime: "100.00%",
@@ -50,7 +50,7 @@ export default function ControlCenter() {
     },
     {
       id: "semantic-drift",
-      name: "Semantic Drift",
+      name: "Knowledge Accuracy Monitoring",
       category: "core",
       status: "HEALTHY",
       uptime: "99.99%",

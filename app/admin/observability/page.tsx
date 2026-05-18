@@ -116,7 +116,7 @@ export default async function ObservabilityDashboard() {
           <section className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 shadow-2xl">
             <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-3 mb-6">
               <Database className="w-5 h-5 text-indigo-400" />
-              Replay Integrity Monitor
+              Certification Consistency Verification Monitor
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
