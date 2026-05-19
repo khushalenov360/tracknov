@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
+import { cookies } from "next/headers";
 import { buildProjectCreditSeedRows, buildSeedCredits } from "@/lib/catalog";
 import { categoryMeta, igbcRatingSystems } from "@/lib/constants";
 import { env } from "@/lib/env";
@@ -203,6 +205,7 @@ function mapCredit(
     na: credit.na,
     documents: creditDocuments,
     remarks: remarks.filter((remark) => remark.credit_id === credit.id) as RemarkRecord[],
+    available_points: Number(credit.max_points ?? 0),
   };
 }
 
@@ -223,9 +226,32 @@ async function mapProjectGuidebooksWithSignedUrls(
   );
 }
 
+const supabaseUserCache = new Map<string, { user: any; expiresAt: number }>();
+
 async function getSupabaseUser(client: SupabaseClient) {
+  let cacheKey = "";
+  try {
+    const cookieStore = await cookies();
+    cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+  } catch (e) {
+    // cookies() might fail if called outside Request/Response context
+  }
+
+  if (cacheKey) {
+    const cached = supabaseUserCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.user;
+    }
+  }
+
   const { data } = await client.auth.getUser();
-  return data.user ?? null;
+  const user = data.user ?? null;
+
+  if (cacheKey) {
+    supabaseUserCache.set(cacheKey, { user, expiresAt: Date.now() + 15000 });
+  }
+
+  return user;
 }
 
 async function getProjectMembers(
@@ -279,17 +305,14 @@ async function getProjectInvites(
   }));
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
-  if (!env.isConfigured) {
-    return null;
-  }
+const userCache = new Map<string, { user: CurrentUser | null; expiresAt: number }>();
 
+async function getCurrentUserUncached(): Promise<CurrentUser | null> {
   const client = createClient();
   const user = await getSupabaseUser(client);
   if (!user) {
     return null;
   }
-
 
   const { data: profile } = await client
     .from("profiles")
@@ -348,7 +371,36 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   };
 }
 
-export async function getTasksForUser() {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
+  if (!env.isConfigured) {
+    return null;
+  }
+
+  let cacheKey = "";
+  try {
+    const cookieStore = await cookies();
+    cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+  } catch (e) {
+    // cookies() might fail if called outside request context
+  }
+
+  if (cacheKey) {
+    const cached = userCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.user;
+    }
+  }
+
+  const user = await getCurrentUserUncached();
+
+  if (cacheKey) {
+    userCache.set(cacheKey, { user, expiresAt: Date.now() + 15000 });
+  }
+
+  return user;
+});
+
+export const getTasksForUser = cache(async function getTasksForUser() {
   if (!env.isConfigured) return [];
   const client = createClient();
   const user = await getSupabaseUser(client);
@@ -366,9 +418,9 @@ export async function getTasksForUser() {
     credit: Array.isArray(task.credits) ? task.credits[0] : task.credits,
     history: task.task_history ?? []
   }));
-}
+});
 
-export async function getDashboardProjects() {
+export const getDashboardProjects = cache(async function getDashboardProjects(): Promise<ProjectSummary[]> {
   if (!env.isConfigured) {
     return [];
   }
@@ -380,229 +432,211 @@ export async function getDashboardProjects() {
   }
 
   const currentUser = await getCurrentUser();
+  const activeRole = currentUser?.role ?? "consultant";
   const elevatedPortfolioRole =
-    currentUser?.role === "super_user" || currentUser?.role === "super_admin" || currentUser?.role === "project_admin";
+    activeRole === "super_user" || activeRole === "super_admin" || activeRole === "project_admin";
 
+  const summaryClient = (elevatedPortfolioRole && env.supabaseServiceRoleKey)
+    ? createAdminClient()
+    : client;
+
+  let projectRows: any[] = [];
+  let userRolesMap = new Map<string, MemberRole>();
 
   if (elevatedPortfolioRole && env.supabaseServiceRoleKey) {
-    const admin = createAdminClient();
-    const { data: projects } = await admin
+    const { data: projects, error } = await summaryClient
       .from("projects")
-      .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code")
+      .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code, health_status")
       .order("created_at", { ascending: false });
-    const projectIds = (projects ?? []).map((project: any) => project.id);
-    const { data: usageRows } = projectIds.length
-      ? await admin
-          .from("project_usage_summary")
-          .select("project_id, plan_code, plan_name, monthly_price_inr, document_credit_limit, consultant_credit_limit, documents_used, consultant_sessions_used, documents_remaining, consultant_credits_remaining")
-          .in("project_id", projectIds)
-      : { data: [] };
-    const usageByProjectId = new Map((usageRows ?? []).map((row: any) => [row.project_id, row]));
+    if (error) {
+      console.error("[getDashboardProjects] Projects fetch error:", error);
+    }
+    projectRows = projects ?? [];
+    projectRows.forEach((p) => userRolesMap.set(p.id, activeRole));
+  } else {
+    const { data: memberships, error: membershipsError } = await client
+      .from("project_users")
+      .select("project_id, role")
+      .eq("user_id", user.id);
 
-    const summaries = await Promise.all(
-      (projects ?? []).map(async (project: any) => {
-        const projectId = project.id;
-        const usage = usageByProjectId.get(projectId);
-        const { data: credits } = await admin
-          .from("project_credits")
-          .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
-          .eq("project_id", projectId);
-        const creditIds = (credits ?? []).map((credit: any) => credit.id);
-        const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
-          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-          creditIds.length
-            ? admin.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
-            : Promise.resolve({ count: 0 }),
-          admin.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
-          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
-          admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("state", ["REJECTED", "CLARIFICATION"]),
-          admin.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
-        ]);
-        const creditRows = credits ?? [];
-        const derivedCredits = creditRows.map((credit: any) => {
-          const documentsForCredit = (projectDocuments ?? []).filter(
-            (document: any) => document.credit_id === credit.id,
-          );
-          return deriveCreditLifecycleState(credit, documentsForCredit);
-        });
-        const overallCompletion =
-          derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
-          Math.max(derivedCredits.length, 1);
-        const mandatoryMet = creditRows.filter((credit: any, index: number) => credit.is_mandatory && derivedCredits[index]?.status === "complete").length;
+    if (membershipsError) {
+      console.error(`[getDashboardProjects] Membership lookup error for ${user.id}:`, membershipsError);
+    }
 
-        return {
-          id: project.id,
-          name: project.name,
-          client: project.client ?? "",
-          location: project.location ?? "",
-          project_type: normalizeProjectType(project.project_type),
-          state: normalizeProjectStatus(project.state ?? project.status),
-          status: normalizeProjectStatus(project.state ?? project.status),
-          green_certification: project.green_certification ?? "IGBC",
-          igbc_variant: project.igbc_variant === "existing" ? "existing" : "new",
-          certification_type: project.certification_type,
-          target_rating: project.target_rating,
-          created_at: project.created_at,
-          projectCode: project.project_code || "N/A",
-          role: normalizeRole(currentUser?.role ?? "project_admin"),
-          overallCompletion,
-          totalCredits: creditRows.length,
-          uploadedDocs: docsCount ?? 0,
-          mandatoryCreditsMet: mandatoryMet,
-          openRemarks: remarksCount ?? 0,
-          membersCount: membersCount ?? 0,
-          planCode: usage?.plan_code ?? "starter",
-          planName: usage?.plan_name ?? "Starter",
-          monthlyPriceInr: Number(usage?.monthly_price_inr ?? 0),
-          documentCreditLimit: Number(usage?.document_credit_limit ?? 0),
-          consultantCreditLimit: Number(usage?.consultant_credit_limit ?? 0),
-          documentCreditsUsed: Number(usage?.documents_used ?? 0),
-          consultantCreditsUsed: Number(usage?.consultant_sessions_used ?? 0),
-          documentCreditsRemaining: Number(usage?.documents_remaining ?? 0),
-          consultantCreditsRemaining: Number(usage?.consultant_credits_remaining ?? 0),
-          pendingReviewsCount: Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0),
-          rejectedCount: Number(rejectedCount ?? 0),
-          statusFlag:
-            Number(rejectedCount ?? 0) >= 3 || Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0) >= 8
-              ? "red"
-              : Number(rejectedCount ?? 0) >= 1 || Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0) >= 3
-                ? "amber"
-                : "green",
-        } satisfies ProjectSummary;
-      }),
-    );
+    const fallbackMemberships =
+      (!memberships || memberships.length === 0) && env.supabaseServiceRoleKey
+        ? (
+            await createAdminClient()
+              .from("project_users")
+              .select("project_id, role")
+              .eq("user_id", user.id)
+          ).data
+        : null;
 
-    return summaries;
-  }
+    const projectMemberships = memberships?.length ? memberships : (fallbackMemberships ?? []);
+    const projectIds = Array.from(new Set(projectMemberships.map((membership: any) => membership.project_id)));
+    projectMemberships.forEach((m: any) => userRolesMap.set(m.project_id, normalizeRole(m.role)));
 
-  const { data: memberships, error: membershipsError } = await client
-    .from("project_users")
-    .select("project_id, role")
-    .eq("user_id", user.id);
-
-  if (membershipsError) {
-    console.error(`[getDashboardProjects] Membership lookup error for ${user.id}:`, membershipsError);
-  }
-
-  const fallbackMemberships =
-    (!memberships || memberships.length === 0) && env.supabaseServiceRoleKey
-      ? (
-          await createAdminClient()
-            .from("project_users")
-            .select("project_id, role")
-            .eq("user_id", user.id)
-        ).data
-      : null;
-
-  const projectMemberships = (memberships?.length ? memberships : (fallbackMemberships ?? [])) as any[];
-  const projectIds = Array.from(new Set(projectMemberships.map((membership: any) => membership.project_id)));
-
-  const summaryClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
-  const { data: projectRows, error: projectsError } = projectIds.length
-    ? await summaryClient
+    if (projectIds.length > 0) {
+      const { data: projects, error: projectsError } = await summaryClient
         .from("projects")
         .select("id, name, client, location, project_type, status, green_certification, igbc_variant, certification_type, target_rating, created_at, project_code, health_status")
-        .in("id", projectIds)
-    : { data: [], error: null };
-
-  if (projectsError) {
-    console.error(`[getDashboardProjects] Projects fetch error for ${projectIds.length} IDs:`, projectsError);
+        .in("id", projectIds);
+      if (projectsError) {
+        console.error(`[getDashboardProjects] Projects fetch error:`, projectsError);
+      }
+      projectRows = projects ?? [];
+    }
   }
 
-  const projectById = new Map((projectRows ?? []).map((project: any) => [project.id, project]));
+  const projectIds = projectRows.map((p) => p.id);
+  if (projectIds.length === 0) {
+    return [];
+  }
 
-  const { data: usageRows } = projectIds.length
-    ? await summaryClient
-        .from("project_usage_summary")
-        .select("project_id, plan_code, plan_name, monthly_price_inr, document_credit_limit, consultant_credit_limit, documents_used, consultant_sessions_used, documents_remaining, consultant_credits_remaining")
-        .in("project_id", projectIds)
-    : { data: [] };
-  const usageByProjectId = new Map((usageRows ?? []).map((row: any) => [row.project_id, row]));
+  // BATCH FETCH ALL SUB-RESOURCES IN PARALLEL (5 queries max)
+  const [usageRowsRes, creditsRowsRes, docRowsRes, memberRowsRes] = await Promise.all([
+    summaryClient
+      .from("project_usage_summary")
+      .select("project_id, plan_code, plan_name, monthly_price_inr, document_credit_limit, consultant_credit_limit, documents_used, consultant_sessions_used, documents_remaining, consultant_credits_remaining")
+      .in("project_id", projectIds),
+    summaryClient
+      .from("project_credits")
+      .select("id, project_id, is_mandatory, status, completion_pct, blocked_by, documents_required")
+      .in("project_id", projectIds),
+    summaryClient
+      .from("project_document")
+      .select("project_id, credit_id, state")
+      .in("project_id", projectIds),
+    summaryClient
+      .from("project_users")
+      .select("project_id")
+      .in("project_id", projectIds),
+  ]);
 
-  const summaries = await Promise.all(
-    projectMemberships.map(async (membership: any) => {
-      const projectId = membership.project_id;
-      const project = projectById.get(projectId);
-      if (!project) {
-        console.warn(`[getDashboardProjects] Project metadata missing for ID ${projectId} in user ${user.id} portfolio.`);
-        return null;
-      }
-      const usage = usageByProjectId.get(projectId);
-      const { data: credits } = await summaryClient
-        .from("project_credits")
-        .select("id, is_mandatory, status, completion_pct, documents_required, blocked_by")
-        .eq("project_id", projectId);
-      const creditIds = (credits ?? []).map((credit) => credit.id);
-      const [{ count: docsCount }, { count: remarksCount }, { count: membersCount }, { count: pendingOwnerCount }, { count: pendingAdminCount }, { count: rejectedCount }, { data: projectDocuments }] = await Promise.all([
-        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-        creditIds.length
-          ? summaryClient.from("remarks").select("*", { count: "exact", head: true }).in("credit_id", creditIds)
-          : Promise.resolve({ count: 0 }),
-        summaryClient.from("project_users").select("*", { count: "exact", head: true }).eq("project_id", projectId),
-        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "SUBMITTED"),
-        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).eq("state", "UNDER_REVIEW"),
-        summaryClient.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", projectId).in("state", ["REJECTED", "CLARIFICATION"]),
-        summaryClient.from("project_document").select("credit_id, state, doc_category").eq("project_id", projectId),
-      ]);
-      const creditRows = credits ?? [];
-      const derivedCredits = creditRows.map((credit: any) => {
-        const documentsForCredit = (projectDocuments ?? []).filter(
-          (document: any) => document.credit_id === credit.id,
-        );
-        return deriveCreditLifecycleState(credit, documentsForCredit);
-      });
-      const overallCompletion =
-        derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
-        Math.max(derivedCredits.length, 1);
-      const mandatoryMet = creditRows.filter((credit: any, index: number) => credit.is_mandatory && derivedCredits[index]?.status === "complete").length;
-      return {
-        id: project.id,
-        name: project.name,
-        client: project.client ?? "",
-        location: project.location ?? "",
-        project_type: normalizeProjectType(project.project_type),
-        state: normalizeProjectStatus(project.state ?? project.status),
-        status: normalizeProjectStatus(project.state ?? project.status),
-        green_certification: project.green_certification ?? "IGBC",
-        igbc_variant: project.igbc_variant === "existing" ? "existing" : "new",
-        certification_type: project.certification_type,
-        target_rating: project.target_rating,
-        created_at: project.created_at,
-        projectCode: project.project_code || "N/A",
-        role: normalizeRole(membership.role),
-        overallCompletion,
-        totalCredits: creditRows.length,
-        uploadedDocs: docsCount ?? 0,
-        mandatoryCreditsMet: mandatoryMet,
-        openRemarks: remarksCount ?? 0,
-        membersCount: membersCount ?? 0,
-        planCode: usage?.plan_code ?? "starter",
-        planName: usage?.plan_name ?? "Starter",
-        monthlyPriceInr: Number(usage?.monthly_price_inr ?? 0),
-        documentCreditLimit: Number(usage?.document_credit_limit ?? 0),
-        consultantCreditLimit: Number(usage?.consultant_credit_limit ?? 0),
-        documentCreditsUsed: Number(usage?.documents_used ?? 0),
-        consultantCreditsUsed: Number(usage?.consultant_sessions_used ?? 0),
-        documentCreditsRemaining: Number(usage?.documents_remaining ?? 0),
-        consultantCreditsRemaining: Number(usage?.consultant_credits_remaining ?? 0),
-        pendingReviewsCount: Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0),
-        rejectedCount: Number(rejectedCount ?? 0),
-        statusFlag:
-          Number(rejectedCount ?? 0) >= 3 || Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0) >= 8
-            ? "red"
-            : Number(rejectedCount ?? 0) >= 1 || Number(pendingOwnerCount ?? 0) + Number(pendingAdminCount ?? 0) >= 3
-              ? "amber"
-              : "green",
-        health_status: project.health_status,
-      } satisfies ProjectSummary;
-    }),
-  );
+  const usageRows = usageRowsRes.data ?? [];
+  const creditsRows = creditsRowsRes.data ?? [];
+  const docRows = docRowsRes.data ?? [];
+  const memberRows = memberRowsRes.data ?? [];
 
-  return summaries.filter(Boolean) as ProjectSummary[];
-}
+  const usageByProjectId = new Map(usageRows.map((row: any) => [row.project_id, row]));
 
-export async function getProjectWorkspace(projectId: string) {
+  // Index credits and documents by project_id
+  const creditsByProjectId = new Map<string, any[]>();
+  creditsRows.forEach((c: any) => {
+    const list = creditsByProjectId.get(c.project_id) ?? [];
+    list.push(c);
+    creditsByProjectId.set(c.project_id, list);
+  });
+
+  const docsByProjectId = new Map<string, any[]>();
+  docRows.forEach((d: any) => {
+    const list = docsByProjectId.get(d.project_id) ?? [];
+    list.push(d);
+    docsByProjectId.set(d.project_id, list);
+  });
+
+  // Index members counts
+  const memberCountByProjectId = new Map<string, number>();
+  memberRows.forEach((m: any) => {
+    memberCountByProjectId.set(m.project_id, (memberCountByProjectId.get(m.project_id) ?? 0) + 1);
+  });
+
+  // Batch fetch remarks count
+  const creditIds = creditsRows.map((c: any) => c.id);
+  let remarksCountByCreditId = new Map<string, number>();
+  if (creditIds.length > 0) {
+    const { data: remarkRows } = await summaryClient
+      .from("remarks")
+      .select("credit_id")
+      .in("credit_id", creditIds);
+    (remarkRows ?? []).forEach((r: any) => {
+      remarksCountByCreditId.set(r.credit_id, (remarksCountByCreditId.get(r.credit_id) ?? 0) + 1);
+    });
+  }
+
+  // Compile summaries in-memory (No database calls inside this loop)
+  const summaries = projectRows.map((project: any) => {
+    const projectId = project.id;
+    const usage = usageByProjectId.get(projectId);
+    const credits = creditsByProjectId.get(projectId) ?? [];
+    const documents = docsByProjectId.get(projectId) ?? [];
+    const membersCount = memberCountByProjectId.get(projectId) ?? 0;
+
+    const docsCount = documents.length;
+    const pendingOwnerCount = documents.filter((d: any) => d.state === "SUBMITTED").length;
+    const pendingAdminCount = documents.filter((d: any) => d.state === "UNDER_REVIEW").length;
+    const pendingReviewsCount = pendingOwnerCount + pendingAdminCount;
+    const rejectedCount = documents.filter((d: any) => d.state === "REJECTED" || d.state === "CLARIFICATION").length;
+
+    // Calculate remarks count for this project's credits
+    let openRemarks = 0;
+    credits.forEach((c: any) => {
+      openRemarks += remarksCountByCreditId.get(c.id) ?? 0;
+    });
+
+    const derivedCredits = credits.map((credit: any) => {
+      const documentsForCredit = documents.filter((d: any) => d.credit_id === credit.id);
+      return deriveCreditLifecycleState(credit, documentsForCredit);
+    });
+
+    const overallCompletion =
+      derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
+      Math.max(derivedCredits.length, 1);
+
+    const mandatoryMet = credits.filter(
+      (credit: any, index: number) =>
+        credit.is_mandatory && derivedCredits[index]?.status === "complete"
+    ).length;
+
+    const statusFlag =
+      rejectedCount >= 3 || pendingReviewsCount >= 8
+        ? "red"
+        : rejectedCount >= 1 || pendingReviewsCount >= 3
+          ? "amber"
+          : "green";
+
+    return {
+      id: project.id,
+      name: project.name,
+      client: project.client ?? "",
+      location: project.location ?? "",
+      project_type: normalizeProjectType(project.project_type),
+      state: normalizeProjectStatus(project.status),
+      status: normalizeProjectStatus(project.status),
+      green_certification: project.green_certification ?? "IGBC",
+      igbc_variant: project.igbc_variant === "existing" ? "existing" : "new",
+      certification_type: project.certification_type,
+      target_rating: project.target_rating,
+      created_at: project.created_at,
+      projectCode: project.project_code || "N/A",
+      role: userRolesMap.get(projectId) ?? "consultant",
+      overallCompletion,
+      totalCredits: credits.length,
+      uploadedDocs: docsCount,
+      mandatoryCreditsMet: mandatoryMet,
+      openRemarks,
+      membersCount,
+      planCode: usage?.plan_code ?? "starter",
+      planName: usage?.plan_name ?? "Starter",
+      monthlyPriceInr: Number(usage?.monthly_price_inr ?? 0),
+      documentCreditLimit: Number(usage?.document_credit_limit ?? 0),
+      consultantCreditLimit: Number(usage?.consultant_credit_limit ?? 0),
+      documentCreditsUsed: Number(usage?.documents_used ?? 0),
+      consultantCreditsUsed: Number(usage?.consultant_sessions_used ?? 0),
+      documentCreditsRemaining: Number(usage?.documents_remaining ?? 0),
+      consultantCreditsRemaining: Number(usage?.consultant_credits_remaining ?? 0),
+      pendingReviewsCount,
+      rejectedCount,
+      statusFlag,
+      health_status: project.health_status,
+    } satisfies ProjectSummary;
+  });
+
+  return summaries;
+});
+
+export const getProjectWorkspace = cache(async function getProjectWorkspace(projectId: string) {
   if (!env.isConfigured) {
     return null;
   }
@@ -812,7 +846,7 @@ export async function getProjectWorkspace(projectId: string) {
       details: row.details ?? {},
     })),
   } satisfies ProjectWorkspace;
-}
+});
 
 export async function getProjectWorkspaceForApi(projectId: string): Promise<ProjectWorkspace | null> {
   if (!env.isConfigured) {
@@ -1829,7 +1863,7 @@ export async function getTeamMembers() {
   return Array.from(grouped.values());
 }
 
-export async function getOwnerReviewQueue() {
+export const getOwnerReviewQueue = cache(async function getOwnerReviewQueue() {
   if (!env.isConfigured) {
     return [];
   }
@@ -1922,7 +1956,7 @@ export async function getOwnerReviewQueue() {
     if (categoryCompare !== 0) return categoryCompare;
     return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
   });
-}
+});
 
 export async function getReviewerPerformanceSummary() {
   if (!env.isConfigured) {
@@ -1977,7 +2011,7 @@ export async function getReviewerPerformanceSummary() {
   };
 }
 
-export async function getExecutiveInsights() {
+export const getExecutiveInsights = cache(async function getExecutiveInsights() {
   const projects = await getDashboardProjects();
   if (!projects.length) {
     return {
@@ -2129,7 +2163,7 @@ export async function getExecutiveInsights() {
     vendorStats,
     projectComparisons,
   };
-}
+});
 
 export async function getAuditTimeline(filters: {
   projectId?: string;
@@ -2458,7 +2492,7 @@ export type RoleTask = {
   dueDate?: string;
 };
 
-export async function getRoleTasks(): Promise<RoleTask[]> {
+export const getRoleTasks = cache(async function getRoleTasks(): Promise<RoleTask[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
@@ -2597,7 +2631,7 @@ export async function getRoleTasks(): Promise<RoleTask[]> {
   }
 
   return Array.from(unique.values()).sort((a, b) => (a.priority === 'high' ? -1 : 1));
-}
+});
 
 
 // Advanced Intelligence & Monetization (M3/M4)
@@ -2685,7 +2719,7 @@ export async function getRatingSystems(): Promise<ProjectRatingSystem[]> {
   })) as ProjectRatingSystem[];
 }
 
-export async function getRuntimeDesyncSummary() {
+export const getRuntimeDesyncSummary = cache(async function getRuntimeDesyncSummary() {
   if (!env.isConfigured) {
     return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
   }
@@ -2705,9 +2739,9 @@ export async function getRuntimeDesyncSummary() {
     queuedRepairs: Number(queuedCount ?? 0),
     projectsImpacted: projectSet.size,
   };
-}
+});
 
-export async function getUserActionQueue() {
+export const getUserActionQueue = cache(async function getUserActionQueue() {
   const user = await getCurrentUser();
   if (!user) return [];
   const client = createClient();
@@ -2736,9 +2770,9 @@ export async function getUserActionQueue() {
     creditName: a.project_credits?.credit_name ?? null,
     status: a.project_credits?.status,
   }));
-}
+});
 
-export async function getUserReviewQueue() {
+export const getUserReviewQueue = cache(async function getUserReviewQueue() {
   const user = await getCurrentUser();
   if (!user) return [];
   const client = createClient();
@@ -2767,9 +2801,9 @@ export async function getUserReviewQueue() {
     docCategory: d.doc_category,
     state: d.workflow_state || d.state
   }));
-}
+});
 
-export async function getUserBlockerQueue() {
+export const getUserBlockerQueue = cache(async function getUserBlockerQueue() {
   const user = await getCurrentUser();
   if (!user) return [];
   const client = createClient();
@@ -2801,4 +2835,4 @@ export async function getUserBlockerQueue() {
     state: d.workflow_state || d.state,
     reason: d.rejection_reason || d.notes
   }));
-}
+});

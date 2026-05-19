@@ -1,6 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, FileText, FolderKanban, Medal, Users, Inbox, ListChecks, Bot } from "lucide-react";
+import { 
+  Bell, 
+  FileText, 
+  FolderKanban, 
+  Inbox, 
+  ListChecks, 
+  Bot,
+  LayoutDashboard,
+  MessageSquare,
+  Download,
+  Truck,
+  BarChart3,
+  Settings,
+  Search,
+  Users
+} from "lucide-react";
 import { GlobalCopilot } from "@/components/assistant/global-copilot";
 import { SessionHeartbeat } from "@/components/session-heartbeat";
 import { Badge } from "@/components/ui/badge";
@@ -25,92 +40,158 @@ export function Shell({
   children: React.ReactNode;
   aiTitle?: string;
 }) {
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: FolderKanban },
-    { href: "/review-queue", label: "Reviews", icon: Inbox },
+  const sidebarNavItems = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/projects", label: "Projects", icon: FolderKanban },
-    { href: "/documents", label: "Documents", icon: FileText },
-    ...(["owner", "project_admin", "super_admin", "super_user", "L3", "L5"].includes(role ?? "")
-      ? [{ href: "/review-queue", label: "Approvals", icon: ListChecks }]
-      : []),
+    { href: "/review-queue", label: "Reviews", icon: ClipboardListIconForShell },
+    { href: "/projects", label: "Clarifications", icon: MessageSquare },
+    { href: "/projects", label: "Exports", icon: Download },
+    { href: "/supplier-network", label: "Suppliers", icon: Truck },
+    { href: "/executive-reports", label: "Reports", icon: BarChart3 },
+    { href: "/admin", label: "Admin", icon: Settings },
   ];
 
+  function ClipboardListIconForShell(props: any) {
+    return <Inbox {...props} />;
+  }
+
   return (
-    <div className="app-shell pb-16 lg:pb-0">
+    <div className="flex min-h-screen bg-[var(--color-bg)] font-sans antialiased">
       <SessionHeartbeat />
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)] sticky top-0 z-30">
-        <div className="mx-auto flex min-h-[56px] max-w-[1700px] flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link href="/dashboard" className="flex items-center">
-              <Image
-                src="/tracknov-logo.svg"
-                alt="Tracknov"
-                width={206}
-                height={40}
-                className="h-8 w-auto"
-              />
-            </Link>
-            {role ? (
-              <Badge className="border border-[var(--color-green-light)] bg-[var(--color-green-light)] text-[11px] text-[var(--color-green)]">
-                {roleLabels[role]}
-              </Badge>
-            ) : null}
-          </div>
-          <nav className="order-3 flex w-full flex-wrap gap-1 text-[12px] text-[var(--color-text-secondary)] lg:order-none lg:w-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="flex items-center gap-3 text-[12px] text-[var(--color-text-secondary)]">
-            <Link href="/dashboard" className="inline-flex items-center gap-1.5 hover:text-[var(--color-text-primary)]">
-              <Bell className="h-3.5 w-3.5" />
-              <span className="mono text-[11px]">{notificationCount ?? 0}</span>
-            </Link>
-            <span className="h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />
-            <form action="/auth/signout" method="post">
-              <button type="submit" className="text-[12px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
 
-      <div className="mx-auto max-w-[1700px] w-full px-4 py-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 items-start">
-          {/* CENTER PANEL: Main active workflow view (70% width) */}
-          <main className="flex flex-col gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-6 min-h-[calc(100vh-120px)] shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            <div className="mb-2 flex flex-col gap-1 border-b border-[var(--color-border)] pb-3">
-              <h1 className="text-[16px] font-semibold text-[var(--color-text-primary)]">{title}</h1>
-              <p className="text-[12px] text-[var(--color-text-secondary)]">{description}</p>
-            </div>
-            {children}
-          </main>
-
-          {/* RIGHT PANEL: Persistent copilot panel */}
-          <aside className="hidden lg:flex flex-col border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl overflow-hidden h-[calc(100vh-120px)] shadow-[0_2px_8px_rgba(0,0,0,0.04)] sticky top-[76px]">
-            <GlobalCopilot 
-              enabled={env.aiReady} 
-              role={role} 
-              title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Project')} 
-              description={description} 
-              persistent={true}
+      {/* LEFT SIDEBAR - Persistent on Large Screens */}
+      <aside className="hidden lg:flex w-64 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex-col shrink-0 sticky top-0 h-screen z-40">
+        {/* Brand Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-[var(--color-border)]">
+          <Link href="/dashboard" className="flex items-center">
+            <Image
+              src="/tracknov-logo.svg"
+              alt="Tracknov"
+              width={160}
+              height={32}
+              className="h-7 w-auto"
             />
-          </aside>
+          </Link>
+        </div>
+
+        {/* Role Badge Section */}
+        {role && (
+          <div className="px-6 py-3 border-b border-[var(--color-border)] bg-slate-50/50">
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Access Scope</p>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="font-semibold text-slate-700 text-sm">{roleLabels[role]}</span>
+              <Badge className="border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
+                L5 Verified
+              </Badge>
+            </div>
+          </div>
+        )}
+
+        {/* Vertical Nav List */}
+        <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
+          {sidebarNavItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)] transition-all duration-250"
+              >
+                <Icon className="h-4.5 w-4.5 text-slate-400 group-hover:text-slate-600" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer Signout */}
+        <div className="p-4 border-t border-[var(--color-border)]">
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              className="w-full text-center px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      {/* RIGHT SIDE CONTENT CONTAINER */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* TOP HEADER BAR */}
+        <header className="h-16 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-6 sticky top-0 z-30">
+          {/* Organization Indicator */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Workspace</span>
+            <span className="text-[14px] font-bold text-slate-800">Enov360 Internal</span>
+          </div>
+
+          {/* Search bar & utility profile tools */}
+          <div className="flex items-center gap-6">
+            <div className="relative hidden md:block">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Quick search reviews, credits, hash..."
+                className="pl-9 pr-4 py-1.5 w-64 border border-[var(--color-border)] rounded-lg text-sm bg-slate-50 focus:outline-none focus:bg-white focus:border-[var(--color-green)]"
+              />
+            </div>
+
+            {/* Notifications */}
+            <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors">
+              <Bell className="h-5 w-5" />
+              {notificationCount !== undefined && notificationCount > 0 && (
+                <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">
+                  {notificationCount}
+                </span>
+              )}
+            </Link>
+
+            <span className="h-4 w-px bg-slate-200" />
+
+            {/* Profile Placeholder */}
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center font-bold text-indigo-600 text-sm">
+                E3
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* WORKSPACE CONTENT BODY */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 items-start max-w-[1600px] mx-auto">
+            
+            {/* CENTER PANEL: Main active workflow view (70% width) */}
+            <main className="flex flex-col gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg p-5 min-h-[calc(100vh-140px)] shadow-sm">
+              <div className="border-b border-[var(--color-border)] pb-4">
+                <h1 className="text-[20px] font-bold text-[var(--color-text-primary)] leading-tight">{title}</h1>
+                <p className="text-[14px] text-[var(--color-text-secondary)] mt-1">{description}</p>
+              </div>
+              
+              <div className="flex-1 flex flex-col">
+                {children}
+              </div>
+            </main>
+
+            {/* RIGHT PANEL: Persistent copilot panel (30% width) */}
+            <aside className="hidden lg:flex flex-col border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg overflow-hidden h-[calc(100vh-140px)] shadow-sm sticky top-[88px]">
+              <GlobalCopilot 
+                enabled={env.aiReady} 
+                role={role} 
+                title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Project')} 
+                description={description} 
+                persistent={true}
+              />
+            </aside>
+
+          </div>
         </div>
       </div>
 
-      {/* Small screens floating copilot */}
+      {/* Small screens floating copilot button */}
       <div className="lg:hidden">
         <GlobalCopilot 
           enabled={env.aiReady} 
@@ -121,26 +202,22 @@ export function Shell({
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-around items-center px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] shrink-0">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-around items-center px-4 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <FolderKanban className="h-4.5 w-4.5" />
-          <span className="text-[9px] font-medium">Home</span>
+          <LayoutDashboard className="h-5 w-5" />
+          <span className="text-[10px] font-semibold">Home</span>
         </Link>
         <Link href="/review-queue" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <Inbox className="h-4.5 w-4.5" />
-          <span className="text-[9px] font-medium">Queue</span>
+          <Inbox className="h-5 w-5" />
+          <span className="text-[10px] font-semibold">Queue</span>
         </Link>
         <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <Bot className="h-4.5 w-4.5 text-[var(--color-green)]" />
-          <span className="text-[9px] font-medium">Harita</span>
+          <Bot className="h-5 w-5 text-[var(--color-green)]" />
+          <span className="text-[10px] font-semibold">Harita</span>
         </Link>
         <Link href="/projects" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <ListChecks className="h-4.5 w-4.5" />
-          <span className="text-[9px] font-medium">Projects</span>
-        </Link>
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <Bell className="h-4.5 w-4.5" />
-          <span className="text-[9px] font-medium">Alerts</span>
+          <FolderKanban className="h-5 w-5" />
+          <span className="text-[10px] font-semibold">Projects</span>
         </Link>
       </nav>
     </div>

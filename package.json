@@ -53,7 +53,7 @@
     "tsconfig.json"
   ],
   "scripts": {
-    "predev": "node scripts/clean-next-cache.mjs",
+    "clean:cache": "node scripts/clean-next-cache.mjs",
     "dev": "next dev",
     "dev:guided": "bun run scripts/dev-guided.ts",
     "build": "next build",

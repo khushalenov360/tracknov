@@ -200,6 +200,7 @@ export type CreditWorkspace = {
   na: boolean;
   documents: DocumentRecord[];
   remarks: RemarkRecord[];
+  available_points?: number;
 };
 
 export type ProjectSummary = {

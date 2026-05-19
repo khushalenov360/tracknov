@@ -16,8 +16,8 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
-      <body className="bg-[var(--color-bg)] text-[13px] text-[var(--color-text-primary)] antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning className="bg-[var(--color-bg)] text-[13px] text-[var(--color-text-primary)] antialiased">
         <main className="mx-auto flex min-h-screen w-full max-w-[560px] items-center px-4">
           <section className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
             <div className="flex items-start gap-3">
@@ -27,7 +27,7 @@ export default function GlobalError({
               <div>
                 <h1 className="text-[18px] font-medium text-[var(--color-text-primary)]">Something went wrong</h1>
                 <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
-                  Tracknov hit an unexpected issue while loading this screen. Please retry.
+                   Tracknov hit an unexpected issue while loading this screen. Please retry.
                 </p>
               </div>
             </div>

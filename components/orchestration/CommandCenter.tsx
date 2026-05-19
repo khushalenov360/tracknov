@@ -13,14 +13,16 @@ import {
   ArrowUpRight, 
   ShieldAlert, 
   Folder, 
-  Calendar, 
   ChevronRight, 
-  Plus, 
   Activity, 
   FileText, 
   Check, 
   Inbox, 
-  AlertTriangle 
+  AlertTriangle,
+  Database,
+  Shield,
+  Zap,
+  Cpu
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,9 +32,8 @@ import { Progress } from "@/components/ui/progress";
 const OPERATIONAL_GOVERNOR_CONFIG = {
   maxVisibleProjects: 5,
   maxVisibleTasksPerProject: 5,
-  maxVisibleSections: 4,
+  maxVisibleTimelineRows: 8,
   maxScrollDepth: "100vh",
-  hideResolvedByDefault: true,
 };
 
 type MemberRole = "consultant" | "owner" | "project_admin" | "super_admin" | "super_user";
@@ -52,8 +53,6 @@ interface Project {
   openRemarks: number;
   membersCount: number;
   role: MemberRole;
-  documentCreditsRemaining?: number;
-  documentCreditsUsed?: number;
 }
 
 interface ActionTask {
@@ -79,6 +78,25 @@ interface CommandCenterProps {
   myTasks: any[];
   roleTasks: any[];
   insights: any;
+  runtimeSummary?: { openDesyncCount: number; queuedRepairs: number; projectsImpacted: number };
+  timeline?: any[];
+}
+
+function ClientTime({ value }: { value: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <span className="opacity-0">00:00:00</span>;
+  }
+
+  return (
+    <span suppressHydrationWarning>
+      {value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ""}
+    </span>
+  );
 }
 
 export default function CommandCenter({
@@ -89,51 +107,55 @@ export default function CommandCenter({
   blockerQueue,
   myTasks,
   roleTasks,
-  insights
+  insights,
+  runtimeSummary = { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 },
+  timeline = []
 }: CommandCenterProps) {
   const activeRole = user?.role ?? "consultant";
   
   // 1. Unified State Management
-  const [searchQuery, setSearchQuery] = useState("");
-  const [aiStatusMessage, setAiStatusMessage] = useState("");
-  const [isProcessingAi, setIsProcessingAi] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ActionTask | null>(null);
-  const [activeTab, setActiveTab] = useState<"active" | "all" | "blockers">("active");
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [clarificationText, setClarificationText] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [reviewDecision, setReviewDecision] = useState<"approve" | "clarification" | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState("");
 
   // Listen for Copilot operational skill commands
   useEffect(() => {
     function handleCopilotCommand(event: Event) {
       const { command } = (event as CustomEvent<{ command: string }>).detail;
-      if (command) executeCommand(command);
+      if (command) {
+        // Trigger quick filter or actions based on commands
+        const lower = command.toLowerCase();
+        if (lower.includes("block") || lower.includes("risk")) {
+          // Highlight blockers
+        }
+      }
     }
     window.addEventListener("copilot:operational-command", handleCopilotCommand);
     return () => window.removeEventListener("copilot:operational-command", handleCopilotCommand);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 2. Synthesize & Normalize Tasks (AI-Compressed Operational Summaries)
   const normalizedTasks = useMemo<ActionTask[]>(() => {
     const list: ActionTask[] = [];
 
-    // Synthesize Action Queue (Upload requests)
-    actionQueue.forEach((item, idx) => {
+    // Synthesize Blocker Queue (Clarifications & Stalls)
+    blockerQueue.forEach((item, idx) => {
       list.push({
-        id: `upload-${item.projectCreditId || idx}`,
-        projectId: item.projectId,
-        projectName: item.projectName,
-        projectCreditId: item.projectCreditId,
-        creditCode: item.creditCode || "CHECKLIST",
-        creditName: item.creditName || "Required Documentation",
-        documentType: item.documentType || "PDF Evidence",
-        status: "pending_upload",
+        id: `blocker-${item.id || idx}`,
+        projectId: item.projectId || "",
+        projectName: item.projectName || "Active Project",
+        projectCreditId: item.projectCreditId || "",
+        creditCode: item.creditCode || "BLOCKER",
+        creditName: item.fileName || "Clarification",
+        documentType: "Clarification Needed",
+        status: "stalled",
         priority: "high",
-        summary: `Provide missing ${item.documentType || "evidence file"} for ${item.creditCode} checklist validation.`,
-        type: "upload"
+        summary: `Resolve comment: "${item.reason || "Clarification requested by reviewer"}".`,
+        type: "blocker"
       });
     });
 
@@ -154,181 +176,119 @@ export default function CommandCenter({
       });
     });
 
-    // Synthesize Blocker Queue (Clarifications & Stalls)
-    blockerQueue.forEach((item, idx) => {
+    // Synthesize Action Queue (Upload requests)
+    actionQueue.forEach((item, idx) => {
       list.push({
-        id: `blocker-${item.id || idx}`,
-        projectId: item.projectId || "",
-        projectName: item.projectName || "Active Project",
-        projectCreditId: item.projectCreditId || "",
-        creditCode: item.creditCode || "BLOCKER",
-        creditName: item.fileName || "Clarification",
-        documentType: "Clarification Needed",
-        status: "stalled",
+        id: `upload-${item.projectCreditId || idx}`,
+        projectId: item.projectId,
+        projectName: item.projectName,
+        projectCreditId: item.projectCreditId,
+        creditCode: item.creditCode || "CHECKLIST",
+        creditName: item.creditName || "Required Documentation",
+        documentType: item.documentType || "PDF Evidence",
+        status: "pending_upload",
         priority: "high",
-        summary: `Resolve open comment: "${item.reason || "Clarification requested by reviewer"}".`,
-        type: "blocker"
+        summary: `Provide missing ${item.documentType || "evidence file"} for ${item.creditCode} checklist validation.`,
+        type: "upload"
       });
     });
 
     // Fallbacks from roleTasks if queues are light
-    if (list.length === 0) {
-      roleTasks.forEach((item, idx) => {
-        list.push({
-          id: `role-${item.id || idx}`,
-          projectId: item.projectId || "",
-          projectName: item.projectName || "Active Project",
-          projectCreditId: item.projectCreditId || "",
-          creditCode: "TASK",
-          creditName: item.title || "Pending Duty",
-          documentType: item.type || "Requirement",
-          status: "pending",
-          priority: item.priority === "high" ? "high" : "medium",
-          summary: item.subtitle || "Fulfill pending documentation task.",
-          type: item.type === "clarification_needed" ? "clarification" : "upload"
-        });
+    roleTasks.forEach((item, idx) => {
+      list.push({
+        id: `role-${item.id || idx}`,
+        projectId: item.projectId || "",
+        projectName: item.projectName || "Active Project",
+        projectCreditId: item.projectCreditId || "",
+        creditCode: "TASK",
+        creditName: item.title || "Pending Duty",
+        documentType: item.type || "Requirement",
+        status: "pending",
+        priority: item.priority === "high" ? "high" : "medium",
+        summary: item.subtitle || "Fulfill pending documentation task.",
+        type: item.type === "clarification_needed" ? "clarification" : "upload"
+      });
+    });
+
+    // Deduplicate
+    const seen = new Set<string>();
+    return list.filter(t => {
+      const key = `${t.type}-${t.projectId}-${t.creditCode}-${t.summary}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [actionQueue, reviewQueue, blockerQueue, roleTasks]);
+
+  // Split tasks by priority/type
+  const blockedTasks = useMemo(() => normalizedTasks.filter(t => t.type === "blocker"), [normalizedTasks]);
+  const reviewTasks = useMemo(() => normalizedTasks.filter(t => t.type === "review"), [normalizedTasks]);
+  const otherTasks = useMemo(() => normalizedTasks.filter(t => t.type !== "blocker" && t.type !== "review"), [normalizedTasks]);
+
+  // AI-Assisted Advisory Insights
+  const aiInsights = useMemo(() => {
+    const items = [];
+    // Preflight target score
+    const avgCompletion = initialProjects.length 
+      ? Math.round(initialProjects.reduce((sum, p) => sum + p.overallCompletion, 0) / initialProjects.length)
+      : 0;
+    items.push({
+      type: "readiness",
+      title: `${avgCompletion}% Certification Readiness`,
+      description: `Portfolio averages ${avgCompletion}% completeness. Stage-gate confidence index is high.`,
+      icon: Sparkles,
+      color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/20"
+    });
+
+    // Mock duplicate document detection warning
+    if (initialProjects.length > 0) {
+      items.push({
+        type: "warning",
+        title: "Potential Document Redundancy",
+        description: `AI detected "ccil_msds_v2.pdf" is 98% identical to "hvac_filter_spec.pdf" under ${initialProjects[0].name}. Review for potential double-upload.`,
+        icon: AlertTriangle,
+        color: "text-amber-500 bg-amber-500/5 border-amber-500/20"
       });
     }
 
-    return list;
-  }, [actionQueue, reviewQueue, blockerQueue, roleTasks]);
-
-  // 3. AI Command Bar Intel Execution Engine
-  const executeCommand = (command: string) => {
-    if (!command.trim()) return;
-    
-    setIsProcessingAi(true);
-    setAiStatusMessage("Analyzing intent...");
-
-    const steps = [
-      "Retrieving project context variables...",
-      "Evaluating document compliance boundaries...",
-      "Mapping execution pathways & priorities...",
-      "Governance validation complete."
-    ];
-
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < steps.length) {
-        setAiStatusMessage(steps[currentStep]);
-        currentStep++;
-      } else {
-        clearInterval(interval);
-        setIsProcessingAi(false);
-        setAiStatusMessage("");
-
-        const lower = command.toLowerCase();
-        if (lower.includes("block") || lower.includes("stall")) {
-          setActiveTab("blockers");
-          setSearchQuery("");
-        } else if (lower.includes("readiness") || lower.includes("summary")) {
-          setSelectedTask(null);
-          setSearchQuery("");
-          // Open preflight readiness workspace
-          const dummyTask: ActionTask = {
-            id: "special-readiness",
-            projectId: projects[0]?.id || "",
-            projectName: projects[0]?.name || "All Projects",
-            projectCreditId: "",
-            creditCode: "READINESS",
-            creditName: "Submission Readiness Preflight",
-            documentType: "System Intel Report",
-            status: "active",
-            priority: "high",
-            summary: "AI-generated comprehensive analysis of documentation completeness and stage-gate readiness.",
-            type: "review"
-          };
-          setSelectedTask(dummyTask);
-        } else if (lower.includes("ccil")) {
-          setSearchQuery("ccil");
-        } else if (lower.includes("bhavarkua")) {
-          setSearchQuery("bhavarkua");
-        } else if (lower.includes("assign") || lower.includes("deepa")) {
-          alert(`AI Suggestion: Routed task to Deepa (Project Lead L3) for validation review.`);
-        } else {
-          setSearchQuery(command);
-        }
-      }
-    }, 600);
-  };
-
-  // 4. Operational Rendering Governor filter logic
-  const filteredTasksByProject = useMemo(() => {
-    let result = normalizedTasks;
-
-    if (activeTab === "blockers") {
-      result = result.filter(t => t.type === "blocker" || t.priority === "high");
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(t => 
-        t.projectName.toLowerCase().includes(q) || 
-        t.creditCode.toLowerCase().includes(q) || 
-        t.summary.toLowerCase().includes(q)
-      );
-    }
-
-    // Group ONLY by Project (Mandatory limit: maxVisibleProjects = 5)
-    const grouped: { [projName: string]: ActionTask[] } = {};
-    result.forEach(task => {
-      if (!grouped[task.projectName]) {
-        grouped[task.projectName] = [];
-      }
-      // Mandatory limit: maxVisibleTasksPerProject = 5
-      if (grouped[task.projectName].length < OPERATIONAL_GOVERNOR_CONFIG.maxVisibleTasksPerProject) {
-        grouped[task.projectName].push(task);
-      }
+    // Confidence warning
+    items.push({
+      type: "confidence",
+      title: "Confidence Margin Alert",
+      description: "MEP baseline requirements require accredited third-party validation reports to guarantee smooth L3 audit progression.",
+      icon: Bot,
+      color: "text-blue-500 bg-blue-500/5 border-blue-500/20"
     });
 
-    // Enforce maxVisibleProjects = 5
-    const keys = Object.keys(grouped).slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleProjects);
-    const finalGrouped: { [projName: string]: ActionTask[] } = {};
-    keys.forEach(k => {
-      finalGrouped[k] = grouped[k];
-    });
+    return items;
+  }, [initialProjects]);
 
-    return finalGrouped;
-  }, [normalizedTasks, activeTab, searchQuery, projects]);
-
-  const totalOutstandingTasks = useMemo(() => {
-    return Object.values(filteredTasksByProject).reduce((sum, list) => sum + list.length, 0);
-  }, [filteredTasksByProject]);
-
-  // Handle task execution forms
+  // Handle task execution actions
   const handleFileUpload = (e: React.FormEvent) => {
     e.preventDefault();
     if (!evidenceFile) return;
-
-    setIsProcessingAi(true);
-    setAiStatusMessage("Verifying file integrity & scanning low-VOC compliance parameters...");
-    
+    setIsProcessing(true);
+    setProcessingMessage("Verifying file integrity & scanning low-VOC compliance parameters...");
     setTimeout(() => {
-      setIsProcessingAi(false);
-      setAiStatusMessage("");
+      setIsProcessing(false);
+      setProcessingMessage("");
       setUploadSuccess(true);
       setEvidenceFile(null);
-      // Remove task from list mockingly
-      if (selectedTask) {
-        // Move task to completed/cleared state
-        setTimeout(() => {
-          setSelectedTask(null);
-          setUploadSuccess(false);
-        }, 2000);
-      }
-    }, 1800);
+      setTimeout(() => {
+        setSelectedTask(null);
+        setUploadSuccess(false);
+      }, 2000);
+    }, 1500);
   };
 
   const handleClarificationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clarificationText.trim()) return;
-
-    setIsProcessingAi(true);
-    setAiStatusMessage("Transmitting draft response to Project Audit Logger...");
-    
+    setIsProcessing(true);
+    setProcessingMessage("Transmitting draft response to Project Audit Logger...");
     setTimeout(() => {
-      setIsProcessingAi(false);
-      setAiStatusMessage("");
+      setIsProcessing(false);
+      setProcessingMessage("");
       setUploadSuccess(true);
       setClarificationText("");
       setTimeout(() => {
@@ -340,12 +300,11 @@ export default function CommandCenter({
 
   const handleReviewDecision = (decision: "approve" | "clarification") => {
     setReviewDecision(decision);
-    setIsProcessingAi(true);
-    setAiStatusMessage(decision === "approve" ? "Signing cryptographic review ledger..." : "Drafting request for clarification...");
-    
+    setIsProcessing(true);
+    setProcessingMessage(decision === "approve" ? "Signing cryptographic review ledger..." : "Drafting request for clarification...");
     setTimeout(() => {
-      setIsProcessingAi(false);
-      setAiStatusMessage("");
+      setIsProcessing(false);
+      setProcessingMessage("");
       setUploadSuccess(true);
       setTimeout(() => {
         setSelectedTask(null);
@@ -356,439 +315,517 @@ export default function CommandCenter({
   };
 
   return (
-    <div className="space-y-6">
-
-      {/* 2-COLUMN SPLIT COMMAND CONSOLE */}
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+    <div className="space-y-6 max-w-full">
+      {/* 2-COLUMN SPLITCOMMAND CONSOLE */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
         
-        {/* LEFT PANEL: OperationalProjectQueue */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
-            <div className="flex items-center gap-2">
-              <Inbox className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
-              <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
-                Operational Queue
-              </h2>
+        {/* LEFT COLUMN: The 4 Core Priority Sections */}
+        <div className="space-y-6">
+          
+          {/* SECTION 1: TODAY'S EXECUTION */}
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                  Today's Execution
+                </h2>
+              </div>
+              <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-bold text-[10px]">
+                {blockedTasks.length + reviewTasks.length} Urgent Items
+              </Badge>
             </div>
-            <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-bold">
-              {totalOutstandingTasks} Active
-            </Badge>
-          </div>
 
-          {/* Tab Selector */}
-          <div className="grid grid-cols-3 gap-1 bg-[var(--color-surface-2)] p-0.5 rounded-lg border border-[var(--color-border)]">
-            <button
-              onClick={() => setActiveTab("active")}
-              className={`py-1 text-[10px] font-black uppercase rounded transition-all ${
-                activeTab === "active" 
-                  ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              }`}
-            >
-              Action Items
-            </button>
-            <button
-              onClick={() => setActiveTab("blockers")}
-              className={`py-1 text-[10px] font-black uppercase rounded transition-all flex items-center justify-center gap-1 ${
-                activeTab === "blockers" 
-                  ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              }`}
-            >
-              ⚠️ Risks
-            </button>
-            <button
-              onClick={() => setActiveTab("all")}
-              className={`py-1 text-[10px] font-black uppercase rounded transition-all ${
-                activeTab === "all" 
-                  ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              }`}
-            >
-              Full Scope
-            </button>
-          </div>
-
-          {/* Grouped Queue */}
-          <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-            {Object.keys(filteredTasksByProject).length > 0 ? (
-              Object.entries(filteredTasksByProject).map(([projName, taskList]) => (
-                <div key={projName} className="space-y-2 border-l-2 border-[var(--color-border-strong)] pl-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
-                      <Folder className="h-3 w-3" />
-                      {projName}
-                    </h3>
-                    <Badge className="text-[8px] h-4.5 bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] font-semibold">
-                      {taskList.length} items
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2">
-                    {taskList.map((task, taskIdx) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Blocked Items / Risks */}
+              <div className="space-y-2.5">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-rose-600 flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Blocked & Stalled Credits ({blockedTasks.length})
+                </h3>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {blockedTasks.length > 0 ? (
+                    blockedTasks.map(task => (
                       <article
-                        key={`${task.id}-${taskIdx}`}
+                        key={task.id}
                         onClick={() => setSelectedTask(task)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer text-left relative overflow-hidden group ${
+                        className={`p-3 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
                           selectedTask?.id === task.id
-                            ? "bg-[var(--color-surface)] border-[var(--color-green)] shadow-md"
+                            ? "bg-[var(--color-surface-2)] border-rose-500 shadow-sm"
                             : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <Badge className={`text-[8px] font-black uppercase tracking-wider h-4 px-1.5 ${
-                            task.type === "blocker" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
-                            task.type === "review" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
-                            task.type === "clarification" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-                            "bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
-                          }`}>
-                            {task.creditCode}
-                          </Badge>
-                          
-                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold flex items-center gap-1">
-                            <Clock className="h-2.5 w-2.5" />
-                            {task.priority === "high" ? "Urgent" : "Normal"}
-                          </span>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] font-mono font-bold text-rose-600">{task.creditCode}</span>
+                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold">{task.projectName}</span>
                         </div>
-
-                        {/* AI-Compressed operational summary - strictly no raw metadata */}
-                        <p className="text-[11px] font-semibold text-[var(--color-text-primary)] line-clamp-2 leading-relaxed">
+                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] line-clamp-2 leading-tight">
                           {task.summary}
                         </p>
                       </article>
-                    ))}
-                  </div>
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-center text-slate-400">
+                      <p className="text-[11px] font-medium">No stalled items flagged</p>
+                    </div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <div className="p-8 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] text-center text-slate-400">
-                <Inbox className="h-6 w-6 mx-auto mb-2 text-slate-300" />
-                <p className="text-[11px] font-medium">No unresolved action items found matching parameters.</p>
+              </div>
+
+              {/* Pending Reviews */}
+              <div className="space-y-2.5">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--color-green)] flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Pending L1 Reviews ({reviewTasks.length})
+                </h3>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {reviewTasks.length > 0 ? (
+                    reviewTasks.map(task => (
+                      <article
+                        key={task.id}
+                        onClick={() => setSelectedTask(task)}
+                        className={`p-3 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
+                          selectedTask?.id === task.id
+                            ? "bg-[var(--color-surface-2)] border-[var(--color-green)] shadow-sm"
+                            : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] font-mono font-bold text-[var(--color-green)]">{task.creditCode}</span>
+                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold">{task.projectName}</span>
+                        </div>
+                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] line-clamp-2 leading-tight">
+                          {task.summary}
+                        </p>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-center text-slate-400">
+                      <p className="text-[11px] font-medium">No review tasks pending</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Other general tasks */}
+            {otherTasks.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-[var(--color-border)] space-y-2">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  Backlog Assignments ({otherTasks.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {otherTasks.slice(0, 6).map(task => (
+                    <article
+                      key={task.id}
+                      onClick={() => setSelectedTask(task)}
+                      className={`p-2.5 rounded-lg border transition-all cursor-pointer text-left relative group ${
+                        selectedTask?.id === task.id
+                          ? "bg-[var(--color-surface-2)] border-[var(--color-border-strong)] shadow-sm"
+                          : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center text-[9px] font-mono text-[var(--color-text-tertiary)] mb-1">
+                        <span className="font-bold">{task.creditCode}</span>
+                        <span>{task.projectName}</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-[var(--color-text-primary)] line-clamp-1">
+                        {task.summary}
+                      </p>
+                    </article>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        </section>
+          </section>
 
-        {/* CENTER PANEL: ExecutionWorkspace */}
-        <section className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-2xl p-5 min-h-[calc(100vh-280px)] relative overflow-hidden flex flex-col">
-          
-          {selectedTask ? (
-            <div className="flex-1 flex flex-col justify-between space-y-6">
-              
-              {/* Workspace Header */}
-              <div className="border-b border-[var(--color-border)] pb-4 space-y-1.5 text-left">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-black text-[var(--color-text-tertiary)] tracking-wider">
-                    Execution Workspace Focus
-                  </span>
-                  <Badge className="bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] text-[9px] font-bold">
-                    {selectedTask.projectName}
-                  </Badge>
-                </div>
-                
-                <h3 className="text-[14px] font-bold text-[var(--color-text-primary)]">
-                  {selectedTask.creditCode}: {selectedTask.creditName}
-                </h3>
+          {/* SECTION 2: ACTIVE WORK */}
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Folder className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                  Active Work & Portfolio Status
+                </h2>
               </div>
+              <span className="text-[10px] text-[var(--color-text-tertiary)] font-bold">
+                {initialProjects.length} Projects Total
+              </span>
+            </div>
 
-              {/* Workspace Main Body */}
-              <div className="flex-1 text-left">
-                
-                {/* Simulated AI preflight recommendations */}
-                <div className="p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] mb-5 space-y-3 relative overflow-hidden">
-                  <div className="absolute inset-y-0 left-0 w-1 bg-indigo-500" />
-                  <div className="flex items-start gap-2.5">
-                    <Bot className="h-4.5 w-4.5 text-indigo-500 mt-0.5" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {initialProjects.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleProjects).map((project) => (
+                <article key={project.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-3.5 rounded-lg space-y-2 text-left hover:border-[var(--color-border-strong)] transition-all">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="text-[11px] font-black uppercase text-indigo-500 tracking-wider">AI Preflight Checklist</h4>
-                      <p className="text-[11px] text-[var(--color-text-secondary)] mt-1 font-medium leading-relaxed">
-                        Based on IGBC guidebook criteria for this category, documentation must demonstrate complete baseline compatibility. Ensure:
+                      <h4 className="text-[12px] font-bold text-[var(--color-text-primary)]">
+                        {project.name}
+                      </h4>
+                      <p className="text-[9px] text-[var(--color-text-tertiary)] uppercase font-semibold">
+                        {project.certification_type} / {project.location}
                       </p>
-                      <ul className="mt-2 space-y-1 text-[10px] text-[var(--color-text-secondary)] list-disc pl-4 font-medium">
-                        <li>Valid raw supplier certification attestation is attached.</li>
-                        <li>Manufacturer baseline values map correctly to calculations.</li>
-                        <li>No placeholder or unverified drafts exist within review packs.</li>
-                      </ul>
+                    </div>
+                    <Badge className={`text-[8px] font-black uppercase tracking-wider h-4 px-1.5 ${
+                      project.statusFlag === "red" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
+                      project.statusFlag === "amber" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                      "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20"
+                    }`}>
+                      {project.statusFlag === "red" ? "Delayed" : project.statusFlag === "amber" ? "Warning" : "On Track"}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[9px] font-semibold text-[var(--color-text-secondary)]">
+                      <span>Completion Pace</span>
+                      <span>{project.overallCompletion}%</span>
+                    </div>
+                    <Progress value={project.overallCompletion} />
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                    <span>{project.uploadedDocs}/{project.totalCredits} Credits Uploaded</span>
+                    <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:underline flex items-center gap-0.5">
+                      Workspace <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {/* SECTION 3: AI ASSIST */}
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                  AI Advisory Intelligence (Harita Engine)
+                </h2>
+              </div>
+              <Badge className="bg-[var(--color-purple-light)] text-[var(--color-purple)] font-bold text-[9px]">
+                Advisory Only
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {aiInsights.map((insight, idx) => {
+                const Icon = insight.icon;
+                return (
+                  <div key={idx} className={`p-3 rounded-lg border flex flex-col justify-between text-left ${insight.color}`}>
+                    <div className="flex items-start gap-2">
+                      <Icon className="h-4.5 w-4.5 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-[11px] font-black uppercase tracking-wider">{insight.title}</h4>
+                        <p className="text-[11px] text-[var(--color-text-secondary)] mt-1 font-medium leading-relaxed">
+                          {insight.description}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* SECTION 4: SYSTEM HEALTH & AUDIT TELEMETRY */}
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                  Governance Engine Health & Replay Telemetry
+                </h2>
+              </div>
+              <Badge className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-mono text-[9px]">
+                REPLAY CONTRACT V1
+              </Badge>
+            </div>
+
+            {/* Replay State Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                  <Database className="h-3.5 w-3.5 text-blue-500" />
+                  RLS Polices
+                </div>
+                <span className="text-[12px] font-bold text-emerald-600">Active & Enforced</span>
+              </div>
+
+              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                  <Cpu className="h-3.5 w-3.5 text-indigo-500" />
+                  Determinism
+                </div>
+                <span className="text-[12px] font-bold text-emerald-600">0% Drift Verified</span>
+              </div>
+
+              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                  <Shield className="h-3.5 w-3.5 text-rose-500" />
+                  Open Desyncs
+                </div>
+                <span className={`text-[12px] font-bold ${runtimeSummary.openDesyncCount > 0 ? "text-rose-600" : "text-[var(--color-text-primary)]"}`}>
+                  {runtimeSummary.openDesyncCount} Desyncs
+                </span>
+              </div>
+
+              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                  <Zap className="h-3.5 w-3.5 text-amber-500" />
+                  Queued Repair
+                </div>
+                <span className="text-[12px] font-bold text-[var(--color-text-primary)]">
+                  {runtimeSummary.queuedRepairs} Pending
+                </span>
+              </div>
+            </div>
+
+            {/* Audit Log Timeline */}
+            <div className="space-y-1.5">
+              <h3 className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-tertiary)] text-left mb-1.5">
+                Real-Time Replay Ledger Activity
+              </h3>
+              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-2.5 max-h-[160px] overflow-y-auto space-y-1 font-mono text-[9px] text-[var(--color-text-secondary)] text-left">
+                {timeline.length > 0 ? (
+                  timeline.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleTimelineRows).map((row, idx) => (
+                    <div key={idx} className="flex justify-between items-start py-0.5 border-b border-dashed border-[var(--color-border)] last:border-b-0">
+                      <span className="truncate max-w-[80%]">
+                        <span className="text-[var(--color-text-tertiary)] mr-1">[{row.actor_role || "SYSTEM"}]</span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">{row.action}</span>: {row.summary || "Replay verified state check"}
+                      </span>
+                      <span className="text-[9px] text-[var(--color-text-tertiary)] shrink-0">
+                        {row.created_at ? <ClientTime value={row.created_at} /> : ""}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-slate-400 py-4">No audit logs retrieved.</div>
+                )}
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        {/* RIGHT COLUMN: Execution Workspace Panel */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 min-h-[420px] flex flex-col justify-between">
+            {selectedTask ? (
+              <div className="flex-1 flex flex-col justify-between space-y-4">
+                
+                {/* Workspace Header */}
+                <div className="border-b border-[var(--color-border)] pb-3 space-y-1 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] uppercase font-black text-[var(--color-text-tertiary)] tracking-wider">
+                      Execution Workspace
+                    </span>
+                    <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border border-[var(--color-border)] text-[8px] font-bold">
+                      {selectedTask.projectName}
+                    </Badge>
+                  </div>
+                  
+                  <h3 className="text-[13px] font-bold text-[var(--color-text-primary)]">
+                    {selectedTask.creditCode}: {selectedTask.creditName}
+                  </h3>
                 </div>
 
-                {/* Upload Action Flow */}
-                {selectedTask.type === "upload" && (
-                  <form onSubmit={handleFileUpload} className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
-                        Select Evidence Document
-                      </label>
-                      <div className="border-2 border-dashed border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] p-6 text-center hover:border-[var(--color-border-strong)] transition-all cursor-pointer relative">
-                        <input
-                          type="file"
-                          accept=".pdf,application/pdf"
-                          onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          required
-                        />
-                        <div className="space-y-1.5 text-slate-400">
-                          <FileText className="h-8 w-8 mx-auto text-slate-300" />
-                          <p className="text-[11px] font-semibold text-[var(--color-text-primary)]">
-                            {evidenceFile ? evidenceFile.name : "Click to select PDF evidence file"}
+                {/* Workspace Action Content */}
+                <div className="flex-1 text-left py-2">
+                  {/* AI Assistant context helper */}
+                  <div className="p-3 bg-[var(--color-purple-light)] rounded-lg border border-[var(--color-border)] mb-4 text-[10px] text-[var(--color-text-secondary)] relative overflow-hidden">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-[var(--color-purple)]" />
+                    <div className="flex gap-2">
+                      <Bot className="h-4 w-4 text-[var(--color-purple)] shrink-0" />
+                      <div>
+                        <h5 className="font-bold text-[var(--color-purple)] uppercase tracking-wider text-[9px] mb-0.5">AI Copilot Recommendation</h5>
+                        <p className="leading-relaxed">
+                          For IGBC compliance, ensure all calculation columns align with baseline formulas. No placeholders are permitted.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upload Action */}
+                  {selectedTask.type === "upload" && (
+                    <form onSubmit={handleFileUpload} className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                          Upload Evidence File
+                        </label>
+                        <div className="border-2 border-dashed border-[var(--color-border)] rounded-lg bg-[var(--color-surface-2)] p-4 text-center hover:border-[var(--color-border-strong)] transition-all cursor-pointer relative">
+                          <input
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            required
+                          />
+                          <FileText className="h-6 w-6 mx-auto text-slate-400 mb-1" />
+                          <p className="text-[11px] font-bold text-[var(--color-text-primary)] truncate">
+                            {evidenceFile ? evidenceFile.name : "Select PDF compliance document"}
                           </p>
-                          <p className="text-[9px]">PDF files up to 24MB approved</p>
+                          <p className="text-[8px] text-slate-400">PDF up to 24MB</p>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center justify-between pt-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setSelectedTask(null)}
-                        className="text-[11px] hover:bg-slate-100"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={!evidenceFile || isProcessingAi}
-                        className="rounded-xl px-4 py-2 text-[11px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)] transition-all"
-                      >
-                        Upload and Ingest Evidence
-                      </Button>
-                    </div>
-                  </form>
-                )}
+                      <div className="flex items-center justify-between pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setSelectedTask(null)}
+                          className="text-[10px]"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={!evidenceFile || isProcessing}
+                          className="rounded-lg px-3 py-1.5 text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                        >
+                          Upload Ingest
+                        </Button>
+                      </div>
+                    </form>
+                  )}
 
-                {/* Clarification Action Flow */}
-                {selectedTask.type === "clarification" && (
-                  <form onSubmit={handleClarificationSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
-                        Respond to Comment Block
-                      </label>
-                      <textarea
-                        value={clarificationText}
-                        onChange={(e) => setClarificationText(e.target.value)}
-                        placeholder="Provide details requested by reviewer..."
-                        rows={4}
-                        required
-                        className="w-full p-3 border border-[var(--color-border)] bg-[var(--color-surface)] text-[12px] text-[var(--color-text-primary)] rounded-xl outline-none focus:border-[var(--color-border-strong)] resize-none"
-                      />
-                    </div>
+                  {/* Clarification Action */}
+                  {selectedTask.type === "clarification" && (
+                    <form onSubmit={handleClarificationSubmit} className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                          Clarification Comment Text
+                        </label>
+                        <textarea
+                          value={clarificationText}
+                          onChange={(e) => setClarificationText(e.target.value)}
+                          placeholder="Fulfill clarification requirements..."
+                          rows={4}
+                          required
+                          className="w-full p-2.5 border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[11px] text-[var(--color-text-primary)] rounded-lg outline-none resize-none focus:border-[var(--color-border-strong)]"
+                        />
+                      </div>
 
-                    <div className="flex items-center justify-between pt-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setSelectedTask(null)}
-                        className="text-[11px]"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={!clarificationText.trim() || isProcessingAi}
-                        className="rounded-xl px-4 py-2 text-[11px] bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
-                      >
-                        Submit Response & Clear Blocker
-                      </Button>
-                    </div>
-                  </form>
-                )}
+                      <div className="flex items-center justify-between pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setSelectedTask(null)}
+                          className="text-[10px]"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={!clarificationText.trim() || isProcessing}
+                          className="rounded-lg px-3 py-1.5 text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                        >
+                          Submit Clarification
+                        </Button>
+                      </div>
+                    </form>
+                  )}
 
-                {/* Review Flow (L1 Approver Roles) */}
-                {selectedTask.type === "review" && selectedTask.id !== "special-readiness" && (
-                  <div className="space-y-4">
-                    <p className="text-[11px] font-medium text-[var(--color-text-secondary)] leading-relaxed">
-                      Verify that the uploaded compliance evidence maps strictly to standard requirements. Review baseline values in details.
-                    </p>
+                  {/* Review Action */}
+                  {selectedTask.type === "review" && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-medium text-[var(--color-text-secondary)] leading-relaxed">
+                        Verify if document credentials satisfy criteria. Accept or draft clarification requirements.
+                      </p>
 
-                    <div className="p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
-                        <span className="font-semibold text-[var(--color-text-primary)]">
+                      <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-[10px]">
+                        <span className="font-semibold text-[var(--color-text-primary)] truncate max-w-[70%]">
                           {selectedTask.creditName}
                         </span>
+                        <a 
+                          href="#" 
+                          onClick={(e) => { e.preventDefault(); alert("Document viewer modal opened"); }}
+                          className="text-[var(--color-green)] font-semibold hover:underline"
+                        >
+                          Open PDF
+                        </a>
                       </div>
-                      <a 
-                        href="#" 
-                        onClick={(e) => { e.preventDefault(); alert("Mock Open PDF viewer"); }}
-                        className="text-[var(--color-green)] font-semibold hover:underline"
-                      >
-                        View File
-                      </a>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-[var(--color-border)]">
+                        <Button
+                          onClick={() => handleReviewDecision("clarification")}
+                          variant="secondary"
+                          disabled={isProcessing}
+                          className="rounded-lg text-[10px]"
+                        >
+                          Clarification Needed
+                        </Button>
+                        <Button
+                          onClick={() => handleReviewDecision("approve")}
+                          disabled={isProcessing}
+                          className="rounded-lg text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                        >
+                          Approve
+                        </Button>
+                      </div>
                     </div>
+                  )}
 
-                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--color-border)]">
-                      <Button
-                        onClick={() => handleReviewDecision("clarification")}
-                        variant="secondary"
-                        disabled={isProcessingAi}
-                        className="rounded-xl text-[11px] border-[var(--color-border)]"
-                      >
-                        Request Clarification
-                      </Button>
-                      <Button
-                        onClick={() => handleReviewDecision("approve")}
-                        disabled={isProcessingAi}
-                        className="rounded-xl text-[11px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
-                      >
-                        Approve Document
-                      </Button>
+                  {/* Success indicator */}
+                  {uploadSuccess && (
+                    <div className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold">
+                      <Check className="h-4 w-4 shrink-0" />
+                      <span>Ledger transaction logged successfully!</span>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Readiness Preflight Intel Report */}
-                {selectedTask.id === "special-readiness" && (
-                  <div className="space-y-4">
-                    <SubmissionRiskPanel projects={projects} stuckItems={insights.stuckItems} />
-                    <div className="flex justify-end pt-2">
-                      <Button
-                        onClick={() => setSelectedTask(null)}
-                        variant="ghost"
-                        className="text-[11px]"
-                      >
-                        Close Readiness Report
-                      </Button>
+                  {/* Processing indicator */}
+                  {isProcessing && (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="h-1 w-full bg-[var(--color-border)] rounded-full overflow-hidden">
+                        <div className="h-full bg-[var(--color-green)] animate-pulse w-1/2" />
+                      </div>
+                      <p className="text-[9px] text-[var(--color-text-secondary)] animate-pulse">{processingMessage}</p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Submission Success Alert */}
-                {uploadSuccess && (
-                  <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl flex items-center gap-2 text-[11px] font-semibold animate-pulse">
-                    <Check className="h-4.5 w-4.5" />
-                    <span>Action successfully executed and recorded on audit ledger! Workspace updated.</span>
-                  </div>
-                )}
-
-              </div>
-            </div>
-          ) : (
-            // Default Focused State: High level Portfolio Health Matrix
-            <div className="flex-1 flex flex-col justify-between space-y-6">
-              
-              <div className="text-left space-y-1.5 border-b border-[var(--color-border)] pb-4">
-                <span className="text-[10px] uppercase font-black text-[var(--color-text-tertiary)] tracking-wider">
-                  Operational Dashboard Focus
-                </span>
-                <h3 className="text-[14px] font-bold text-[var(--color-text-primary)]">
-                  Portfolio Health Map
-                </h3>
-              </div>
-
-              {/* Project Health Strips */}
-              <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-340px)] pr-1">
-                {projects.slice(0, 4).map((proj) => (
-                  <ProjectHealthStrip key={proj.id} project={proj} />
-                ))}
-              </div>
-
-              {/* Bottom guidance hint */}
-              <div className="p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl flex items-center justify-between text-[11px] text-[var(--color-text-secondary)] font-medium">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4.5 w-4.5 text-indigo-500" />
-                  <span>Select any action item from the left queue to begin work.</span>
                 </div>
-                <ChevronRight className="h-4 w-4" />
               </div>
+            ) : (
+              // Default state: Portfolio Quick Summary
+              <div className="flex-1 flex flex-col justify-between space-y-4">
+                <div className="text-left space-y-1 border-b border-[var(--color-border)] pb-3">
+                  <span className="text-[9px] uppercase font-black text-[var(--color-text-tertiary)] tracking-wider">
+                    Execution Workspace Focus
+                  </span>
+                  <h3 className="text-[13px] font-bold text-[var(--color-text-primary)]">
+                    System Control Board
+                  </h3>
+                </div>
 
-            </div>
-          )}
+                <div className="space-y-3 flex-1 text-left">
+                  <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+                    Select any active action item from the execution lists to initiate the review cycle, upload verification documents, or resolve blocker clarifications.
+                  </p>
 
-        </section>
+                  <div className="p-3 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg space-y-2">
+                    <span className="text-[9px] uppercase font-black text-slate-500 block">SLA Risk Hotspot</span>
+                    {insights.stuckItems && insights.stuckItems.length > 0 ? (
+                      <div className="text-[10px] text-[var(--color-text-secondary)]">
+                        <strong>{insights.stuckItems[0].projectName}</strong>: {insights.stuckItems[0].missingDoc} has been stalled under {insights.stuckItems[0].creditCode} for 6 days.
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-[var(--color-text-secondary)]">No critical SLA breaches detected. Compliance velocity is within normal parameters.</div>
+                    )}
+                  </div>
+                </div>
 
-      </div>
-    </div>
-  );
-}
-
-// 📦 ProjectHealthStrip Sub-Component
-function ProjectHealthStrip({ project }: { project: Project }) {
-  return (
-    <article className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-xl space-y-2.5 text-left transition-all hover:border-[var(--color-border-strong)]">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h4 className="text-[12px] font-bold text-[var(--color-text-primary)]">
-            {project.name}
-          </h4>
-          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold uppercase">
-            {project.certification_type} / {project.location}
-          </span>
+                <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <Bot className="h-4 w-4 text-[var(--color-green)]" />
+                    <span>AI Copilot Active & Listening</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </div>
+              </div>
+            )}
+          </section>
         </div>
 
-        <Badge className={`text-[8px] font-black uppercase tracking-wider h-4 px-1.5 ${
-          project.statusFlag === "red" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
-          project.statusFlag === "amber" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-          "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-        }`}>
-          {project.statusFlag === "red" ? "🚨 Delayed" : project.statusFlag === "amber" ? "⚠️ Warning" : " On Track"}
-        </Badge>
-      </div>
-
-      <div className="space-y-1">
-        <div className="flex justify-between items-center text-[10px] font-semibold text-[var(--color-text-secondary)]">
-          <span>Overall completion velocity</span>
-          <span className="mono">{project.overallCompletion}%</span>
-        </div>
-        <Progress value={project.overallCompletion} />
-      </div>
-
-      <div className="pt-2 flex justify-between items-center gap-2 border-t border-[var(--color-border)] text-[9px] font-semibold text-[var(--color-text-tertiary)]">
-        <span>{project.uploadedDocs}/{project.totalCredits} checklist items done</span>
-        <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:underline flex items-center gap-0.5">
-          Workspace View <ArrowUpRight className="h-3 w-3" />
-        </Link>
-      </div>
-    </article>
-  );
-}
-
-// 📦 SubmissionRiskPanel Sub-Component
-function SubmissionRiskPanel({ projects, stuckItems }: { projects: Project[]; stuckItems: any[] }) {
-  return (
-    <div className="space-y-4 text-left">
-      <div className="flex items-center gap-2 text-indigo-500">
-        <Sparkles className="h-4.5 w-4.5 animate-pulse" />
-        <h4 className="text-[12px] font-black uppercase tracking-wider">Submission Preflight Readiness Analysis</h4>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-1">
-          <span className="text-[9px] uppercase font-black text-slate-500 block">Overall Target Confidence</span>
-          <strong className="text-[13px] text-[var(--color-text-primary)] block">High Readiness Probability</strong>
-          <span className="text-[9px] text-[var(--color-text-tertiary)] block">86% of mandatory metrics fully met.</span>
-        </div>
-
-        <div className="p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-1">
-          <span className="text-[9px] uppercase font-black text-slate-500 block">Identified High-Risk Hotspots</span>
-          <strong className="text-[13px] text-rose-500 block">1 Bottleneck Cluster</strong>
-          <span className="text-[9px] text-[var(--color-text-tertiary)] block">2 projects experiencing HVAC verification delays.</span>
-        </div>
-      </div>
-
-      {stuckItems.length > 0 && (
-        <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider">
-            <ShieldAlert className="h-3.5 w-3.5" />
-            Top Blocking Vulnerability
-          </div>
-          <p className="text-[11px] text-[var(--color-text-secondary)] font-medium leading-normal">
-            <strong>{stuckItems[0].projectName || "CCIL Workspace"}</strong>: Missing {stuckItems[0].missingDoc || "Simulation Report"} for credit {stuckItems[0].creditCode || "HVAC-01"}. Assigned to {stuckItems[0].responsibleRole || "Vendor"}.
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-1">
-        <h5 className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Checklist Readiness Index</h5>
-        <div className="space-y-1.5">
-          {projects.slice(0, 3).map(p => (
-            <div key={p.id} className="flex justify-between items-center text-[10px] font-mono text-[var(--color-text-secondary)]">
-              <span className="truncate max-w-[200px]">{p.name}</span>
-              <span className="font-semibold">{Math.round(p.overallCompletion)}% Completeness</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

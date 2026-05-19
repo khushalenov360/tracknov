@@ -233,7 +233,7 @@ export default async function DashboardPage({
       email={user?.email}
       notificationCount={projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0)}
     >
-      <RefreshTrigger intervalMs={isL3Operational ? 15000 : 60000} />
+      <RefreshTrigger intervalMs={isL3Operational ? 60000 : 120000} />
       <CommandCenter
         user={user ? { id: user.id, name: user.email ? user.email.split("@")[0] : "Operator", role: user.role as any, email: user.email } : null}
         initialProjects={projects.map(p => ({
@@ -260,6 +260,8 @@ export default async function DashboardPage({
         myTasks={myTasks}
         roleTasks={roleTasks}
         insights={insights}
+        runtimeSummary={runtimeSummary}
+        timeline={condensedTimelineRows}
       />
     </Shell>
   );
