@@ -1,6 +1,6 @@
 /**
- * TRACKNOV — Copilot Governance Service
- * Implements Sections 4, 5, 13, 14, 19, 22 of the ENOVAIT Modeled Copilot Handoff.
+ * TRACKNOV — Harita Governance Service
+ * Implements Sections 4, 5, 13, 14, 19, 22 of the ENOVAIT Modeled Harita Handoff.
  * Strictly enforces Principle 4 (Human Governance Authority) and Final Governance Law
  * as defined in TRACKNOV_CANONICAL_GOVERNANCE_MODEL_V1 Section 1.
  */
@@ -16,10 +16,10 @@
  * - conversational: User is asking a question, seeking guidance, or chatting.
  * - operational: User wants to navigate, filter, manage team, or perform a platform action.
  */
-export type CopilotIntentCategory = "analysis" | "workflow" | "conversational" | "operational";
+export type HaritaIntentCategory = "analysis" | "workflow" | "conversational" | "operational";
 
 /** Legacy fine-grained intent kept for backward compatibility with deterministic routing. */
-export type CopilotIntent =
+export type HaritaIntent =
   | "status"
   | "validation"
   | "workflow"
@@ -29,7 +29,7 @@ export type CopilotIntent =
   | "next_step"
   | "general";
 
-export type NormalizedCopilotResponse = {
+export type NormalizedHaritaResponse = {
   assessment: string;
   fit: "Strong" | "Medium" | "Not suitable";
   reason: string;
@@ -46,7 +46,7 @@ export type NormalizedCopilotResponse = {
  * Conversational and analysis intents NEVER need tools — only workflow and operational do.
  * This prevents unnecessary latency and false tool triggers.
  */
-export function requiresToolCall(category: CopilotIntentCategory): boolean {
+export function requiresToolCall(category: HaritaIntentCategory): boolean {
   return category === "workflow" || category === "operational";
 }
 
@@ -173,7 +173,7 @@ export function classifyAttachmentIntent(text: string): AttachmentIntent {
 // SECTION 13: Full Intent Disambiguation
 // ─────────────────────────────────────────────
 
-export function disambiguateIntent(query: string): CopilotIntentCategory {
+export function disambiguateIntent(query: string): HaritaIntentCategory {
   const q = query.toLowerCase().trim();
 
   // Workflow: requires explicit action + confirmation pattern
@@ -251,7 +251,7 @@ export function sanitizeContextText(input: string) {
 }
 
 /** Legacy fine-grained intent router — kept for deterministic shortcircuit paths in route.ts */
-export function routeCopilotIntent(query: string): CopilotIntent {
+export function routeHaritaIntent(query: string): HaritaIntent {
   const q = query.toLowerCase();
   if (q.includes("how many pending") || q.includes("total counts") || q.includes("overall status")) return "status";
   if (q.includes("check validation") || q.includes("is it compliant") || q.includes("validation rules")) return "validation";
@@ -263,8 +263,8 @@ export function routeCopilotIntent(query: string): CopilotIntent {
   return "general";
 }
 
-export function normalizeCopilotResponse(input: Partial<NormalizedCopilotResponse>) {
-  const normalized: NormalizedCopilotResponse = {
+export function normalizeHaritaResponse(input: Partial<NormalizedHaritaResponse>) {
+  const normalized: NormalizedHaritaResponse = {
     assessment: (input.assessment ?? "").trim() || UNKNOWN_DATA_RESPONSE,
     fit: input.fit ?? "Medium",
     reason: (input.reason ?? "").trim() || UNKNOWN_DATA_RESPONSE,

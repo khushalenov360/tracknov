@@ -17,7 +17,7 @@ export type WorkflowContext = {
 };
 
 /**
- * Builds a project-scoped, role-aware context object for the Copilot.
+ * Builds a project-scoped, role-aware context object for the Harita.
  * Ensures all AI responses are anchored in the current project reality.
  */
 export async function buildWorkflowContext(projectId: string): Promise<WorkflowContext | null> {

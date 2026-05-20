@@ -1,17 +1,17 @@
 /**
  * TRACKNOV — Session Memory Service
- * Section 9: Required Session Memory System (ENOVAIT Modeled Copilot Handoff)
+ * Section 9: Required Session Memory System (ENOVAIT Modeled Harita Handoff)
  *
- * Tracks the active conversational session state so the Copilot can maintain
+ * Tracks the active conversational session state so Harita can maintain
  * contextual continuity across multi-turn conversations without re-fetching.
  *
  * Storage: sessionStorage (tab-scoped, never persisted to server)
  * Privacy: No PII other than what the user explicitly shares in chat.
  */
 
-const SESSION_KEY = "tracknov:copilot:session";
+const SESSION_KEY = "tracknov:harita:session";
 
-export type CopilotSession = {
+export type HaritaSession = {
   /** The project currently in focus */
   activeProjectId: string | null;
   activeProjectName: string | null;
@@ -30,7 +30,7 @@ export type CopilotSession = {
   lastActivityAt: string;
 };
 
-const EMPTY_SESSION: CopilotSession = {
+const EMPTY_SESSION: HaritaSession = {
   activeProjectId: null,
   activeProjectName: null,
   activeCreditId: null,
@@ -43,18 +43,18 @@ const EMPTY_SESSION: CopilotSession = {
   lastActivityAt: new Date().toISOString(),
 };
 
-function readSession(): CopilotSession {
+function readSession(): HaritaSession {
   if (typeof window === "undefined") return { ...EMPTY_SESSION };
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
     if (!raw) return { ...EMPTY_SESSION };
-    return { ...EMPTY_SESSION, ...(JSON.parse(raw) as Partial<CopilotSession>) };
+    return { ...EMPTY_SESSION, ...(JSON.parse(raw) as Partial<HaritaSession>) };
   } catch {
     return { ...EMPTY_SESSION };
   }
 }
 
-function writeSession(session: CopilotSession): void {
+function writeSession(session: HaritaSession): void {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -64,7 +64,7 @@ function writeSession(session: CopilotSession): void {
 }
 
 export const sessionMemory = {
-  get(): CopilotSession {
+  get(): HaritaSession {
     return readSession();
   },
 

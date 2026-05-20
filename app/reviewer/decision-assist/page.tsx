@@ -140,7 +140,7 @@ export default function ReviewerDecisionAssist() {
           <div className="bg-slate-900 border border-slate-850 p-6 rounded-3xl space-y-6 overflow-y-auto scrollbar-thin">
             
             <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
-              <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">AI Rationale Copilot</span>
+              <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">AI Rationale Harita</span>
               <span className="flex items-center gap-1 text-[9px] text-emerald-400 font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
                 98% CONSISTENCY

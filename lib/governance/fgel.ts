@@ -11,7 +11,7 @@
  * 6. AI compression enforcement
  * 7. Mobile rendering governance
  * 8. Operational focus governance
- * 9. Copilot visibility governance
+ * 9. Harita visibility governance
  * 10. UX entropy monitoring
  */
 
@@ -48,7 +48,7 @@ export interface FGELTelemetry {
 
 export interface FGELViolation {
   id: string;
-  category: "cognitive" | "scroll" | "hierarchy" | "duplicate" | "mobile" | "operational" | "copilot" | "density";
+  category: "cognitive" | "scroll" | "hierarchy" | "duplicate" | "mobile" | "operational" | "harita" | "density";
   message: string;
   severity: "info" | "warning" | "critical";
   recommendation: string;
@@ -63,7 +63,7 @@ export interface GovernanceScoreBreakdown {
   mobileCompliance: number;
   operationalFocus: number;
   aiCompressionCompliance: number;
-  copilotVisibility: number;
+  haritaVisibility: number;
   overallScore: number;
 }
 
@@ -304,25 +304,25 @@ export class DuplicateRenderingDetector {
   }
 }
 
-// 7. CopilotVisibilityGovernor
-export class CopilotVisibilityGovernor {
-  static checkVisibility(hasCopilot: boolean, isPersistent: boolean, isDesktop: boolean): FGELViolation[] {
+// 7. HaritaVisibilityGovernor
+export class HaritaVisibilityGovernor {
+  static checkVisibility(hasHarita: boolean, isPersistent: boolean, isDesktop: boolean): FGELViolation[] {
     const violations: FGELViolation[] = [];
 
-    if (!hasCopilot) {
+    if (!hasHarita) {
       violations.push({
-        id: "copilot-missing",
-        category: "copilot",
-        message: "Tracknov global AI Copilot (Harita) is missing from the active layout context",
+        id: "harita-missing",
+        category: "harita",
+        message: "Tracknov global AI assistant (Harita) is missing from the active layout context",
         severity: "critical",
-        recommendation: "Mount the persistent GlobalCopilot on the screen. The AI assistant must remain persistent for native workflows.",
+        recommendation: "Mount the persistent GlobalHarita on the screen. The AI assistant must remain persistent for native workflows.",
         timestamp: Date.now()
       });
     } else if (isDesktop && !isPersistent) {
       violations.push({
-        id: "copilot-not-persistent",
-        category: "copilot",
-        message: "AI Copilot must be persistent on desktop layouts (70% workspace, 30% persistent sidebar)",
+        id: "harita-not-persistent",
+        category: "harita",
+        message: "AI assistant (Harita) must be persistent on desktop layouts (70% workspace, 30% persistent sidebar)",
         severity: "warning",
         recommendation: "Ensure the sidebar has sticky positioning and doesn't collapse into a hidden popup menu.",
         timestamp: Date.now()
@@ -386,7 +386,7 @@ export class FrontendGovernanceScore {
       duplicate: 0,
       mobile: 0,
       operational: 0,
-      copilot: 0,
+      harita: 0,
       density: 0
     };
 
@@ -403,7 +403,7 @@ export class FrontendGovernanceScore {
     const mobileCompliance = isMobile ? scale(counts.mobile, 20) : 100;
     const operationalFocus = scale(counts.operational, 20);
     const aiCompressionCompliance = scale(counts.hierarchy + counts.density, 12);
-    const copilotVisibility = scale(counts.copilot, 35);
+    const haritaVisibility = scale(counts.harita, 35);
 
     const overallScore = Math.round(
       (cognitiveLoad * 0.15) +
@@ -413,7 +413,7 @@ export class FrontendGovernanceScore {
       (mobileCompliance * 0.10) +
       (operationalFocus * 0.15) +
       (aiCompressionCompliance * 0.10) +
-      (copilotVisibility * 0.10)
+      (haritaVisibility * 0.10)
     );
 
     return {
@@ -424,7 +424,7 @@ export class FrontendGovernanceScore {
       mobileCompliance,
       operationalFocus,
       aiCompressionCompliance,
-      copilotVisibility,
+      haritaVisibility,
       overallScore
     };
   }

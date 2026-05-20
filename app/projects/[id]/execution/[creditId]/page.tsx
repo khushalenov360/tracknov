@@ -224,7 +224,7 @@ export default async function CreditExecutionDetailPage({ params }: { params: Pr
               </div>
               
               <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-6 flex items-center gap-2">
-                AI Copilot Insights
+                AI Harita Insights
               </h3>
               
               <div className="space-y-4">

@@ -13,9 +13,9 @@ import { sessionMemory } from "@/lib/services/session-memory-service";
 import { knowledgeEngine } from "@/lib/services/knowledge-engine";
 import {
   getUnknownDataResponse,
-  normalizeCopilotResponse,
+  normalizeHaritaResponse,
   requiresExplicitConfirmationForExecution,
-  routeCopilotIntent,
+  routeHaritaIntent,
   disambiguateIntent,
   requiresToolCall,
   sanitizeContextText,
@@ -24,13 +24,13 @@ import {
   filterTechnicalLeakage,
   containsAuthoritativeClaim,
   getAuthoritativeClaimRefusal,
-} from "@/lib/services/copilot-governance";
+} from "@/lib/services/harita-governance";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
-import { resolveCopilotMode } from "@/lib/copilot/router/resolveCopilotMode";
-import { copilotRuntimeService } from "@/lib/services/copilot-runtime-service";
+import { resolveHaritaMode } from "@/lib/harita/router/resolveHaritaMode";
+import { haritaRuntimeService } from "@/lib/services/harita-runtime-service";
 export const dynamic = "force-dynamic";
 
 type AssistantRequest = {
@@ -161,7 +161,7 @@ function createResponseStream(textStream: ReadableStream<Uint8Array>, navigateTo
     "X-Content-Type-Options": "nosniff",
   };
   if (navigateTo) {
-    headers["X-Copilot-Navigate"] = navigateTo;
+    headers["X-Harita-Navigate"] = navigateTo;
   }
   return new Response(textStream, { headers });
 }
@@ -197,7 +197,7 @@ function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>, sessio
       
       // Store the final governed response in persistent history if session exists
       if (sessionId) {
-        void copilotRuntimeService.storeMessage(sessionId, "assistant", safe).catch(() => {});
+        void haritaRuntimeService.storeMessage(sessionId, "assistant", safe).catch(() => {});
       }
 
       controller.enqueue(encoder.encode(safe));
@@ -736,7 +736,7 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
       .filter((line) => line.startsWith("Project "))
       .slice(0, 6);
     if (!projectLines.length) {
-      return normalizeCopilotResponse({
+      return normalizeHaritaResponse({
         assessment: getUnknownDataResponse(),
         fit: "Not suitable",
         reason: "No project lines found in your accessible data.",
@@ -744,7 +744,7 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
         confirm: "Confirm?",
       });
     }
-    return normalizeCopilotResponse({
+    return normalizeHaritaResponse({
       assessment: `I found ${projectLines.length} active project snapshots in your accessible workspace.`,
       fit: "Strong",
       reason: projectLines.join(" | "),
@@ -758,7 +758,7 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
       .filter((line) => line.toLowerCase().includes("documents:") || line.toLowerCase().includes("credits:"))
       .slice(0, 4)
       .join(" | ");
-    return normalizeCopilotResponse({
+    return normalizeHaritaResponse({
       assessment: workflowHints || getUnknownDataResponse(),
       fit: workflowHints ? "Medium" : "Not suitable",
       reason: workflowHints || "Workflow counters are not present in the current snapshot.",
@@ -768,7 +768,7 @@ function tryDeterministicAnswer(intent: string, snapshot: string) {
   }
   if (intent === "validation") {
     const hasValidation = snapshot.toLowerCase().includes("required:");
-    return normalizeCopilotResponse({
+    return normalizeHaritaResponse({
       assessment: hasValidation
         ? "Validation requirements are present in current tracker/credit context."
         : getUnknownDataResponse(),
@@ -1244,7 +1244,7 @@ export async function POST(request: Request) {
 
   const latestPromptRaw = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
   const latestPrompt = sanitizeUserText(latestPromptRaw);
-  const intent = routeCopilotIntent(latestPrompt);
+  const intent = routeHaritaIntent(latestPrompt);
   // SECTION 13: 4-category intent disambiguation
   const intentCategory = disambiguateIntent(latestPrompt);
   const focusedProjectId = getProjectIdFromContext(context);
@@ -1269,11 +1269,11 @@ export async function POST(request: Request) {
       event_type: "tenant_isolation_violation",
       severity: "critical",
       details: {
-        action: "ai_copilot_context_injection",
+        action: "ai_harita_context_injection",
         blocked: true,
         injected_project_id: focusedProjectId,
         accessible_projects: projectIds,
-        enforcement_layer: "AI Copilot Route Guard",
+        enforcement_layer: "AI Harita Route Guard",
         governance_law: "Section 10 — Tenant Isolation Law",
         security_model: "Section 27 — Security Event Model",
       },
@@ -1316,13 +1316,13 @@ export async function POST(request: Request) {
 
   // Resolve session and augment context with server-side memory
   const activeProjectId = focusedProjectId || projectIds[0];
-  const session = await copilotRuntimeService.getOrCreateSession(user.id, activeProjectId);
+  const session = await haritaRuntimeService.getOrCreateSession(user.id, activeProjectId);
   
   // Store user prompt in persistent history
-  await copilotRuntimeService.storeMessage(session.id, "user", latestPrompt);
+  await haritaRuntimeService.storeMessage(session.id, "user", latestPrompt);
 
   // Build augmented context from semantic memory
-  const augmentedContext = await copilotRuntimeService.buildAugmentedContext(user.id, activeProjectId, context);
+  const augmentedContext = await haritaRuntimeService.buildAugmentedContext(user.id, activeProjectId, context);
 
   const ragMatches = await ragService.retrieveContext({
     query: latestPrompt,
@@ -1370,7 +1370,7 @@ export async function POST(request: Request) {
   }
 
   if ((intent === "mapping" || intent === "comparison" || intent === "summary") && !hasManualLock) {
-    const manualLockReply = normalizeCopilotResponse({
+    const manualLockReply = normalizeHaritaResponse({
       assessment: getUnknownDataResponse(),
       fit: "Not suitable",
       reason: "Project manual version is not locked for this workspace.",
@@ -1566,11 +1566,11 @@ export async function POST(request: Request) {
     // Fallback: If AI fails but we have an attachment, provide a quick structural analysis
     if (attachments.length && isFileQuestion(latestPrompt)) {
       const analysis = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
-      await copilotRuntimeService.storeSemanticMemory(session.id, "analysis", attachments[0].name, {
+      await haritaRuntimeService.storeSemanticMemory(session.id, "analysis", attachments[0].name, {
         summary: analysis,
         timestamp: new Date().toISOString()
       });
-      await copilotRuntimeService.storeMessage(session.id, "assistant", analysis);
+      await haritaRuntimeService.storeMessage(session.id, "assistant", analysis);
       
       await logAiInteraction({
         userId: user.id,
@@ -1587,7 +1587,7 @@ export async function POST(request: Request) {
   }
 
   const fallbackText = buildFallbackAssistantReply(context, latestPrompt);
-  await copilotRuntimeService.storeMessage(session.id, "assistant", fallbackText);
+  await haritaRuntimeService.storeMessage(session.id, "assistant", fallbackText);
   
   await logAiInteraction({
     userId: user.id,

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import type { AssistantMessage, AssistantContext } from "@/lib/assistant";
 
-export type CopilotSession = {
+export type HaritaSession = {
   id: string;
   project_id: string;
   user_id: string;
@@ -14,14 +14,14 @@ export type CopilotSession = {
 
 export type SemanticMemoryType = 'analysis' | 'preference' | 'fact';
 
-export class CopilotRuntimeService {
+export class HaritaRuntimeService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
 
   /**
    * Resolve or initialize a conversation session for the current context.
    */
-  async getOrCreateSession(userId: string, projectId: string): Promise<CopilotSession> {
+  async getOrCreateSession(userId: string, projectId: string): Promise<HaritaSession> {
     const { data: existing } = await this.admin
       .from("conversation_sessions")
       .select("*")
@@ -156,4 +156,4 @@ export class CopilotRuntimeService {
   }
 }
 
-export const copilotRuntimeService = new CopilotRuntimeService();
+export const haritaRuntimeService = new HaritaRuntimeService();

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Authoritative UI Action schema.
- * Copilot returns these to be rendered as deterministic buttons/controls.
+ * Harita returns these to be rendered as deterministic buttons/controls.
  */
 export const UIActionSchema = z.object({
   label: z.string(),

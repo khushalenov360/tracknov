@@ -1,28 +1,28 @@
-import { resolveCopilotMode, CopilotIntent } from "./router/resolveCopilotMode";
+import { resolveHaritaMode, HaritaIntent } from "./router/resolveHaritaMode";
 import { buildWorkflowContext } from "./context/buildWorkflowContext";
 import { WorkflowResponseSchema, FallbackResponseSchema } from "./contracts/workflow";
 import { generateDeterministicFallback } from "./fallbacks/deterministicFallback";
 import { aiService } from "../services/ai-service";
 import { createClient } from "../supabase/server";
 
-export type CopilotRequest = {
+export type HaritaRequest = {
   query: string;
   projectId?: string;
-  intentHint?: CopilotIntent;
+  intentHint?: HaritaIntent;
   history?: any[];
 };
 
 /**
- * The Authoritative Orchestrator for the EnovAIT Modeled Copilot.
+ * The Authoritative Orchestrator for the EnovAIT Modeled Harita.
  * This is the high-level entry point that coordinates routing, context building,
  * and deterministic output enforcement.
  */
-export async function orchestrateCopilotResponse(request: CopilotRequest) {
+export async function orchestrateHaritaResponse(request: HaritaRequest) {
   const { query, projectId, intentHint } = request;
   
   // 1. Resolve Mode
   const intent = intentHint || "unknown"; // TODO: Use a classifier to refine this
-  const mode = resolveCopilotMode(intent);
+  const mode = resolveHaritaMode(intent);
 
   if (mode === "conversation") {
     // Normal conversation logic (can still use legacy assistant path)

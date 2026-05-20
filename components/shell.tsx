@@ -16,7 +16,7 @@ import {
   Search,
   Users
 } from "lucide-react";
-import { GlobalCopilot } from "@/components/assistant/global-copilot";
+import { GlobalHarita } from "@/components/assistant/global-harita";
 import { SessionHeartbeat } from "@/components/session-heartbeat";
 import { Badge } from "@/components/ui/badge";
 import { env } from "@/lib/env";
@@ -187,9 +187,9 @@ export function Shell({
               </div>
             </main>
 
-            {/* RIGHT PANEL: Persistent copilot panel (30% width) */}
+            {/* RIGHT PANEL: Persistent Harita panel (30% width) */}
             <aside className="hidden lg:flex flex-col border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg overflow-hidden h-[calc(100vh-140px)] shadow-sm sticky top-[88px]">
-              <GlobalCopilot 
+              <GlobalHarita 
                 enabled={env.aiReady} 
                 role={role} 
                 title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Project')} 
@@ -202,9 +202,9 @@ export function Shell({
         </div>
       </div>
 
-      {/* Small screens floating copilot button */}
+      {/* Small screens floating Harita button */}
       <div className="lg:hidden">
-        <GlobalCopilot 
+        <GlobalHarita 
           enabled={env.aiReady} 
           role={role} 
           title={aiTitle ?? (typeof title === 'string' ? title : 'Tracknov Project')} 

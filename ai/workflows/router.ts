@@ -1,4 +1,4 @@
-import { orchestrateCopilotResponse } from "@/lib/copilot/orchestrator";
+import { orchestrateHaritaResponse } from "@/lib/harita/orchestrator";
 import type { AIIntent } from "@/ai/intents/types";
 
 export async function routeWorkflowAction(input: {
@@ -9,7 +9,7 @@ export async function routeWorkflowAction(input: {
   if (!input.projectId) {
     return { ok: false, message: "Project context is required for workflow execution." };
   }
-  const result = await orchestrateCopilotResponse({
+  const result = await orchestrateHaritaResponse({
     query: input.query,
     projectId: input.projectId,
     intentHint: "upload",

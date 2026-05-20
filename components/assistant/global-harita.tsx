@@ -10,13 +10,13 @@ import type { MemberRole } from "@/lib/types";
 import { sessionMemory } from "@/lib/services/session-memory-service";
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
-type CopilotAttachment = {
+type HaritaAttachment = {
   name: string;
   mimeType: string;
   size: number;
   base64: string;
 };
-type CopilotCreditOption = { id: string; code: string; name: string };
+type HaritaCreditOption = { id: string; code: string; name: string };
 type FormFieldMeta = {
   key: string;
   label: string;
@@ -24,7 +24,7 @@ type FormFieldMeta = {
   placeholder?: string;
 };
 
-// Operational AI skills surfaced as quick-fire chips in the Copilot
+// Operational AI skills surfaced as quick-fire chips in Harita
 const OPERATIONAL_SKILLS = [
   {
     id: "blockers",
@@ -52,7 +52,7 @@ const OPERATIONAL_SKILLS = [
   },
 ] as const;
 
-type GlobalCopilotProps = {
+type GlobalHaritaProps = {
   enabled: boolean;
   role?: MemberRole;
   title: string;
@@ -102,7 +102,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
   }
 }
 
-export function GlobalCopilot({ enabled, role, title, description, persistent }: GlobalCopilotProps) {
+export function GlobalHarita({ enabled, role, title, description, persistent }: GlobalHaritaProps) {
   const pathname = usePathname();
   const router = useRouter();
   const surface = mapSurface(pathname);
@@ -142,10 +142,10 @@ export function GlobalCopilot({ enabled, role, title, description, persistent }:
   const [loading, setLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachment, setAttachment] = useState<HaritaAttachment | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [fillingForm, setFillingForm] = useState(false);
-  const [availableCredits, setAvailableCredits] = useState<CopilotCreditOption[]>([]);
+  const [availableCredits, setAvailableCredits] = useState<HaritaCreditOption[]>([]);
   const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
   const [pickedIntent, setPickedIntent] = useState<"analysis" | "workflow" | null>(null);
 
@@ -401,7 +401,7 @@ export function GlobalCopilot({ enabled, role, title, description, persistent }:
         });
       }
 
-      const navigateTo = response.headers.get("X-Copilot-Navigate");
+      const navigateTo = response.headers.get("X-Harita-Navigate");
       if (navigateTo) {
         router.push(navigateTo);
       }
@@ -612,7 +612,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
       if (projectId) {
         const creditsResponse = await fetch(`/api/assistant/project-upload?project_id=${encodeURIComponent(projectId)}`);
         if (creditsResponse.ok) {
-          const creditsPayload = (await creditsResponse.json()) as { credits?: CopilotCreditOption[] };
+          const creditsPayload = (await creditsResponse.json()) as { credits?: HaritaCreditOption[] };
           setAvailableCredits(creditsPayload.credits ?? []);
         }
       }
@@ -806,9 +806,9 @@ Important:
               onClick={() => {
                 // Dispatch event to CommandCenter queue filter
                 window.dispatchEvent(
-                  new CustomEvent("copilot:operational-command", { detail: { command: skill.command } })
+                  new CustomEvent("harita:operational-command", { detail: { command: skill.command } })
                 );
-                // If there's a Copilot prompt, inject it as a user message
+                // If there's a Harita prompt, inject it as a user message
                 if (skill.prompt) {
                   void sendPrompt(skill.prompt);
                 }
@@ -967,7 +967,7 @@ Important:
             type="button"
             onClick={() => setCollapsed(true)}
             className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-            aria-label="Collapse Copilot"
+            aria-label="Collapse Harita"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

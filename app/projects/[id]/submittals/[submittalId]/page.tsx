@@ -229,7 +229,7 @@ export default async function SubmittalReviewPage({ params }: PageProps) {
           <section className="surface-card p-4">
             <p className="dense-label">AI assistance panel</p>
             <p className="mt-2 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-              Use Copilot to summarize this evidence against the project guidebook. Copilot may recommend next steps, but validation and workflow actions remain controlled by the backend.
+              Use Harita to summarize this evidence against the project guidebook. Harita may recommend next steps, but validation and workflow actions remain controlled by the backend.
             </p>
           </section>
         </aside>

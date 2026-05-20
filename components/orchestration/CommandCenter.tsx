@@ -125,9 +125,9 @@ export default function CommandCenter({
   const [activeQueueTab, setActiveQueueTab] = useState<"blocked" | "reviews" | "backlog">("blocked");
 
 
-  // Listen for Copilot operational skill commands
+  // Listen for Harita operational skill commands
   useEffect(() => {
-    function handleCopilotCommand(event: Event) {
+    function handleHaritaCommand(event: Event) {
       const { command } = (event as CustomEvent<{ command: string }>).detail;
       if (command) {
         // Trigger quick filter or actions based on commands
@@ -141,8 +141,8 @@ export default function CommandCenter({
         }
       }
     }
-    window.addEventListener("copilot:operational-command", handleCopilotCommand);
-    return () => window.removeEventListener("copilot:operational-command", handleCopilotCommand);
+    window.addEventListener("harita:operational-command", handleHaritaCommand);
+    return () => window.removeEventListener("harita:operational-command", handleHaritaCommand);
   }, []);
 
   // 2. Synthesize & Normalize Tasks (AI-Compressed Operational Summaries)
@@ -679,7 +679,7 @@ export default function CommandCenter({
                     <div className="flex gap-2">
                       <Bot className="h-4 w-4 text-[var(--color-purple)] shrink-0" />
                       <div>
-                        <h5 className="font-bold text-[var(--color-purple)] uppercase tracking-wider text-[9px] mb-0.5">AI Copilot Recommendation</h5>
+                        <h5 className="font-bold text-[var(--color-purple)] uppercase tracking-wider text-[9px] mb-0.5">AI Harita Recommendation</h5>
                         <p className="leading-relaxed">
                           For IGBC compliance, ensure all calculation columns align with baseline formulas. No placeholders are permitted.
                         </p>
@@ -859,7 +859,7 @@ export default function CommandCenter({
                 <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
                   <div className="flex items-center gap-1.5">
                     <Bot className="h-4 w-4 text-[var(--color-green)]" />
-                    <span>AI Copilot Active & Listening</span>
+                    <span>Harita Active & Listening</span>
                   </div>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </div>

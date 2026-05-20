@@ -509,7 +509,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                               <option value="manual">Manual</option>
                               <option value="review_call">Review call</option>
                               <option value="site_visit">Site visit</option>
-                              <option value="copilot_help">Copilot help</option>
+                              <option value="harita_help">Harita help</option>
                             </select>
                             <Input name="credits_burned" type="number" min={1} defaultValue={1} />
                             <Input name="notes" placeholder="Session context (optional)" />

@@ -6,10 +6,10 @@ import {
   requiresToolCall,
   sanitizeAiResponse,
   sanitizeUserText,
-} from "../lib/services/copilot-governance";
+} from "../lib/services/harita-governance";
 import { getSafeCapabilitiesContext } from "../lib/services/capability-registry";
 
-test.describe("Copilot Governance — ENOVAIT Compliance", () => {
+test.describe("Harita Governance — ENOVAIT Compliance", () => {
   
   test("disambiguates intent into 4 categories correctly", async () => {
     // Analysis
@@ -27,7 +27,7 @@ test.describe("Copilot Governance — ENOVAIT Compliance", () => {
     expect(disambiguateIntent("assign credit EE C4 to Khushal")).toBe("operational");
     
     // Conversational
-    expect(disambiguateIntent("hello copilot")).toBe("conversational");
+    expect(disambiguateIntent("hello harita")).toBe("conversational");
     expect(disambiguateIntent("how do I get certified?")).toBe("conversational");
   });
 

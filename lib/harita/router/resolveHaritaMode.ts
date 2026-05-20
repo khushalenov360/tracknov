@@ -1,6 +1,6 @@
-export type CopilotMode = "conversation" | "workflow";
+export type HaritaMode = "conversation" | "workflow";
 
-export type CopilotIntent =
+export type HaritaIntent =
   | "summarize"
   | "explain"
   | "recommend"
@@ -13,11 +13,11 @@ export type CopilotIntent =
   | "unknown";
 
 /**
- * Resolves the copilot mode based on the detected intent.
- * Follows the EnovAIT Modeled Copilot Architecture law.
+ * Resolves the Harita mode based on the detected intent.
+ * Follows the EnovAIT Modeled Harita Architecture law.
  */
-export function resolveCopilotMode(intent: CopilotIntent): CopilotMode {
-  const workflowIntents: CopilotIntent[] = [
+export function resolveHaritaMode(intent: HaritaIntent): HaritaMode {
+  const workflowIntents: HaritaIntent[] = [
     "upload",
     "assign",
     "approve",

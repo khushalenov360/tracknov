@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistantContext, AssistantMessage } from "@/lib/assistant";
 import { cn } from "@/lib/utils";
-type CopilotAttachment = {
+type HaritaAttachment = {
   name: string;
   mimeType: string;
   size: number;
@@ -85,7 +85,7 @@ export function AiGuidePanel({
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [attachment, setAttachment] = useState<CopilotAttachment | null>(null);
+  const [attachment, setAttachment] = useState<HaritaAttachment | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [fillingForm, setFillingForm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -336,12 +336,12 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
         }),
       });
       if (!response.ok) {
-        throw new Error("Copilot could not generate form suggestions.");
+        throw new Error("Harita could not generate form suggestions.");
       }
       const raw = await response.text();
       const parsed = parseJsonObject(raw) ?? parseKeyValueSuggestions(raw, fields);
       if (!parsed || Object.keys(parsed).length === 0) {
-        throw new Error("Copilot could not map suggestions to visible fields. Please provide one-line mapping like: field_name: value.");
+        throw new Error("Harita could not map suggestions to visible fields. Please provide one-line mapping like: field_name: value.");
       }
       const count = applyFormValues(parsed);
       if (count === 0) {
@@ -522,7 +522,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
             </div>
             {attachment ? (
               <p className="text-[10px] text-[var(--color-text-tertiary)]">
-                Attached to Copilot: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
+                Attached to Harita: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
               </p>
             ) : null}
           </div>
@@ -534,7 +534,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
           />
           {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
           <Button type="button" variant="secondary" className="h-8 w-full rounded-md" disabled={isLoading || fillingForm} onClick={() => void assistFormFill()}>
-            {fillingForm ? "Filling form..." : "Fill Form With Copilot"}
+            {fillingForm ? "Filling form..." : "Fill Form With Harita"}
           </Button>
           <Button type="submit" className="h-8 w-full rounded-md" disabled={isLoading || !input.trim() || !enabled}>
             <Send className="mr-2 h-3.5 w-3.5" />

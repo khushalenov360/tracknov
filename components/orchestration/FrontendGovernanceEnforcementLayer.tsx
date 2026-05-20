@@ -28,7 +28,7 @@ import {
   MobileGovernanceGovernor, 
   HierarchyLeakageDetector, 
   DuplicateRenderingDetector, 
-  CopilotVisibilityGovernor, 
+  HaritaVisibilityGovernor, 
   AIGovernanceRecommendationEngine, 
   FrontendGovernanceScore, 
   entropyMonitor, 
@@ -150,12 +150,12 @@ export function FrontendGovernanceEnforcementLayer() {
       DuplicateRenderingDetector.detect(elementsToValidate)
     );
 
-    // Copilot Persistence & Visibility
-    const hasCopilot = document.querySelector("aside select, aside input, aside textarea, [aria-label*='Harita']") !== null 
+    // Harita Persistence & Visibility
+    const hasHarita = document.querySelector("aside select, aside input, aside textarea, [aria-label*='Harita']") !== null 
       || pageText.includes("Harita") || pageText.includes("Ask Harita");
     const isPersistent = document.querySelector("aside") !== null;
     activeViolations = activeViolations.concat(
-      CopilotVisibilityGovernor.checkVisibility(hasCopilot, isPersistent, !isMobile)
+      HaritaVisibilityGovernor.checkVisibility(hasHarita, isPersistent, !isMobile)
     );
 
     setViolations(activeViolations);
@@ -405,7 +405,7 @@ export function FrontendGovernanceEnforcementLayer() {
                     { label: "Mobile Compliance Governor", val: score.mobileCompliance },
                     { label: "Operational Intent Quality", val: score.operationalFocus },
                     { label: "AI Compression Ratio", val: score.aiCompressionCompliance },
-                    { label: "Copilot Visibility Rule", val: score.copilotVisibility },
+                    { label: "Harita Visibility Rule", val: score.haritaVisibility },
                   ].map((item, idx) => (
                     <div key={idx} className="space-y-1.5">
                       <div className="flex justify-between items-center text-[10px] font-bold">
