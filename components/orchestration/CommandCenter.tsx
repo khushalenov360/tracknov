@@ -112,6 +112,7 @@ export default function CommandCenter({
   timeline = []
 }: CommandCenterProps) {
   const activeRole = user?.role ?? "consultant";
+  const isL3 = ["project_admin", "super_admin", "L3"].includes(activeRole);
   
   // 1. Unified State Management
   const [selectedTask, setSelectedTask] = useState<ActionTask | null>(null);
@@ -121,6 +122,8 @@ export default function CommandCenter({
   const [reviewDecision, setReviewDecision] = useState<"approve" | "clarification" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState("");
+  const [activeQueueTab, setActiveQueueTab] = useState<"blocked" | "reviews" | "backlog">("blocked");
+
 
   // Listen for Copilot operational skill commands
   useEffect(() => {
@@ -130,7 +133,11 @@ export default function CommandCenter({
         // Trigger quick filter or actions based on commands
         const lower = command.toLowerCase();
         if (lower.includes("block") || lower.includes("risk")) {
-          // Highlight blockers
+          setActiveQueueTab("blocked");
+        } else if (lower.includes("review")) {
+          setActiveQueueTab("reviews");
+        } else if (lower.includes("queue") || lower.includes("action")) {
+          setActiveQueueTab("backlog");
         }
       }
     }
@@ -324,7 +331,7 @@ export default function CommandCenter({
           
           {/* SECTION 1: TODAY'S EXECUTION */}
           <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3.5">
               <div className="flex items-center gap-2">
                 <Clock className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
                 <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
@@ -336,162 +343,195 @@ export default function CommandCenter({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Blocked Items / Risks */}
-              <div className="space-y-2.5">
-                <h3 className="text-[11px] font-black uppercase tracking-wider text-rose-600 flex items-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  Blocked & Stalled Credits ({blockedTasks.length})
-                </h3>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            {/* Premium Tab Navigation */}
+            <div className="flex border-b border-[var(--color-border)] mb-4 gap-6 overflow-x-auto scrollbar-none pb-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveQueueTab("blocked")}
+                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                  activeQueueTab === "blocked"
+                    ? "border-rose-500 text-rose-600 font-extrabold"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}
+              >
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>Blocked ({blockedTasks.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveQueueTab("reviews")}
+                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                  activeQueueTab === "reviews"
+                    ? "border-emerald-500 text-emerald-600 font-extrabold"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span>Reviews ({reviewTasks.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveQueueTab("backlog")}
+                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                  activeQueueTab === "backlog"
+                    ? "border-slate-500 text-[var(--color-text-primary)] font-extrabold"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}
+              >
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>Backlog ({otherTasks.length})</span>
+              </button>
+            </div>
+
+            {/* Active Tab Panel Rendering */}
+            <div className="space-y-2">
+              {activeQueueTab === "blocked" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
                   {blockedTasks.length > 0 ? (
                     blockedTasks.map(task => (
                       <article
                         key={task.id}
                         onClick={() => setSelectedTask(task)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
+                        className={`p-3.5 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
                           selectedTask?.id === task.id
                             ? "bg-[var(--color-surface-2)] border-rose-500 shadow-sm"
                             : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[9px] font-mono font-bold text-rose-600">{task.creditCode}</span>
-                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold">{task.projectName}</span>
+                          <span className="text-[9px] font-mono font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">{task.creditCode}</span>
+                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">{task.projectName}</span>
                         </div>
-                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] line-clamp-2 leading-tight">
+                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] leading-snug">
                           {task.summary}
                         </p>
                       </article>
                     ))
                   ) : (
-                    <div className="p-4 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-center text-slate-400">
-                      <p className="text-[11px] font-medium">No stalled items flagged</p>
+                    <div className="col-span-full py-8 text-center text-slate-400">
+                      <p className="text-[11px] font-semibold">No stalled items flagged</p>
                     </div>
                   )}
                 </div>
-              </div>
+              )}
 
-              {/* Pending Reviews */}
-              <div className="space-y-2.5">
-                <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--color-green)] flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Pending L1 Reviews ({reviewTasks.length})
-                </h3>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {activeQueueTab === "reviews" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
                   {reviewTasks.length > 0 ? (
                     reviewTasks.map(task => (
                       <article
                         key={task.id}
                         onClick={() => setSelectedTask(task)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
+                        className={`p-3.5 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
                           selectedTask?.id === task.id
                             ? "bg-[var(--color-surface-2)] border-[var(--color-green)] shadow-sm"
                             : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[9px] font-mono font-bold text-[var(--color-green)]">{task.creditCode}</span>
-                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-semibold">{task.projectName}</span>
+                          <span className="text-[9px] font-mono font-bold text-[var(--color-green)] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">{task.creditCode}</span>
+                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">{task.projectName}</span>
                         </div>
-                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] line-clamp-2 leading-tight">
+                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] leading-snug">
                           {task.summary}
                         </p>
                       </article>
                     ))
                   ) : (
-                    <div className="p-4 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-center text-slate-400">
-                      <p className="text-[11px] font-medium">No review tasks pending</p>
+                    <div className="col-span-full py-8 text-center text-slate-400">
+                      <p className="text-[11px] font-semibold">No review tasks pending</p>
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* Other general tasks */}
-            {otherTasks.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-[var(--color-border)] space-y-2">
-                <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-secondary)]">
-                  Backlog Assignments ({otherTasks.length})
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {otherTasks.slice(0, 6).map(task => (
-                    <article
-                      key={task.id}
-                      onClick={() => setSelectedTask(task)}
-                      className={`p-2.5 rounded-lg border transition-all cursor-pointer text-left relative group ${
-                        selectedTask?.id === task.id
-                          ? "bg-[var(--color-surface-2)] border-[var(--color-border-strong)] shadow-sm"
-                          : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center text-[9px] font-mono text-[var(--color-text-tertiary)] mb-1">
-                        <span className="font-bold">{task.creditCode}</span>
-                        <span>{task.projectName}</span>
-                      </div>
-                      <p className="text-[11px] font-bold text-[var(--color-text-primary)] line-clamp-1">
-                        {task.summary}
-                      </p>
-                    </article>
-                  ))}
+              {activeQueueTab === "backlog" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                  {otherTasks.length > 0 ? (
+                    otherTasks.map(task => (
+                      <article
+                        key={task.id}
+                        onClick={() => setSelectedTask(task)}
+                        className={`p-3.5 rounded-lg border transition-all cursor-pointer text-left relative overflow-hidden group ${
+                          selectedTask?.id === task.id
+                            ? "bg-[var(--color-surface-2)] border-indigo-500 shadow-sm"
+                            : "bg-[var(--color-surface-2)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{task.creditCode}</span>
+                          <span className="text-[9px] text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">{task.projectName}</span>
+                        </div>
+                        <p className="text-[12px] font-bold text-[var(--color-text-primary)] leading-snug">
+                          {task.summary}
+                        </p>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-8 text-center text-slate-400">
+                      <p className="text-[11px] font-semibold">No backlog tasks pending</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </section>
 
           {/* SECTION 2: ACTIVE WORK */}
-          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
-              <div className="flex items-center gap-2">
-                <Folder className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
-                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
-                  Active Work & Portfolio Status
-                </h2>
+          {!isL3 && (
+            <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <Folder className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                  <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                    Active Work & Portfolio Status
+                  </h2>
+                </div>
+                <span className="text-[10px] text-[var(--color-text-tertiary)] font-bold">
+                  {initialProjects.length} Projects Total
+                </span>
               </div>
-              <span className="text-[10px] text-[var(--color-text-tertiary)] font-bold">
-                {initialProjects.length} Projects Total
-              </span>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {initialProjects.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleProjects).map((project) => (
-                <article key={project.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-3.5 rounded-lg space-y-2 text-left hover:border-[var(--color-border-strong)] transition-all">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="text-[12px] font-bold text-[var(--color-text-primary)]">
-                        {project.name}
-                      </h4>
-                      <p className="text-[9px] text-[var(--color-text-tertiary)] uppercase font-semibold">
-                        {project.certification_type} / {project.location}
-                      </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3.5">
+                {initialProjects.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleProjects).map((project) => (
+                  <article key={project.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-3.5 rounded-lg space-y-2 text-left hover:border-[var(--color-border-strong)] transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="text-[12px] font-bold text-[var(--color-text-primary)]">
+                          {project.name}
+                        </h4>
+                        <p className="text-[9px] text-[var(--color-text-tertiary)] uppercase font-semibold">
+                          {project.certification_type} / {project.location}
+                        </p>
+                      </div>
+                      <Badge className={`text-[8px] font-black uppercase tracking-wider h-4 px-1.5 ${
+                        project.statusFlag === "red" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
+                        project.statusFlag === "amber" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                        "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20"
+                      }`}>
+                        {project.statusFlag === "red" ? "Delayed" : project.statusFlag === "amber" ? "Warning" : "On Track"}
+                      </Badge>
                     </div>
-                    <Badge className={`text-[8px] font-black uppercase tracking-wider h-4 px-1.5 ${
-                      project.statusFlag === "red" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
-                      project.statusFlag === "amber" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
-                      "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20"
-                    }`}>
-                      {project.statusFlag === "red" ? "Delayed" : project.statusFlag === "amber" ? "Warning" : "On Track"}
-                    </Badge>
-                  </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[9px] font-semibold text-[var(--color-text-secondary)]">
-                      <span>Completion Pace</span>
-                      <span>{project.overallCompletion}%</span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[9px] font-semibold text-[var(--color-text-secondary)]">
+                        <span>Completion Pace</span>
+                        <span>{project.overallCompletion}%</span>
+                      </div>
+                      <Progress value={project.overallCompletion} />
                     </div>
-                    <Progress value={project.overallCompletion} />
-                  </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-tertiary)]">
-                    <span>{project.uploadedDocs}/{project.totalCredits} Credits Uploaded</span>
-                    <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:underline flex items-center gap-0.5">
-                      Workspace <ArrowUpRight className="h-3 w-3" />
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+                    <div className="flex justify-between items-center pt-2 border-t border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                      <span>{project.uploadedDocs}/{project.totalCredits} Credits Uploaded</span>
+                      <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:underline flex items-center gap-0.5">
+                        Workspace <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* SECTION 3: AI ASSIST */}
           <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
@@ -507,7 +547,7 @@ export default function CommandCenter({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-3 gap-3">
               {aiInsights.map((insight, idx) => {
                 const Icon = insight.icon;
                 return (
@@ -528,82 +568,84 @@ export default function CommandCenter({
           </section>
 
           {/* SECTION 4: SYSTEM HEALTH & AUDIT TELEMETRY */}
-          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
-                <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
-                  Governance Engine Health & Replay Telemetry
-                </h2>
-              </div>
-              <Badge className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-mono text-[9px]">
-                REPLAY CONTRACT V1
-              </Badge>
-            </div>
-
-            {/* Replay State Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
-                  <Database className="h-3.5 w-3.5 text-blue-500" />
-                  RLS Polices
+          {!isL3 && (
+            <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4">
+              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4.5 w-4.5 text-[var(--color-text-secondary)]" />
+                  <h2 className="text-[13px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide">
+                    Governance Engine Health & Replay Telemetry
+                  </h2>
                 </div>
-                <span className="text-[12px] font-bold text-emerald-600">Active & Enforced</span>
+                <Badge className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-mono text-[9px]">
+                  REPLAY CONTRACT V1
+                </Badge>
               </div>
 
-              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
-                  <Cpu className="h-3.5 w-3.5 text-indigo-500" />
-                  Determinism
+              {/* Replay State Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                    <Database className="h-3.5 w-3.5 text-blue-500" />
+                    RLS Polices
+                  </div>
+                  <span className="text-[12px] font-bold text-emerald-600">Active & Enforced</span>
                 </div>
-                <span className="text-[12px] font-bold text-emerald-600">0% Drift Verified</span>
-              </div>
 
-              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
-                  <Shield className="h-3.5 w-3.5 text-rose-500" />
-                  Open Desyncs
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                    <Cpu className="h-3.5 w-3.5 text-indigo-500" />
+                    Determinism
+                  </div>
+                  <span className="text-[12px] font-bold text-emerald-600">0% Drift Verified</span>
                 </div>
-                <span className={`text-[12px] font-bold ${runtimeSummary.openDesyncCount > 0 ? "text-rose-600" : "text-[var(--color-text-primary)]"}`}>
-                  {runtimeSummary.openDesyncCount} Desyncs
-                </span>
-              </div>
 
-              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
-                  <Zap className="h-3.5 w-3.5 text-amber-500" />
-                  Queued Repair
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                    <Shield className="h-3.5 w-3.5 text-rose-500" />
+                    Open Desyncs
+                  </div>
+                  <span className={`text-[12px] font-bold ${runtimeSummary.openDesyncCount > 0 ? "text-rose-600" : "text-[var(--color-text-primary)]"}`}>
+                    {runtimeSummary.openDesyncCount} Desyncs
+                  </span>
                 </div>
-                <span className="text-[12px] font-bold text-[var(--color-text-primary)]">
-                  {runtimeSummary.queuedRepairs} Pending
-                </span>
-              </div>
-            </div>
 
-            {/* Audit Log Timeline */}
-            <div className="space-y-1.5">
-              <h3 className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-tertiary)] text-left mb-1.5">
-                Real-Time Replay Ledger Activity
-              </h3>
-              <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-2.5 max-h-[160px] overflow-y-auto space-y-1 font-mono text-[9px] text-[var(--color-text-secondary)] text-left">
-                {timeline.length > 0 ? (
-                  timeline.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleTimelineRows).map((row, idx) => (
-                    <div key={idx} className="flex justify-between items-start py-0.5 border-b border-dashed border-[var(--color-border)] last:border-b-0">
-                      <span className="truncate max-w-[80%]">
-                        <span className="text-[var(--color-text-tertiary)] mr-1">[{row.actor_role || "SYSTEM"}]</span>
-                        <span className="font-semibold text-[var(--color-text-primary)]">{row.action}</span>: {row.summary || "Replay verified state check"}
-                      </span>
-                      <span className="text-[9px] text-[var(--color-text-tertiary)] shrink-0">
-                        {row.created_at ? <ClientTime value={row.created_at} /> : ""}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-slate-400 py-4">No audit logs retrieved.</div>
-                )}
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] p-2.5 rounded-lg text-left">
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-[var(--color-text-tertiary)] uppercase mb-0.5">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    Queued Repair
+                  </div>
+                  <span className="text-[12px] font-bold text-[var(--color-text-primary)]">
+                    {runtimeSummary.queuedRepairs} Pending
+                  </span>
+                </div>
               </div>
-            </div>
-          </section>
+
+              {/* Audit Log Timeline */}
+              <div className="space-y-1.5">
+                <h3 className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-tertiary)] text-left mb-1.5">
+                  Real-Time Replay Ledger Activity
+                </h3>
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-2.5 max-h-[160px] overflow-y-auto space-y-1 font-mono text-[9px] text-[var(--color-text-secondary)] text-left">
+                  {timeline.length > 0 ? (
+                    timeline.slice(0, OPERATIONAL_GOVERNOR_CONFIG.maxVisibleTimelineRows).map((row, idx) => (
+                      <div key={idx} className="flex justify-between items-start py-0.5 border-b border-dashed border-[var(--color-border)] last:border-b-0">
+                        <span className="truncate max-w-[80%]">
+                          <span className="text-[var(--color-text-tertiary)] mr-1">[{row.actor_role || "SYSTEM"}]</span>
+                          <span className="font-semibold text-[var(--color-text-primary)]">{row.action}</span>: {row.summary || "Replay verified state check"}
+                        </span>
+                        <span className="text-[9px] text-[var(--color-text-tertiary)] shrink-0">
+                          {row.created_at ? <ClientTime value={row.created_at} /> : ""}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-slate-400 py-4">No audit logs retrieved.</div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
         </div>
 
@@ -617,7 +659,7 @@ export default function CommandCenter({
                 <div className="border-b border-[var(--color-border)] pb-3 space-y-1 text-left">
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] uppercase font-black text-[var(--color-text-tertiary)] tracking-wider">
-                      Execution Workspace
+                      Execution Console
                     </span>
                     <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border border-[var(--color-border)] text-[8px] font-bold">
                       {selectedTask.projectName}

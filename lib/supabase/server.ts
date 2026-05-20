@@ -6,7 +6,12 @@ export function createClient() {
   return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
       async getAll() {
-        return (await cookies()).getAll();
+        try {
+          const cookieStore = await cookies();
+          return cookieStore.getAll();
+        } catch (error) {
+          return [];
+        }
       },
       async setAll(cookiesToSet) {
         try {

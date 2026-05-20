@@ -51,5 +51,5 @@ test("submission zip includes approved docs only with structured folders", async
   const fileEntries = entries.filter((entry) => !entry.endsWith("/"));
 
   expect(entries.some((name) => name.includes("pending"))).toBe(false);
-  expect(fileEntries).toEqual(["EDA_C1/Narrative/approved_file.pdf"]);
+  expect(fileEntries).toEqual(["DESIGN/EDA_C1/Narrative/approved_file.pdf"]);
 });

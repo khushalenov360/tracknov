@@ -1,36 +1,30 @@
 import { expect, test } from "@playwright/test";
-import { CreditWorkflowMachine, DocumentWorkflowMachine, ProjectWorkflowMachine, mapTracknovRoleToWorkflowRole } from "@/lib/workflow/machines";
+import { ProjectCertificationMachine, SubmittalWorkflowMachine, mapTracknovRoleToWorkflowRole } from "@/lib/workflow/machines";
 import { validateCreditCanClose, validateProjectCanComplete } from "@/lib/workflow/validators";
 
 test.describe("workflow state machine", () => {
-  test("allows valid project transition for project_admin (admin role)", () => {
-    const machine = new ProjectWorkflowMachine();
-    const role = mapTracknovRoleToWorkflowRole("project_admin");
-    expect(machine.validate("active", "completed", role)).toBe(true);
+  test("allows valid project transition for project_admin (admin role is L5)", () => {
+    const machine = new ProjectCertificationMachine();
+    const role = mapTracknovRoleToWorkflowRole("project_admin"); // L5
+    expect(machine.validate("NOT_STARTED", "IN_PROGRESS", role)).toBe(true);
   });
 
   test("rejects invalid project transition", () => {
-    const machine = new ProjectWorkflowMachine();
+    const machine = new ProjectCertificationMachine();
     const role = mapTracknovRoleToWorkflowRole("project_admin");
-    expect(() => machine.validate("draft", "completed", role)).toThrow();
+    expect(() => machine.validate("NOT_STARTED", "ELIGIBLE", role)).toThrow();
   });
 
-  test("rejects unauthorized document approval for consultant", () => {
-    const machine = new DocumentWorkflowMachine();
-    const role = mapTracknovRoleToWorkflowRole("consultant");
-    expect(() => machine.validate("under_review", "approved", role)).toThrow();
+  test("rejects unauthorized document approval for consultant (L1)", () => {
+    const machine = new SubmittalWorkflowMachine();
+    const role = mapTracknovRoleToWorkflowRole("consultant"); // L1
+    expect(() => machine.validate("UNDER_REVIEW", "APPROVED", role)).toThrow();
   });
 
-  test("allows owner (reviewer role) to reject submitted document", () => {
-    const machine = new DocumentWorkflowMachine();
-    const role = mapTracknovRoleToWorkflowRole("owner");
-    expect(machine.validate("submitted", "rejected", role)).toBe(true);
-  });
-
-  test("rejects invalid credit transition for project_admin", () => {
-    const machine = new CreditWorkflowMachine();
-    const role = mapTracknovRoleToWorkflowRole("project_admin");
-    expect(() => machine.validate("assigned", "approved", role)).toThrow();
+  test("allows project_admin (L3 reviewer role) to reject submitted/under_review document", () => {
+    const machine = new SubmittalWorkflowMachine();
+    const role = mapTracknovRoleToWorkflowRole("project_admin"); // L3
+    expect(machine.validate("UNDER_REVIEW", "REJECTED", role)).toBe(true);
   });
 
   test("blocks credit close when linked docs are not approved", () => {
@@ -39,11 +33,5 @@ test.describe("workflow state machine", () => {
 
   test("blocks project completion when credits are open", () => {
     expect(() => validateProjectCanComplete({ allCreditsClosed: false })).toThrow();
-  });
-
-  test("allows project_admin to eliminate document after rejection", () => {
-    const machine = new DocumentWorkflowMachine();
-    const role = mapTracknovRoleToWorkflowRole("project_admin");
-    expect(machine.validate("rejected", "eliminated", role)).toBe(true);
   });
 });

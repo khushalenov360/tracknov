@@ -154,7 +154,18 @@ export function Shell({
             {/* Profile Placeholder */}
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center font-bold text-indigo-600 text-sm">
-                E3
+                {(() => {
+                  if (!_email) return "OP";
+                  const prefix = _email.split("@")[0];
+                  const parts = prefix.split(/[._-]/).filter(Boolean);
+                  if (parts.length >= 2) {
+                    return (parts[0][0] + parts[1][0]).toUpperCase();
+                  }
+                  if (parts[0] && parts[0].length >= 2) {
+                    return parts[0].substring(0, 2).toUpperCase();
+                  }
+                  return (parts[0]?.[0] || "U").toUpperCase();
+                })()}
               </div>
             </div>
           </div>
