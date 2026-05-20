@@ -3127,3 +3127,27 @@ Perform an end-to-end audit of the "IE MR2: Indoor Air Quality" lifecycle to ver
 ### Status impact
 - Enterprise handoff documentation is fully enriched with provable runtime matrix evidence.
 
+---
+
+## Latest execution pass (2026-05-21 IST, System-wide AI Assistant Rename & Documentation)
+
+### Objective
+Comprehensively rename all references of the AI assistant from "Copilot" to "Harita" across the codebase to comply with naming policies, and document the project onboarding workflow.
+
+### Delivered in this pass
+- **Terminology Refactoring**:
+  - Swept the entire codebase replacing `Copilot`, `copilot`, and `hasCopilot` with `Harita`, `harita`, and `hasHarita` respectively.
+  - Renamed directories and files (e.g., `lib/copilot` -> `lib/harita`, `components/assistant/global-copilot.tsx` -> `global-harita.tsx`, `tests/copilot-governance.spec.ts` -> `harita-governance.spec.ts`).
+  - Removed deprecated root-level `copilot/` directory.
+  - Refactored `app/api/assistant/route.ts`, updating imports, intents, runtime services, and response normalizers.
+  - Updated UI labels and text in `app/projects/page.tsx`, `app/projects/[id]/execution/[creditId]/page.tsx`, `app/projects/[id]/submittals/[submittalId]/page.tsx`, and `app/reviewer/decision-assist/page.tsx`.
+  - Updated `sessionMemory` keys and types in `lib/services/session-memory-service.ts`.
+- **Project Onboarding Documentation**:
+  - Generated the `project_onboarding_procedure.md` artifact detailing RBAC checks, metadata insertion, credit instantiation (template and static seeding), RAG context ingestion, and billing allocation.
+  - Documented immediate next steps: locking the project guidebook, setting the tracker baseline, assigning team members, and initiating submittal workflows.
+- **Testing & Verification**:
+  - Ran `npx tsc --noEmit` and resolved broken paths to achieve 0 type-checking errors.
+  - Ran `npx playwright test tests/harita-governance.spec.ts` (7/7 tests passed) and `tests/fgel-governance.spec.ts` (6/6 tests passed).
+  - Executed `tests/workflow-state-machine.spec.ts` verifying valid transitions and project creation procedures.
+- **Repository Sync**:
+  - Pushed all refactoring changes and clean-up commits to GitHub (`origin main`).
