@@ -42,7 +42,7 @@ export default async function ProjectExportsPage({
               <div key={guide.id} className="flex justify-between items-center p-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface-2)] text-xs">
                 <div>
                   <p className="font-bold text-[var(--color-text-primary)]">{guide.file_name}</p>
-                  <p className="text-[10px] text-[var(--color-text-tertiary)]">{formatDateTimeIST(guide.created_at)}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">{formatDateTimeIST(guide.created_at)}</p>
                 </div>
                 {guide.signed_url && (
                   <a href={guide.signed_url} target="_blank" rel="noreferrer" className="text-[var(--color-green)] font-bold hover:underline">

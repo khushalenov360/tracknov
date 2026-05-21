@@ -76,127 +76,63 @@ export default async function ProjectCreditsPage({
         </Badge>
       </div>
 
-      <div className="surface-card overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full border-collapse text-xs text-left min-w-[800px]">
-            <thead className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
-              <tr>
-                <th className="px-3 py-2 font-bold uppercase text-[var(--color-text-tertiary)]">Code</th>
-                <th className="px-3 py-2 font-bold uppercase text-[var(--color-text-tertiary)]">Title</th>
-                <th className="px-3 py-2 text-right font-bold uppercase text-[var(--color-text-tertiary)]">Points</th>
-                <th className="px-3 py-2 text-left font-bold uppercase text-[var(--color-text-tertiary)]">Status</th>
-                <th className="px-3 py-2 text-left font-bold uppercase text-[var(--color-text-tertiary)]">Reviewer / Rep.</th>
-                <th className="px-3 py-2 text-left font-bold uppercase text-[var(--color-text-tertiary)]">Blockers / Remarks</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
-              {filteredCredits.map((credit: any) => {
-                const selected = credit.id === selectedCreditId;
-                const creditStatus = toLegacyCreditStatus(credit.state ?? credit.status);
-                const isBlocked = creditStatus === "blocked";
-                return (
-                  <tr
-                    key={credit.id}
-                    className={`hover:bg-[var(--color-surface-2)] transition-colors ${
-                      selected ? "bg-[var(--color-green-light)]" : ""
-                    }`}
-                  >
-                    <td className="px-3 py-2.5">
-                      <Link
-                        href={`/projects/${projectId}/documents?credit=${credit.id}`}
-                        className="font-mono font-black text-[var(--color-green)] hover:underline"
-                      >
-                        {mandatoryCode(credit.credit_code, credit.is_mandatory)}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Link
-                        href={`/projects/${projectId}/documents?credit=${credit.id}`}
-                        className="font-bold text-[var(--color-text-primary)] hover:underline"
-                      >
-                        {credit.credit_name}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-[var(--color-text-secondary)]">
-                      {Number(credit.available_points ?? 0).toFixed(1)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Badge className={creditStatuses[creditStatus]}>
-                        {creditStatus.replace("_", " ")}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2.5 text-[var(--color-text-secondary)] font-medium">
-                      {credit.responsible_role ? String(credit.responsible_role).replace("_", " ") : "Unassigned"}
-                    </td>
-                    <td className="px-3 py-2.5 text-[var(--color-text-tertiary)] font-medium truncate max-w-[280px]">
-                      {isBlocked ? (
-                        <span className="text-[var(--color-red)] font-bold flex items-center gap-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          {credit.remarks?.[0]?.body || "Blocked by validation checkpoint"}
-                        </span>
-                      ) : (
-                        credit.remarks?.[0]?.body || ""
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="md:hidden flex flex-col divide-y divide-[var(--color-border)]">
-          {filteredCredits.map((credit: any) => {
-            const selected = credit.id === selectedCreditId;
-            const creditStatus = toLegacyCreditStatus(credit.state ?? credit.status);
-            const isBlocked = creditStatus === "blocked";
-            return (
-              <div key={credit.id} className={`p-4 space-y-3 ${selected ? "bg-[var(--color-green-light)]" : ""}`}>
-                <div className="flex justify-between items-start gap-2">
-                  <div className="space-y-1">
-                    <Link
-                      href={`/projects/${projectId}/documents?credit=${credit.id}`}
-                      className="font-mono font-black text-[var(--color-green)] hover:underline block"
-                    >
-                      {mandatoryCode(credit.credit_code, credit.is_mandatory)}
-                    </Link>
-                    <Link
-                      href={`/projects/${projectId}/documents?credit=${credit.id}`}
-                      className="font-bold text-[var(--color-text-primary)] hover:underline block leading-snug"
-                    >
-                      {credit.credit_name}
-                    </Link>
-                  </div>
-                  <Badge className={`shrink-0 ${creditStatuses[creditStatus]}`}>
-                    {creditStatus.replace("_", " ")}
-                  </Badge>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredCredits.map((credit: any) => {
+          const selected = credit.id === selectedCreditId;
+          const creditStatus = toLegacyCreditStatus(credit.state ?? credit.status);
+          const isBlocked = creditStatus === "blocked";
+          return (
+            <div key={credit.id} className={`surface-card p-5 flex flex-col space-y-4 hover:border-[var(--color-green)] transition-all ${selected ? "border-[var(--color-green)] ring-1 ring-[var(--color-green)]" : ""}`}>
+              <div className="flex justify-between items-start gap-3">
+                <div className="space-y-1">
+                  <span className="font-mono font-black text-[var(--color-green)] text-xs block">
+                    {mandatoryCode(credit.credit_code, credit.is_mandatory)}
+                  </span>
+                  <h3 className="font-bold text-[var(--color-text-primary)] leading-snug">
+                    {credit.credit_name}
+                  </h3>
                 </div>
-                
+                <Badge className={`shrink-0 ${creditStatuses[creditStatus]}`}>
+                  {creditStatus.replace("_", " ")}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2 flex-1">
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
-                  <span>Pts: <strong className="text-[var(--color-text-primary)]">{Number(credit.available_points ?? 0).toFixed(1)}</strong></span>
-                  <span>Rep: <strong className="text-[var(--color-text-primary)]">{credit.responsible_role ? String(credit.responsible_role).replace("_", " ") : "Unassigned"}</strong></span>
+                  <span>Points</span>
+                  <strong className="text-[var(--color-text-primary)]">{Number(credit.available_points ?? 0).toFixed(1)}</strong>
                 </div>
-                
+                <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
+                  <span>Owner</span>
+                  <strong className="text-[var(--color-text-primary)]">{credit.responsible_role ? String(credit.responsible_role).replace("_", " ") : "Unassigned"}</strong>
+                </div>
                 {credit.remarks?.[0]?.body && (
-                  <div className="bg-[var(--color-surface-2)] p-2 rounded border border-[var(--color-border)] mt-2">
+                  <div className="bg-[var(--color-surface-2)] p-2.5 rounded-lg border border-[var(--color-border)] mt-2">
                     {isBlocked ? (
                       <span className="text-[var(--color-red)] font-bold flex items-center gap-1.5 text-xs">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        {credit.remarks?.[0]?.body || "Blocked by validation checkpoint"}
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{credit.remarks?.[0]?.body || "Blocked by validation checkpoint"}</span>
                       </span>
                     ) : (
-                      <span className="text-[var(--color-text-tertiary)] font-medium text-xs">
+                      <span className="text-[var(--color-text-tertiary)] font-medium text-xs line-clamp-2">
                         {credit.remarks?.[0]?.body}
                       </span>
                     )}
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
+
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <Link
+                  href={`/projects/${projectId}/documents?credit=${credit.id}`}
+                  className="w-full flex items-center justify-center py-2 px-4 bg-[var(--color-surface-2)] hover:bg-[var(--color-green-soft)] text-[var(--color-text-primary)] hover:text-[var(--color-green)] text-xs font-bold rounded-lg border border-[var(--color-border)] hover:border-[var(--color-green-light)] transition-colors"
+                >
+                  Open Workspace
+                </Link>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

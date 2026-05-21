@@ -242,29 +242,9 @@ export default function CommandCenter({
     items.push({
       type: "readiness",
       title: `${avgCompletion}% Certification Readiness`,
-      description: `Portfolio averages ${avgCompletion}% completeness. Stage-gate confidence index is high.`,
+      description: `Portfolio averages ${avgCompletion}% completeness.`,
       icon: Sparkles,
       color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/20"
-    });
-
-    // Mock duplicate document detection warning
-    if (initialProjects.length > 0) {
-      items.push({
-        type: "warning",
-        title: "Potential Document Redundancy",
-        description: `AI detected "ccil_msds_v2.pdf" is 98% identical to "hvac_filter_spec.pdf" under ${initialProjects[0].name}. Review for potential double-upload.`,
-        icon: AlertTriangle,
-        color: "text-amber-500 bg-amber-500/5 border-amber-500/20"
-      });
-    }
-
-    // Confidence warning
-    items.push({
-      type: "confidence",
-      title: "Confidence Margin Alert",
-      description: "MEP baseline requirements require accredited third-party validation reports to guarantee smooth L3 audit progression.",
-      icon: Bot,
-      color: "text-blue-500 bg-blue-500/5 border-blue-500/20"
     });
 
     return items;

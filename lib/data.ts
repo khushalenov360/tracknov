@@ -323,23 +323,6 @@ async function getCurrentUserUncached(): Promise<CurrentUser | null> {
     return null;
   }
 
-  // Resolve active workspace role from project membership first.
-  // This prevents stale global roles from forcing the wrong workspace shell.
-  const { data: membershipRoleRow } = await client
-    .from("project_users")
-    .select("role")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (membershipRoleRow?.role) {
-    return {
-      id: user.id,
-      email: user.email ?? "",
-      role: normalizeRole(membershipRoleRow.role),
-    };
-  }
-
   if (profile?.global_role) {
     return { id: user.id, email: user.email ?? "", role: normalizeRole(profile.global_role) };
   }
@@ -360,7 +343,7 @@ async function getCurrentUserUncached(): Promise<CurrentUser | null> {
     .from("project_users")
     .select("role")
     .eq("user_id", user.id)
-    .in("role", ["super_user", "super_admin", "project_admin", "admin"])
+    .in("role", ["super_user", "super_admin", "project_admin", "admin", "L3", "L5"])
     .limit(1)
     .maybeSingle();
 

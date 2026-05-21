@@ -27,28 +27,34 @@ type FormFieldMeta = {
 // Operational AI skills surfaced as quick-fire chips in Harita
 const OPERATIONAL_SKILLS = [
   {
-    id: "blockers",
-    label: "⚠️ Show Blockers",
-    command: "Show blockers",
-    prompt: "Show me all high-risk blockers and stalled items across all active projects. Summarise what needs immediate attention and who is responsible.",
+    id: "draft_clarification",
+    label: "✍️ Draft Clarification",
+    command: "Draft a clarification",
+    prompt: "Draft a professional response to the latest reviewer clarification on this credit.",
   },
   {
-    id: "readiness",
-    label: "📊 Readiness Preflight",
-    command: "Generate readiness summary",
-    prompt: "Generate a submission readiness preflight report. Include overall confidence, hotspots, and the top 3 actions needed to unblock submission.",
+    id: "find_evidence",
+    label: "🔍 Find Evidence",
+    command: "Find evidence for this",
+    prompt: "Scan the project documents and find the specific evidence that proves compliance for this requirement.",
   },
   {
-    id: "queue",
-    label: "📥 My Action Queue",
-    command: "Show my action queue",
-    prompt: "What are the most urgent items in my action queue right now? List them by priority and tell me which to tackle first.",
+    id: "explain_rejection",
+    label: "🧐 Explain Rejection",
+    command: "Explain reviewer rejection",
+    prompt: "Explain exactly why the reviewer rejected this credit in plain English, and list the exact steps to fix it.",
   },
   {
-    id: "reset",
-    label: "🔄 Reset Filters",
-    command: "reset",
-    prompt: "", // special: no AI message, just resets queue
+    id: "locate_precedent",
+    label: "📚 Locate Precedent",
+    command: "Locate precedent",
+    prompt: "Find a similar project in our portfolio where this credit was approved, and summarize how they achieved it.",
+  },
+  {
+    id: "recommend_next",
+    label: "💡 Recommend Next Step",
+    command: "Recommend next step",
+    prompt: "Based on the current state of this project, what is the most high-value next action I should take right now?",
   },
 ] as const;
 
@@ -918,64 +924,69 @@ Important:
     );
   }
 
-  if (collapsed && !persistent) {
-    return (
-        <button
-              type="button"
-              onClick={() =>
-                setCollapsed(false)
-              }
-              className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] shadow-[0_12px_30px_rgba(0,0,0,0.16)] hover:bg-[var(--color-surface-2)]"
-            >
-              <Bot className="h-4 w-4 text-[var(--color-green)]" />
-              Harita
-              <ChevronLeft className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-            </button>
-    );
-  }
-
   return (
-    <aside className="fixed bottom-4 right-4 top-[72px] z-50 w-[min(420px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_50px_rgba(0,0,0,0.24)]">
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-green-light)] text-[var(--color-green)]">
-            <Sparkles className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)] inline-flex items-center gap-1.5">
-              <span
-                className={`inline-block h-2 w-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-red-500"}`}
-                aria-label={enabled ? "AI online" : "AI offline"}
-                title={enabled ? "AI online" : "AI offline"}
-              />
-              Harita
-            </p>
-            <p className="truncate text-xs text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+    <>
+      {/* MOBILE TRIGGER BUTTON - Only visible on mobile when collapsed */}
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        className={`lg:hidden fixed bottom-20 right-4 z-50 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] shadow-[0_12px_30px_rgba(0,0,0,0.16)] hover:bg-[var(--color-surface-2)] ${collapsed && !persistent ? 'inline-flex' : 'hidden'}`}
+      >
+        <Bot className="h-4 w-4 text-[var(--color-green)]" />
+        Harita
+        <ChevronLeft className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+      </button>
+
+      {/* HARITA PANEL - Persistent flex column on desktop, floating drawer on mobile */}
+      <aside 
+        className={`
+          flex flex-col bg-[var(--color-surface)] transition-transform duration-300
+          lg:relative lg:inset-auto lg:h-full lg:w-full lg:border-none lg:shadow-none lg:rounded-none lg:z-auto lg:translate-y-0 lg:flex
+          ${!collapsed || persistent 
+            ? 'fixed bottom-20 right-4 z-50 h-[85vh] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] shadow-[0_20px_50px_rgba(0,0,0,0.24)] translate-y-0' 
+            : 'fixed bottom-20 right-4 z-50 h-[85vh] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] shadow-[0_20px_50px_rgba(0,0,0,0.24)] translate-y-[120%] lg:translate-y-0'}
+        `}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5 shrink-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-green-light)] text-[var(--color-green)]">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-medium text-[var(--color-text-primary)] inline-flex items-center gap-1.5">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-red-500"}`}
+                  aria-label={enabled ? "AI online" : "AI offline"}
+                  title={enabled ? "AI online" : "AI offline"}
+                />
+                Harita
+              </p>
+              <p className="truncate text-xs text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={clearHistory}
+              className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+              title="New Chat"
+              aria-label="New Chat"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="lg:hidden rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+              aria-label="Collapse Harita"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={clearHistory}
-            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-            title="New Chat"
-            aria-label="New Chat"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-            aria-label="Collapse Harita"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
 
-      <div className="flex h-[calc(100%-49px)] flex-col">
-        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
@@ -1075,5 +1086,6 @@ Important:
         </div>
       </div>
     </aside>
+    </>
   );
 }

@@ -57,7 +57,7 @@ export default async function ProjectClarificationsPage({
           {selectedCredit.remarks.length > 0 ? (
             selectedCredit.remarks.map((remark: any) => (
               <div key={remark.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-3 space-y-2">
-                <div className="flex justify-between items-center text-[10px] text-[var(--color-text-tertiary)] font-black uppercase">
+                <div className="flex justify-between items-center text-xs text-[var(--color-text-tertiary)] font-black uppercase">
                   <span>{remark.role}</span>
                   <span>{formatDateTimeIST(remark.created_at)}</span>
                 </div>

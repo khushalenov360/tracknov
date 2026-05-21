@@ -111,21 +111,21 @@ export default async function ProjectDocumentsPage({
       <div className="space-y-4">
         <div className="surface-card p-4 space-y-3.5">
           <div className="border-b border-[var(--color-border)] pb-2">
-            <span className="text-[10px] uppercase font-black text-slate-500">Active Credit</span>
+            <span className="text-xs uppercase font-black text-slate-500">Active Credit</span>
             <h4 className="text-xs font-bold text-[var(--color-text-primary)] truncate">
               {selectedCredit.credit_code}: {selectedCredit.credit_name}
             </h4>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-black text-slate-500">Expectations</span>
+            <span className="text-xs uppercase font-black text-slate-500">Expectations</span>
             <p className="text-xs leading-relaxed text-[var(--color-text-secondary)] bg-[var(--color-surface-2)] p-2.5 rounded border border-[var(--color-border)]">
               {selectedCredit.what_to_submit || "No instructions provided."}
             </p>
           </div>
 
           <div className="space-y-2">
-            <span className="text-[10px] uppercase font-black text-slate-500">Requirements</span>
+            <span className="text-xs uppercase font-black text-slate-500">Requirements</span>
             <div className="space-y-2">
               {selectedCredit.documents_required.map((doc: any) => {
                 const matching = selectedCredit.documents.filter((f: any) => f.doc_category === doc.type);
@@ -134,7 +134,7 @@ export default async function ProjectDocumentsPage({
                   <div key={doc.type} className="flex justify-between items-center text-xs bg-[var(--color-surface-2)] p-2 rounded border border-[var(--color-border)]">
                     <div>
                       <p className="font-bold text-[var(--color-text-primary)]">{doc.label}</p>
-                      <p className="text-[10px] text-[var(--color-text-tertiary)]">{doc.required ? "Required" : "Optional"}</p>
+                      <p className="text-xs text-[var(--color-text-tertiary)]">{doc.required ? "Required" : "Optional"}</p>
                     </div>
                     {isApproved ? (
                       <CheckCircle2 className="h-4 w-4 text-[var(--color-green)] shrink-0" />
@@ -158,14 +158,14 @@ export default async function ProjectDocumentsPage({
                 <div key={doc.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-3 text-xs space-y-2">
                   <div className="flex justify-between items-start gap-1">
                     <span className="font-bold text-[var(--color-text-primary)] truncate max-w-[70%]">{doc.file_name}</span>
-                    <Badge className="text-[10px] font-black uppercase shrink-0">{doc.status}</Badge>
+                    <Badge className="text-xs font-black uppercase shrink-0">{doc.status}</Badge>
                   </div>
                   <div className="flex gap-2">
                     <a
                       href={`/api/documents/${doc.id}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] text-[var(--color-green)] font-bold hover:underline"
+                      className="text-xs text-[var(--color-green)] font-bold hover:underline"
                     >
                       Download PDF
                     </a>
