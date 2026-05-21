@@ -293,7 +293,7 @@ export function FrontendGovernanceEnforcementLayer() {
       <div data-fgel-ignore="true" className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
         <button
           onClick={toggleDashboard}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 font-sans font-bold text-[10px] ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 font-sans font-bold text-xs ${
             score && score.overallScore >= 80 
               ? "bg-slate-900/90 border-emerald-500/30 text-emerald-400 hover:border-emerald-500/50 shadow-emerald-950/20" 
               : "bg-slate-900/90 border-amber-500/30 text-amber-400 hover:border-amber-500/50 shadow-amber-950/20"
@@ -334,7 +334,7 @@ export function FrontendGovernanceEnforcementLayer() {
           </header>
 
           {/* Navigation tabs */}
-          <nav className="flex border-b border-slate-900 bg-slate-900/10 text-[10px] font-bold uppercase tracking-wider shrink-0">
+          <nav className="flex border-b border-slate-900 bg-slate-900/10 text-xs font-bold uppercase tracking-wider shrink-0">
             {[
               { id: "summary", label: "Health Score" },
               { id: "violations", label: `Violations (${violations.length})` },
@@ -385,7 +385,7 @@ export function FrontendGovernanceEnforcementLayer() {
 
                   <div className="space-y-1">
                     <h4 className="text-xs font-bold text-slate-200">System UX Quality Score</h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                    <p className="text-xs text-slate-400 leading-relaxed">
                       Enforces non-ERP cognitive abstract layers. Current score indicates {
                         score.overallScore >= 80 ? "satisfactory alignment" : "mild visual entropy issues"
                       }.
@@ -395,7 +395,7 @@ export function FrontendGovernanceEnforcementLayer() {
 
                 {/* Score parameters breakdown */}
                 <div className="space-y-3.5">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500">Governance Breakdown</h4>
+                  <h4 className="text-xs uppercase font-black tracking-widest text-slate-500">Governance Breakdown</h4>
                   
                   {[
                     { label: "Cognitive Load Governor", val: score.cognitiveLoad },
@@ -408,7 +408,7 @@ export function FrontendGovernanceEnforcementLayer() {
                     { label: "Harita Visibility Rule", val: score.haritaVisibility },
                   ].map((item, idx) => (
                     <div key={idx} className="space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px] font-bold">
+                      <div className="flex justify-between items-center text-xs font-bold">
                         <span className="text-slate-300">{item.label}</span>
                         <span className="mono text-slate-400">{item.val}%</span>
                       </div>
@@ -426,15 +426,15 @@ export function FrontendGovernanceEnforcementLayer() {
 
                 {/* Inline interactive tools */}
                 <div className="p-4 bg-slate-900/50 border border-slate-900 rounded-xl space-y-3">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500">Interactive Diagnostics</h4>
-                  <div className="flex items-center justify-between text-[11px]">
+                  <h4 className="text-xs uppercase font-black tracking-widest text-slate-500">Interactive Diagnostics</h4>
+                  <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <Activity className="w-3.5 h-3.5 text-indigo-400" />
                       <span className="text-slate-300 font-bold">Dev HUD Highlights Overlay</span>
                     </div>
                     <button
                       onClick={() => setShowHud(prev => !prev)}
-                      className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
                         showHud 
                           ? "bg-rose-500/20 border-rose-500 text-rose-400 hover:bg-rose-500/30" 
                           : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
@@ -452,7 +452,7 @@ export function FrontendGovernanceEnforcementLayer() {
             {activeTab === "violations" && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500">Active Warning Signals</h4>
+                  <h4 className="text-xs uppercase font-black tracking-widest text-slate-500">Active Warning Signals</h4>
                   <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">
                     {violations.length} Detected
                   </span>
@@ -463,7 +463,7 @@ export function FrontendGovernanceEnforcementLayer() {
                     <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
                     <div>
                       <h4 className="text-xs font-bold text-slate-300">Clean Governance State</h4>
-                      <p className="text-[10px] text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      <p className="text-xs text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
                         Tracknov is perfectly abstract and execution-centric. No clutter detected.
                       </p>
                     </div>
@@ -485,10 +485,10 @@ export function FrontendGovernanceEnforcementLayer() {
                           {getSeverityIcon(violation.severity)}
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[11px] font-bold text-slate-200 leading-tight">
+                          <p className="text-xs font-bold text-slate-200 leading-tight">
                             {violation.message}
                           </p>
-                          <p className="text-[10px] text-slate-400 leading-relaxed font-sans">
+                          <p className="text-xs text-slate-400 leading-relaxed font-sans">
                             <span className="font-bold text-indigo-400/90 uppercase text-[9px] tracking-wider block mb-0.5">AI Corrective Suggestion:</span>
                             {violation.recommendation}
                           </p>
@@ -503,11 +503,11 @@ export function FrontendGovernanceEnforcementLayer() {
                   <div className="p-4 bg-indigo-950/10 border border-indigo-900/20 rounded-xl space-y-2.5">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                      <h4 className="text-[10px] uppercase font-black tracking-widest text-indigo-300">Harita AI-Native UX Advice</h4>
+                      <h4 className="text-xs uppercase font-black tracking-widest text-indigo-300">Harita AI-Native UX Advice</h4>
                     </div>
                     <ul className="space-y-1.5 pl-1">
                       {cleanRecommendations.slice(0, 3).map((rec, idx) => (
-                        <li key={idx} className="text-[10px] text-slate-300 leading-relaxed flex items-start gap-1.5">
+                        <li key={idx} className="text-xs text-slate-300 leading-relaxed flex items-start gap-1.5">
                           <ChevronRight className="w-3 h-3 text-indigo-400 shrink-0 mt-0.5" />
                           <span>{rec}</span>
                         </li>
@@ -521,7 +521,7 @@ export function FrontendGovernanceEnforcementLayer() {
             {/* TAB 3: REAL-TIME DOM METRICS */}
             {activeTab === "telemetry" && (
               <div className="space-y-5">
-                <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500">Live Rendering Telemetry</h4>
+                <h4 className="text-xs uppercase font-black tracking-widest text-slate-500">Live Rendering Telemetry</h4>
 
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -547,8 +547,8 @@ export function FrontendGovernanceEnforcementLayer() {
                 </div>
 
                 <div className="p-4 bg-slate-900/40 border border-slate-900 rounded-xl space-y-2">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500">Telemetry Performance Trends</h4>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                  <h4 className="text-xs uppercase font-black tracking-widest text-slate-500">Telemetry Performance Trends</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
                     UX entropy and clutter ratios are recorded inside internal memory. Drift detection daemon operates background audits with zero client performance overhead.
                   </p>
                 </div>

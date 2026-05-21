@@ -49,7 +49,7 @@ export default async function ObservabilityDashboard() {
         {/* Top KPI Bar */}
         <div className="xl:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">System Entropy</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">System Entropy</p>
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-400" />
               <p className="text-2xl font-black text-white">{health?.entropy_score || '0.00'}</p>
@@ -57,28 +57,28 @@ export default async function ObservabilityDashboard() {
             <Progress value={(health?.entropy_score || 0) * 10} />
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Congestion</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Queue Congestion</p>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-400" />
               <p className="text-2xl font-black text-white">{queue?.item_count || 0}</p>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 font-medium">Avg wait: {(queue?.avg_wait_time_ms / 1000 / 60 / 60).toFixed(1)}h</p>
+            <p className="text-xs text-slate-500 mt-2 font-medium">Avg wait: {(queue?.avg_wait_time_ms / 1000 / 60 / 60).toFixed(1)}h</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">AI Trust Index</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">AI Trust Index</p>
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-400" />
               <p className="text-2xl font-black text-white">99.8%</p>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 font-medium">Advisory bound strictly enforced</p>
+            <p className="text-xs text-slate-500 mt-2 font-medium">Advisory bound strictly enforced</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Active Incidents</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Active Incidents</p>
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-red-400" />
               <p className="text-2xl font-black text-white">{incidents?.filter(i => i.resolution_status === 'open').length || 0}</p>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 font-medium">Critical: {incidents?.filter(i => i.severity === 'critical').length || 0}</p>
+            <p className="text-xs text-slate-500 mt-2 font-medium">Critical: {incidents?.filter(i => i.severity === 'critical').length || 0}</p>
           </div>
         </div>
 
@@ -90,14 +90,14 @@ export default async function ObservabilityDashboard() {
                 <Terminal className="w-5 h-5 text-blue-400" />
                 Live Governance Stream
               </h2>
-              <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] uppercase font-black px-3 py-1">
+              <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs uppercase font-black px-3 py-1">
                 SECURE TRACE ENABLED
               </Badge>
             </div>
 
             <div className="p-4 h-[500px] overflow-y-auto no-scrollbar space-y-2 bg-black/20 font-mono">
               {replayEvents?.map((event, i) => (
-                <div key={i} className="text-[11px] flex gap-4 p-2 hover:bg-white/5 rounded transition-colors group">
+                <div key={i} className="text-xs flex gap-4 p-2 hover:bg-white/5 rounded transition-colors group">
                   <span className="text-slate-600 shrink-0">{formatDistanceToNow(new Date(event.created_at))} ago</span>
                   <span className={`shrink-0 w-20 font-bold ${
                     event.severity === 'critical' ? 'text-red-400' : 
@@ -136,7 +136,7 @@ export default async function ObservabilityDashboard() {
                 </div>
               </div>
               <div className="p-6 bg-white/5 rounded-2xl border border-white/5 flex flex-col justify-center">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Platform Health Certificate</p>
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Platform Health Certificate</p>
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                   <p className="text-sm font-bold text-white leading-tight">All systems certified for pilot execution.</p>
@@ -162,7 +162,7 @@ export default async function ObservabilityDashboard() {
                       {incident.severity}
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-mono mb-3 truncate">TRACE: {incident.trace_id}</p>
+                  <p className="text-xs text-slate-500 font-mono mb-3 truncate">TRACE: {incident.trace_id}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-[9px] text-slate-600 font-bold uppercase">{formatDistanceToNow(new Date(incident.created_at))} ago</span>
                     <button className="text-[9px] font-black text-blue-400 uppercase hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
@@ -184,15 +184,15 @@ export default async function ObservabilityDashboard() {
             </h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Database Nodes</span>
+                <span className="text-xs text-slate-500 font-bold uppercase">Database Nodes</span>
                 <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] h-4">OPERATIONAL</Badge>
               </div>
               <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                <span className="text-[10px] text-slate-500 font-bold uppercase">AI Compute</span>
+                <span className="text-xs text-slate-500 font-bold uppercase">AI Compute</span>
                 <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] h-4">OPERATIONAL</Badge>
               </div>
               <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Storage Edge</span>
+                <span className="text-xs text-slate-500 font-bold uppercase">Storage Edge</span>
                 <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] h-4">OPERATIONAL</Badge>
               </div>
             </div>

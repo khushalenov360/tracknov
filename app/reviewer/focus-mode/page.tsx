@@ -125,7 +125,7 @@ export default function ReviewerFocusMode() {
         </div>
 
         {/* Live Fatigue Telemetry Guard */}
-        <div className="flex items-center gap-8 text-[11px] font-bold text-slate-400">
+        <div className="flex items-center gap-8 text-xs font-bold text-slate-400">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-slate-500" />
             <span>Session Duration: <strong className="text-slate-200">{formattedTime(reviewDuration)}</strong></span>
@@ -134,7 +134,7 @@ export default function ReviewerFocusMode() {
           <div className="flex items-center gap-2">
             <span className="text-slate-500">Fatigue Index:</span>
             <div className="flex items-center gap-1.5">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+              <span className={`text-xs font-black px-2 py-0.5 rounded ${
                 fatigueScore > 70 ? "bg-rose-500/10 text-rose-400" :
                 fatigueScore > 40 ? "bg-amber-500/10 text-amber-400" :
                 "bg-emerald-500/10 text-emerald-400"
@@ -169,7 +169,7 @@ export default function ReviewerFocusMode() {
 
               <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-850">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">AI Score: 98% MATCH</span>
+                <span className="text-xs uppercase font-black text-slate-400 tracking-wider">AI Score: 98% MATCH</span>
               </div>
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function ReviewerFocusMode() {
                 <FileText className="w-5 h-5 text-indigo-400" />
                 <div>
                   <h3 className="text-xs font-black uppercase text-slate-300 tracking-wider">Focused Evidence Document</h3>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{activeEvidence.name} (Uploaded: {activeEvidence.uploadDate})</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{activeEvidence.name} (Uploaded: {activeEvidence.uploadDate})</p>
                 </div>
               </div>
 
@@ -257,12 +257,12 @@ export default function ReviewerFocusMode() {
               <Sparkles className="w-4 h-4" />
               <h3 className="text-xs font-black uppercase tracking-wider">AI Fatigue Assist</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Smart filters collapsing duplicated workloads.</p>
+            <p className="text-xs text-slate-500 mt-1">Smart filters collapsing duplicated workloads.</p>
           </div>
 
           <div className="space-y-4 flex-1">
             {/* Duplicates Toggle */}
-            <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-850 rounded-xl text-[10px] font-bold">
+            <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-850 rounded-xl text-xs font-bold">
               <span className="text-slate-400">Collapse Duplicates</span>
               <button 
                 onClick={() => setCollapseDuplicates(!collapseDuplicates)}
@@ -277,7 +277,7 @@ export default function ReviewerFocusMode() {
             {/* Smart Summarizer Card */}
             <div className="p-4 bg-slate-950/60 border border-slate-850 rounded-2xl space-y-2">
               <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">AI Assessment Context</span>
-              <p className="text-[10px] text-slate-400 leading-normal">
+              <p className="text-xs text-slate-400 leading-normal">
                 This document duplicates E-102. Content matches previous submittals. Reviewer decision recommends **AUTO-ACCEPT** to prevent cognitive fatigue.
               </p>
             </div>
@@ -285,7 +285,7 @@ export default function ReviewerFocusMode() {
             {/* Metrics List */}
             <div className="space-y-2">
               <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">Performance Heuristics</span>
-              <div className="grid grid-cols-2 gap-3 text-[10px]">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-850">
                   <span className="block text-slate-500">Throughput</span>
                   <strong className="text-xs text-slate-300 font-black">{throughput}/hr</strong>
@@ -305,7 +305,7 @@ export default function ReviewerFocusMode() {
                   <div 
                     key={idx}
                     onClick={() => setActiveEvidence(e)}
-                    className={`p-3 rounded-xl border text-[10px] flex items-center justify-between cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition-all ${
                       activeEvidence.id === e.id 
                         ? "bg-indigo-500/10 border-indigo-500 text-slate-200" 
                         : "bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-750"

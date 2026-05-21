@@ -58,15 +58,15 @@ export default async function InvitePage({ params }: PageProps) {
 
         <div className="mt-5 grid gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-[12px] text-[var(--color-text-secondary)] md:grid-cols-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Invite email</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Invite email</p>
             <p className="mt-1 font-medium text-[var(--color-text-primary)]">{invite.email}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Role</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Role</p>
             <p className="mt-1 font-medium text-[var(--color-text-primary)]">{invite.role}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Status</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Status</p>
             <p className="mt-1 font-medium text-[var(--color-text-primary)]">
               {invite.accepted_at ? "Accepted" : "Pending"}
             </p>

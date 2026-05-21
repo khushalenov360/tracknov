@@ -76,7 +76,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                   Project Admin Cockpit
                 </h2>
               </div>
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-xs text-slate-400">
                 Cross-project validation queue, readiness tracking, and priority signals.
               </p>
             </div>
@@ -109,7 +109,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                         </Link>
                       </td>
                       <td className="px-4 py-3">
-                        <code className="rounded-lg bg-slate-950/80 border border-slate-850/80 px-2 py-0.5 text-[10px] font-mono text-slate-400">
+                        <code className="rounded-lg bg-slate-950/80 border border-slate-850/80 px-2 py-0.5 text-xs font-mono text-slate-400">
                           {project.projectCode}
                         </code>
                       </td>
@@ -121,14 +121,14 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                               style={{ width: `${project.overallCompletion}%` }}
                             />
                           </div>
-                          <span className="font-mono font-bold text-slate-400 text-[10px]">
+                          <span className="font-mono font-bold text-slate-400 text-xs">
                             {pct(project.overallCompletion)}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 font-mono font-bold">
                         {pendingValidation > 0 ? (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-xs">
                             {pendingValidation}
                           </span>
                         ) : (
@@ -137,7 +137,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                       </td>
                       <td className="px-4 py-3 font-mono font-bold">
                         {rejections > 0 ? (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-xs">
                             {rejections}
                           </span>
                         ) : (
@@ -199,7 +199,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
         <section className="surface-card mt-4 p-4">
           <div className="max-w-md">
             <h3 className="text-[12px] font-medium mb-3">Join with project code</h3>
-            <p className="text-[11px] text-[var(--color-text-secondary)] mb-4">Enter the human-readable project code (e.g. TN-DEMO-MUM-001) provided by your project admin.</p>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4">Enter the human-readable project code (e.g. TN-DEMO-MUM-001) provided by your project admin.</p>
             <form action={joinProjectAction} className="flex gap-2">
               <Input name="projectCode" placeholder="TN-XXXX-XXX-000" className="uppercase" required />
               <Button type="submit" variant="secondary" className="h-[34px]">Join</Button>
@@ -212,7 +212,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Billing credits overview</h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
               Live usage across all visible projects.
             </p>
           </div>
@@ -264,12 +264,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                 </div>
               </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-[var(--color-text-secondary)]">
+                <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)]">
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
                   <p className="dense-label">Role</p>
                   <p className="mt-1">{roleLabels[project.role]}</p>
                 </div>
-                <div className="rounded-lg bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)]">
+                <div className="rounded-lg bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-secondary)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="dense-label">Plan & usage</p>
                     <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
@@ -322,7 +322,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                 </Button>
                 <form action={leaveProjectAction} className="ml-auto">
                   <input type="hidden" name="projectId" value={project.id} />
-                  <Button type="submit" variant="ghost" className="h-[32px] rounded-md px-3 text-[11px] text-[var(--color-red)] hover:bg-[var(--color-red-soft)] hover:text-[var(--color-red)]">
+                  <Button type="submit" variant="ghost" className="h-[32px] rounded-md px-3 text-xs text-[var(--color-red)] hover:bg-[var(--color-red-soft)] hover:text-[var(--color-red)]">
                     Leave project
                   </Button>
                 </form>
@@ -330,16 +330,16 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
 
               {canManageProject(project.role) ? (
                 <details className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] overflow-hidden group">
-                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
+                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
                     <span>Project Settings & Controls</span>
-                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Setup</span>
-                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Setup</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
                   </summary>
                   <div className="border-t border-[var(--color-border)] p-3 space-y-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Project controls</p>
-                        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
                           {canDeleteAnyProject
                             ? "Super User can update and delete this project."
                             : "Project Admin access includes project updates for assigned workspaces."}
@@ -403,7 +403,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                     {["project_admin", "super_user", "super_admin", "L3", "L5"].includes(project.role) ? (
                       <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                         <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Manual upload & instantiation</p>
-                        <p className="text-[11px] text-[var(--color-text-secondary)]">
+                        <p className="text-xs text-[var(--color-text-secondary)]">
                           Upload IGBC project manual (PDF), then import tracker sheet (XLSX) to seed credit-level mapping.
                         </p>
                         <form action={uploadProjectGuidebookAction} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -486,8 +486,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                     ) : (
                       <section className="mt-3 grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                         <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Plan controls</p>
-                        <p className="text-[11px] text-[var(--color-text-secondary)]">View-only for your role.</p>
-                        <div className="grid gap-2 md:grid-cols-2 text-[11px] text-[var(--color-text-secondary)]">
+                        <p className="text-xs text-[var(--color-text-secondary)]">View-only for your role.</p>
+                        <div className="grid gap-2 md:grid-cols-2 text-xs text-[var(--color-text-secondary)]">
                           <p>Plan: <span className="mono">{project.planName ?? "Starter"}</span></p>
                           <p>Doc limit: <span className="mono">{project.documentCreditLimit ?? 0}</span></p>
                           <p>Consultant limit: <span className="mono">{project.consultantCreditLimit ?? 0}</span></p>
@@ -537,12 +537,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                 </details>
               ) : (
                 <details className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] overflow-hidden group">
-                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
+                  <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-all">
                     <span>Project Plan Details</span>
-                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Details</span>
-                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] font-normal group-open:hidden">Expand Details</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] font-normal hidden group-open:inline">Collapse</span>
                   </summary>
-                  <div className="border-t border-[var(--color-border)] p-3 space-y-2 text-[11px] text-[var(--color-text-secondary)]">
+                  <div className="border-t border-[var(--color-border)] p-3 space-y-2 text-xs text-[var(--color-text-secondary)]">
                     <p>Plan: <span className="mono">{project.planName ?? "Starter"}</span></p>
                     <p>Doc limit: <span className="mono">{project.documentCreditLimit ?? 0}</span></p>
                     <p>Consultant limit: <span className="mono">{project.consultantCreditLimit ?? 0}</span></p>

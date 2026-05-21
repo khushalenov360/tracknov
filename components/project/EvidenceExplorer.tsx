@@ -93,14 +93,14 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
           />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-xs font-black uppercase h-7 px-3">
             <Filter className="w-3 h-3 mr-1" />
             Types
           </Button>
-          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-emerald-400">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-xs font-black uppercase h-7 px-3 text-emerald-400">
             Verified
           </Button>
-          <Button variant="secondary" className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-7 px-3 text-amber-400">
+          <Button variant="secondary" className="bg-white/5 border-white/10 text-xs font-black uppercase h-7 px-3 text-amber-400">
             Issues
           </Button>
         </div>
@@ -127,7 +127,7 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
                   <Folder className={`w-4 h-4 ${isExpanded ? 'text-blue-400 fill-blue-400/10' : 'text-slate-500'}`} />
                   <span className={`text-xs font-bold ${isExpanded ? 'text-white' : 'text-slate-400'}`}>{category}</span>
                 </div>
-                <span className="text-[10px] font-black text-slate-600 bg-white/5 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-black text-slate-600 bg-white/5 px-2 py-0.5 rounded-full">
                   {categoryDocs.length}
                 </span>
               </button>
@@ -149,7 +149,7 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="shrink-0">{getFileIcon(doc.file_type)}</div>
                           <div className="min-w-0">
-                            <p className={`text-[11px] font-medium truncate ${isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                            <p className={`text-xs font-medium truncate ${isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
                               {doc.file_name}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -174,7 +174,7 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
                     );
                   })}
                   {categoryDocs.length === 0 && (
-                    <p className="text-[10px] text-slate-600 italic py-2 pl-2">No documents in this category.</p>
+                    <p className="text-xs text-slate-600 italic py-2 pl-2">No documents in this category.</p>
                   )}
                 </div>
               )}
@@ -187,10 +187,10 @@ export function EvidenceExplorer({ documents, categories, onSelect, selectedId, 
       <div className="p-4 bg-indigo-600/5 border-t border-indigo-500/10">
         <div className="flex items-center gap-2 mb-2">
           <Zap className="w-3 h-3 text-indigo-400" />
-          <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">AI Insights</span>
+          <span className="text-xs font-black text-indigo-300 uppercase tracking-widest">AI Insights</span>
         </div>
         <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
-          <p className="text-[10px] text-indigo-200 leading-relaxed">
+          <p className="text-xs text-indigo-200 leading-relaxed">
             AI detected 3 reuse opportunities from similar projects. Review the "Cross-Credit" tab.
           </p>
         </div>

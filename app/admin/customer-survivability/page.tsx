@@ -96,7 +96,7 @@ export default function CustomerSurvivabilityDashboard() {
             <h1 className="text-base font-bold tracking-wide bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
               Tracknov Pilot Survivability & Churn Dashboard
             </h1>
-            <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">
+            <p className="text-xs text-slate-500 uppercase font-black tracking-wider">
               Observe customer friction, upload frustrations, and support spikes in real time
             </p>
           </div>
@@ -115,10 +115,10 @@ export default function CustomerSurvivabilityDashboard() {
             { label: "AI Guideline Trust", value: "88.1%", trend: <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />, trendLabel: "Low overrides" },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-2">
-              <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider block">{kpi.label}</span>
+              <span className="text-xs uppercase font-black text-slate-500 tracking-wider block">{kpi.label}</span>
               <div className="flex justify-between items-baseline">
                 <span className="text-2xl font-black text-slate-200">{kpi.value}</span>
-                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                   {kpi.trend}
                   {kpi.trendLabel}
                 </span>
@@ -132,14 +132,14 @@ export default function CustomerSurvivabilityDashboard() {
           <div className="p-6 border-b border-slate-850 flex justify-between items-center">
             <div>
               <h3 className="text-sm font-black uppercase text-slate-400 tracking-wider">Pilot Ingress Health Logs</h3>
-              <p className="text-[11px] text-slate-500 mt-1">Real-time health matrix output evaluating customer survivability conditions.</p>
+              <p className="text-xs text-slate-500 mt-1">Real-time health matrix output evaluating customer survivability conditions.</p>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-850 bg-slate-950/40 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                <tr className="border-b border-slate-850 bg-slate-950/40 text-xs uppercase font-bold text-slate-500 tracking-wider">
                   <th className="p-4 pl-6">Tenant Organization</th>
                   <th className="p-4">Primary Contact</th>
                   <th className="p-4 text-center">Failed Uploads</th>
@@ -156,9 +156,9 @@ export default function CustomerSurvivabilityDashboard() {
                     <tr key={idx} className="hover:bg-slate-950/20 transition-all text-xs text-slate-300">
                       <td className="p-4 pl-6 font-bold text-slate-100">
                         {row.tenantName}
-                        <span className="block text-[10px] text-slate-500 font-medium mt-0.5">{row.industry}</span>
+                        <span className="block text-xs text-slate-500 font-medium mt-0.5">{row.industry}</span>
                       </td>
-                      <td className="p-4 font-mono text-[11px] text-slate-400">{row.contactName}</td>
+                      <td className="p-4 font-mono text-xs text-slate-400">{row.contactName}</td>
                       <td className="p-4 text-center font-bold text-slate-200">{row.factors.failedUploadCount}</td>
                       <td className="p-4 text-center font-bold text-slate-200">{row.factors.stalledClarificationLoops}</td>
                       <td className="p-4 text-center font-bold text-slate-200">{row.factors.inactivityDays} days</td>
@@ -188,7 +188,7 @@ export default function CustomerSurvivabilityDashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
                     <h4 className="font-bold text-slate-200">{row.tenantName}</h4>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                    <span className={`text-xs font-black px-2 py-0.5 rounded ${
                       health.status === "RED" ? "bg-rose-500/10 text-rose-400" :
                       health.status === "YELLOW" ? "bg-amber-500/10 text-amber-400" :
                       "bg-emerald-500/10 text-emerald-400"
@@ -196,13 +196,13 @@ export default function CustomerSurvivabilityDashboard() {
                       Score: {health.score}/100
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">{health.riskDescription}</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">{health.riskDescription}</p>
                 </div>
 
                 {health.contributingFactors.length > 0 ? (
                   <div className="space-y-1.5 pt-3 border-t border-slate-900">
                     <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider block">Identified Friction Points</span>
-                    <ul className="list-disc pl-4 space-y-1 text-[10px] text-slate-400">
+                    <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
                       {health.contributingFactors.map((fac, fIdx) => (
                         <li key={fIdx}>{fac}</li>
                       ))}
@@ -210,7 +210,7 @@ export default function CustomerSurvivabilityDashboard() {
                   </div>
                 ) : (
                   <div className="pt-3 border-t border-slate-900 text-center">
-                    <span className="text-[10px] text-emerald-400 font-bold">Zero active friction factors detected.</span>
+                    <span className="text-xs text-emerald-400 font-bold">Zero active friction factors detected.</span>
                   </div>
                 )}
               </div>

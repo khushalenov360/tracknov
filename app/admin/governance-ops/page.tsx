@@ -93,21 +93,21 @@ export default async function GovernanceOpsPage() {
         {/* Quick Health Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 min-w-[140px]">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Replay Health</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Replay Health</p>
             <p className="text-xl font-bold text-green-400">{((latestHealth?.replay_success_rate || 1) * 100).toFixed(1)}%</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 min-w-[140px]">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Active Incidents</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active Incidents</p>
             <p className={`text-xl font-bold ${incidents?.filter(i => i.resolution_status === 'open').length ? 'text-red-400' : 'text-gray-400'}`}>
               {incidents?.filter(i => i.resolution_status === 'open').length || 0}
             </p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 min-w-[140px]">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Queued Tasks</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Queued Tasks</p>
             <p className="text-xl font-bold text-blue-400">{replayQueue?.filter(q => q.status === 'queued').length || 0}</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 min-w-[140px]">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Entropy Risk</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Entropy Risk</p>
             <p className={`text-xl font-bold ${latestHealth?.queue_starvation_risk === 'CRITICAL' ? 'text-red-400' : 'text-green-400'}`}>
               {latestHealth?.queue_starvation_risk || 'LOW'}
             </p>
@@ -116,7 +116,7 @@ export default async function GovernanceOpsPage() {
             <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:opacity-100 transition-opacity">
               <Cpu className="w-3 h-3 text-blue-400" />
             </div>
-            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">AI Safety</p>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">AI Safety</p>
             <p className="text-xl font-bold text-white">CERTIFIED</p>
           </div>
         </div>
@@ -134,28 +134,28 @@ export default async function GovernanceOpsPage() {
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-300">Incident Timeline</h2>
               </div>
-              <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">REAL-TIME</span>
+              <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">REAL-TIME</span>
             </div>
             <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
               {incidents?.length ? incidents.map(incident => (
                 <div key={incident.incident_id} className="p-4 hover:bg-white/[0.02] transition-colors group">
                   <div className="flex justify-between items-start mb-2">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
+                    <span className={`text-xs font-black px-2 py-0.5 rounded uppercase ${
                       incident.severity === 'critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
                       'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                     }`}>
                       {incident.incident_type.replace(/_/g, ' ')}
                     </span>
-                    <span className="text-[10px] text-gray-500 font-mono">{formatDistanceToNow(new Date(incident.created_at))} ago</span>
+                    <span className="text-xs text-gray-500 font-mono">{formatDistanceToNow(new Date(incident.created_at))} ago</span>
                   </div>
                   <p className="text-xs font-bold text-white mb-1">Project: {(incident.projects as any)?.name || 'SYSTEM'}</p>
-                  <p className="text-[11px] text-gray-400 line-clamp-2 italic">{incident.resolution_notes || "No resolution notes provided."}</p>
+                  <p className="text-xs text-gray-400 line-clamp-2 italic">{incident.resolution_notes || "No resolution notes provided."}</p>
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-1.5 h-1.5 rounded-full ${incident.resolution_status === 'resolved' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase">{incident.resolution_status}</span>
+                      <span className="text-xs font-bold text-gray-500 uppercase">{incident.resolution_status}</span>
                     </div>
-                    <button className="text-[10px] font-bold text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">INVESTIGATE</button>
+                    <button className="text-xs font-bold text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">INVESTIGATE</button>
                   </div>
                 </div>
               )) : (
@@ -171,13 +171,13 @@ export default async function GovernanceOpsPage() {
                 <Zap className="w-4 h-4 text-red-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-300">Runtime Entropy</h2>
               </div>
-              <span className="text-[10px] text-gray-500 font-mono italic">Anomaly Detection Active</span>
+              <span className="text-xs text-gray-500 font-mono italic">Anomaly Detection Active</span>
             </div>
             <div className="p-4 space-y-3">
               {entropyEvents?.map(event => (
                 <div key={event.event_id} className="p-3 bg-white/5 rounded-lg border border-white/5">
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-[11px] font-bold text-red-400 uppercase tracking-tighter">{event.entropy_type.replace(/_/g, ' ')}</p>
+                    <p className="text-xs font-bold text-red-400 uppercase tracking-tighter">{event.entropy_type.replace(/_/g, ' ')}</p>
                     <span className="text-[9px] text-gray-600 font-mono">{format(new Date(event.created_at), 'HH:mm:ss')}</span>
                   </div>
                   <pre className="text-[9px] text-gray-500 font-mono bg-black/30 p-2 rounded overflow-hidden">
@@ -202,17 +202,17 @@ export default async function GovernanceOpsPage() {
               {aiViolations?.length ? aiViolations.map((v: any) => (
                 <div key={v.event_id} className="p-4 bg-red-500/5">
                   <div className="flex justify-between mb-1">
-                    <span className="text-[10px] font-bold text-red-400 font-mono">GOVERNANCE_BYPASS_ATTEMPT</span>
+                    <span className="text-xs font-bold text-red-400 font-mono">GOVERNANCE_BYPASS_ATTEMPT</span>
                     <span className="text-[9px] text-gray-500">{formatDistanceToNow(new Date(v.created_at))} ago</span>
                   </div>
-                  <p className="text-[11px] text-gray-300 italic mb-2">"{v.details.violation}"</p>
+                  <p className="text-xs text-gray-300 italic mb-2">"{v.details.violation}"</p>
                   <div className="flex gap-2">
                     <span className="text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 font-bold uppercase">BLOCKED</span>
                     <span className="text-[8px] bg-white/5 text-gray-500 px-2 py-0.5 rounded border border-white/10 font-mono">{v.trace_id.slice(0, 8)}</span>
                   </div>
                 </div>
               )) : (
-                <div className="p-8 text-center text-gray-600 text-[10px] uppercase tracking-widest">Zero Boundary Drifts Detected</div>
+                <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest">Zero Boundary Drifts Detected</div>
               )}
             </div>
           </section>
@@ -235,17 +235,17 @@ export default async function GovernanceOpsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white/5">
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Project</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Trace ID</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Age</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Project</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Trace ID</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Status</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Age</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {replayQueue?.map(item => (
                     <tr key={item.queue_id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-4 text-xs font-bold text-white">{(item.projects as any)?.name}</td>
-                      <td className="px-4 py-4 text-[10px] font-mono text-gray-500">{item.trace_id.slice(0, 8)}...</td>
+                      <td className="px-4 py-4 text-xs font-mono text-gray-500">{item.trace_id.slice(0, 8)}...</td>
                       <td className="px-4 py-4">
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                           item.status === 'completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
@@ -255,7 +255,7 @@ export default async function GovernanceOpsPage() {
                           {item.status.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-[10px] text-gray-500">{formatDistanceToNow(new Date(item.created_at))}</td>
+                      <td className="px-4 py-4 text-xs text-gray-500">{formatDistanceToNow(new Date(item.created_at))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -277,7 +277,7 @@ export default async function GovernanceOpsPage() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="text-xs font-bold text-white">{(report.projects as any)?.name}</p>
-                      <p className="text-[10px] text-purple-400 font-mono mt-0.5 uppercase tracking-tighter">{report.override_type}</p>
+                      <p className="text-xs text-purple-400 font-mono mt-0.5 uppercase tracking-tighter">{report.override_type}</p>
                     </div>
                     {report.secondary_confirmation_by ? (
                       <CheckCircle className="w-4 h-4 text-green-500" />
@@ -286,7 +286,7 @@ export default async function GovernanceOpsPage() {
                     )}
                   </div>
                   <div className="bg-black/40 p-3 rounded-xl border border-white/5 mb-3">
-                    <p className="text-[11px] text-gray-400 leading-relaxed italic">"{report.reason}"</p>
+                    <p className="text-xs text-gray-400 leading-relaxed italic">"{report.reason}"</p>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-[9px] bg-white/5 text-gray-500 px-2 py-1 rounded border border-white/5">BLAST RADIUS: {Object.keys(report.blast_radius).length} NODES</span>
@@ -309,10 +309,10 @@ export default async function GovernanceOpsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white/5">
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Project</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Type</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Logic</th>
-                    <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Trace</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Project</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Type</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Logic</th>
+                    <th className="px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-widest">Trace</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -322,7 +322,7 @@ export default async function GovernanceOpsPage() {
                       <td className="px-4 py-3">
                         <span className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">{log.recommendation_type}</span>
                       </td>
-                      <td className="px-4 py-3 text-[10px] text-gray-400 truncate max-w-[150px] italic">{log.reasoning}</td>
+                      <td className="px-4 py-3 text-xs text-gray-400 truncate max-w-[150px] italic">{log.reasoning}</td>
                       <td className="px-4 py-3 text-[9px] font-mono text-gray-600">{log.trace_id.slice(0, 8)}</td>
                     </tr>
                   ))}
@@ -344,15 +344,15 @@ export default async function GovernanceOpsPage() {
             <div className="p-5">
               <div className="space-y-6">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Recurring desync areas</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Recurring desync areas</p>
                   <div className="space-y-2">
                     {latestDrift ? Object.entries(latestDrift.stale_state_heatmap as Record<string, number>).map(([table, count]) => (
                       <div key={table} className="flex items-center gap-3">
                         <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                           <div className="h-full bg-blue-500" style={{ width: `${(count / 10) * 100}%` }}></div>
                         </div>
-                        <span className="text-[10px] font-mono text-gray-400 w-24 truncate">{table}</span>
-                        <span className="text-[10px] font-bold text-white">{count}</span>
+                        <span className="text-xs font-mono text-gray-400 w-24 truncate">{table}</span>
+                        <span className="text-xs font-bold text-white">{count}</span>
                       </div>
                     )) : (
                       <p className="text-xs text-gray-600 italic text-center py-4">Insufficient data for heatmap.</p>
@@ -362,8 +362,8 @@ export default async function GovernanceOpsPage() {
                 
                 <div className="pt-6 border-t border-white/5">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Unresolved Drift Aging</p>
-                    <span className="text-[10px] text-blue-400 font-bold">AVG: 4.2h</span>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Unresolved Drift Aging</p>
+                    <span className="text-xs text-blue-400 font-bold">AVG: 4.2h</span>
                   </div>
                   <div className="flex gap-1 h-8 items-end">
                     {[4, 7, 2, 8, 5, 9, 3, 6, 4, 7].map((h, i) => (
@@ -382,7 +382,7 @@ export default async function GovernanceOpsPage() {
                 <Shield className="w-4 h-4 text-purple-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-purple-300">Intelligence Safety</h2>
               </div>
-              <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 font-black">L5 STRICT</span>
+              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 font-black">L5 STRICT</span>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -397,15 +397,15 @@ export default async function GovernanceOpsPage() {
               </div>
 
               <div className="space-y-2 pt-2">
-                <div className="flex justify-between items-center text-[11px]">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-400 font-bold uppercase">Leakage Threat</span>
                   <span className="text-green-400 font-mono">0.00000%</span>
                 </div>
-                <div className="flex justify-between items-center text-[11px]">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-400 font-bold uppercase">Poison Containment</span>
                   <span className="text-green-400 font-mono">100.0%</span>
                 </div>
-                <div className="flex justify-between items-center text-[11px]">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-400 font-bold uppercase">Quarantine Events</span>
                   <span className="text-amber-400 font-mono">1 Active</span>
                 </div>
@@ -449,7 +449,7 @@ export default async function GovernanceOpsPage() {
                 <Thermometer className="w-4 h-4 text-blue-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-300">Runtime Soak V1</h2>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${latestSoak?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded ${latestSoak?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                 {latestSoak?.ok ? 'STABLE' : 'UNSTABLE'}
               </span>
             </div>
@@ -472,8 +472,8 @@ export default async function GovernanceOpsPage() {
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase">Active Replay Locks</span>
-                  <span className="text-[10px] text-blue-400 font-mono">{soakDetails?.activeReplayLocks || 0}</span>
+                  <span className="text-xs text-gray-500 font-bold uppercase">Active Replay Locks</span>
+                  <span className="text-xs text-blue-400 font-mono">{soakDetails?.activeReplayLocks || 0}</span>
                 </div>
                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-500" style={{ width: `${Math.min((soakDetails?.activeReplayLocks || 0) * 10, 100)}%` }}></div>
@@ -506,12 +506,12 @@ export default async function GovernanceOpsPage() {
                     <p className="text-xs font-bold text-white">{(report.projects as any)?.name}</p>
                     <div className="flex items-center gap-1.5">
                       <div className={`w-2 h-2 rounded-full ${report.risk_score < 30 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                      <span className="text-[11px] font-black text-white">{report.risk_score}</span>
+                      <span className="text-xs font-black text-white">{report.risk_score}</span>
                     </div>
                   </div>
                   <div className="space-y-1">
                     {(report.risk_factors as any[]).slice(0, 2).map((f, i) => (
-                      <div key={i} className="flex justify-between items-center text-[10px]">
+                      <div key={i} className="flex justify-between items-center text-xs">
                         <span className="text-gray-500 uppercase">{f.factor}</span>
                         <span className={`font-bold ${f.impact === 'LOW' ? 'text-green-400' : 'text-amber-400'}`}>{f.impact}</span>
                       </div>
@@ -533,9 +533,9 @@ export default async function GovernanceOpsPage() {
       <footer className="mt-12 bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-6 overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Telemetry Stream</span>
+          <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Telemetry Stream</span>
         </div>
-        <div className="flex gap-8 animate-marquee whitespace-nowrap text-[10px] font-mono text-gray-400">
+        <div className="flex gap-8 animate-marquee whitespace-nowrap text-xs font-mono text-gray-400">
           {governanceEvents?.map(event => (
             <span key={event.event_id}>
               [{format(new Date(event.timestamp), 'HH:mm:ss')}] 

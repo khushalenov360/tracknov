@@ -780,7 +780,7 @@ Important:
                 />
               Harita
               </p>
-              <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Harita ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+              <p className="truncate text-xs text-[var(--color-text-tertiary)]">{enabled ? `Harita ready • ${selectedTone}` : "Fallback guidance mode"}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -813,7 +813,7 @@ Important:
                   void sendPrompt(skill.prompt);
                 }
               }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-all"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-all"
             >
               {skill.label}
             </button>
@@ -834,7 +834,7 @@ Important:
             </div>
           ))}
           {loading ? (
-            <p className="text-[11px] text-[var(--color-text-tertiary)] italic">Harita is thinking...</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] italic">Harita is thinking...</p>
           ) : null}
           <div ref={bottomRef} />
         </div>
@@ -845,7 +845,7 @@ Important:
               <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
 
               {attachment ? (
-                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-xs text-[var(--color-text-tertiary)]">
                   Attached: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
                 </div>
               ) : null}
@@ -911,7 +911,7 @@ Important:
                 </Button>
               </div>
             </div>
-            {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+            {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
           </form>
         </div>
       </div>
@@ -950,7 +950,7 @@ Important:
               />
               Harita
             </p>
-            <p className="truncate text-[10px] text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
+            <p className="truncate text-xs text-[var(--color-text-tertiary)]">{enabled ? `Gemini ready • ${selectedTone}` : "Fallback guidance mode"}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -989,7 +989,7 @@ Important:
             </div>
           ))}
           {loading ? (
-            <p className="text-[11px] text-[var(--color-text-tertiary)]">Harita is thinking...</p>
+            <p className="text-xs text-[var(--color-text-tertiary)]">Harita is thinking...</p>
           ) : null}
           <div ref={bottomRef} />
         </div>
@@ -1000,7 +1000,7 @@ Important:
               <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
 
               {attachment ? (
-                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-xs text-[var(--color-text-tertiary)]">
                   Attached: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
                 </div>
               ) : null}
@@ -1065,12 +1065,12 @@ Important:
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-[10px] text-[var(--color-text-secondary)]">
+              <p className="text-xs text-[var(--color-text-secondary)]">
                 Ask Harita to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
                 {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
               </p>
             </div>
-            {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+            {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
           </form>
         </div>
       </div>

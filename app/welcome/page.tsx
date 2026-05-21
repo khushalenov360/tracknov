@@ -97,7 +97,7 @@ export default async function WelcomePage() {
                     <input type="hidden" name="key" value={key} />
                     <input type="hidden" name="value" value={checked ? "false" : "true"} />
                     <span className="text-[12px] text-[var(--color-text-primary)]">{label}</span>
-                    <Button type="submit" variant={checked ? "secondary" : "default"} className="h-[28px] rounded-md px-2.5 text-[11px]">
+                    <Button type="submit" variant={checked ? "secondary" : "default"} className="h-[28px] rounded-md px-2.5 text-xs">
                       {checked ? "Done" : "Mark done"}
                     </Button>
                   </form>

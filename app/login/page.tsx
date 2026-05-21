@@ -21,7 +21,7 @@ export default function LoginPage() {
             </div>
 
             <div className="max-w-[560px] space-y-4">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+              <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
                 IGBC Documentation Operations
               </p>
               <h1 className="text-[15px] font-medium leading-6 text-[var(--color-text-primary)]">
@@ -39,7 +39,7 @@ export default function LoginPage() {
                 "Project-level and credit-level document workflows",
                 "Tracker XLSX, PDF summary, and submission ZIP exports",
               ].map((item) => (
-                <div key={item} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)]">
+                <div key={item} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-secondary)]">
                   {item}
                 </div>
               ))}
@@ -55,7 +55,7 @@ export default function LoginPage() {
                 Sign in to open your live project workspace.
               </p>
             ) : (
-              <div className="mt-1 rounded-lg border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] px-3 py-2 text-[11px] text-[var(--color-amber)]">
+              <div className="mt-1 rounded-lg border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] px-3 py-2 text-xs text-[var(--color-amber)]">
                 Live workspace credentials are not configured in this local app yet. Add Supabase connection values to enable real sign-in and user provisioning.
               </div>
             )}
@@ -75,11 +75,11 @@ function LoginFormFallback() {
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <p className="text-[11px] font-medium text-[var(--color-text-secondary)]">Email</p>
+        <p className="text-xs font-medium text-[var(--color-text-secondary)]">Email</p>
         <div className="h-8 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]" />
       </div>
       <div className="space-y-1.5">
-        <p className="text-[11px] font-medium text-[var(--color-text-secondary)]">Password</p>
+        <p className="text-xs font-medium text-[var(--color-text-secondary)]">Password</p>
         <div className="h-8 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]" />
       </div>
       <div className="h-8 rounded-md border border-[var(--color-green)] bg-[var(--color-green)] opacity-70" />

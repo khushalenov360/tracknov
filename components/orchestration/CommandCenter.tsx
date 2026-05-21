@@ -338,7 +338,7 @@ export default function CommandCenter({
                   Today's Execution
                 </h2>
               </div>
-              <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-bold text-[10px]">
+              <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-bold text-xs">
                 {blockedTasks.length + reviewTasks.length} Urgent Items
               </Badge>
             </div>
@@ -348,7 +348,7 @@ export default function CommandCenter({
               <button
                 type="button"
                 onClick={() => setActiveQueueTab("blocked")}
-                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                className={`pb-2 px-1 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
                   activeQueueTab === "blocked"
                     ? "border-rose-500 text-rose-600 font-extrabold"
                     : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
@@ -360,7 +360,7 @@ export default function CommandCenter({
               <button
                 type="button"
                 onClick={() => setActiveQueueTab("reviews")}
-                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                className={`pb-2 px-1 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
                   activeQueueTab === "reviews"
                     ? "border-emerald-500 text-emerald-600 font-extrabold"
                     : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
@@ -372,7 +372,7 @@ export default function CommandCenter({
               <button
                 type="button"
                 onClick={() => setActiveQueueTab("backlog")}
-                className={`pb-2 px-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
+                className={`pb-2 px-1 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-2 -mb-[2px] ${
                   activeQueueTab === "backlog"
                     ? "border-slate-500 text-[var(--color-text-primary)] font-extrabold"
                     : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
@@ -409,7 +409,7 @@ export default function CommandCenter({
                     ))
                   ) : (
                     <div className="col-span-full py-8 text-center text-slate-400">
-                      <p className="text-[11px] font-semibold">No stalled items flagged</p>
+                      <p className="text-xs font-semibold">No stalled items flagged</p>
                     </div>
                   )}
                 </div>
@@ -439,7 +439,7 @@ export default function CommandCenter({
                     ))
                   ) : (
                     <div className="col-span-full py-8 text-center text-slate-400">
-                      <p className="text-[11px] font-semibold">No review tasks pending</p>
+                      <p className="text-xs font-semibold">No review tasks pending</p>
                     </div>
                   )}
                 </div>
@@ -469,7 +469,7 @@ export default function CommandCenter({
                     ))
                   ) : (
                     <div className="col-span-full py-8 text-center text-slate-400">
-                      <p className="text-[11px] font-semibold">No backlog tasks pending</p>
+                      <p className="text-xs font-semibold">No backlog tasks pending</p>
                     </div>
                   )}
                 </div>
@@ -487,7 +487,7 @@ export default function CommandCenter({
                     Active Work & Portfolio Status
                   </h2>
                 </div>
-                <span className="text-[10px] text-[var(--color-text-tertiary)] font-bold">
+                <span className="text-xs text-[var(--color-text-tertiary)] font-bold">
                   {initialProjects.length} Projects Total
                 </span>
               </div>
@@ -521,7 +521,7 @@ export default function CommandCenter({
                       <Progress value={project.overallCompletion} />
                     </div>
 
-                    <div className="flex justify-between items-center pt-2 border-t border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                    <div className="flex justify-between items-center pt-2 border-t border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-tertiary)]">
                       <span>{project.uploadedDocs}/{project.totalCredits} Credits Uploaded</span>
                       <Link href={`/projects/${project.id}`} className="text-[var(--color-green)] hover:underline flex items-center gap-0.5">
                         Workspace <ArrowUpRight className="h-3 w-3" />
@@ -555,8 +555,8 @@ export default function CommandCenter({
                     <div className="flex items-start gap-2">
                       <Icon className="h-4.5 w-4.5 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-wider">{insight.title}</h4>
-                        <p className="text-[11px] text-[var(--color-text-secondary)] mt-1 font-medium leading-relaxed">
+                        <h4 className="text-xs font-black uppercase tracking-wider">{insight.title}</h4>
+                        <p className="text-xs text-[var(--color-text-secondary)] mt-1 font-medium leading-relaxed">
                           {insight.description}
                         </p>
                       </div>
@@ -623,7 +623,7 @@ export default function CommandCenter({
 
               {/* Audit Log Timeline */}
               <div className="space-y-1.5">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-tertiary)] text-left mb-1.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-tertiary)] text-left mb-1.5">
                   Real-Time Replay Ledger Activity
                 </h3>
                 <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-2.5 max-h-[160px] overflow-y-auto space-y-1 font-mono text-[9px] text-[var(--color-text-secondary)] text-left">
@@ -674,7 +674,7 @@ export default function CommandCenter({
                 {/* Workspace Action Content */}
                 <div className="flex-1 text-left py-2">
                   {/* AI Assistant context helper */}
-                  <div className="p-3 bg-[var(--color-purple-light)] rounded-lg border border-[var(--color-border)] mb-4 text-[10px] text-[var(--color-text-secondary)] relative overflow-hidden">
+                  <div className="p-3 bg-[var(--color-purple-light)] rounded-lg border border-[var(--color-border)] mb-4 text-xs text-[var(--color-text-secondary)] relative overflow-hidden">
                     <div className="absolute inset-y-0 left-0 w-1 bg-[var(--color-purple)]" />
                     <div className="flex gap-2">
                       <Bot className="h-4 w-4 text-[var(--color-purple)] shrink-0" />
@@ -703,7 +703,7 @@ export default function CommandCenter({
                             required
                           />
                           <FileText className="h-6 w-6 mx-auto text-slate-400 mb-1" />
-                          <p className="text-[11px] font-bold text-[var(--color-text-primary)] truncate">
+                          <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
                             {evidenceFile ? evidenceFile.name : "Select PDF compliance document"}
                           </p>
                           <p className="text-[8px] text-slate-400">PDF up to 24MB</p>
@@ -715,14 +715,14 @@ export default function CommandCenter({
                           type="button"
                           variant="ghost"
                           onClick={() => setSelectedTask(null)}
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={!evidenceFile || isProcessing}
-                          className="rounded-lg px-3 py-1.5 text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                          className="rounded-lg px-3 py-1.5 text-xs bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
                         >
                           Upload Ingest
                         </Button>
@@ -743,7 +743,7 @@ export default function CommandCenter({
                           placeholder="Fulfill clarification requirements..."
                           rows={4}
                           required
-                          className="w-full p-2.5 border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[11px] text-[var(--color-text-primary)] rounded-lg outline-none resize-none focus:border-[var(--color-border-strong)]"
+                          className="w-full p-2.5 border border-[var(--color-border)] bg-[var(--color-surface-2)] text-xs text-[var(--color-text-primary)] rounded-lg outline-none resize-none focus:border-[var(--color-border-strong)]"
                         />
                       </div>
 
@@ -752,14 +752,14 @@ export default function CommandCenter({
                           type="button"
                           variant="ghost"
                           onClick={() => setSelectedTask(null)}
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={!clarificationText.trim() || isProcessing}
-                          className="rounded-lg px-3 py-1.5 text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                          className="rounded-lg px-3 py-1.5 text-xs bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
                         >
                           Submit Clarification
                         </Button>
@@ -770,11 +770,11 @@ export default function CommandCenter({
                   {/* Review Action */}
                   {selectedTask.type === "review" && (
                     <div className="space-y-3">
-                      <p className="text-[10px] font-medium text-[var(--color-text-secondary)] leading-relaxed">
+                      <p className="text-xs font-medium text-[var(--color-text-secondary)] leading-relaxed">
                         Verify if document credentials satisfy criteria. Accept or draft clarification requirements.
                       </p>
 
-                      <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-[10px]">
+                      <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-xs">
                         <span className="font-semibold text-[var(--color-text-primary)] truncate max-w-[70%]">
                           {selectedTask.creditName}
                         </span>
@@ -792,14 +792,14 @@ export default function CommandCenter({
                           onClick={() => handleReviewDecision("clarification")}
                           variant="secondary"
                           disabled={isProcessing}
-                          className="rounded-lg text-[10px]"
+                          className="rounded-lg text-xs"
                         >
                           Clarification Needed
                         </Button>
                         <Button
                           onClick={() => handleReviewDecision("approve")}
                           disabled={isProcessing}
-                          className="rounded-lg text-[10px] bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
+                          className="rounded-lg text-xs bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)]"
                         >
                           Approve
                         </Button>
@@ -809,7 +809,7 @@ export default function CommandCenter({
 
                   {/* Success indicator */}
                   {uploadSuccess && (
-                    <div className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold">
+                    <div className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 rounded-lg flex items-center gap-1.5 text-xs font-semibold">
                       <Check className="h-4 w-4 shrink-0" />
                       <span>Ledger transaction logged successfully!</span>
                     </div>
@@ -840,23 +840,23 @@ export default function CommandCenter({
                 </div>
 
                 <div className="space-y-3 flex-1 text-left">
-                  <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+                  <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
                     Select any active action item from the execution lists to initiate the review cycle, upload verification documents, or resolve blocker clarifications.
                   </p>
 
                   <div className="p-3 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg space-y-2">
                     <span className="text-[9px] uppercase font-black text-slate-500 block">SLA Risk Hotspot</span>
                     {insights.stuckItems && insights.stuckItems.length > 0 ? (
-                      <div className="text-[10px] text-[var(--color-text-secondary)]">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
                         <strong>{insights.stuckItems[0].projectName}</strong>: {insights.stuckItems[0].missingDoc} has been stalled under {insights.stuckItems[0].creditCode} for 6 days.
                       </div>
                     ) : (
-                      <div className="text-[10px] text-[var(--color-text-secondary)]">No critical SLA breaches detected. Compliance velocity is within normal parameters.</div>
+                      <div className="text-xs text-[var(--color-text-secondary)]">No critical SLA breaches detected. Compliance velocity is within normal parameters.</div>
                     )}
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
+                <div className="p-2.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg flex items-center justify-between text-xs text-[var(--color-text-secondary)] font-medium">
                   <div className="flex items-center gap-1.5">
                     <Bot className="h-4 w-4 text-[var(--color-green)]" />
                     <span>Harita Active & Listening</span>

@@ -115,7 +115,7 @@ export default function CustomerRealityPage() {
               <strong className="text-xl font-black text-slate-300 block">
                 {overallFriction.uploadFrictionLevel} Friction
               </strong>
-              <span className="text-[10px] text-slate-500 block">Based on user timeout rate calculations.</span>
+              <span className="text-xs text-slate-500 block">Based on user timeout rate calculations.</span>
             </div>
 
             <div className="bg-slate-900 border border-slate-850 p-5 rounded-3xl space-y-1.5">
@@ -146,7 +146,7 @@ export default function CustomerRealityPage() {
                     <h3 className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-all">
                       {fail.fileName}
                     </h3>
-                    <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                    <p className="text-xs text-slate-500 mt-1 font-mono">
                       Trace: <strong>{fail.traceId}</strong> • Size: <strong>{fail.fileSizeMb}MB</strong> • Reason: <strong>{fail.reason}</strong>
                     </p>
                   </div>
@@ -168,7 +168,7 @@ export default function CustomerRealityPage() {
             <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider block">Reviewer Hesitation & Cognitive Overload Zones</span>
             <div className="space-y-2">
               {hesitations.map((hes, idx) => (
-                <div key={idx} className="p-4 bg-slate-950 border border-slate-850 hover:border-slate-800 rounded-xl flex justify-between items-center text-[10px]">
+                <div key={idx} className="p-4 bg-slate-950 border border-slate-850 hover:border-slate-800 rounded-xl flex justify-between items-center text-xs">
                   <div>
                     <strong className="text-slate-300">Submittal: {hes.submittalId}</strong>
                     <span className="text-slate-500 block mt-1">Dwell: {hes.dwellSeconds}s • Clicks: {hes.hoverCount} actions</span>
@@ -200,7 +200,7 @@ export default function CustomerRealityPage() {
               <Activity className="w-4.5 h-4.5" />
               <h3 className="text-xs font-black uppercase tracking-wider">Telemetry Core</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Real-time telemetry indicators.</p>
+            <p className="text-xs text-slate-500 mt-1">Real-time telemetry indicators.</p>
           </div>
 
           <div className="space-y-6 flex-1 flex flex-col justify-between">
@@ -209,13 +209,13 @@ export default function CustomerRealityPage() {
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl space-y-1">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">Telemetry Delivery Loss</span>
                 <strong className="text-xl font-black text-emerald-400 block">0.00% Loss</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">Full delivery guarantee across unstable pilot nodes.</span>
+                <span className="text-xs text-slate-500 mt-1 block">Full delivery guarantee across unstable pilot nodes.</span>
               </div>
 
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl space-y-1">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">Ingestion Speed</span>
                 <strong className="text-xl font-black text-emerald-400 block">18ms Latency</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">Rage-clicks cataloged instantly on user action.</span>
+                <span className="text-xs text-slate-500 mt-1 block">Rage-clicks cataloged instantly on user action.</span>
               </div>
 
             </div>

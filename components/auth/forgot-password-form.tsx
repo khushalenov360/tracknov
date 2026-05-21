@@ -52,7 +52,7 @@ export function ForgotPasswordForm() {
         <Card className="surface-card overflow-hidden">
           <CardContent className="flex h-full flex-col justify-between gap-10 p-6 lg:p-8">
             <div className="space-y-4">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+              <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
                 Account recovery
               </p>
               <h1 className="max-w-[16ch] text-[28px] font-medium leading-tight text-[var(--color-text-primary)] sm:text-[34px]">
@@ -65,7 +65,7 @@ export function ForgotPasswordForm() {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {["Email verification", "Same role access", "Secure reset session"].map((item) => (
-                <div key={item} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)]">
+                <div key={item} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-secondary)]">
                   {item}
                 </div>
               ))}
@@ -88,7 +88,7 @@ export function ForgotPasswordForm() {
           <CardContent className="space-y-4">
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-[11px] font-medium text-[var(--color-text-secondary)]">
+                <label htmlFor="email" className="text-xs font-medium text-[var(--color-text-secondary)]">
                   Email
                 </label>
                 <Input
@@ -102,8 +102,8 @@ export function ForgotPasswordForm() {
                 />
               </div>
 
-              {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
-              {message ? <p className="text-[11px] text-[var(--color-green)]">{message}</p> : null}
+              {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
+              {message ? <p className="text-xs text-[var(--color-green)]">{message}</p> : null}
 
               <Button type="submit" className="h-9 w-full rounded-md" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

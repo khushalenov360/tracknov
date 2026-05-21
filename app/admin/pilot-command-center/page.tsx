@@ -123,14 +123,14 @@ export default function PilotCommandCenter() {
             <h1 className="text-base font-bold tracking-wide bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
               Pilot Command & Control Plane
             </h1>
-            <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">
+            <p className="text-xs text-slate-500 uppercase font-black tracking-wider">
               Central Operational Visibility and Live Customer Health Indicators
             </p>
           </div>
         </div>
 
         {impersonationActive && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black animate-pulse">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-black animate-pulse">
             <UserCheck className="w-3.5 h-3.5" />
             SUPPORT IMPERSONATION ACTIVE
           </div>
@@ -151,9 +151,9 @@ export default function PilotCommandCenter() {
               { label: "Avg AI Guideline Trust", value: "68.2%", desc: "High verification accuracy" }
             ].map((m, i) => (
               <div key={i} className="bg-slate-900 border border-slate-850 p-5 rounded-2xl">
-                <p className="text-[10px] uppercase font-black text-slate-500 tracking-wider">{m.label}</p>
+                <p className="text-xs uppercase font-black text-slate-500 tracking-wider">{m.label}</p>
                 <p className="text-xl font-black text-slate-200 mt-1">{m.value}</p>
-                <p className="text-[10px] text-slate-500 mt-1">{m.desc}</p>
+                <p className="text-xs text-slate-500 mt-1">{m.desc}</p>
               </div>
             ))}
           </div>
@@ -188,7 +188,7 @@ export default function PilotCommandCenter() {
                     >
                       <td className="p-4 pl-6">
                         <span className="block font-bold text-slate-200">{row.organization}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">Projects: {row.activeProjects} • Active {row.lastActivity}</span>
+                        <span className="text-xs text-slate-500 font-medium">Projects: {row.activeProjects} • Active {row.lastActivity}</span>
                       </td>
                       <td className="p-4 text-center">{row.onboardingCompletion}%</td>
                       <td className={`p-4 text-center ${row.uploadFailureRate > 10 ? "text-rose-400 font-bold" : ""}`}>{row.uploadFailureRate}%</td>
@@ -196,7 +196,7 @@ export default function PilotCommandCenter() {
                       <td className="p-4 text-center">{row.reviewerResponseLatencyHours}h</td>
                       <td className="p-4 text-center">{row.aiAdoptionRate}%</td>
                       <td className="p-4 text-right pr-6">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                        <span className={`text-xs font-black px-2 py-0.5 rounded ${
                           row.churnRisk >= 75 ? "bg-rose-500/10 text-rose-400" :
                           row.churnRisk >= 35 ? "bg-amber-500/10 text-amber-400" :
                           "bg-emerald-500/10 text-emerald-400"
@@ -224,7 +224,7 @@ export default function PilotCommandCenter() {
                       <AlertTriangle className="w-4 h-4" />
                       <span className="text-xs font-bold truncate">{t.organization}</span>
                     </div>
-                    <ul className="list-disc pl-4 space-y-1 text-[10px] text-slate-400">
+                    <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
                       {t.alerts.map((a, aIdx) => (
                         <li key={aIdx}>{a}</li>
                       ))}
@@ -241,7 +241,7 @@ export default function PilotCommandCenter() {
         <section className="bg-slate-900 border border-slate-850 rounded-3xl p-6 flex flex-col gap-6">
           <div className="border-b border-slate-850 pb-4">
             <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Execution Operations Panel</h3>
-            <p className="text-[10px] text-slate-500 mt-1">Simulate support and replay session audits.</p>
+            <p className="text-xs text-slate-500 mt-1">Simulate support and replay session audits.</p>
           </div>
 
           {selectedTenant ? (

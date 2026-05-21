@@ -81,11 +81,11 @@ export default function ExecutionTimelineView() {
           <GitBranch className="w-5 h-5 text-indigo-400" />
           <div>
             <h3 className="text-xs font-black uppercase text-slate-300 tracking-wider">Predictive Execution Timeline</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">Statistical path mapping using historical reviewer and supplier velocities.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Statistical path mapping using historical reviewer and supplier velocities.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] px-2 py-0.5 rounded font-black">
+        <div className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-2 py-0.5 rounded font-black">
           <Sparkles className="w-3.5 h-3.5" />
           CONFIDENCE-ADJUSTED MAP
         </div>
@@ -134,7 +134,7 @@ export default function ExecutionTimelineView() {
               <Calendar className="w-4 h-4 text-indigo-400" />
               <strong className="text-sm font-black text-slate-200">{prediction.targetApprovalDate}</strong>
             </div>
-            <span className="text-[10px] text-slate-500 block">Total delay days: {prediction.criticalPathDelayDays}d</span>
+            <span className="text-xs text-slate-500 block">Total delay days: {prediction.criticalPathDelayDays}d</span>
           </div>
 
           {/* Risk Level and Reviewer Congestion */}
@@ -148,7 +148,7 @@ export default function ExecutionTimelineView() {
               }`} />
               <strong className="text-xs font-bold text-slate-200 uppercase tracking-wider">{prediction.stalledRiskLevel} RISK PROFILE</strong>
             </div>
-            <span className="text-[10px] text-slate-500 block">Reviewer Congestion Index: {prediction.reviewerCongestionFactor}/10</span>
+            <span className="text-xs text-slate-500 block">Reviewer Congestion Index: {prediction.reviewerCongestionFactor}/10</span>
           </div>
 
           {/* Hotspots */}
@@ -161,7 +161,7 @@ export default function ExecutionTimelineView() {
                 ))}
               </div>
             ) : (
-              <span className="text-[10px] text-emerald-400 font-bold block flex items-center gap-1">
+              <span className="text-xs text-emerald-400 font-bold block flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Zero bottlenecks predicted
               </span>
@@ -174,7 +174,7 @@ export default function ExecutionTimelineView() {
       {/* Active Timeline Graph Representation */}
       <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-3">
         <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">Milestone Progress Track</span>
-        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+        <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
           <div className="flex flex-col items-center">
             <span className="text-indigo-400 font-black">Step 1</span>
             <span className="text-[9px] text-slate-500 mt-1">Ingest</span>

@@ -78,7 +78,7 @@ export function ThemeToggle() {
             type="button"
             onClick={() => setThemeMode(option.key)}
             className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-[11px] font-medium transition",
+              "inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition",
               active
                 ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]",

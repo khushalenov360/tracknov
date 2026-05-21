@@ -82,7 +82,7 @@ export default function ReviewerDecisionAssist() {
               </div>
               <h3 className="text-xs font-black text-slate-200">{evidence.name}</h3>
 
-              <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl font-mono text-[11px] text-slate-300 leading-relaxed h-44 overflow-y-auto scrollbar-thin">
+              <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl font-mono text-xs text-slate-300 leading-relaxed h-44 overflow-y-auto scrollbar-thin">
                 {evidence.rawContent}
               </div>
 
@@ -91,7 +91,7 @@ export default function ReviewerDecisionAssist() {
                 <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider block">Extracted Framework Attributes</span>
                 <div className="grid grid-cols-3 gap-2">
                   {evidence.entities.map((ent, i) => (
-                    <div key={i} className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl text-[10px]">
+                    <div key={i} className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs">
                       <span className="block text-slate-500 text-[8px] uppercase font-black">{ent.key}</span>
                       <strong className="text-slate-300 block mt-0.5">{ent.val}</strong>
                     </div>
@@ -148,7 +148,7 @@ export default function ReviewerDecisionAssist() {
             </div>
 
             {/* Pass/Fail Rationales */}
-            <div className="space-y-3 text-[11px] text-slate-400">
+            <div className="space-y-3 text-xs text-slate-400">
               <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl space-y-1">
                 <strong className="text-emerald-400 uppercase font-black text-[9px] tracking-wider block">Likely Pass Rationale</strong>
                 <p className="leading-relaxed">
@@ -169,7 +169,7 @@ export default function ReviewerDecisionAssist() {
               <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider block">Historical Identical Approvals</span>
               <div className="space-y-2">
                 {priorHistory.map((hist, i) => (
-                  <div key={i} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between text-[10px]">
+                  <div key={i} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-300">{hist.project}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-slate-500">{hist.date}</span>
@@ -191,13 +191,13 @@ export default function ReviewerDecisionAssist() {
               <TrendingUp className="w-4.5 h-4.5" />
               <h3 className="text-xs font-black uppercase tracking-wider">Reviewer Throughput</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Measuring decision acceleration benchmarks.</p>
+            <p className="text-xs text-slate-500 mt-1">Measuring decision acceleration benchmarks.</p>
           </div>
 
           <div className="space-y-6 flex-1 flex flex-col justify-between">
             <div className="space-y-4">
               
-              <div className="grid grid-cols-2 gap-3 text-[10px]">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-850">
                   <span className="block text-slate-500">Throughput</span>
                   <strong className="text-xs text-slate-200 font-black">{throughput} items/hr</strong>
@@ -213,7 +213,7 @@ export default function ReviewerDecisionAssist() {
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl relative overflow-hidden space-y-1">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">Duplicate Workloads Collapsed</span>
                 <strong className="text-xl font-black text-emerald-400 block">42 documents (+35% Target)</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">Repeated spec sheets and manufacturer certifications automatically grouped.</span>
+                <span className="text-xs text-slate-500 mt-1 block">Repeated spec sheets and manufacturer certifications automatically grouped.</span>
               </div>
 
             </div>

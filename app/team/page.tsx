@@ -72,7 +72,7 @@ export default async function TeamPage() {
         <section className="surface-card p-4">
           <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
             <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Super User Control Panel</p>
-            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
               Create and disable user logins. Use login name for identity and keep email as contact.
             </p>
           </div>
@@ -88,25 +88,25 @@ export default async function TeamPage() {
       {canCreateSystemProfiles && commandCenter ? (
         <section className="surface-card mt-4 p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">Super User Command Center</h2>
-          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             Multi-client control, token economy, system health, and override actions.
           </p>
 
           <div id="token-usage" className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens sold</p>
+              <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens sold</p>
               <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.totalTokensSold}</p>
             </div>
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens consumed</p>
+              <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Tokens consumed</p>
               <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.totalTokensConsumed}</p>
             </div>
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Weekly burn</p>
+              <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Weekly burn</p>
               <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.weeklyConsumed}</p>
             </div>
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Revenue estimate (INR)</p>
+              <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Revenue estimate (INR)</p>
               <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{commandCenter.tokenEconomy.revenueEstimateInr}</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default async function TeamPage() {
                   <thead className="bg-[var(--color-surface-2)]">
                     <tr className="border-b border-[var(--color-border)]">
                       {["Client", "Tokens", "Projects", "Status"].map((heading) => (
-                        <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                        <th key={heading} className="px-3 py-2 text-left text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                           {heading}
                         </th>
                       ))}
@@ -170,8 +170,8 @@ export default async function TeamPage() {
                 </div>
               </div>
               <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Critical alerts</p>
-                <ul className="mt-1 space-y-1 text-[11px] text-[var(--color-text-secondary)]">
+                <p className="text-xs font-medium text-[var(--color-text-primary)]">Critical alerts</p>
+                <ul className="mt-1 space-y-1 text-xs text-[var(--color-text-secondary)]">
                   {commandCenter.alerts.length ? (
                     commandCenter.alerts.map((alert) => <li key={alert}>- {alert}</li>)
                   ) : (
@@ -232,11 +232,11 @@ export default async function TeamPage() {
             <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
               <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Recent token transactions</p>
               <div className="mt-2 max-h-[240px] overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-                <table className="min-w-full border-collapse text-[11px]">
+                <table className="min-w-full border-collapse text-xs">
                   <thead className="bg-[var(--color-surface-2)]">
                     <tr className="border-b border-[var(--color-border)]">
                       {["Tokens", "Reason", "Timestamp (IST)"].map((heading) => (
-                        <th key={heading} className="px-2 py-1.5 text-left text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+                        <th key={heading} className="px-2 py-1.5 text-left text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
                           {heading}
                         </th>
                       ))}
@@ -263,15 +263,15 @@ export default async function TeamPage() {
 
           <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
             <p className="text-[12px] font-medium text-[var(--color-text-primary)]">Token ledger reconciliation</p>
-            <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
               Detect debit/refund anomalies by comparing wallet balance and ledger movement.
             </p>
             <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-              <table className="min-w-full border-collapse text-[11px]">
+              <table className="min-w-full border-collapse text-xs">
                 <thead className="bg-[var(--color-surface-2)]">
                   <tr className="border-b border-[var(--color-border)]">
                     {["Client", "Wallet", "Ledger Delta", "Baseline", "Status"].map((heading) => (
-                      <th key={heading} className="px-2 py-1.5 text-left text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+                      <th key={heading} className="px-2 py-1.5 text-left text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
                         {heading}
                       </th>
                     ))}
@@ -310,7 +310,7 @@ export default async function TeamPage() {
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
                 {["Login Name", "Role", "Company", "Projects", "Joined", "Lifecycle"].map((heading) => (
-                  <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                  <th key={heading} className="px-3 py-2 text-left text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
                 ))}
@@ -321,7 +321,7 @@ export default async function TeamPage() {
                 <tr key={member.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-2)]">
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-blue-light)] text-[11px] font-medium text-[var(--color-blue)]">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-blue-light)] text-xs font-medium text-[var(--color-blue)]">
                         {member.full_name
                           .split(" ")
                           .map((part) => part[0])
@@ -331,9 +331,9 @@ export default async function TeamPage() {
                       </div>
                       <div>
                         <p className="text-[13px] font-medium text-[var(--color-text-primary)]">{member.full_name}</p>
-                        <p className="text-[11px] text-[var(--color-text-tertiary)]">Email contact: {member.email}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)]">Email contact: {member.email}</p>
                         {member.disabled_at ? (
-                          <p className="text-[10px] text-[var(--color-red)]">
+                          <p className="text-xs text-[var(--color-red)]">
                             Disabled: {formatDateTimeIST(member.disabled_at)} ({member.disabled_reason || "No reason"})
                           </p>
                         ) : null}
@@ -356,7 +356,7 @@ export default async function TeamPage() {
                         {member.disabled_at ? (
                           <form action={reactivateTeamMemberAction}>
                             <input type="hidden" name="user_id" value={member.user_id} />
-                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-[11px]">
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-xs">
                               Reactivate
                             </button>
                           </form>
@@ -366,10 +366,10 @@ export default async function TeamPage() {
                             <input
                               name="reason"
                               placeholder="Disable reason"
-                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-text-primary)] outline-none"
+                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs text-[var(--color-text-primary)] outline-none"
                               required
                             />
-                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-red-light)] bg-[var(--color-red-light)] px-2 text-[11px] text-[var(--color-red)]">
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-red-light)] bg-[var(--color-red-light)] px-2 text-xs text-[var(--color-red)]">
                               Disable
                             </button>
                           </form>
@@ -381,7 +381,7 @@ export default async function TeamPage() {
                             <input type="hidden" name="role" value={member.role} />
                             <select
                               name="to_project_id"
-                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-text-primary)] outline-none"
+                              className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs text-[var(--color-text-primary)] outline-none"
                               required
                             >
                               <option value="">Reassign project</option>
@@ -393,14 +393,14 @@ export default async function TeamPage() {
                                   </option>
                                 ))}
                             </select>
-                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-[11px]">
+                            <button type="submit" className="h-[28px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-xs">
                               Reassign
                             </button>
                           </form>
                         ) : null}
                       </div>
                     ) : (
-                      <span className="text-[11px] text-[var(--color-text-tertiary)]">View only</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">View only</span>
                     )}
                   </td>
                 </tr>

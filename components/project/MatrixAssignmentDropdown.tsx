@@ -56,7 +56,7 @@ export const MatrixAssignmentDropdown: React.FC<MatrixAssignmentDropdownProps> =
       value={currentAssigneeId || ""}
       onChange={handleChange}
       disabled={isDisabled || isPending}
-      className={`h-7 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-[10px] text-[var(--color-text-secondary)] focus:border-[var(--color-green)] focus:outline-none disabled:opacity-50 ${
+      className={`h-7 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 text-xs text-[var(--color-text-secondary)] focus:border-[var(--color-green)] focus:outline-none disabled:opacity-50 ${
         currentAssigneeId ? "border-[var(--color-green)] text-[var(--color-green)]" : ""
       }`}
     >

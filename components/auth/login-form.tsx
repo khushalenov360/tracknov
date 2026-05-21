@@ -60,12 +60,12 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {authError ? (
-        <div className="rounded-lg border border-[var(--color-red-light)] bg-[var(--color-red-light)] p-3 text-[11px] text-[var(--color-red)]">
+        <div className="rounded-lg border border-[var(--color-red-light)] bg-[var(--color-red-light)] p-3 text-xs text-[var(--color-red)]">
           Sign-in could not finish. Try again with your email and password.
         </div>
       ) : null}
       <div className="space-y-1.5">
-        <label htmlFor="email" className="text-[11px] font-medium text-[var(--color-text-secondary)]">
+        <label htmlFor="email" className="text-xs font-medium text-[var(--color-text-secondary)]">
           Email
         </label>
         <Input
@@ -79,7 +79,7 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
         />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="password" className="text-[11px] font-medium text-[var(--color-text-secondary)]">
+        <label htmlFor="password" className="text-xs font-medium text-[var(--color-text-secondary)]">
           Password
         </label>
         <Input
@@ -92,9 +92,9 @@ export function LoginForm({ disabled = false }: { disabled?: boolean }) {
           disabled={disabled}
         />
       </div>
-      {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
       <div className="flex items-center justify-between gap-3">
-        <Link href="/forgot-password" className="text-[11px] font-medium text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
+        <Link href="/forgot-password" className="text-xs font-medium text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
           Forgot password?
         </Link>
       </div>

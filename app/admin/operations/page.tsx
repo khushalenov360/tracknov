@@ -66,14 +66,14 @@ export default async function OperationsIntelligencePage() {
 
         <div className="flex gap-4">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5 min-w-[160px] backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Throughput</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Total Throughput</p>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               <p className="text-2xl font-black text-white">42.8 <span className="text-xs font-medium text-slate-500 tracking-normal">units/day</span></p>
             </div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5 min-w-[160px] backdrop-blur-md">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Health</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Queue Health</p>
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-400" />
               <p className="text-2xl font-black text-white">OPTIMAL</p>
@@ -95,7 +95,7 @@ export default async function OperationsIntelligencePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">4.2h</p>
-                <p className="text-[10px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                <p className="text-xs text-emerald-400 font-bold mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   12% faster than v0.9
                 </p>
@@ -111,7 +111,7 @@ export default async function OperationsIntelligencePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">1.8 <span className="text-sm text-slate-500">rounds</span></p>
-                <p className="text-[10px] text-blue-400 font-bold mt-1 uppercase tracking-tighter">Converging toward goal (1.5)</p>
+                <p className="text-xs text-blue-400 font-bold mt-1 uppercase tracking-tighter">Converging toward goal (1.5)</p>
               </CardContent>
             </Card>
 
@@ -124,7 +124,7 @@ export default async function OperationsIntelligencePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-black text-white">92.4%</p>
-                <p className="text-[10px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter">High Reviewer Trust</p>
+                <p className="text-xs text-indigo-400 font-bold mt-1 uppercase tracking-tighter">High Reviewer Trust</p>
               </CardContent>
             </Card>
           </div>
@@ -156,7 +156,7 @@ export default async function OperationsIntelligencePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-12 flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 border-t border-white/5 pt-6">
+            <div className="mt-12 flex justify-between text-xs font-black uppercase tracking-widest text-slate-500 border-t border-white/5 pt-6">
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
@@ -183,10 +183,10 @@ export default async function OperationsIntelligencePage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white/5">
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Project</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Type</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Replay Hash</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Project</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Replay Hash</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -194,9 +194,9 @@ export default async function OperationsIntelligencePage() {
                     <tr key={exp.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-6 py-5 text-sm font-bold text-white">{(exp.projects as any)?.name}</td>
                       <td className="px-6 py-5">
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">{exp.export_type}</span>
+                        <span className="text-xs font-black text-blue-400 uppercase tracking-tighter">{exp.export_type}</span>
                       </td>
-                      <td className="px-6 py-5 font-mono text-[10px] text-slate-500 truncate max-w-[120px]">{exp.replay_hash}</td>
+                      <td className="px-6 py-5 font-mono text-xs text-slate-500 truncate max-w-[120px]">{exp.replay_hash}</td>
                       <td className="px-6 py-5">
                         <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] uppercase font-black">VALIDATED</Badge>
                       </td>
@@ -240,11 +240,11 @@ export default async function OperationsIntelligencePage() {
 
             <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
               <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Estimated Completion</p>
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Estimated Completion</p>
                 <p className="text-lg font-bold text-white tracking-tight">CCIL (GI V2)</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Target: June 15</span>
-                  <span className="text-[10px] text-slate-500 font-mono">92% CONFIDENCE</span>
+                  <span className="text-xs text-emerald-400 font-bold uppercase tracking-widest">Target: June 15</span>
+                  <span className="text-xs text-slate-500 font-mono">92% CONFIDENCE</span>
                 </div>
               </div>
             </div>
@@ -271,13 +271,13 @@ export default async function OperationsIntelligencePage() {
                   </div>
                   <p className="text-xs font-bold text-white mb-1">Time Saved: {met.time_saved_ms ? `${met.time_saved_ms / 60000}m` : 'N/A'}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 font-medium">Efficiency Score</span>
+                    <span className="text-xs text-slate-500 font-medium">Efficiency Score</span>
                     <span className="text-xs font-black text-indigo-400">{met.productivity_score}</span>
                   </div>
                 </div>
               ))}
               {!productivityMetrics?.length && (
-                <div className="p-10 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest italic">Collecting Intelligence...</div>
+                <div className="p-10 text-center text-slate-600 text-xs font-bold uppercase tracking-widest italic">Collecting Intelligence...</div>
               )}
             </div>
           </section>

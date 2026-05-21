@@ -85,11 +85,11 @@ export function UploadDocumentForm({
         <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-green-light)] text-[var(--color-green)]">
           <UploadCloud className="h-4 w-4" />
         </div>
-        <p className="mt-3 text-[11px] font-medium text-[var(--color-text-primary)]">Add a supporting file</p>
-        <p className="mt-1 text-[10px] leading-5 text-[var(--color-text-tertiary)]">
+        <p className="mt-3 text-xs font-medium text-[var(--color-text-primary)]">Add a supporting file</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--color-text-tertiary)]">
           Choose the file type, upload one file, and it will appear in the project checklist. Max size: {maxFileSizeLabel}.
         </p>
-        <p className="mt-1 text-[10px] leading-5 text-[var(--color-text-tertiary)]">
+        <p className="mt-1 text-xs leading-5 text-[var(--color-text-tertiary)]">
           For larger files, reduce PDF size or image resolution before upload.
         </p>
       </div>
@@ -109,9 +109,9 @@ export function UploadDocumentForm({
         name="file"
         type="file"
         accept={accept}
-        className="block w-full text-[11px] text-[var(--color-text-secondary)] file:mr-3 file:rounded-full file:border file:border-[var(--color-border)] file:bg-[var(--color-surface-2)] file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-[var(--color-text-primary)]"
+        className="block w-full text-xs text-[var(--color-text-secondary)] file:mr-3 file:rounded-full file:border file:border-[var(--color-border)] file:bg-[var(--color-surface-2)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--color-text-primary)]"
       />
-      {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
       <Button type="submit" className="h-8 w-full rounded-full" disabled={loading || disabled}>
         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         Add file

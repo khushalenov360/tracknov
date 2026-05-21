@@ -115,18 +115,18 @@ export default async function ReviewerCockpitPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase text-[10px] font-black">
+                      <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase text-xs font-black">
                         {item.state}
                       </Badge>
-                      <p className="text-[10px] text-slate-500 mt-1 font-mono uppercase">
+                      <p className="text-xs text-slate-500 mt-1 font-mono uppercase">
                         {formatDistanceToNow(new Date(item.created_at))} ago
                       </p>
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5">ROUND {item.iteration}</span>
-                      <span className="text-[10px] bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5 font-mono">{item.id.slice(0, 8)}</span>
+                      <span className="text-xs bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5">ROUND {item.iteration}</span>
+                      <span className="text-xs bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5 font-mono">{item.id.slice(0, 8)}</span>
                     </div>
                     <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg px-4 h-8">
                       EXECUTE
@@ -151,7 +151,7 @@ export default async function ReviewerCockpitPage() {
                 <AlertCircle className="w-5 h-5 text-amber-400" />
                 <h2 className="text-lg font-bold text-white tracking-tight">Draft Clarifications</h2>
               </div>
-              <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black uppercase text-[10px]">
+              <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black uppercase text-xs">
                 ACTION REQUIRED
               </Badge>
             </div>
@@ -161,7 +161,7 @@ export default async function ReviewerCockpitPage() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="text-xs font-bold text-white">{(draft.projects as any)?.name}</p>
-                      <p className="text-[10px] text-amber-400 font-mono mt-0.5 uppercase tracking-tighter">SUGGESTED BY AI</p>
+                      <p className="text-xs text-amber-400 font-mono mt-0.5 uppercase tracking-tighter">SUGGESTED BY AI</p>
                     </div>
                     <Badge className="bg-white/5 text-slate-400 border border-white/10 text-[9px]">DRAFT</Badge>
                   </div>
@@ -169,8 +169,8 @@ export default async function ReviewerCockpitPage() {
                     <p className="text-xs text-slate-400 leading-relaxed italic line-clamp-2">"{draft.draft_content}"</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-black h-7 border border-amber-500/20 px-3">EDIT & SEND</Button>
-                    <Button variant="ghost" className="text-slate-500 hover:text-white text-[10px] font-black h-7 px-3">DISMISS</Button>
+                    <Button className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-black h-7 border border-amber-500/20 px-3">EDIT & SEND</Button>
+                    <Button variant="ghost" className="text-slate-500 hover:text-white text-xs font-black h-7 px-3">DISMISS</Button>
                   </div>
                 </div>
               ))}
@@ -230,7 +230,7 @@ export default async function ReviewerCockpitPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-xs font-bold text-white">{(sub.projects as any)?.name}</p>
-                      <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">{(sub.credits as any)?.name}</p>
+                      <p className="text-xs text-slate-500 mt-1 truncate max-w-[150px]">{(sub.credits as any)?.name}</p>
                     </div>
                     <Button variant="ghost" className="w-9 h-9 p-0 text-slate-600 group-hover:text-indigo-400">
                       <ArrowUpRight className="w-4 h-4" />
@@ -238,7 +238,7 @@ export default async function ReviewerCockpitPage() {
                   </div>
                 </div>
               )) : (
-                <div className="p-8 text-center text-slate-600 text-[10px] uppercase font-bold tracking-widest italic">No Direct Assignments</div>
+                <div className="p-8 text-center text-slate-600 text-xs uppercase font-bold tracking-widest italic">No Direct Assignments</div>
               )}
             </div>
           </section>
@@ -255,13 +255,13 @@ export default async function ReviewerCockpitPage() {
               {recentActivity?.map((act) => (
                 <div key={act.id} className="relative pl-6 border-l border-white/10 py-1">
                   <div className="absolute left-[-4px] top-0 w-2 h-2 rounded-full bg-indigo-500"></div>
-                  <p className="text-[11px] font-bold text-white uppercase tracking-tight">{act.activity_type.replace(/_/g, ' ')}</p>
-                  <p className="text-[10px] text-slate-500 mt-1 font-medium italic">{(act.projects as any)?.name}</p>
+                  <p className="text-xs font-bold text-white uppercase tracking-tight">{act.activity_type.replace(/_/g, ' ')}</p>
+                  <p className="text-xs text-slate-500 mt-1 font-medium italic">{(act.projects as any)?.name}</p>
                   <p className="text-[9px] text-slate-600 mt-1 font-mono uppercase">{formatDistanceToNow(new Date(act.created_at))} ago</p>
                 </div>
               ))}
               {!recentActivity?.length && (
-                <p className="text-center text-slate-600 text-[10px] font-bold uppercase py-4">No recent history</p>
+                <p className="text-center text-slate-600 text-xs font-bold uppercase py-4">No recent history</p>
               )}
             </div>
           </section>

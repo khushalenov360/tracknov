@@ -44,7 +44,7 @@ export default async function TasksPage() {
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
                 {["Project", "Credit", "Progress", "Required docs", "Approved docs", "Status"].map((heading) => (
-                  <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                  <th key={heading} className="px-3 py-2 text-left text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
                 ))}

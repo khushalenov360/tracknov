@@ -50,17 +50,17 @@ export default async function ReviewerOnboardingPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
                   <Input placeholder="John Doe" className="bg-white/5 border-white/10 h-12 rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Work Email</label>
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Work Email</label>
                   <Input placeholder="john@enterprise.com" className="bg-white/5 border-white/10 h-12 rounded-xl" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Framework Specialization</label>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Framework Specialization</label>
                 <div className="grid grid-cols-2 gap-3">
                   {['GI_V1 (Bhavarkua)', 'GI_V2 (CCIL)', 'IGBC Health', 'LEED O+M'].map(fw => (
                     <Button key={fw} variant="secondary" className="justify-start gap-3 bg-white/5 border-white/10 hover:bg-blue-500/10 hover:border-blue-500/30 h-14 rounded-2xl group">
@@ -101,7 +101,7 @@ export default async function ReviewerOnboardingPage() {
                     </div>
                     <div>
                       <p className="text-sm font-black text-white">{rev.full_name}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">{rev.email}</p>
+                      <p className="text-xs text-slate-500 font-medium">{rev.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
@@ -137,7 +137,7 @@ export default async function ReviewerOnboardingPage() {
                 </div>
                 <div>
                   <p className="text-xs font-black text-white uppercase tracking-tight">Authoritative Assignment</p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                     Reviewers are mapped to specific framework variants (GI_V1, GI_V2) based on certification authority.
                   </p>
                 </div>
@@ -149,7 +149,7 @@ export default async function ReviewerOnboardingPage() {
                 </div>
                 <div>
                   <p className="text-xs font-black text-white uppercase tracking-tight">Multi-Tenant Isolation</p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                     Reviewers can only access projects explicitly provisioned to their account.
                   </p>
                 </div>
@@ -157,7 +157,7 @@ export default async function ReviewerOnboardingPage() {
 
               <div className="pt-6 border-t border-white/5">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Available Licenses</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Available Licenses</span>
                   <span className="text-sm font-black text-white">12 / 20</span>
                 </div>
                 <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -178,7 +178,7 @@ export default async function ReviewerOnboardingPage() {
                 <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                   <div>
                     <p className="text-xs font-bold text-white">{pending.name}</p>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">{pending.stage}</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase mt-0.5">{pending.stage}</p>
                   </div>
                   <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-black uppercase">
                     PENDING

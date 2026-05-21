@@ -13,7 +13,7 @@ export function StageGateTracker({ milestones }: StageGateTrackerProps) {
     <div className="space-y-4 p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[13px] font-semibold text-[var(--color-text-primary)]">Construction Stage-Gates</h3>
-        <span className="text-[11px] text-[var(--color-text-tertiary)] uppercase tracking-wider font-medium">v3.0 Engine</span>
+        <span className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wider font-medium">v3.0 Engine</span>
       </div>
       
       <div className="relative space-y-6 before:absolute before:left-[11px] before:top-2 before:h-[calc(100%-16px)] before:w-[1px] before:bg-[var(--color-border)]">
@@ -53,7 +53,7 @@ function MilestoneRow({ milestone }: { milestone: StageGateMilestone }) {
               {milestone.name}
             </span>
           </button>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusStyles(milestone.status)}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusStyles(milestone.status)}`}>
             {milestone.status.replace("_", " ")}
           </span>
         </div>
@@ -61,7 +61,7 @@ function MilestoneRow({ milestone }: { milestone: StageGateMilestone }) {
         {isOpen && milestone.criteria.length > 0 && (
           <ul className="space-y-1.5 pt-2 pl-3 border-l border-[var(--color-border)] ml-[4px] transition-all duration-200">
             {milestone.criteria.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-[11px] text-[var(--color-text-secondary)]">
+              <li key={i} className="flex items-start gap-2 text-xs text-[var(--color-text-secondary)]">
                 <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 opacity-40" />
                 <span>{item}</span>
               </li>

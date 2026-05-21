@@ -108,7 +108,7 @@ export default function UniversalEvidencePalette({
             <button 
               key={idx}
               onClick={() => setQuery(q)}
-              className="text-[10px] text-slate-400 hover:text-indigo-400 bg-slate-900 border border-slate-800 hover:border-indigo-500/20 px-2.5 py-1 rounded-full transition-all"
+              className="text-xs text-slate-400 hover:text-indigo-400 bg-slate-900 border border-slate-800 hover:border-indigo-500/20 px-2.5 py-1 rounded-full transition-all"
             >
               {q}
             </button>
@@ -117,7 +117,7 @@ export default function UniversalEvidencePalette({
 
         {/* Results Stream Area */}
         <div className="flex-1 overflow-y-auto max-h-[350px] p-5 space-y-4 scrollbar-thin">
-          <div className="flex justify-between items-center text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2">
+          <div className="flex justify-between items-center text-xs uppercase font-black text-slate-500 tracking-wider mb-2">
             <span>Query Matches ({results.length})</span>
             {latencyMs > 0 && <span>Latency: {latencyMs}ms ({"< 2s Target"})</span>}
           </div>
@@ -140,20 +140,20 @@ export default function UniversalEvidencePalette({
                           <FileCheck className="w-4 h-4 text-emerald-400" />
                           <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-all">{item.name}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 block mt-1">{item.creditCategory} • {item.type}</span>
+                        <span className="text-xs text-slate-500 block mt-1">{item.creditCategory} • {item.type}</span>
                       </div>
 
-                      <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded font-black">
+                      <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded font-black">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         {confidence}% REUSE MATCH
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-400 font-mono leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-850">
+                    <p className="text-xs text-slate-400 font-mono leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-850">
                       {item.textExcerpt}
                     </p>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
                       <div className="flex items-center gap-4">
                         <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Used 1 day ago</span>
                         <span>Duplicate Risk: {item.duplicateProbability}%</span>

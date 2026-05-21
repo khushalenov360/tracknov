@@ -20,23 +20,23 @@ export function WorkflowStatePanel({
     <section className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Workflow state</p>
-          <span className={`mt-1 inline-flex rounded-md border px-2 py-1 text-[11px] font-medium ${toneClasses[render.tone]}`}>
+          <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Workflow state</p>
+          <span className={`mt-1 inline-flex rounded-md border px-2 py-1 text-xs font-medium ${toneClasses[render.tone]}`}>
             {render.label}
           </span>
         </div>
         <div className="text-right">
-          <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Lock state</p>
+          <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Lock state</p>
           <p className="mt-1 text-[12px] text-[var(--color-text-primary)]">{render.lockMode.replace("_", " ")}</p>
         </div>
       </div>
       {assignedReviewer ? (
-        <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">Assigned reviewer: {assignedReviewer}</p>
+        <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Assigned reviewer: {assignedReviewer}</p>
       ) : null}
-      {render.blocker ? <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{render.blocker}</p> : null}
+      {render.blocker ? <p className="mt-2 text-xs text-[var(--color-text-secondary)]">{render.blocker}</p> : null}
       <div className="mt-2">
-        <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Backend allowed actions</p>
-        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+        <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">Backend allowed actions</p>
+        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
           {render.allowedActions.length ? render.allowedActions.join(", ") : "No workflow actions available"}
         </p>
       </div>

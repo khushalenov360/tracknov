@@ -10,7 +10,7 @@ export function InviteLinkButton({ href }: { href: string }) {
     <Button
       type="button"
       variant="secondary"
-      className="h-auto rounded-full px-3 py-1.5 text-[11px]"
+      className="h-auto rounded-full px-3 py-1.5 text-xs"
       onClick={async () => {
         await navigator.clipboard.writeText(new URL(href, window.location.origin).toString());
         setCopied(true);

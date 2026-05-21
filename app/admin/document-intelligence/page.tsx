@@ -180,7 +180,7 @@ export default function DocumentIntelligenceDashboard() {
           {/* Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">OCR Mean Accuracy</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">OCR Mean Accuracy</p>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
                 <p className="text-3xl font-black text-white">96.8%</p>
@@ -191,7 +191,7 @@ export default function DocumentIntelligenceDashboard() {
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">HVAC Spec Normalization</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">HVAC Spec Normalization</p>
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-amber-400" />
                 <p className="text-3xl font-black text-white">95.4%</p>
@@ -202,7 +202,7 @@ export default function DocumentIntelligenceDashboard() {
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Reviewer Trust Index</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Reviewer Trust Index</p>
               <div className="flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-indigo-400" />
                 <p className="text-3xl font-black text-white">98.2%</p>
@@ -213,7 +213,7 @@ export default function DocumentIntelligenceDashboard() {
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Clarification Reduction Rate</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Clarification Reduction Rate</p>
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-blue-400" />
                 <p className="text-3xl font-black text-white">-48.0%</p>
@@ -278,17 +278,17 @@ export default function DocumentIntelligenceDashboard() {
                     IMMUTABLE AUDIT TRAIL
                   </span>
                 </div>
-                <div className="p-4 h-[280px] overflow-y-auto space-y-2 font-mono text-[11px] bg-black/20">
+                <div className="p-4 h-[280px] overflow-y-auto space-y-2 font-mono text-xs bg-black/20">
                   {recentLogs.map((log) => (
                     <div key={log.id} className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2 text-slate-300">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-500 text-[10px]">{log.timestamp}</span>
+                        <span className="text-slate-500 text-xs">{log.timestamp}</span>
                         <span className="text-amber-400 font-bold">[{log.type} Correction]</span>
                         <span>
                           <strong className="text-white">{log.field}</strong>: "{log.orig}" &rarr; <strong className="text-emerald-400">"{log.corr}"</strong>
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-400 italic">
+                      <div className="text-xs text-slate-400 italic">
                         Reason: {log.reason}
                       </div>
                     </div>
@@ -308,7 +308,7 @@ export default function DocumentIntelligenceDashboard() {
                 <div className="space-y-4">
                   <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl border-l-2 border-l-amber-500 relative group overflow-hidden">
                     <p className="text-xs font-black text-white uppercase mb-1">OCR NOISE LEVEL PEAK</p>
-                    <p className="text-[10px] text-slate-400 mb-3">
+                    <p className="text-xs text-slate-400 mb-3">
                       Reviewer override on scanned document highlights typographical noise cluster.
                     </p>
                     <div className="flex justify-between items-center text-[9px] text-slate-500 font-bold uppercase">
@@ -319,7 +319,7 @@ export default function DocumentIntelligenceDashboard() {
 
                   <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl border-l-2 border-l-indigo-500 relative group overflow-hidden">
                     <p className="text-xs font-black text-white uppercase mb-1">PROSPECTIVE WEIGHT UPDATED</p>
-                    <p className="text-[10px] text-slate-400 mb-3">
+                    <p className="text-xs text-slate-400 mb-3">
                       Dynamic confidence adjustment calculated prospectively for technical units.
                     </p>
                     <div className="flex justify-between items-center text-[9px] text-slate-500 font-bold uppercase">
@@ -377,7 +377,7 @@ export default function DocumentIntelligenceDashboard() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Field to Correct</label>
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Field to Correct</label>
                     <select
                       value={selectedField}
                       onChange={(e) => {
@@ -405,7 +405,7 @@ export default function DocumentIntelligenceDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Reviewer Identity</label>
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Reviewer Identity</label>
                     <input 
                       type="text"
                       value={reviewerId}
@@ -418,7 +418,7 @@ export default function DocumentIntelligenceDashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">AI Original Extracted Value</label>
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">AI Original Extracted Value</label>
                     <input
                       type="text"
                       value={originalValue}
@@ -427,7 +427,7 @@ export default function DocumentIntelligenceDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Corrected Value (Human Override)</label>
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Corrected Value (Human Override)</label>
                     <input
                       type="text"
                       value={correctedValue}
@@ -438,7 +438,7 @@ export default function DocumentIntelligenceDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Correction Justification Reason</label>
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Correction Justification Reason</label>
                   <input
                     type="text"
                     value={correctionReason}
@@ -462,7 +462,7 @@ export default function DocumentIntelligenceDashboard() {
                       <CheckCircle className="w-4 h-4" />
                       Correction Tracked & Telemetry Calibrated Successfully!
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-[10px] text-slate-400 mt-2 font-mono">
+                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-400 mt-2 font-mono">
                       <div>
                         Failure Classification: <strong className="text-white">{feedbackResult.failureType}</strong>
                       </div>
@@ -496,7 +496,7 @@ export default function DocumentIntelligenceDashboard() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-bold">Decision Rationale:</span>
-                    <span className={`text-[10px] font-black border text-white px-2.5 py-0.5 rounded-full ${
+                    <span className={`text-xs font-black border text-white px-2.5 py-0.5 rounded-full ${
                       confidenceBadge.color === "emerald" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
                       confidenceBadge.color === "amber" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
                       "bg-rose-500/10 border-rose-500/20 text-rose-400"
@@ -516,7 +516,7 @@ export default function DocumentIntelligenceDashboard() {
             {evidenceTrace && (
               <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Lineage & Text Trace Origin</h3>
-                <div className="bg-black/20 rounded-2xl p-4 border border-white/5 font-mono text-[11px] text-slate-300">
+                <div className="bg-black/20 rounded-2xl p-4 border border-white/5 font-mono text-xs text-slate-300">
                   <div className="flex justify-between text-slate-500 mb-2 border-b border-white/5 pb-1">
                     <span>Source Snippet Match</span>
                     <span>Line {evidenceTrace.lineNumber}</span>
@@ -552,7 +552,7 @@ export default function DocumentIntelligenceDashboard() {
                   </div>
 
                   <div>
-                    <p className="font-black uppercase mb-2 text-[10px] tracking-wider text-slate-400">Recommended Resolution Templates:</p>
+                    <p className="font-black uppercase mb-2 text-xs tracking-wider text-slate-400">Recommended Resolution Templates:</p>
                     <ul className="list-disc pl-4 space-y-1 text-slate-300">
                       {clarificationReason.recommendedResolutions.map((res: string, idx: number) => (
                         <li key={idx}>{res}</li>

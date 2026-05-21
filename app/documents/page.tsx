@@ -77,7 +77,7 @@ export default async function DocumentsPage({
       {roleScopedSummary ? (
         <section className="mt-4 surface-card p-4">
           <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">My scope readiness</h2>
-          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             Assigned uploads in your role scope across current project access.
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-4">
@@ -187,7 +187,7 @@ export default async function DocumentsPage({
             <thead className="bg-[var(--color-surface-2)]">
               <tr className="border-b border-[var(--color-border)]">
                 {["Document", "Project", "Credit", "Uploaded", "Status", "Notes", "Actions"].map((heading) => (
-                  <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                  <th key={heading} className="px-3 py-2 text-left text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                     {heading}
                   </th>
                 ))}
@@ -233,11 +233,11 @@ export default async function DocumentsPage({
                               {document.file_name}
                             </p>
                           )}
-                          <p className="mt-0.5 text-[10px] uppercase text-[var(--color-text-tertiary)]">
+                          <p className="mt-0.5 text-xs uppercase text-[var(--color-text-tertiary)]">
                             {document.file_type} / {document.doc_category}
                           </p>
                           {document.uploaded_by_name ? (
-                            <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                            <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                               Uploaded by {document.uploaded_by_name}
                             </p>
                           ) : null}
@@ -258,7 +258,7 @@ export default async function DocumentsPage({
                     <td className="px-3 py-3">
                       <Badge className={status.className}>{status.enovaitLabel}</Badge>
                     </td>
-                    <td className="max-w-[260px] truncate px-3 py-3 text-[11px] text-[var(--color-text-secondary)]">
+                    <td className="max-w-[260px] truncate px-3 py-3 text-xs text-[var(--color-text-secondary)]">
                       {clientMode ? "Restricted in client mode" : document.notes || document.rejection_reason || "No notes"}
                     </td>
                     <td className="px-3 py-3 align-top">
@@ -272,7 +272,7 @@ export default async function DocumentsPage({
                               <form action={updateDocumentMetadataAction} className="space-y-2">
                                 <input type="hidden" name="document_id" value={document.id} />
                                 <input type="hidden" name="project_id" value={document.project_id} />
-                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Credit mapping
                                 </label>
                                 <select
@@ -286,7 +286,7 @@ export default async function DocumentsPage({
                                     </option>
                                   ))}
                                 </select>
-                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Document type
                                 </label>
                                 <select
@@ -300,7 +300,7 @@ export default async function DocumentsPage({
                                     </option>
                                   ))}
                                 </select>
-                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Notes
                                 </label>
                                 <textarea
@@ -320,7 +320,7 @@ export default async function DocumentsPage({
                                 <input type="hidden" name="document_id" value={document.id} />
                                 <input type="hidden" name="project_id" value={document.project_id} />
                                 <input type="hidden" name="credit_id" value={document.credit_id ?? ""} />
-                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Review status
                                 </label>
                                 <select
@@ -378,7 +378,7 @@ export default async function DocumentsPage({
                               <form action={resubmitDocumentAction} className="space-y-2 border-t border-[var(--color-border)] pt-3">
                                 <input type="hidden" name="document_id" value={document.id} />
                                 <input type="hidden" name="project_id" value={document.project_id} />
-                                <label className="block text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Resubmit for owner review
                                 </label>
                                 <textarea
@@ -395,21 +395,21 @@ export default async function DocumentsPage({
 
                             {document.can_view_logs ? (
                               <section className="border-t border-[var(--color-border)] pt-3">
-                                <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                                <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                                   Upload/change log (IST)
                                 </p>
                                 <div className="mt-2 space-y-2">
                                   {document.activity_logs?.length ? (
                                     document.activity_logs.slice(0, 8).map((log) => (
                                       <div key={log.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2">
-                                        <p className="text-[11px] text-[var(--color-text-primary)]">{log.summary}</p>
-                                        <p className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+                                        <p className="text-xs text-[var(--color-text-primary)]">{log.summary}</p>
+                                        <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                                           {formatDateTimeIST(log.created_at)} / {log.actor_name ?? log.actor_role ?? "System"}
                                         </p>
                                       </div>
                                     ))
                                   ) : (
-                                    <p className="text-[11px] text-[var(--color-text-tertiary)]">
+                                    <p className="text-xs text-[var(--color-text-tertiary)]">
                                       No audit entries yet for this document.
                                     </p>
                                   )}
@@ -419,7 +419,7 @@ export default async function DocumentsPage({
                           </div>
                         </details>
                       ) : (
-                        <span className="text-[11px] text-[var(--color-text-tertiary)]">View only</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">View only</span>
                       )}
                     </td>
                   </tr>

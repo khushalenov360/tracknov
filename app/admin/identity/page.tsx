@@ -126,7 +126,7 @@ export default function IdentityGovernancePage() {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-slate-200">{sess.userId}</h3>
-                    <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                    <p className="text-xs text-slate-500 mt-1 font-mono">
                       IP: <strong>{sess.ipAddress}</strong> • Device: <strong>{sess.deviceType}</strong> • {sess.lastActive}
                     </p>
                   </div>
@@ -160,7 +160,7 @@ export default function IdentityGovernancePage() {
               <ShieldCheck className="w-4.5 h-4.5" />
               <h3 className="text-xs font-black uppercase tracking-wider">Identity Health</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Audit status of SSO profiles.</p>
+            <p className="text-xs text-slate-500 mt-1">Audit status of SSO profiles.</p>
           </div>
 
           <div className="space-y-6 flex-1 flex flex-col justify-between">
@@ -169,13 +169,13 @@ export default function IdentityGovernancePage() {
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl space-y-1">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">SSO Success Rate</span>
                 <strong className="text-xl font-black text-emerald-400 block">99.9% Success</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">With zero unauthorized tenant logins or SCIM sync skips.</span>
+                <span className="text-xs text-slate-500 mt-1 block">With zero unauthorized tenant logins or SCIM sync skips.</span>
               </div>
 
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl space-y-1">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">SCIM Sync State</span>
                 <strong className="text-xl font-black text-emerald-400 block">100% Reliable</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">All roles map to L5, L6, L7 profiles automatically.</span>
+                <span className="text-xs text-slate-500 mt-1 block">All roles map to L5, L6, L7 profiles automatically.</span>
               </div>
 
             </div>

@@ -21,19 +21,19 @@ export default async function ReviewQueuePage() {
       <section className="surface-card p-4">
         <div className="mb-3 grid gap-2 sm:grid-cols-4">
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Reviewed today</p>
+            <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Reviewed today</p>
             <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{metrics.reviewedToday}</p>
           </div>
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Approved</p>
+            <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Approved</p>
             <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{metrics.approvedToday}</p>
           </div>
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Rejected</p>
+            <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Rejected</p>
             <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{metrics.rejectedToday}</p>
           </div>
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Approval rate</p>
+            <p className="text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">Approval rate</p>
             <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{metrics.approvalRateToday}%</p>
           </div>
         </div>
@@ -49,16 +49,16 @@ export default async function ReviewQueuePage() {
               <div key={item.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="text-[12px] font-medium text-[var(--color-text-primary)]">{item.project_name}</span>
-                  <span className="text-[11px] text-[var(--color-text-secondary)]">/ {item.credit_name}</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">/ {item.credit_name}</span>
                 </div>
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px_280px]">
                   <div className="min-w-0">
                     <p className="truncate text-[12px] text-[var(--color-text-primary)]">{item.file_name}</p>
-                    <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+                    <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                       Uploaded by {item.uploaded_by_name} / {formatDateTimeIST(item.uploaded_at)}
                     </p>
-                    {item.notes ? <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">{item.notes}</p> : null}
-                    <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
+                    {item.notes ? <p className="mt-2 text-xs text-[var(--color-text-secondary)]">{item.notes}</p> : null}
+                    <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
                       <Link href={`/projects/${item.project_id}/submittals/${item.submittal_id ?? item.id}`} className="mr-3 text-[var(--color-green)] hover:text-[var(--color-green-dim)]">
                         Open review screen
                       </Link>
@@ -82,7 +82,7 @@ export default async function ReviewQueuePage() {
               <thead className="bg-[var(--color-surface-2)]">
                 <tr className="border-b border-[var(--color-border)]">
                   {["Project", "Credit", "State", "Allowed actions", "Uploaded by", "File", "Upload time", "Preview"].map((heading) => (
-                    <th key={heading} className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+                    <th key={heading} className="px-3 py-2 text-left text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                       {heading}
                     </th>
                   ))}
@@ -102,7 +102,7 @@ export default async function ReviewQueuePage() {
                     <td className="px-3 py-2">{item.uploaded_by_name}</td>
                     <td className="px-3 py-2">
                       <div className="max-w-[280px] truncate text-[var(--color-text-primary)]">{item.file_name}</div>
-                      {item.notes ? <div className="text-[11px] text-[var(--color-text-tertiary)]">{item.notes}</div> : null}
+                      {item.notes ? <div className="text-xs text-[var(--color-text-tertiary)]">{item.notes}</div> : null}
                     </td>
                     <td className="px-3 py-2 text-[var(--color-text-secondary)]">{formatDateTimeIST(item.uploaded_at)}</td>
                     <td className="px-3 py-2">

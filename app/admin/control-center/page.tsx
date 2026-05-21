@@ -227,18 +227,18 @@ export default function ControlCenter() {
                   <h3 className="font-semibold text-slate-200 group-hover:text-indigo-400 transition-colors">
                     {subsystem.name}
                   </h3>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatusColor(subsystem.status)}`}>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${getStatusColor(subsystem.status)}`}>
                     {subsystem.status}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/60">
                   <div>
-                    <p className="text-[10px] uppercase text-slate-500 tracking-wider">Metrics Output</p>
+                    <p className="text-xs uppercase text-slate-500 tracking-wider">Metrics Output</p>
                     <p className="text-sm font-semibold text-slate-300">{subsystem.metric}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase text-slate-500 tracking-wider">Availability</p>
+                    <p className="text-xs uppercase text-slate-500 tracking-wider">Availability</p>
                     <p className="text-sm font-semibold text-emerald-400">{subsystem.uptime}</p>
                   </div>
                 </div>
@@ -266,15 +266,15 @@ export default function ControlCenter() {
 
               <div className="grid grid-cols-3 gap-4 pt-2">
                 <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                  <p className="text-[10px] uppercase text-slate-500">Security Isolation</p>
+                  <p className="text-xs uppercase text-slate-500">Security Isolation</p>
                   <p className="text-sm font-semibold text-slate-300 mt-1">Tenant-Isolated</p>
                 </div>
                 <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                  <p className="text-[10px] uppercase text-slate-500">Execution Purity</p>
+                  <p className="text-xs uppercase text-slate-500">Execution Purity</p>
                   <p className="text-sm font-semibold text-slate-300 mt-1">Replay Safe</p>
                 </div>
                 <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                  <p className="text-[10px] uppercase text-slate-500">Last Telemetry</p>
+                  <p className="text-xs uppercase text-slate-500">Last Telemetry</p>
                   <p className="text-sm font-semibold text-emerald-400 mt-1">Passed (0 ms drift)</p>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function ControlCenter() {
             {logs.map((log) => (
               <div key={log.id} className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg space-y-2 hover:border-slate-700 transition-all">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-indigo-400 font-mono">
+                  <span className="text-xs font-semibold text-indigo-400 font-mono">
                     {log.subsystem}
                   </span>
                   <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold ${

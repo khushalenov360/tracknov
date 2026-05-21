@@ -67,7 +67,7 @@ export default async function CreditsPage() {
                         {score.earned}
                         <span className="text-[16px] text-[var(--color-text-tertiary)]">/{score.totalAvailable}</span>
                       </p>
-                      <p className="mt-1 text-[11px] uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+                      <p className="mt-1 text-xs uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
                         Credits earned
                       </p>
                     </div>
@@ -81,11 +81,11 @@ export default async function CreditsPage() {
                       return (
                         <div key={category.category} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-2 text-[11px] text-[var(--color-text-secondary)]">
+                            <span className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
                               <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
                               {category.category}
                             </span>
-                            <span className="mono text-[11px] text-[var(--color-text-primary)]">
+                            <span className="mono text-xs text-[var(--color-text-primary)]">
                               {category.earned}/{category.total}
                             </span>
                           </div>

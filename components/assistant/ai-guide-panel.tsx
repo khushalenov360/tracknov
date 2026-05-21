@@ -441,14 +441,14 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
             </span>
             <div className="min-w-0">
               <h2 className="text-[13px] font-medium text-[var(--color-text-primary)]">{title}</h2>
-              <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+              <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
                 Uses the current page context to suggest the next best step.
               </p>
             </div>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-[10px] text-[var(--color-text-tertiary)]">
+          <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text-tertiary)]">
             {enabled ? "Gemini ready" : "Connect Gemini in .env.local"}
           </div>
           <Bot className="h-3 w-3" />
@@ -480,7 +480,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
       <div className="space-y-3 border-t border-[var(--color-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)] px-4 py-4">
         {suggestedActions.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Suggested actions</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">Suggested actions</p>
             <div className="space-y-2">
               {suggestedActions.map((action) => (
                 <Link
@@ -491,8 +491,8 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
                     "hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface)]",
                   )}
                 >
-                  <div className="text-[11px] font-medium text-[var(--color-text-primary)]">{action.label}</div>
-                  <div className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">{action.description}</div>
+                  <div className="text-xs font-medium text-[var(--color-text-primary)]">{action.label}</div>
+                  <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">{action.description}</div>
                 </Link>
               ))}
             </div>
@@ -521,7 +521,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
               </Button>
             </div>
             {attachment ? (
-              <p className="text-[10px] text-[var(--color-text-tertiary)]">
+              <p className="text-xs text-[var(--color-text-tertiary)]">
                 Attached to Harita: {attachment.name} ({Math.max(1, Math.round(attachment.size / 1024))} KB)
               </p>
             ) : null}
@@ -532,7 +532,7 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
             placeholder="Ask what to do next, what is blocked, or which files are missing..."
             className="min-h-[92px] resize-none"
           />
-          {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+          {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
           <Button type="button" variant="secondary" className="h-8 w-full rounded-md" disabled={isLoading || fillingForm} onClick={() => void assistFormFill()}>
             {fillingForm ? "Filling form..." : "Fill Form With Harita"}
           </Button>

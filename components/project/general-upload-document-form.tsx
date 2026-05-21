@@ -353,7 +353,7 @@ export function GeneralUploadDocumentForm({
 
   return (
     <form onSubmit={onUpload} className="surface-card grid gap-3 p-4">
-      <div className="grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-secondary)] md:grid-cols-3">
+      <div className="grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-secondary)] md:grid-cols-3">
         <p>
           <strong>Step 1:</strong> pick project and credit
         </p>
@@ -452,7 +452,7 @@ export function GeneralUploadDocumentForm({
               : "border-[var(--color-border)] bg-[var(--color-surface)]"
           }`}
         >
-          <p className="text-[11px] text-[var(--color-text-secondary)]">
+          <p className="text-xs text-[var(--color-text-secondary)]">
             Drag and drop files here, or use the pickers below.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -485,7 +485,7 @@ export function GeneralUploadDocumentForm({
             <Button
               type="button"
               variant="secondary"
-              className="h-[36px] rounded-md px-3 text-[11px]"
+              className="h-[36px] rounded-md px-3 text-xs"
               onClick={() => cameraInputRef.current?.click()}
             >
               Capture photo
@@ -513,10 +513,10 @@ export function GeneralUploadDocumentForm({
         </Button>
       </div>
 
-      {error ? <p className="text-[11px] text-[var(--color-red)]">{error}</p> : null}
+      {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
       {loading ? (
         <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
-          <p className="text-[11px] text-[var(--color-text-secondary)]">Upload progress: {batchProgress}%</p>
+          <p className="text-xs text-[var(--color-text-secondary)]">Upload progress: {batchProgress}%</p>
           <div className="mt-1 h-2 rounded bg-[var(--color-surface)]">
             <div
               className="h-2 rounded bg-[var(--color-green)] transition-all"
@@ -527,12 +527,12 @@ export function GeneralUploadDocumentForm({
       ) : null}
       {selectedFiles.length ? (
         <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
-          <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+          <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
             Selected files ({selectedFiles.length})
           </p>
           <ul className="mt-1 space-y-1">
             {selectedFiles.map((file) => (
-              <li key={`${file.name}-${file.size}-${file.lastModified}`} className="truncate text-[11px] text-[var(--color-text-primary)]">
+              <li key={`${file.name}-${file.size}-${file.lastModified}`} className="truncate text-xs text-[var(--color-text-primary)]">
                 {file.name}
               </li>
             ))}
@@ -541,7 +541,7 @@ export function GeneralUploadDocumentForm({
             <Button
               type="button"
               variant="secondary"
-              className="h-[30px] rounded-md px-3 text-[11px]"
+              className="h-[30px] rounded-md px-3 text-xs"
               onClick={() => {
                 setSelectedFiles([]);
                 if (fileInputRef.current) {
@@ -558,7 +558,7 @@ export function GeneralUploadDocumentForm({
         </div>
       ) : null}
       {successMessage ? (
-        <div className="rounded-md border border-[var(--color-green-light)] bg-[var(--color-green-light)] p-2 text-[11px] text-[var(--color-green)]">
+        <div className="rounded-md border border-[var(--color-green-light)] bg-[var(--color-green-light)] p-2 text-xs text-[var(--color-green)]">
           <p className="flex items-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {successMessage}
@@ -567,21 +567,21 @@ export function GeneralUploadDocumentForm({
         </div>
       ) : null}
 
-      <p className="text-[11px] text-[var(--color-text-tertiary)]">
+      <p className="text-xs text-[var(--color-text-tertiary)]">
         Upload limit: {maxFileSizeLabel}. For larger files, reduce PDF size or image resolution before upload.
       </p>
-      <p className="text-[11px] text-[var(--color-text-tertiary)]">
+      <p className="text-xs text-[var(--color-text-tertiary)]">
         Each upload is mapped to a credit immediately and enters owner review before final Project Admin inclusion.
       </p>
 
       {pendingQueue ? (
-        <div className="rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-3 text-[11px] text-[var(--color-text-primary)]">
+        <div className="rounded-md border border-[var(--color-amber)] bg-[var(--color-amber-soft)] p-3 text-xs text-[var(--color-text-primary)]">
           <p>
             You are uploading <strong>{pendingQueue.length}</strong> file(s) to <strong>{pendingQueue[0]?.projectName}</strong> under{" "}
             <strong>{pendingQueue[0]?.creditName}</strong> / <strong>{pendingQueue[0]?.docType}</strong>.
           </p>
           <p className="mt-1">Upload starts in {countdown}s. Cancel now to avoid accidental token usage.</p>
-          <ul className="mt-2 list-disc pl-5 text-[11px] text-[var(--color-text-secondary)]">
+          <ul className="mt-2 list-disc pl-5 text-xs text-[var(--color-text-secondary)]">
             {pendingQueue.map((item) => (
               <li key={item.file.name + item.file.size}>{item.file.name}</li>
             ))}
@@ -590,7 +590,7 @@ export function GeneralUploadDocumentForm({
             <Button
               type="button"
               variant="secondary"
-              className="h-7 rounded-md px-3 text-[11px]"
+              className="h-7 rounded-md px-3 text-xs"
               onClick={() => {
                 if (timerRef.current) {
                   clearInterval(timerRef.current);
@@ -614,7 +614,7 @@ export function GeneralUploadDocumentForm({
       ) : null}
 
       {retryQueue?.length ? (
-        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-[11px] text-[var(--color-text-primary)]">
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-primary)]">
           <p>
             <strong>{retryQueue.length}</strong> upload(s) are queued for retry when internet is available.
           </p>
@@ -622,7 +622,7 @@ export function GeneralUploadDocumentForm({
             <Button
               type="button"
               variant="secondary"
-              className="h-7 rounded-md px-3 text-[11px]"
+              className="h-7 rounded-md px-3 text-xs"
               onClick={() => void submitPendingQueue(retryQueue)}
               disabled={loading}
             >
@@ -631,7 +631,7 @@ export function GeneralUploadDocumentForm({
             <Button
               type="button"
               variant="secondary"
-              className="h-7 rounded-md px-3 text-[11px]"
+              className="h-7 rounded-md px-3 text-xs"
               onClick={() => setRetryQueue(null)}
               disabled={loading}
             >
@@ -643,7 +643,7 @@ export function GeneralUploadDocumentForm({
 
       {currentCredit ? (
         <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-          <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+          <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
             Required evidence for {currentCredit.credit_code}
           </p>
           <p className="mt-1 text-[12px] text-[var(--color-text-primary)]">
@@ -654,7 +654,7 @@ export function GeneralUploadDocumentForm({
               {currentCredit.requirements.map((requirement) => (
                 <span
                   key={`${currentCredit.id}-${requirement.type}`}
-                  className={`rounded-md border px-2 py-1 text-[11px] ${
+                  className={`rounded-md border px-2 py-1 text-xs ${
                     requirement.required
                       ? "border-[var(--color-blue)] bg-[var(--color-blue-soft)] text-[var(--color-blue)]"
                       : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-tertiary)]"
@@ -665,18 +665,18 @@ export function GeneralUploadDocumentForm({
               ))}
             </div>
           ) : null}
-          <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
+          <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
             Tokens are charged only after storage upload + document save succeed.
           </p>
           {priorExamples.length ? (
             <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
-              <p className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
+              <p className="text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
                 Reuse suggestion
               </p>
-              <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
                 You previously uploaded approved files for this credit and document type:
               </p>
-              <ul className="mt-1 list-disc pl-4 text-[11px] text-[var(--color-text-primary)]">
+              <ul className="mt-1 list-disc pl-4 text-xs text-[var(--color-text-primary)]">
                 {priorExamples.map((fileName) => (
                   <li key={fileName} className="truncate">
                     {fileName}

@@ -75,7 +75,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
           <h3 className="text-[14px] font-semibold text-[var(--color-text-primary)]">
             {task.credit ? `${task.credit.credit_code}: ${task.credit.credit_name}` : "General Task"}
           </h3>
-          <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+          <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
             {task.doc_type ? `${task.doc_type} Preparation` : task.task_type.replace(/_/g, " ")}
           </p>
         </div>
@@ -86,34 +86,34 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg bg-[var(--color-surface-2)] p-2">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">Assigned To</p>
+          <p className="text-xs uppercase tracking-wider text-[var(--color-text-tertiary)]">Assigned To</p>
           <div className="mt-1 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white font-bold">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs text-white font-bold">
               {getUserName(task.assigned_to).charAt(0)}
             </div>
             <div>
               <p className="text-[12px] font-medium text-[var(--color-text-primary)]">{getUserName(task.assigned_to)}</p>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase">{getRoleLabel(task.assigned_to)}</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] uppercase">{getRoleLabel(task.assigned_to)}</p>
             </div>
           </div>
         </div>
 
         <div className="rounded-lg bg-[var(--color-surface-2)] p-2">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">Accountable Coordinator</p>
+          <p className="text-xs uppercase tracking-wider text-[var(--color-text-tertiary)]">Accountable Coordinator</p>
           <div className="mt-1 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-[10px] text-white font-bold">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs text-white font-bold">
               {getUserName(task.accountable_user_id).charAt(0)}
             </div>
             <div>
               <p className="text-[12px] font-medium text-[var(--color-text-primary)]">{getUserName(task.accountable_user_id)}</p>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase">{getRoleLabel(task.accountable_user_id)}</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] uppercase">{getRoleLabel(task.accountable_user_id)}</p>
             </div>
           </div>
         </div>
       </div>
 
       {task.delegated_by && (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] p-2 text-[11px] text-[var(--color-text-secondary)]">
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] p-2 text-xs text-[var(--color-text-secondary)]">
           <Clock className="h-3.5 w-3.5" />
           <span>
             Delegated by <strong>{getUserName(task.delegated_by)}</strong> from <strong>{getUserName(task.delegated_from!)}</strong>
@@ -121,7 +121,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
         </div>
       )}
 
-      <div className="flex items-center gap-4 text-[11px] text-[var(--color-text-secondary)]">
+      <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
         <div className="flex items-center gap-1.5">
           <AlertCircle className="h-3.5 w-3.5" />
           <span>Priority: </span>
@@ -141,7 +141,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
             <input type="hidden" name="task_id" value={task.id} />
             <input type="hidden" name="project_id" value={task.project_id} />
             <input type="hidden" name="state" value="IN_PROGRESS" />
-            <Button variant="secondary" className="h-8 text-[11px]">Start Work</Button>
+            <Button variant="secondary" className="h-8 text-xs">Start Work</Button>
           </form>
         )}
 
@@ -150,7 +150,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
             <input type="hidden" name="task_id" value={task.id} />
             <input type="hidden" name="project_id" value={task.project_id} />
             <input type="hidden" name="state" value="UPLOADED" />
-            <Button variant="secondary" className="h-8 text-[11px]">Submit Evidence</Button>
+            <Button variant="secondary" className="h-8 text-xs">Submit Evidence</Button>
           </form>
         )}
 
@@ -162,7 +162,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 <input type="hidden" name="task_id" value={task.id} />
                 <input type="hidden" name="project_id" value={task.project_id} />
                 <input type="hidden" name="state" value="UNDER_REVIEW" />
-                <Button variant="secondary" className="h-8 text-[11px] border-blue-200 text-blue-700 bg-blue-50">
+                <Button variant="secondary" className="h-8 text-xs border-blue-200 text-blue-700 bg-blue-50">
                   Mark Under Review
                 </Button>
               </form>
@@ -174,15 +174,15 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                   <input type="hidden" name="task_id" value={task.id} />
                   <input type="hidden" name="project_id" value={task.project_id} />
                   <input type="hidden" name="state" value="APPROVED" />
-                  <Button className="h-8 text-[11px] bg-green-600 hover:bg-green-700">Approve</Button>
+                  <Button className="h-8 text-xs bg-green-600 hover:bg-green-700">Approve</Button>
                 </form>
                 
                 <form action={updateTaskStateAction} className="flex gap-2">
                   <input type="hidden" name="task_id" value={task.id} />
                   <input type="hidden" name="project_id" value={task.project_id} />
                   <input type="hidden" name="state" value="REJECTED" />
-                  <input type="text" name="notes" placeholder="Reason..." className="h-8 w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] outline-none" required />
-                  <Button variant="danger" className="h-8 text-[11px]">Reject</Button>
+                  <input type="text" name="notes" placeholder="Reason..." className="h-8 w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs outline-none" required />
+                  <Button variant="danger" className="h-8 text-xs">Reject</Button>
                 </form>
               </div>
             )}
@@ -192,29 +192,29 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
                 <input type="hidden" name="task_id" value={task.id} />
                 <input type="hidden" name="project_id" value={task.project_id} />
                 <input type="hidden" name="state" value="CLARIFICATION" />
-                <input type="text" name="notes" placeholder="What is missing?" className="h-8 w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[10px] outline-none" required />
-                <Button variant="secondary" className="h-8 text-[11px]">Need Clarification</Button>
+                <input type="text" name="notes" placeholder="What is missing?" className="h-8 w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs outline-none" required />
+                <Button variant="secondary" className="h-8 text-xs">Need Clarification</Button>
               </form>
             )}
           </>
         )}
 
         {canDelegate && !isDelegating && (
-          <Button variant="secondary" className="h-8 text-[11px]" onClick={() => setIsDelegating(true)}>
+          <Button variant="secondary" className="h-8 text-xs" onClick={() => setIsDelegating(true)}>
             Delegate Execution
           </Button>
         )}
 
         {isDelegating && (
           <div className="w-full space-y-2 rounded-lg bg-[var(--color-surface-2)] p-3">
-            <p className="text-[11px] font-medium text-[var(--color-text-primary)]">Delegate to contributor</p>
+            <p className="text-xs font-medium text-[var(--color-text-primary)]">Delegate to contributor</p>
             <form action={delegateTaskAction} className="space-y-2">
               <input type="hidden" name="task_id" value={task.id} />
               <input type="hidden" name="project_id" value={task.project_id} />
               <select 
                 name="delegated_to"
                 required
-                className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[11px] outline-none"
+                className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs outline-none"
               >
                 <option value="">Select Member</option>
                 {projectMembers
@@ -226,12 +226,12 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
               <textarea 
                 name="notes" 
                 placeholder="Brief delegation instructions..."
-                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[11px] outline-none"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-xs outline-none"
                 rows={2}
               />
               <div className="flex gap-2">
-                <Button type="submit" className="h-7 text-[10px]">Confirm Delegation</Button>
-                <Button type="button" variant="ghost" className="h-7 text-[10px]" onClick={() => setIsDelegating(false)}>Cancel</Button>
+                <Button type="submit" className="h-7 text-xs">Confirm Delegation</Button>
+                <Button type="button" variant="ghost" className="h-7 text-xs" onClick={() => setIsDelegating(false)}>Cancel</Button>
               </div>
             </form>
           </div>
@@ -241,7 +241,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
       <div className="mt-2">
         <button 
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+          className="flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
         >
           <History className="h-3.5 w-3.5" />
           <span>View Audit Trail</span>
@@ -252,23 +252,23 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
           <div className="mt-3 space-y-3 pl-2 border-l-2 border-[var(--color-border)]">
             {task.history.map((log) => (
               <div key={log.id} className="relative">
-                <p className="text-[11px] font-medium text-[var(--color-text-primary)]">
+                <p className="text-xs font-medium text-[var(--color-text-primary)]">
                   {log.action_type.charAt(0).toUpperCase() + log.action_type.slice(1)}
                 </p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[var(--color-text-tertiary)]">
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-tertiary)]">
                   <span>{getUserName(log.performed_by)}</span>
                   <span>•</span>
                   <span>{formatDateTimeIST(log.created_at)}</span>
                 </div>
                 {log.old_state && log.new_state && (
-                  <div className="mt-1 flex items-center gap-1 text-[10px]">
+                  <div className="mt-1 flex items-center gap-1 text-xs">
                     <Badge className="px-1 py-0 h-4 text-[8px] opacity-60">{log.old_state}</Badge>
                     <ArrowRight className="h-3 w-3" />
                     <Badge className="px-1 py-0 h-4 text-[8px]">{log.new_state}</Badge>
                   </div>
                 )}
                 {log.notes && (
-                  <p className="mt-1 text-[10px] italic text-[var(--color-text-secondary)] bg-[var(--color-surface-2)] p-1.5 rounded">
+                  <p className="mt-1 text-xs italic text-[var(--color-text-secondary)] bg-[var(--color-surface-2)] p-1.5 rounded">
                     &quot;{log.notes}&quot;
                   </p>
                 )}

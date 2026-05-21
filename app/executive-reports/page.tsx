@@ -63,7 +63,7 @@ export default function ExecutiveReports() {
           
           <div className="flex justify-between items-center">
             <h2 className="text-xs font-black uppercase text-slate-400 tracking-wider">Automated Portfolio Health</h2>
-            <div className="flex bg-slate-900 border border-slate-850 p-1 rounded-xl text-[10px] font-bold">
+            <div className="flex bg-slate-900 border border-slate-850 p-1 rounded-xl text-xs font-bold">
               {projects.map((p, idx) => (
                 <button 
                   key={idx}
@@ -107,7 +107,7 @@ export default function ExecutiveReports() {
 
             {/* Export format triggers */}
             <div className="pt-5 border-t border-slate-850 flex items-center justify-between">
-              <div className="flex bg-slate-950 border border-slate-850 p-1 rounded-xl text-[10px] font-bold">
+              <div className="flex bg-slate-950 border border-slate-850 p-1 rounded-xl text-xs font-bold">
                 {["PDF", "PPT", "CSV"].map((fmt) => (
                   <button 
                     key={fmt}
@@ -141,7 +141,7 @@ export default function ExecutiveReports() {
               <ShieldCheck className="w-4.5 h-4.5" />
               <h3 className="text-xs font-black uppercase tracking-wider">Export Verification</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Audit-defensible export logs.</p>
+            <p className="text-xs text-slate-500 mt-1">Audit-defensible export logs.</p>
           </div>
 
           <div className="space-y-6 flex-1 flex flex-col justify-between">
@@ -150,7 +150,7 @@ export default function ExecutiveReports() {
               <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl">
                 <span className="text-[9px] uppercase font-black text-slate-500 block">Manual Labor Avoided</span>
                 <strong className="text-xl font-black text-emerald-400 mt-1 block">85.4% (-80% Target)</strong>
-                <span className="text-[10px] text-slate-500 mt-1 block">Generated slides and compliance portfolios instantly, bypassing consulting teams.</span>
+                <span className="text-xs text-slate-500 mt-1 block">Generated slides and compliance portfolios instantly, bypassing consulting teams.</span>
               </div>
 
             </div>

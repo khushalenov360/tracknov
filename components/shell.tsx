@@ -43,10 +43,10 @@ export function Shell({
   const sidebarNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/projects", label: "Projects", icon: FolderKanban },
-    { href: "/review-queue", label: "Reviews", icon: ClipboardListIconForShell },
+    { href: "/credits", label: "Credits", icon: ListChecks },
+    { href: "/uploads", label: "Uploads", icon: FileText },
     { href: "/projects", label: "Clarifications", icon: MessageSquare },
-    { href: "/projects", label: "Exports", icon: Download },
-    { href: "/supplier-network", label: "Suppliers", icon: Truck },
+    { href: "/review-queue", label: "Reviews", icon: ClipboardListIconForShell },
     { href: "/executive-reports", label: "Reports", icon: BarChart3 },
     { href: "/admin", label: "Admin", icon: Settings },
   ];
@@ -77,10 +77,10 @@ export function Shell({
         {/* Role Badge Section */}
         {role && (
           <div className="px-6 py-3 border-b border-[var(--color-border)] bg-slate-50/50">
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Access Scope</p>
+            <p className="text-xs uppercase font-bold text-slate-500 tracking-wider">Access Scope</p>
             <div className="mt-1 flex items-center justify-between">
               <span className="font-semibold text-slate-700 text-sm">{roleLabels[role]}</span>
-              <Badge className="border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
+              <Badge className="border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 text-xs font-bold">
                 L5 Verified
               </Badge>
             </div>
@@ -124,7 +124,7 @@ export function Shell({
         <header className="h-16 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-6 sticky top-0 z-30">
           {/* Organization Indicator */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Workspace</span>
+            <span className="text-xs uppercase font-bold text-slate-500 tracking-widest">Workspace</span>
             <span className="text-[14px] font-bold text-slate-800">Enov360 Internal</span>
           </div>
 
@@ -143,7 +143,7 @@ export function Shell({
             <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors">
               <Bell className="h-5 w-5" />
               {notificationCount !== undefined && notificationCount > 0 && (
-                <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">
+                <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-xs font-black leading-none">
                   {notificationCount}
                 </span>
               )}
@@ -216,19 +216,19 @@ export function Shell({
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-around items-center px-4 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <LayoutDashboard className="h-5 w-5" />
-          <span className="text-[10px] font-semibold">Home</span>
+          <span className="text-xs font-semibold">Home</span>
         </Link>
         <Link href="/review-queue" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Inbox className="h-5 w-5" />
-          <span className="text-[10px] font-semibold">Queue</span>
+          <span className="text-xs font-semibold">Queue</span>
         </Link>
         <Link href="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Bot className="h-5 w-5 text-[var(--color-green)]" />
-          <span className="text-[10px] font-semibold">Harita</span>
+          <span className="text-xs font-semibold">Harita</span>
         </Link>
         <Link href="/projects" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <FolderKanban className="h-5 w-5" />
-          <span className="text-[10px] font-semibold">Projects</span>
+          <span className="text-xs font-semibold">Projects</span>
         </Link>
       </nav>
     </div>

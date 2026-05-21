@@ -42,7 +42,7 @@ export function UploadRecoveryStatus({
             {(fileSize / 1024 / 1024).toFixed(2)} MB • Ingestion Status
           </p>
         </div>
-        <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-full ${
+        <span className={`text-xs uppercase font-black px-2.5 py-1 rounded-full ${
           quarantineState === "quarantined" 
             ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
             : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -54,7 +54,7 @@ export function UploadRecoveryStatus({
       {/* Progress & Recover Statuses */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
-          <p className="text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-1">Upload Integrity</p>
+          <p className="text-xs uppercase text-slate-500 font-bold tracking-wider mb-1">Upload Integrity</p>
           <div className="flex items-center gap-2">
             {retryStatus === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
             {retryStatus === "retrying" && <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />}
@@ -74,7 +74,7 @@ export function UploadRecoveryStatus({
         </div>
 
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
-          <p className="text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-1">Text Quality Rating</p>
+          <p className="text-xs uppercase text-slate-500 font-bold tracking-wider mb-1">Text Quality Rating</p>
           <div className="flex items-center gap-2">
             <span className={`text-xs font-bold ${
               ocrScore >= 0.9 ? "text-emerald-400" : ocrScore >= 0.75 ? "text-amber-400" : "text-rose-400"
@@ -95,7 +95,7 @@ export function UploadRecoveryStatus({
           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${partialRecoveryPercentage}%` }}></div>
           </div>
-          <p className="text-[10px] text-slate-400 mt-2">
+          <p className="text-xs text-slate-400 mt-2">
             We recovered most of your upload from a mobile/network disconnect. You can continue or click re-upload for full document clarity.
           </p>
         </div>
@@ -107,7 +107,7 @@ export function UploadRecoveryStatus({
           <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-xs font-bold text-amber-400">Scanned Document Warning</p>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               This document looks like a raw photocopy or a scan. The system will auto-align and attempt table extraction, but original digital PDF files are highly recommended for the best accuracy.
             </p>
           </div>
@@ -120,13 +120,13 @@ export function UploadRecoveryStatus({
           <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-xs font-bold text-rose-400">Safety & Duplication Quarantine</p>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               This file was auto-flagged because we detected highly similar technical parameters matching an existing submittal, or because the file parsing failed.
             </p>
             {onRetry && (
               <button 
                 onClick={onRetry}
-                className="mt-2 text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5"
+                className="mt-2 text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5"
               >
                 <RefreshCw className="w-3 h-3" />
                 Force recheck or re-upload
@@ -139,8 +139,8 @@ export function UploadRecoveryStatus({
       {/* Suggestions Bullet Points */}
       {suggestions.length > 0 && (
         <div className="space-y-2 pt-2 border-t border-slate-800">
-          <p className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Recommendations</p>
-          <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
+          <p className="text-xs uppercase text-slate-500 font-bold tracking-wider">Recommendations</p>
+          <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
             {suggestions.map((suggestion, idx) => (
               <li key={idx}>{suggestion}</li>
             ))}

@@ -172,15 +172,15 @@ export function GuidedTour({ storageKey, steps, startOnMount = false, label = "S
                 </div>
                 <p className="mt-3 text-[12px] leading-6 text-[var(--color-text-secondary)]">{currentStep.body}</p>
                 <div className="mt-4 flex items-center justify-between gap-2">
-                  <div className="text-[11px] text-[var(--color-text-tertiary)]">
+                  <div className="text-xs text-[var(--color-text-tertiary)]">
                     Step {index + 1} of {steps.length}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="secondary" className="h-8 rounded-full px-3 text-[11px]" onClick={previousStep} disabled={index === 0}>
+                    <Button type="button" variant="secondary" className="h-8 rounded-full px-3 text-xs" onClick={previousStep} disabled={index === 0}>
                       <ArrowLeft className="mr-1 h-3.5 w-3.5" />
                       Back
                     </Button>
-                    <Button type="button" className="h-8 rounded-full px-3 text-[11px]" onClick={nextStep}>
+                    <Button type="button" className="h-8 rounded-full px-3 text-xs" onClick={nextStep}>
                       {index === steps.length - 1 ? "Finish" : "Next"}
                       {index === steps.length - 1 ? null : <ArrowRight className="ml-1 h-3.5 w-3.5" />}
                     </Button>

@@ -87,7 +87,7 @@ export function TeamMemberCreateForm({
         <SubmitButton />
       </div>
       {state.message ? (
-        <p className={`xl:col-span-6 text-[11px] ${statusTone(state)}`}>{state.message}</p>
+        <p className={`xl:col-span-6 text-xs ${statusTone(state)}`}>{state.message}</p>
       ) : null}
     </form>
   );
