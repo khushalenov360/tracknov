@@ -1,0 +1,13 @@
+import { CertificationKnowledgeGraph } from '../../intelligence-certification/graph/graphBuilder';
+
+export class ReadinessReasoner {
+  constructor(private graph: CertificationKnowledgeGraph) {}
+
+  async evaluate(creditId: string) {
+    return {
+      readinessScore: 0,
+      blockers: [],
+      recommendations: [],
+    };
+  }
+}

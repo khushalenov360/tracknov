@@ -16,7 +16,7 @@ import {
   normalizeHaritaResponse,
   requiresExplicitConfirmationForExecution,
   routeHaritaIntent,
-  disambiguateIntent,
+  semanticDisambiguateIntent,
   requiresToolCall,
   sanitizeContextText,
   sanitizeUserText,
@@ -25,6 +25,9 @@ import {
   containsAuthoritativeClaim,
   getAuthoritativeClaimRefusal,
 } from "@/lib/services/harita-governance";
+import { certificationStrategyEngine } from "@/lib/services/certification-strategy-engine";
+import { submissionReadinessEngine } from "@/lib/services/submission-readiness-engine";
+import { evidenceGraphEngine } from "@/lib/services/evidence-graph-engine";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { TOOLS, executeTool, toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
 import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
@@ -321,6 +324,30 @@ function buildWorkspaceSnapshot(
     lines.push(
       `Credits: total=${projectCredits.length}, complete=${completeCredits}, blocked=${blockedCredits}. Documents: uploaded=${uploadedCount}, owner_review=${ownerReviewCount}, approved=${approvedCount}, rejected=${rejectedCount}.`,
     );
+    
+    // Inject Certification Strategy Engine
+    const strategy = certificationStrategyEngine.getStrategy(projectCredits);
+    lines.push(certificationStrategyEngine.generateContextString(strategy));
+    
+    // Evaluate top pending credits via Submission Readiness Engine
+    const topPendingEvaluated = projectCredits
+      .filter((credit) => credit.state !== "APPROVED" && credit.state !== "complete")
+      .slice(0, 3)
+      .map(credit => submissionReadinessEngine.generateContextString(credit, projectDocs))
+      .join("\n");
+    if (topPendingEvaluated) {
+      lines.push(topPendingEvaluated);
+    }
+    
+    // Build evidence graph for recent files
+    const recentFilesGraph = projectDocs
+      .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+      .slice(0, 2)
+      .map(doc => evidenceGraphEngine.generateContextString(doc, projectCredits))
+      .join("\n");
+    if (recentFilesGraph) {
+      lines.push(recentFilesGraph);
+    }
     const projectGuidebooks = guidebooks
       .filter((book) => book.project_id === project.id)
       .filter((book, index, all) => all.findIndex((entry) => entry.file_name === book.file_name) === index)
@@ -1245,8 +1272,8 @@ export async function POST(request: Request) {
   const latestPromptRaw = [...messages].reverse().find((message) => message.role === "user")?.content ?? "What should I do next?";
   const latestPrompt = sanitizeUserText(latestPromptRaw);
   const intent = routeHaritaIntent(latestPrompt);
-  // SECTION 13: 4-category intent disambiguation
-  const intentCategory = disambiguateIntent(latestPrompt);
+  const recentContext = messages.slice(-3).map(m => m.content).join(" ");
+  const intentCategory = semanticDisambiguateIntent(latestPrompt, recentContext);
   const focusedProjectId = getProjectIdFromContext(context);
 
   const { user, role, snapshot, projectIds, userEmail } = await getWorkspaceSnapshot();
@@ -1290,7 +1317,7 @@ export async function POST(request: Request) {
   }
 
   // PHASE 3: EnovAIT Orchestration — strictly route workflow intents through the orchestrator
-  if (intentCategory === "workflow" && focusedProjectId) {
+  if (intentCategory === "workflow_action" && focusedProjectId) {
     const { user: workflowUser, role: workflowRole } = await getWorkspaceSnapshot();
     if (!workflowUser) {
       return new Response("Unauthorized", { status: 401 });

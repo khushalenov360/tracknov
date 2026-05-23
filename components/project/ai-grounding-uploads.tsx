@@ -30,10 +30,10 @@ export function AiGroundingUploads({ projectId }: { projectId: string }) {
       <div>
         <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600 mb-1 flex items-center gap-2">
           <Upload className="h-4 w-4" />
-          AI Ground Truth Setup
+          Guide & Tracker Maintenance
         </h3>
         <p className="text-[12px] text-[var(--color-text-secondary)]">
-          Upload reference files to ground the Harita AI and establish the baseline truth for this project.
+          Assign the project guidebook and upload the baseline tracker used for certification.
         </p>
       </div>
 

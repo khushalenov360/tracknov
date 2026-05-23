@@ -92,9 +92,7 @@ export default async function ProjectOverviewPage({
             </div>
           </div>
 
-          {["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole) && (
-            <AiGroundingUploads projectId={projectId} />
-          )}
+          <AiGroundingUploads projectId={projectId} />
 
           <div className="surface-card p-4 space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-secondary)]">

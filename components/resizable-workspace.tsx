@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, LogOut } from "lucide-react";
 import Link from "next/link";
 
 export function ResizableWorkspace({
@@ -19,60 +19,8 @@ export function ResizableWorkspace({
   notificationCount?: number;
   email?: string;
 }) {
-  const [haritaWidth, setHaritaWidth] = useState(30); // Default to 30%
-  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("tracknov_harita_width");
-    if (saved) {
-      const parsed = parseFloat(saved);
-      if (parsed >= 25 && parsed <= 40) {
-        setHaritaWidth(parsed);
-      }
-    }
-  }, []);
-
-  const startDrag = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const onDrag = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      
-      // Calculate new width as percentage of container
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidthPx = containerRect.right - e.clientX;
-      const newWidthPercent = (newWidthPx / containerRect.width) * 100;
-
-      // Clamp between 25% and 40%
-      const clampedWidth = Math.min(Math.max(newWidthPercent, 25), 40);
-      setHaritaWidth(clampedWidth);
-    };
-
-    const onMouseUp = () => {
-      setIsDragging(false);
-      localStorage.setItem("tracknov_harita_width", String(haritaWidth));
-    };
-
-    document.addEventListener("mousemove", onDrag);
-    document.addEventListener("mouseup", onMouseUp);
-
-    // Prevent text selection during drag
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
-
-    return () => {
-      document.removeEventListener("mousemove", onDrag);
-      document.removeEventListener("mouseup", onMouseUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-  }, [isDragging, haritaWidth]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden" ref={containerRef}>
@@ -116,6 +64,15 @@ export function ResizableWorkspace({
                 return (parts[0]?.[0] || "U").toUpperCase();
               })()}
             </div>
+            <form action="/auth/signout" method="POST" onSubmit={(e) => { e.preventDefault(); (e.currentTarget as HTMLFormElement).submit(); }}>
+              <button 
+                type="submit" 
+                className="text-slate-500 hover:text-rose-600 transition-colors p-1.5 rounded-md hover:bg-rose-50 ml-1"
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
           </div>
         </div>
       </header>
@@ -137,21 +94,11 @@ export function ResizableWorkspace({
           </main>
         </div>
 
-        {/* DRAGGABLE SPLITTER */}
-        <div 
-          className="hidden lg:block w-1 bg-[var(--color-border)] hover:bg-indigo-400 hover:w-1.5 cursor-col-resize shrink-0 transition-colors z-20"
-          onMouseDown={startDrag}
-        />
-
         {/* HARITA RIGHT PANEL */}
         <aside 
-          className="hidden lg:block shrink-0 bg-white border-l border-[var(--color-border)] relative shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)]"
-          style={{ width: `${haritaWidth}%` }}
+          className="hidden lg:block shrink-0 bg-white border-l border-[var(--color-border)] relative shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] w-[30%]"
         >
           {harita}
-          {isDragging && (
-            <div className="absolute inset-0 z-50 bg-transparent" /> // Overlay to block pointer events during drag
-          )}
         </aside>
 
         {/* MOBILE HARITA (Handled mostly inside global-harita itself via custom events or fixed modal if needed, but we keep the floating mount point) */}

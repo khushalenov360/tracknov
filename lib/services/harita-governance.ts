@@ -16,9 +16,21 @@
  * - conversational: User is asking a question, seeking guidance, or chatting.
  * - operational: User wants to navigate, filter, manage team, or perform a platform action.
  */
-export type HaritaIntentCategory = "analysis" | "workflow" | "conversational" | "operational";
+export type ConsultantIntent =
+  | "analyze_document"
+  | "followup_analysis"
+  | "document_comparison"
+  | "credit_guidance"
+  | "mapping_recommendation"
+  | "gap_analysis"
+  | "certification_strategy"
+  | "submission_readiness"
+  | "project_status"
+  | "workflow_action"
+  | "clarification_response"
+  | "knowledge_question"
+  | "general_conversation";
 
-/** Legacy fine-grained intent kept for backward compatibility with deterministic routing. */
 export type HaritaIntent =
   | "status"
   | "validation"
@@ -46,8 +58,8 @@ export type NormalizedHaritaResponse = {
  * Conversational and analysis intents NEVER need tools — only workflow and operational do.
  * This prevents unnecessary latency and false tool triggers.
  */
-export function requiresToolCall(category: HaritaIntentCategory): boolean {
-  return category === "workflow" || category === "operational";
+export function requiresToolCall(category: ConsultantIntent): boolean {
+  return category === "workflow_action" || category === "analyze_document" || category === "mapping_recommendation";
 }
 
 // ─────────────────────────────────────────────
@@ -173,39 +185,37 @@ export function classifyAttachmentIntent(text: string): AttachmentIntent {
 // SECTION 13: Full Intent Disambiguation
 // ─────────────────────────────────────────────
 
-export function disambiguateIntent(query: string): HaritaIntentCategory {
+export function semanticDisambiguateIntent(query: string, recentContext: string = ""): ConsultantIntent {
   const q = query.toLowerCase().trim();
+  const context = recentContext.toLowerCase();
 
-  // Workflow: requires explicit action + confirmation pattern
-  const isWorkflowAction =
-    (q.includes("upload") && (q.includes("confirm") || q.includes("proceed") || q.includes("yes"))) ||
-    q.includes("map this to credit") ||
-    q.includes("submit this file") ||
-    q.includes("push to workflow");
+  // Workflow actions requiring tool execution
+  if (q.includes("upload") && (q.includes("confirm") || q.includes("proceed") || q.includes("yes"))) return "workflow_action";
+  if (q.includes("map this") || q.includes("submit this") || q.includes("push to workflow")) return "workflow_action";
 
-  if (isWorkflowAction) return "workflow";
+  // Document analysis
+  if (q.includes("read this file") || q.includes("what is this") || q.includes("tell me about the attachment")) return "analyze_document";
+  if (q.includes("compare")) return "document_comparison";
 
-  // Analysis: user wants AI understanding, no mutations
-  const isAnalysis =
-    q.includes("analyz") || q.includes("analyse") ||
-    q.includes("summarize") || q.includes("explain") ||
-    q.includes("read this file") || q.includes("what is this file") ||
-    q.includes("tell me about the attachment") || q.includes("compare") ||
-    q.includes("identify gaps") || q.includes("compliance gaps") || q.includes("gap") || q.includes("check compliance");
+  // Memory-aware followup
+  if (q.includes("what did you find") || q.includes("tell me more") || q.includes("elaborate") || (q.includes("what about") && context.includes("analys"))) return "followup_analysis";
 
-  if (isAnalysis) return "analysis";
+  // Certification Strategy & Gap Analysis
+  if (q.includes("how close are we") || q.includes("route to gold") || q.includes("route to platinum") || q.includes("point") || q.includes("strategy")) return "certification_strategy";
+  if (q.includes("gap") || q.includes("missing") || q.includes("block")) return "gap_analysis";
+  if (q.includes("ready") || q.includes("can we submit")) return "submission_readiness";
 
-  // Operational: navigation, team management, project actions
-  const isOperational =
-    q.includes("navigate to") || q.includes("go to ") ||
-    q.includes("add member") || q.includes("invite ") ||
-    q.includes("filter by") || q.includes("show all credits") ||
-    q.includes("assign credit");
+  // Credit Guidance
+  if (q.includes("applicable") || q.includes("valid for") || q.includes("support eda") || q.includes("help with")) return "credit_guidance";
+  
+  // Status and Clarifications
+  if (q.includes("status") || q.includes("progress")) return "project_status";
+  if (q.includes("clarif")) return "clarification_response";
 
-  if (isOperational) return "operational";
+  // Knowledge and General
+  if (q.includes("how to") || q.includes("what is igbc")) return "knowledge_question";
 
-  // Everything else: conversational guidance
-  return "conversational";
+  return "general_conversation";
 }
 
 // ─────────────────────────────────────────────

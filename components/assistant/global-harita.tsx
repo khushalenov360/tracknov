@@ -155,7 +155,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   const [uploadMode, setUploadMode] = useState<"document" | "guidebook" | "tracker">("document");
   const [pickedIntent, setPickedIntent] = useState<"analysis" | "workflow" | null>(null);
 
-  const canManageGuidebookTracker = ["super_user", "project_admin"].includes(role ?? "");
+  const canManageGuidebookTracker = ["super_user", "super_admin", "project_admin", "L3", "L5", "consultant"].includes(role ?? "");
   const docCategories = ["Narrative", "Tech Spec", "Certificate/Declaration", "Drawing", "Calculation & Tables", "Invoice", "Pic/Video"];
 
   function isAnalysisPrompt(text: string) {
@@ -225,13 +225,23 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   }, []);
 
   // SECTION 9: Auto-detect active project from URL and store in session memory
+  const lastProactiveProject = useRef<string | null>(null);
+
   useEffect(() => {
     const match = pathname.match(/^\/projects\/([^/?#]+)/);
     if (match?.[1]) {
-      // Extract project name from page title if available
-      sessionMemory.setActiveProject(match[1], title || match[1]);
+      const projectId = match[1];
+      sessionMemory.setActiveProject(projectId, title || projectId);
+      
+      if (lastProactiveProject.current !== projectId && historyLoaded) {
+        lastProactiveProject.current = projectId;
+        // Trigger Proactive Consultant Mode
+        setTimeout(() => {
+          sendPrompt("Provide a proactive certification strategy and project health evaluation.");
+        }, 500);
+      }
     }
-  }, [pathname, title]);
+  }, [pathname, title, historyLoaded]);
 
   const personalizedGreeting = useMemo(() => {
     const greeting = userName ? `Hi ${userName}` : "Hi there";
@@ -802,24 +812,45 @@ Important:
           </div>
         </div>
 
-        {/* Operational AI Skill Chips */}
+        {/* Harita Intelligence Sections */}
         <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] shrink-0">
-          <span className="w-full text-[9px] font-black uppercase tracking-widest text-[var(--color-text-tertiary)] mb-0.5">Operational Skills</span>
+          <span className="w-full text-[9px] font-black uppercase tracking-widest text-[var(--color-text-tertiary)] mb-0.5">Intelligence Panel</span>
+          
+          <div className="w-full flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button className="whitespace-nowrap px-2.5 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-bold text-[var(--color-text-primary)] hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+              Project Health
+            </button>
+            <button className="whitespace-nowrap px-2.5 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-bold text-[var(--color-text-primary)] hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+              Active Credit
+            </button>
+            <button className="whitespace-nowrap px-2.5 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-bold text-[var(--color-text-primary)] hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+              Clarifications
+            </button>
+            <button className="whitespace-nowrap px-2.5 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-bold text-[var(--color-text-primary)] hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+              Recommendations
+            </button>
+            <button className="whitespace-nowrap px-2.5 py-1 rounded border border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700">
+              Copilot Chat
+            </button>
+          </div>
+        </div>
+
+        {/* Operational AI Skill Chips */}
+        <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] shrink-0">
+          <span className="w-full text-[9px] font-black uppercase tracking-widest text-[var(--color-text-tertiary)] mb-0.5">Quick Actions</span>
           {OPERATIONAL_SKILLS.map((skill) => (
             <button
               key={skill.id}
               type="button"
               onClick={() => {
-                // Dispatch event to CommandCenter queue filter
                 window.dispatchEvent(
                   new CustomEvent("harita:operational-command", { detail: { command: skill.command } })
                 );
-                // If there's a Harita prompt, inject it as a user message
                 if (skill.prompt) {
                   void sendPrompt(skill.prompt);
                 }
               }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-all"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-all"
             >
               {skill.label}
             </button>
