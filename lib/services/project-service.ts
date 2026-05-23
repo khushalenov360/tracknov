@@ -7,7 +7,7 @@ import { igbcRatingSystems } from "@/lib/constants";
 import { ragService } from "./rag-service";
 import type { CurrentUser, MemberRole } from "@/lib/types";
 import ExcelJS from "exceljs";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 const GREEN_INTERIORS_SYSTEM = "IGBC Green Interiors";
 
@@ -375,7 +375,7 @@ export class ProjectService {
 
     const safeTitle = (params.title ?? params.file.name.replace(/\.[^.]+$/, "")).trim().slice(0, 200) || "IGBC Guidebook";
     const sanitizedBase = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "guidebook";
-    const filePath = `${params.projectId}/guidebooks/${Date.now()}-${crypto.randomUUID()}-${sanitizedBase}.pdf`;
+    const filePath = `${params.projectId}/guidebooks/${Date.now()}-${randomUUID()}-${sanitizedBase}.pdf`;
 
     const { data: existingGuidebook } = await this.admin
       .from("project_guidebooks")

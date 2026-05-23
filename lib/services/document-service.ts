@@ -9,6 +9,7 @@ import { recordDocumentReviewEvent } from "./review-service";
 import { aiService } from "./ai-service";
 import { documentIntelligenceService } from "./document-intelligence-service";
 import { workflowOrchestratorService } from "./workflow-orchestrator-service";
+import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 import { eventBus } from "@/lib/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 import crypto from "crypto";
@@ -452,6 +453,15 @@ export class DocumentService {
 
     if (error) throw error;
 
+    await runRuntimeTransition(user, {
+      entityType: "document",
+      entityId: params.documentId,
+      projectId: params.projectId,
+      targetState: workflowState,
+      reason: "Metadata Updated",
+      metadata: { project_credit_id: params.creditId, doc_category: params.docCategory, notes: params.notes }
+    });
+
     await logDocumentActivity(this.admin, {
       documentId: params.documentId,
       projectId: params.projectId,
@@ -503,10 +513,19 @@ export class DocumentService {
       summary: `Archived document ${document.file_name} (No-Deletion Policy).`,
     });
 
+    const result = await runRuntimeTransition(user, {
+      entityType: "document",
+      entityId: params.documentId,
+      projectId: params.projectId,
+      targetState: "REJECTED",
+      reason: `[System] Withdrawn by ${user.email} at ${new Date().toISOString()}`,
+    });
+
+    if (!result.ok) throw new Error(result.message || "Failed to withdraw document through orchestration.");
+
     const { error } = await this.admin
       .from("project_document")
       .update({ 
-        state: "REJECTED", 
         is_latest: false,
         notes: (document.notes ?? "") + `\n[System] Withdrawn by ${user.email} at ${new Date().toISOString()}`
       })

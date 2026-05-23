@@ -171,7 +171,8 @@ function mapCredit(
   assignments: Record<string, any>[] = [],
 ): CreditWorkspace {
   const creditDocuments = documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[];
-  const derived = deriveCreditLifecycleState(credit, creditDocuments as unknown as Record<string, any>[]);
+  const derivedStatus = credit.status ?? credit.state ?? "pending";
+  const derivedCompletionPct = Number(credit.completion_pct ?? 0);
   const activeAssignments = assignments.filter((assignment) => assignment.project_credit_id === credit.id && assignment.is_active);
   const normalizedRequirements = normalizeDocumentsRequired(credit.documents_required).map((requirement) => {
     const assignment = activeAssignments.find((item) => String(item.document_type ?? "") === requirement.type);
@@ -196,10 +197,10 @@ function mapCredit(
     responsible_role: credit.responsible_role ? normalizeRole(credit.responsible_role) : null,
     is_mandatory: credit.is_mandatory,
     documents_required: normalizedRequirements,
-    state: derived.status,
-    status: derived.status,
+    state: derivedStatus,
+    status: derivedStatus,
     blocked_by: credit.blocked_by,
-    completion_pct: derived.completion_pct,
+    completion_pct: derivedCompletionPct,
     documentation_summary: credit.documentation_summary,
     what_to_submit: credit.what_to_submit,
     sample_document_url: credit.sample_document_url,
@@ -561,18 +562,13 @@ export const getDashboardProjects = cache(async function getDashboardProjects():
       openRemarks += remarksCountByCreditId.get(c.id) ?? 0;
     });
 
-    const derivedCredits = credits.map((credit: any) => {
-      const documentsForCredit = documents.filter((d: any) => d.credit_id === credit.id);
-      return deriveCreditLifecycleState(credit, documentsForCredit);
-    });
-
     const overallCompletion =
-      derivedCredits.reduce((sum: number, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
-      Math.max(derivedCredits.length, 1);
+      credits.reduce((sum: number, credit: any) => sum + Number(credit.completion_pct ?? 0), 0) /
+      Math.max(credits.length, 1);
 
     const mandatoryMet = credits.filter(
-      (credit: any, index: number) =>
-        credit.is_mandatory && derivedCredits[index]?.status === "complete"
+      (credit: any) =>
+        credit.is_mandatory && String(credit.status).toUpperCase() === "COMPLETE"
     ).length;
 
     const statusFlag =
@@ -886,11 +882,28 @@ export function creditStats(credits: CreditWorkspace[]) {
   return {
     total,
     docs,
-    categories: Object.entries(categoryMeta).map(([key, meta]) => ({
-      key,
-      label: meta.label,
-      count: credits.filter((credit) => credit.category === key).length,
-    })),
+    categories: Object.entries(categoryMeta).map(([key, meta]) => {
+      const categoryCredits = credits.filter((credit) => credit.category === key);
+      const completed = categoryCredits.filter((credit) => credit.status === "complete").length;
+      const inProgress = categoryCredits.filter((credit) => credit.status === "in_progress").length;
+      const blocked = categoryCredits.filter((credit) => credit.status === "blocked").length;
+      const avgCompletion = categoryCredits.length
+        ? Math.round(
+            categoryCredits.reduce((sum, credit) => sum + Number(credit.completion_pct ?? 0), 0) /
+              categoryCredits.length,
+          )
+        : 0;
+      
+      return {
+        key,
+        label: meta.label,
+        count: categoryCredits.length,
+        completed,
+        inProgress,
+        blocked,
+        avgCompletion,
+      };
+    }),
     mandatoryMet: mandatory.filter((credit) => credit.status === "complete").length,
     mandatoryTotal: mandatory.length,
   };

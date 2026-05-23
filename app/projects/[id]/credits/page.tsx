@@ -28,9 +28,17 @@ export default async function ProjectCreditsPage({
 
   if (!workspace) return null;
 
+  const user = await import("@/lib/data").then(m => m.getCurrentUser());
   const isL0Contributor = ["mep", "architect", "contractor"].includes(workspace.userRole);
   const roleScopedCredits = isL0Contributor
-    ? workspace.credits.filter((credit: any) => !credit.responsible_role || credit.responsible_role === workspace.userRole)
+    ? workspace.credits.filter((credit: any) => {
+        if (!credit.responsible_role) return true;
+        if (credit.responsible_role === workspace.userRole) return true;
+        if (!user) return false;
+        return credit.documents_required?.some(
+          (doc: any) => doc.assigned_user_id === user.id || doc.assigned_role === workspace.userRole
+        );
+      })
     : workspace.credits;
 
   const stats = creditStats(roleScopedCredits);
@@ -97,14 +105,24 @@ export default async function ProjectCreditsPage({
                 </Badge>
               </div>
               
-              <div className="space-y-2 flex-1">
+                <div className="space-y-2 flex-1">
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
                   <span>Points</span>
                   <strong className="text-[var(--color-text-primary)]">{Number(credit.available_points ?? 0).toFixed(1)}</strong>
                 </div>
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
                   <span>Owner</span>
-                  <strong className="text-[var(--color-text-primary)]">{credit.responsible_role ? String(credit.responsible_role).replace("_", " ") : "Unassigned"}</strong>
+                  <strong className="text-[var(--color-text-primary)] uppercase">
+                    {(() => {
+                      if (credit.responsible_role) return String(credit.responsible_role).replace("_", " ");
+                      const assignedDocs = credit.documents_required?.filter((d: any) => d.assigned_role || d.assigned_name) || [];
+                      if (assignedDocs.length === 0) return "UNASSIGNED";
+                      const uniqueRoles = Array.from(new Set(assignedDocs.map((d: any) => d.assigned_role).filter(Boolean)));
+                      if (uniqueRoles.length === 1) return String(uniqueRoles[0]).replace("_", " ");
+                      if (uniqueRoles.length > 1) return "MIXED CONTRIBUTORS";
+                      return "ASSIGNED";
+                    })()}
+                  </strong>
                 </div>
                 {credit.remarks?.[0]?.body && (
                   <div className="bg-[var(--color-surface-2)] p-2.5 rounded-lg border border-[var(--color-border)] mt-2">

@@ -5,6 +5,7 @@ import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { stageGateService } from "@/lib/services/stage-gate-service";
 import { formatDateTimeIST } from "@/lib/utils";
 import { toLegacyCreditStatus } from "@/lib/workflow-utils";
+import { AiGroundingUploads } from "@/components/project/ai-grounding-uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -25,25 +26,7 @@ export default async function ProjectOverviewPage({
 
   const stats = creditStats(roleScopedCredits);
 
-  const categoryProgress = stats.categories.map((item) => {
-    const categoryCredits = roleScopedCredits.filter((credit: any) => credit.category === item.key);
-    const completed = categoryCredits.filter((credit: any) => toLegacyCreditStatus(credit.state ?? credit.status) === "complete").length;
-    const inProgress = categoryCredits.filter((credit: any) => toLegacyCreditStatus(credit.state ?? credit.status) === "in_progress").length;
-    const blocked = categoryCredits.filter((credit: any) => toLegacyCreditStatus(credit.state ?? credit.status) === "blocked").length;
-    const avgCompletion = categoryCredits.length
-      ? Math.round(
-          categoryCredits.reduce((sum: number, credit: any) => sum + Number(credit.completion_pct ?? 0), 0) /
-            categoryCredits.length,
-        )
-      : 0;
-    return {
-      ...item,
-      completed,
-      inProgress,
-      blocked,
-      avgCompletion,
-    };
-  });
+  const categoryProgress = stats.categories;
 
   const milestones = await stageGateService.getMilestones(projectId);
 

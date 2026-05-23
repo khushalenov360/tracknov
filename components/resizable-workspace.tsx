@@ -23,6 +23,28 @@ export function ResizableWorkspace({
   const containerRef = useRef<HTMLDivElement>(null);
 
 
+  const [userEmail, setUserEmail] = useState<string | undefined>(email);
+
+  useEffect(() => {
+    if (!email) {
+      const fetchUser = async () => {
+        try {
+          const { createClient } = await import("@/lib/supabase/browser");
+          const supabase = createClient();
+          const { data } = await supabase.auth.getUser();
+          if (data?.user?.email) {
+            setUserEmail(data.user.email);
+          }
+        } catch (e) {
+          // Ignore
+        }
+      };
+      fetchUser();
+    } else {
+      setUserEmail(email);
+    }
+  }, [email]);
+
   return (
     <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden" ref={containerRef}>
       
@@ -39,7 +61,7 @@ export function ResizableWorkspace({
             <input
               type="text"
               placeholder="Quick search reviews, credits, hash..."
-              className="pl-9 pr-4 py-1.5 w-64 border border-[var(--color-border)] rounded-lg text-sm bg-slate-50 focus:outline-none focus:bg-white focus:border-[var(--color-green)]"
+              className="pl-9 pr-4 py-1.5 w-80 border border-[var(--color-border)] rounded-lg text-sm bg-slate-50 focus:outline-none focus:bg-white focus:border-[var(--color-green)]"
             />
           </div>
 
@@ -57,8 +79,8 @@ export function ResizableWorkspace({
           <div className="flex items-center gap-4">
             <div className="h-8 w-8 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center font-bold text-indigo-600 text-sm">
               {(() => {
-                if (!email) return "OP";
-                const prefix = email.split("@")[0];
+                if (!userEmail) return "OP";
+                const prefix = userEmail.split("@")[0];
                 const parts = prefix.split(/[._-]/).filter(Boolean);
                 if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
                 if (parts[0] && parts[0].length >= 2) return parts[0].substring(0, 2).toUpperCase();

@@ -108,8 +108,15 @@ export default async function ProjectDocumentsPage({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6 text-left items-start">
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div className="flex items-center text-xs font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] mb-2">
+        <a href="javascript:history.back()" className="flex items-center gap-1.5 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          Back to previous screen
+        </a>
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6 text-left items-start">
+        <div className="space-y-4">
         <div className="surface-card p-4 space-y-3.5">
           <div className="border-b border-[var(--color-border)] pb-2">
             <span className="text-xs uppercase font-black text-slate-500">Active Credit</span>
@@ -120,10 +127,26 @@ export default async function ProjectDocumentsPage({
 
           <div className="space-y-1">
             <span className="text-xs uppercase font-black text-slate-500">Expectations</span>
-            <p className="text-xs leading-relaxed text-[var(--color-text-secondary)] bg-[var(--color-surface-2)] p-2.5 rounded border border-[var(--color-border)]">
-              {selectedCredit.what_to_submit || "No instructions provided."}
+            <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed line-clamp-3">
+              {selectedCredit.what_to_submit || "No detailed submission guidance provided."}
             </p>
           </div>
+
+          <div className="pt-2 border-t border-[var(--color-border)] space-y-3">
+            <div className="flex justify-between items-center pb-2 border-b border-[var(--color-border)]">
+              <span className="text-xs font-medium text-slate-500">Credit Owner</span>
+              <span className="text-sm font-bold text-[var(--color-text-primary)] uppercase">
+                {(() => {
+                  if (selectedCredit.responsible_role) return String(selectedCredit.responsible_role).toUpperCase();
+                  const assignedDocs = selectedCredit.documents_required?.filter((d: any) => d.assigned_role || d.assigned_name) || [];
+                  if (assignedDocs.length === 0) return "UNASSIGNED";
+                  const uniqueRoles = Array.from(new Set(assignedDocs.map((d: any) => d.assigned_role).filter(Boolean)));
+                  if (uniqueRoles.length === 1) return String(uniqueRoles[0]).replace("_", " ");
+                  if (uniqueRoles.length > 1) return "MIXED CONTRIBUTORS";
+                  return "ASSIGNED";
+                })()}
+              </span>
+            </div>
 
           <CreditRequirementsManager
             projectId={projectId}
@@ -133,6 +156,7 @@ export default async function ProjectDocumentsPage({
             members={workspace.members}
             canManage={canFinalReview}
           />
+        </div>
         </div>
 
         <div className="surface-card p-4 space-y-3">
@@ -192,6 +216,7 @@ export default async function ProjectDocumentsPage({
             ]}
           />
         )}
+      </div>
       </div>
     </div>
   );

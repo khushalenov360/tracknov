@@ -184,7 +184,9 @@ export default function CommandCenter({
     });
 
     // Synthesize Action Queue (Upload requests)
+    const activeCreditIds = new Set<string>();
     actionQueue.forEach((item, idx) => {
+      if (item.projectCreditId) activeCreditIds.add(item.projectCreditId);
       const docSlug = item.documentType ? item.documentType.replace(/\s+/g, "-").toLowerCase() : String(idx);
       list.push({
         id: `upload-${item.projectCreditId || idx}-${docSlug}`,
@@ -203,11 +205,15 @@ export default function CommandCenter({
 
     // Fallbacks from roleTasks if queues are light
     roleTasks.forEach((item, idx) => {
+      // Avoid showing generic "TASK" if we already have specific action assignments for this credit
+      const fallbackCreditId = item.id.replace("upload-", "").replace("clarify-", "");
+      if (activeCreditIds.has(fallbackCreditId)) return;
+
       list.push({
         id: `role-${item.id || idx}`,
         projectId: item.projectId || "",
         projectName: item.projectName || "Active Project",
-        projectCreditId: item.projectCreditId || "",
+        projectCreditId: fallbackCreditId,
         creditCode: "TASK",
         creditName: item.title || "Pending Duty",
         documentType: item.type || "Requirement",

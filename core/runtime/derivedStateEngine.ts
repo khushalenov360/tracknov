@@ -7,12 +7,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Frontend client readiness/scoring inferences are strictly prohibited from mutating persistence layers.
  */
 
-export async function recomputeDerivedState(projectId: string): Promise<void> {
+export async function recalculateSubmittal(submittalId: string): Promise<void> {
   const admin = createAdminClient();
+  await admin.rpc("recalculate_submittal_state", { p_submittal_id: submittalId });
+}
 
-  // Enforce Section 34 Derived Dependency Propagation: cascade project scores -> certification state
+export async function recalculateCredit(creditId: string): Promise<void> {
+  const admin = createAdminClient();
+  await admin.rpc("recalculate_credit_state", { p_credit_id: creditId });
+}
+
+export async function recalculateProject(projectId: string): Promise<void> {
+  const admin = createAdminClient();
   await admin.rpc("recalculate_project_state", { p_project_id: projectId });
   await admin.rpc("recalculate_certification_state", { p_project_id: projectId });
+}
+
+export async function recomputeDerivedState(projectId: string): Promise<void> {
+  return recalculateProject(projectId);
 }
 
 export async function rebuildDerivedState(projectId: string): Promise<void> {
@@ -20,3 +32,4 @@ export async function rebuildDerivedState(projectId: string): Promise<void> {
   // Authoritative full state dependency graph rebuild
   await admin.rpc("rebuild_derived_states", { p_project_id: projectId });
 }
+

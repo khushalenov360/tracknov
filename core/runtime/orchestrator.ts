@@ -5,14 +5,17 @@ import { recomputeDerivedState } from "@/core/runtime/derivedStateEngine";
 import { governanceLocalStorage } from "@/lib/governance/governanceContext";
 import crypto from "node:crypto";
 
+import { executeAction, ExecutionContext, ExecutionResult } from "@/core/runtime/executionContext";
+
 export type RuntimeTransitionRequest = {
-  entityType: "document" | "submittal" | "project";
+  entityType: "document" | "submittal" | "project" | "credit";
   entityId: string;
   targetState: string;
   projectId?: string | null;
   action?: string | null;
   reason?: string | null;
   metadata?: Record<string, unknown>;
+  idempotencyKey?: string | null;
   override?: boolean;
   overrideReason?: string | null;
 };
@@ -27,15 +30,14 @@ export type RuntimeTransitionRequest = {
 export async function runRuntimeTransition(
   user: CurrentUser | null,
   request: RuntimeTransitionRequest,
-) {
+): Promise<ExecutionResult> {
   const started = Date.now();
   
   // Enforce Section 33: entityId and entityType are mandatory
   if (!request.entityId || !request.entityType) {
     return {
-      ok: false,
-      status: "invalid_payload",
-      message: "Universal Orchestration Enforcement: entityId and entityType are mandatory.",
+      success: false,
+      errors: ["Universal Orchestration Enforcement: entityId and entityType are mandatory."],
     };
   }
 
@@ -50,23 +52,41 @@ export async function runRuntimeTransition(
     traceId,
     causalityChainId,
   }, async () => {
-    // 1. Execute Primary Workflow Mutation (L3)
-    const transitionResult = await workflowOrchestratorService.transition(user, request);
-    if (!transitionResult.ok) {
-      return transitionResult;
-    }
+    
+    // We enforce execution context wrapper for isolation and RBAC.
+    const context: ExecutionContext = {
+      actorId: user?.id || "SYSTEM",
+      projectId: request.projectId || "",
+      entityType: request.entityType,
+      entityId: request.entityId,
+      action: request.action || "transition",
+    };
 
-    // 2. Trigger Automated Derived State Reconciliation (L4 - Section 9)
-    const projectId = transitionResult.derived_state_summary?.project_id;
-    if (projectId) {
-      try {
-        await recomputeDerivedState(projectId);
-      } catch (err) {
-        // Log but don't fail the primary transition
-        console.error("[ORCHESTRATOR_L4_FAILURE] Derived state recomputation failed:", err);
+    return await executeAction(context, "submit_document", async (admin, resolvedRole) => {
+      // 1. Execute Primary Workflow Mutation (L3)
+      const transitionResult = await workflowOrchestratorService.transition(user, request);
+      if (!transitionResult.ok) {
+        return {
+          success: false,
+          errors: [transitionResult.message || "Workflow Transition Failed"],
+        };
       }
-    }
 
-    return transitionResult;
+      // 2. Trigger Automated Derived State Reconciliation (L4 - Section 9)
+      const projectId = transitionResult.derived_state_summary?.project_id;
+      if (projectId) {
+        try {
+          await recomputeDerivedState(projectId);
+        } catch (err) {
+          console.error("[ORCHESTRATOR_L4_FAILURE] Derived state recomputation failed:", err);
+        }
+      }
+      return {
+        success: true,
+        workflowState: request.targetState,
+        data: transitionResult,
+      };
+    });
   });
 }
+

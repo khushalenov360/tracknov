@@ -5,6 +5,7 @@ import { logSystemActivity } from "./activity-service";
 import { taskService } from "./task-service";
 import { canUser, getRoleLevel } from "@/lib/rbac";
 import { interceptMutation } from "@/lib/governance/governanceMutationInterceptor";
+import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 import type { CurrentUser, MemberRole } from "@/lib/types";
 
 export class CreditService {
@@ -45,19 +46,18 @@ export class CreditService {
       payload: params
     });
 
-    // Update project_credits via Atomic Governance RPC
-    const { data: rpcData, error: rpcError } = await this.admin.rpc("execute_governed_transition", {
-      p_entity_type: "credit",
-      p_entity_id: params.creditId,
-      p_target_state: params.state,
-      p_actor_id: user.id,
-      p_actor_role: actorRole,
-      p_reason: params.remarks || "State transition",
-      p_idempotency_key: `credit-${params.creditId}-${Date.now()}`,
-      p_metadata: { remarks: params.remarks || null }
+    // Update project_credits via Orchestrator
+    const result = await runRuntimeTransition(user, {
+      entityType: "credit",
+      entityId: params.creditId,
+      projectId: params.projectId,
+      targetState: params.state,
+      reason: params.remarks || "State transition",
+      idempotencyKey: `credit-${params.creditId}-${Date.now()}`,
+      metadata: { remarks: params.remarks || null }
     });
 
-    if (rpcError) throw rpcError;
+    if (!result.ok) throw new Error(result.message || "Failed to update credit state.");
   }
 
   async updateRequirements(user: CurrentUser, params: {

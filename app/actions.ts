@@ -19,6 +19,7 @@ import { documentService } from "@/lib/services/document-service";
 import { creditService } from "@/lib/services/credit-service";
 import { reviewService } from "@/lib/services/review-service";
 import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
+import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
 import { logSystemActivity } from "@/lib/services/activity-service";
 import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
@@ -726,6 +727,7 @@ export async function uploadProjectGuidebookAction(formData: FormData) {
     revalidatePath("/projects");
     redirect(`/projects/${projectId}?success=${encodeURIComponent("Guidebook uploaded and instantiation checked.")}`);
   } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Guidebook upload failed.")}`);
   }
 }
@@ -753,6 +755,7 @@ export async function importProjectTrackerBaselineAction(formData: FormData) {
     revalidatePath("/credits");
     redirect(`/projects/${projectId}?success=${encodeURIComponent("Tracker baseline imported.")}`);
   } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Tracker baseline import failed.")}`);
   }
 }
@@ -1229,9 +1232,10 @@ export async function transitionSubmittalAction(
   if (!user) return { error: "Unauthorized" };
 
   try {
-    const result = await workflowOrchestratorService.transitionSubmittal(user, {
+    const result = await runRuntimeTransition(user, {
+      entityType: "submittal",
+      entityId: submittalId,
       projectId,
-      submittalId,
       targetState,
       reason,
       override,
@@ -1292,7 +1296,7 @@ export async function submitDocumentTransitionAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const result = await workflowOrchestratorService.transition(user, {
+  const result = await runRuntimeTransition(user, {
     entityType: "document",
     entityId: documentId,
     projectId,

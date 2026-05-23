@@ -12,7 +12,7 @@ import {
 } from "@/lib/workflow/machines";
 import type { SubmittalWorkflowState, ProjectCertificationState } from "@/lib/workflow/types";
 
-type WorkflowEntityType = "document" | "submittal" | "project";
+type WorkflowEntityType = "document" | "submittal" | "project" | "credit";
 
 export type WorkflowTransitionRequest = {
   entityType: WorkflowEntityType;
