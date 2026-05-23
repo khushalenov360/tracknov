@@ -58,6 +58,12 @@ const uploadMaxBytes = MAX_SINGLE_UPLOAD_SIZE_BYTES;
 
 
 
+export async function signOutAction() {
+  const client = createClient();
+  await client.auth.signOut();
+  redirect("/login");
+}
+
 export async function createProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const clientName = String(formData.get("client") ?? "").trim();
@@ -1170,14 +1176,20 @@ export async function updateTaskStateAction(formData: FormData) {
 }
 
 export async function assignCreditContributorAction(formData: FormData) {
+  console.log("[assignCreditContributorAction] Started");
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user) {
+    console.log("[assignCreditContributorAction] No user found");
+    return;
+  }
 
   const projectId = String(formData.get("project_id"));
   const projectCreditId = String(formData.get("project_credit_id") || formData.get("credit_id"));
   const assignedUserId = String(formData.get("assigned_user_id") || formData.get("assigned_to")) || null;
   const documentType = String(formData.get("document_type") || formData.get("doc_type")) || null;
   const reason = String(formData.get("reason")) || null;
+
+  console.log("[assignCreditContributorAction] Payload:", { projectId, projectCreditId, assignedUserId, documentType });
 
   try {
     const result = await workflowOrchestratorService.assignContributor(user, {
@@ -1187,6 +1199,8 @@ export async function assignCreditContributorAction(formData: FormData) {
       documentType,
       reason,
     });
+    
+    console.log("[assignCreditContributorAction] Orchestrator result:", result);
 
     if (!result.ok) {
       return;

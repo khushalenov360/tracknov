@@ -1,9 +1,11 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 
 export function createAdminClient() {
   if (!env.supabaseServiceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin operations.");
+    console.warn("SUPABASE_SERVICE_ROLE_KEY is missing. Falling back to normal client for admin operations.");
+    return createClient();
   }
 
   return createSupabaseClient(env.supabaseUrl, env.supabaseServiceRoleKey, {

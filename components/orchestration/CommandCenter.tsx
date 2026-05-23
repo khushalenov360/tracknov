@@ -185,8 +185,9 @@ export default function CommandCenter({
 
     // Synthesize Action Queue (Upload requests)
     actionQueue.forEach((item, idx) => {
+      const docSlug = item.documentType ? item.documentType.replace(/\s+/g, "-").toLowerCase() : String(idx);
       list.push({
-        id: `upload-${item.projectCreditId || idx}`,
+        id: `upload-${item.projectCreditId || idx}-${docSlug}`,
         projectId: item.projectId,
         projectName: item.projectName,
         projectCreditId: item.projectCreditId,
@@ -828,7 +829,7 @@ export default function CommandCenter({
                     <span className="text-[9px] uppercase font-black text-slate-500 block">SLA Risk Hotspot</span>
                     {insights.stuckItems && insights.stuckItems.length > 0 ? (
                       <div className="text-xs text-[var(--color-text-secondary)]">
-                        <strong>{insights.stuckItems[0].projectName}</strong>: {insights.stuckItems[0].missingDoc} has been stalled under {insights.stuckItems[0].creditCode} for 6 days.
+                        <strong>{insights.stuckItems[0].projectName}</strong>: {insights.stuckItems[0].missingDoc} has been stalled under {insights.stuckItems[0].creditCode} for {insights.stuckItems[0].stalledDays || 0} days.
                       </div>
                     ) : (
                       <div className="text-xs text-[var(--color-text-secondary)]">No critical SLA breaches detected. Compliance velocity is within normal parameters.</div>

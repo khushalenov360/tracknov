@@ -11,6 +11,7 @@ import {
   canEditOwnDocumentBeforeFinalApproval,
   canManageProject,
   canUploadProjectDocuments,
+  getRoleLevel,
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -42,13 +43,15 @@ type SupabaseClient = ReturnType<typeof createClient>;
 const greenInteriorsSystem = "IGBC Green Interiors";
 
 function normalizeRole(role: string): MemberRole {
-  if (role === "superuser") {
-    return "super_user";
+  if (role === "superuser") return "super_user";
+  if (role === "admin") return "super_admin";
+  
+  const upper = role.toUpperCase();
+  if (upper === "L0" || upper === "L1" || upper === "L2" || upper === "L3" || upper === "L4" || upper === "L5") {
+    return upper as MemberRole;
   }
-  if (role === "admin") {
-    return "super_admin";
-  }
-  const supported = ["L0", "L1", "L2", "L3", "L4", "L5", "super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
+  
+  const supported = ["super_user", "l4_reserved", "owner", "client", "consultant", "architect", "mep", "contractor", "project_admin", "super_admin"];
   return supported.includes(role) ? (role as MemberRole) : "consultant";
 }
 
@@ -631,7 +634,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
   }
 
   const currentUser = await getCurrentUser();
-  if (currentUser?.role === "super_user" && env.supabaseServiceRoleKey) {
+  if ((currentUser?.role === "super_user" || currentUser?.role === "L5") && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
     const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, { data: assignments }, { data: tasks }, { data: history }, members, invites] =
       await Promise.all([
@@ -708,7 +711,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
 
     return {
       project,
-      userRole: "super_user",
+      userRole: currentUser?.role as MemberRole || "super_user",
       credits: mappedCredits,
       guidebooks: mappedGuidebooks,
       validationRules: (validationRules ?? []) as any,
@@ -811,9 +814,13 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
   const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, documents ?? [], remarks ?? [], mappedAssignments));
   const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
 
+  const globalLevel = getRoleLevel(currentUser?.role);
+  const projectLevel = getRoleLevel(membership.role as MemberRole);
+  const effectiveRole = globalLevel >= projectLevel ? (currentUser?.role as MemberRole) : normalizeRole(membership.role);
+
   return {
     project,
-    userRole: normalizeRole(membership.role),
+    userRole: effectiveRole,
     credits: mappedCredits,
     guidebooks: mappedGuidebooks,
     validationRules: (validationRules ?? []) as any,
@@ -2032,7 +2039,7 @@ export const getExecutiveInsights = cache(async function getExecutiveInsights() 
   const [{ data: credits }, { data: documents }, { data: profiles }] = await Promise.all([
     client
       .from("project_credits")
-      .select("id, project_id, credit_code, credit_name, responsible_role, documents_required")
+      .select("id, project_id, credit_code, credit_name, responsible_role, documents_required, created_at")
       .in("project_id", projectIds),
     client
       .from("project_document")
@@ -2064,6 +2071,7 @@ export const getExecutiveInsights = cache(async function getExecutiveInsights() 
         const state = normalizeWorkflowState(doc.state, doc.status);
         return state === "SUBMITTED" || state === "UNDER_REVIEW" || state === "RESUBMITTED";
       }).length;
+      const stalledDays = credit.created_at ? Math.max(0, Math.floor((Date.now() - new Date(credit.created_at).getTime()) / (1000 * 60 * 60 * 24))) : 0;
       return {
         projectId: credit.project_id,
         projectName: projectById.get(credit.project_id)?.name ?? "Project",
@@ -2074,6 +2082,7 @@ export const getExecutiveInsights = cache(async function getExecutiveInsights() 
         missingDoc: missing?.label ?? "No mandatory evidence uploaded",
         rejectedCount,
         pendingCount,
+        stalledDays,
       };
     })
     .filter((item) => item.missingDoc || item.rejectedCount > 0 || item.pendingCount > 0)

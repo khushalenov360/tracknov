@@ -81,6 +81,7 @@ export default async function ProjectLayout({
       aiTitle={workspace.project.name}
       description={`${workspace.project.certification_type} / Target ${workspace.project.target_rating}`}
       role={workspace.userRole}
+      email={user?.email}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
       <ProjectTabs projectId={projectId} />

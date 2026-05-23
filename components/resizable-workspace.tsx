@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Bell } from "lucide-react";
 import Link from "next/link";
+import { signOutAction } from "@/app/actions";
 
 export function ResizableWorkspace({
   children,
@@ -105,7 +106,7 @@ export function ResizableWorkspace({
 
           <span className="h-4 w-px bg-slate-200" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="h-8 w-8 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center font-bold text-indigo-600 text-sm">
               {(() => {
                 if (!email) return "OP";
@@ -116,6 +117,16 @@ export function ResizableWorkspace({
                 return (parts[0]?.[0] || "U").toUpperCase();
               })()}
             </div>
+            
+            <form action={signOutAction}>
+              <button 
+                type="submit" 
+                className="text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
+                title="Sign out"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </header>

@@ -5,7 +5,6 @@ import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { stageGateService } from "@/lib/services/stage-gate-service";
 import { formatDateTimeIST } from "@/lib/utils";
 import { toLegacyCreditStatus } from "@/lib/workflow-utils";
-import { AiGroundingUploads } from "@/components/project/ai-grounding-uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -91,10 +90,6 @@ export default async function ProjectOverviewPage({
               <p>Location: {workspace.project.location || "TBD"}</p>
             </div>
           </div>
-
-          {["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole) && (
-            <AiGroundingUploads projectId={projectId} />
-          )}
 
           <div className="surface-card p-4 space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-secondary)]">

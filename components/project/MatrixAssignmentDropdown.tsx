@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { assignCreditContributorAction } from "@/app/actions";
 import { cleanRoleLabel } from "@/lib/utils";
 import { ProjectMemberRecord } from "@/lib/types";
@@ -22,26 +22,25 @@ export const MatrixAssignmentDropdown: React.FC<MatrixAssignmentDropdownProps> =
   members,
   isDisabled = false,
 }) => {
-  const [isPending, setIsPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const assignedTo = e.target.value;
     if (!assignedTo) return;
 
-    setIsPending(true);
     const formData = new FormData();
     formData.append("project_id", projectId);
     formData.append("credit_id", creditId);
     formData.append("assigned_to", assignedTo);
     formData.append("doc_type", docType);
 
-    try {
-      await assignCreditContributorAction(formData);
-    } catch (error) {
-      console.error("Assignment failed:", error);
-    } finally {
-      setIsPending(false);
-    }
+    startTransition(async () => {
+      try {
+        await assignCreditContributorAction(formData);
+      } catch (error) {
+        console.error("Assignment failed:", error);
+      }
+    });
   };
 
   const coordinators = members.filter((m) =>
