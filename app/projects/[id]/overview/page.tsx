@@ -5,7 +5,6 @@ import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { stageGateService } from "@/lib/services/stage-gate-service";
 import { formatDateTimeIST } from "@/lib/utils";
 import { toLegacyCreditStatus } from "@/lib/workflow-utils";
-import { AiGroundingUploads } from "@/components/project/ai-grounding-uploads";
 
 export const dynamic = "force-dynamic";
 

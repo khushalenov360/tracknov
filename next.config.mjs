@@ -10,8 +10,9 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   experimental: {
     serverActions: {
-      bodySizeLimit: "64mb",
+      bodySizeLimit: "250mb",
     },
+    middlewareClientMaxBodySize: "250mb",
   },
   eslint: {
     ignoreDuringBuilds: true,

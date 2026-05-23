@@ -2,6 +2,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
+import { CreditRequirementsManager } from "@/components/project/credit-requirements-manager";
 import { getProjectWorkspace } from "@/lib/data";
 import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
 import { env } from "@/lib/env";
@@ -124,28 +125,14 @@ export default async function ProjectDocumentsPage({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <span className="text-xs uppercase font-black text-slate-500">Requirements</span>
-            <div className="space-y-2">
-              {selectedCredit.documents_required.map((doc: any) => {
-                const matching = selectedCredit.documents.filter((f: any) => f.doc_category === doc.type);
-                const isApproved = matching.some((f: any) => f.status === "approved");
-                return (
-                  <div key={doc.type} className="flex justify-between items-center text-xs bg-[var(--color-surface-2)] p-2 rounded border border-[var(--color-border)]">
-                    <div>
-                      <p className="font-bold text-[var(--color-text-primary)]">{doc.label}</p>
-                      <p className="text-xs text-[var(--color-text-tertiary)]">{doc.required ? "Required" : "Optional"}</p>
-                    </div>
-                    {isApproved ? (
-                      <CheckCircle2 className="h-4 w-4 text-[var(--color-green)] shrink-0" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-[var(--color-border-strong)] shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CreditRequirementsManager
+            projectId={projectId}
+            creditId={selectedCredit.id}
+            documentsRequired={selectedCredit.documents_required}
+            documents={selectedCredit.documents || []}
+            members={workspace.members}
+            canManage={canFinalReview}
+          />
         </div>
 
         <div className="surface-card p-4 space-y-3">

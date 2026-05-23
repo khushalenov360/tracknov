@@ -34,9 +34,13 @@ export const ROLE_PRECEDENCE_MATRIX: Record<MemberRole, RoleLevel> = {
   contractor: 0,
 };
 
-export function getRoleLevel(role?: MemberRole | null): RoleLevel {
+export function getRoleLevel(role?: MemberRole | string | null): RoleLevel {
   if (!role) return 0;
-  return ROLE_PRECEDENCE_MATRIX[role] ?? 0;
+  const r = role.toUpperCase();
+  if (r === "L0" || r === "L1" || r === "L2" || r === "L3" || r === "L4" || r === "L5") {
+    return ROLE_PRECEDENCE_MATRIX[r as MemberRole] ?? 0;
+  }
+  return ROLE_PRECEDENCE_MATRIX[role as MemberRole] ?? 0;
 }
 
 /**

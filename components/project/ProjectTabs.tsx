@@ -11,7 +11,8 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
     { key: "credits", label: "Credits" },
     { key: "documents", label: "Documents" },
     { key: "clarifications", label: "Clarifications" },
-    { key: "exports", label: "Exports" }
+    { key: "exports", label: "Exports" },
+    { key: "settings", label: "Settings" }
   ];
 
   return (
