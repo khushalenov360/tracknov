@@ -110,9 +110,9 @@ export default async function ProjectDocumentsPage({
   return (
     <div className="space-y-4">
       <div className="flex items-center text-xs font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] mb-2">
-        <a href="javascript:history.back()" className="flex items-center gap-1.5 transition-colors">
+        <a href={`/projects/${projectId}`} className="flex items-center gap-1.5 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-          Back to previous screen
+          Back to project overview
         </a>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6 text-left items-start">
@@ -159,7 +159,32 @@ export default async function ProjectDocumentsPage({
         </div>
         </div>
 
-        <div className="surface-card p-4 space-y-3">
+        {canUpload && (
+          <UploadDocumentForm
+            projectId={projectId}
+            creditId={selectedCredit.id}
+            projectCreditId={selectedCredit.id}
+            docTypes={selectedCredit.documents_required.map((doc: any) => doc.type)}
+            disabled={!env.isConfigured || !selectedCredit.documents_required.length}
+          />
+        )}
+
+        {canReview && (
+          <AiGuidePanel
+            context={validationAssistantContext}
+            enabled={env.aiReady}
+            storageKey={`tracknov-ai-validation-${projectId}-${selectedCredit.id}`}
+            title="AI Validation Assistant"
+            description="Checks document checklist compatibility and keywords before final gate submission."
+            prompts={[
+              "Validate this uploaded document against the credit checklist.",
+              "What is missing before this can go into the submission pack?",
+            ]}
+          />
+        )}
+        </div>
+
+        <div className="surface-card p-4 space-y-3 min-w-0">
           <h4 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">
             Uploaded Evidence Files ({selectedCredit.documents.length})
           </h4>
@@ -190,33 +215,6 @@ export default async function ProjectDocumentsPage({
             )}
           </div>
         </div>
-      </div>
-
-      <div className="space-y-4">
-        {canUpload && (
-          <UploadDocumentForm
-            projectId={projectId}
-            creditId={selectedCredit.id}
-            projectCreditId={selectedCredit.id}
-            docTypes={selectedCredit.documents_required.map((doc: any) => doc.type)}
-            disabled={!env.isConfigured || !selectedCredit.documents_required.length}
-          />
-        )}
-
-        {canReview && (
-          <AiGuidePanel
-            context={validationAssistantContext}
-            enabled={env.aiReady}
-            storageKey={`tracknov-ai-validation-${projectId}-${selectedCredit.id}`}
-            title="AI Validation Assistant"
-            description="Checks document checklist compatibility and keywords before final gate submission."
-            prompts={[
-              "Validate this uploaded document against the credit checklist.",
-              "What is missing before this can go into the submission pack?",
-            ]}
-          />
-        )}
-      </div>
       </div>
     </div>
   );

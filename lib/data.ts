@@ -178,7 +178,7 @@ function mapCredit(
   remarks: Record<string, any>[],
   assignments: Record<string, any>[] = [],
 ): CreditWorkspace {
-  const creditDocuments = documents.filter((document) => document.credit_id === credit.id) as DocumentRecord[];
+  const creditDocuments = documents.filter((document) => document.project_credit_id === credit.id || document.credit_id === credit.id) as DocumentRecord[];
   const derivedStatus = credit.status ?? credit.state ?? "pending";
   const derivedCompletionPct = Number(credit.completion_pct ?? 0);
   const activeAssignments = assignments.filter((assignment) => assignment.project_credit_id === credit.id && assignment.is_active);
@@ -200,7 +200,7 @@ function mapCredit(
     project_id: credit.project_id,
     assigned_user_id: credit.assigned_user_id ?? null,
     credit_code: credit.credit_code,
-    category: credit.category,
+    category: credit.category || (credit.credit_code ? credit.credit_code.split(" ")[0] : null),
     credit_name: credit.credit_name,
     responsible_role: credit.responsible_role ? normalizeRole(credit.responsible_role) : null,
     is_mandatory: credit.is_mandatory,
