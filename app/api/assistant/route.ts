@@ -1462,7 +1462,8 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(confirmReply));
   }
 
-  if (!env.aiReady) {
+  const AI_ENABLED = process.env.AI_ENABLED !== "false";
+  if (!env.aiReady || !AI_ENABLED) {
     // Fall back to attachment analysis or generic reply if possible
     if (attachments.length > 0) {
       const file = attachments[0];
