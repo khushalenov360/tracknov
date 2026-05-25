@@ -154,7 +154,7 @@ export function TaskDetailPanel({ task, currentUserId, currentUserRole, projectM
           </form>
         )}
 
-        {/* Reviewer Actions (Accountable Owner or Admin) */}
+        {/* Reviewer Actions (Accountable PM or Admin) */}
         {(task.accountable_user_id === currentUserId || currentUserRole === "project_admin") && (
           <>
             {task.workflow_state === "UPLOADED" && (

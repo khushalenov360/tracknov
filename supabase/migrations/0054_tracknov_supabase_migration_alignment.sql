@@ -21,7 +21,7 @@ create table if not exists public.credit_stages (
   project_credit_id uuid references public.project_credits(id) on delete cascade,
   credit_id uuid references public.credits(id) on delete cascade,
   stage text check (stage in ('DESIGN', 'CONSTRUCTION', 'HANDOVER')),
-  state public.workflow_state not null default 'DRAFT',
+  state public.workflow_state not null default 'DRAFT'::public.workflow_state,
   version integer not null default 1,
   created_at timestamptz not null default now()
 );
@@ -34,7 +34,7 @@ create table if not exists public.submittals (
   name text,
   type text,
   required_flag boolean not null default true,
-  state public.workflow_state not null default 'DRAFT',
+  state public.workflow_state not null default 'DRAFT'::public.workflow_state,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );

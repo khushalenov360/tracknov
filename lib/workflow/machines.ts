@@ -38,30 +38,56 @@ export class ProjectCertificationMachine extends BaseStateMachine<ProjectCertifi
 }
 
 export class SubmittalWorkflowMachine extends BaseStateMachine<SubmittalWorkflowState> {
-  states = ["DRAFT", "READY", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION", "RESUBMITTED", "APPROVED", "REJECTED", "ELIMINATED"] as const;
+  states = [
+    "ASSIGNED",
+    "IN_PROGRESS",
+    "MAPPED",
+    "L1_REVIEW",
+    "L1_REJECTED",
+    "READY_FOR_L3",
+    "UNDER_L3_REVIEW",
+    "CLARIFICATION",
+    "RESUBMITTED",
+    "APPROVED",
+    "REJECTED",
+    "REVOKED",
+  ] as const;
 
   transitions: TransitionMap<SubmittalWorkflowState> = {
-    DRAFT: ["READY", "ELIMINATED"],
-    READY: ["SUBMITTED", "DRAFT"],
-    SUBMITTED: ["UNDER_REVIEW"],
-    UNDER_REVIEW: ["CLARIFICATION", "APPROVED", "REJECTED"],
-    CLARIFICATION: ["RESUBMITTED", "ELIMINATED"],
-    RESUBMITTED: ["UNDER_REVIEW"],
-    APPROVED: ["REJECTED"], // Can be revoked
-    REJECTED: ["DRAFT", "ELIMINATED"],
-    ELIMINATED: [],
+    ASSIGNED: ["IN_PROGRESS"],
+    IN_PROGRESS: ["MAPPED"],
+    MAPPED: ["L1_REVIEW"],
+    L1_REVIEW: ["READY_FOR_L3", "L1_REJECTED", "REJECTED", "UNDER_L3_REVIEW", "CLARIFICATION"],
+    L1_REJECTED: ["IN_PROGRESS"],
+    READY_FOR_L3: ["UNDER_L3_REVIEW"],
+    UNDER_L3_REVIEW: ["APPROVED", "CLARIFICATION", "REJECTED"],
+    CLARIFICATION: ["RESUBMITTED", "IN_PROGRESS"],
+    RESUBMITTED: ["UNDER_L3_REVIEW"],
+    APPROVED: ["REVOKED"],
+    REJECTED: ["IN_PROGRESS"],
+    REVOKED: ["ASSIGNED"],
   };
 
   rolesAllowed: RoleTransitionMap<SubmittalWorkflowState> = {
-    "DRAFT->READY": ["L0", "L1", "L3", "L5"],
-    "READY->SUBMITTED": ["L0", "L1", "L3", "L5"],
-    "SUBMITTED->UNDER_REVIEW": ["L1", "L3", "L5"], // Owner reviews first
-    "UNDER_REVIEW->CLARIFICATION": ["L1", "L3", "L5"],
-    "UNDER_REVIEW->APPROVED": ["L3", "L5"], // Only L3 can formally approve for certification
-    "UNDER_REVIEW->REJECTED": ["L3", "L5"],
+    "ASSIGNED->IN_PROGRESS": ["L0", "L1", "L3", "L5"],
+    "IN_PROGRESS->MAPPED": ["L0", "L1", "L3", "L5"],
+    "MAPPED->L1_REVIEW": ["L0", "L1", "L3", "L5"],
+    "L1_REVIEW->READY_FOR_L3": ["L1", "L3", "L5"],
+    "L1_REVIEW->L1_REJECTED": ["L1", "L3", "L5"],
+    "L1_REVIEW->REJECTED": ["L1", "L3", "L5"],
+    "L1_REVIEW->UNDER_L3_REVIEW": ["L1", "L3", "L5"],
+    "L1_REVIEW->CLARIFICATION": ["L1", "L3", "L5"],
+    "L1_REJECTED->IN_PROGRESS": ["L0", "L1", "L3", "L5"],
+    "READY_FOR_L3->UNDER_L3_REVIEW": ["L3", "L5"],
+    "UNDER_L3_REVIEW->APPROVED": ["L3", "L5"],
+    "UNDER_L3_REVIEW->CLARIFICATION": ["L3", "L5"],
+    "UNDER_L3_REVIEW->REJECTED": ["L3", "L5"],
     "CLARIFICATION->RESUBMITTED": ["L0", "L1", "L3", "L5"],
-    "APPROVED->REJECTED": ["L3", "L5"],
-    "REJECTED->DRAFT": ["L0", "L1", "L3", "L5"],
+    "CLARIFICATION->IN_PROGRESS": ["L0", "L1", "L3", "L5"],
+    "RESUBMITTED->UNDER_L3_REVIEW": ["L0", "L1", "L3", "L5"],
+    "APPROVED->REVOKED": ["L3", "L5"],
+    "REJECTED->IN_PROGRESS": ["L0", "L1", "L3", "L5"],
+    "REVOKED->ASSIGNED": ["L3", "L5"],
   };
 }
 

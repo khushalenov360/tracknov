@@ -9,8 +9,8 @@ export const categoryMeta = {
 
 export const documentStatuses = {
   uploaded: {
-    label: "Pending Project Owner Review",
-    enovaitLabel: "Owner Review",
+    label: "Pending Project Manager (PM) Review",
+    enovaitLabel: "PM Review",
     className: "border border-[var(--color-amber-light)] bg-[var(--color-amber-light)] text-[var(--color-amber)]",
   },
   owner_approved: {
@@ -130,14 +130,14 @@ export const creditStatuses = {
 
 export const roleLabels = {
   L0: "Contributor (L0)",
-  L1: "Project Owner (L1)",
+  L1: "Project Manager (PM)",
   L2: "Client (L2)",
   L3: "Certification Admin (L3)",
   L4: "Platform Reserved (L4)",
   L5: "Master Governance (L5)",
   super_user: "Super User (L5)",
   l4_reserved: "L4 (Reserved)",
-  owner: "Project Owner (L1)",
+  owner: "Project Manager (PM)",
   client: "Client (L2)",
   consultant: "Consultant (L0)",
   architect: "Architect (L0)",

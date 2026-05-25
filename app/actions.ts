@@ -208,12 +208,14 @@ export async function updateProjectAction(formData: FormData) {
 }
 
 export async function updateProjectPlanSettingsAction(formData: FormData) {
+  const PG_INT_MAX = 2147483647;
+  const clampInt = (v: number) => Math.max(0, Math.min(Math.floor(v || 0), PG_INT_MAX));
   const projectId = String(formData.get("project_id") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "starter").trim();
-  const documentCreditLimit = Number(formData.get("document_credit_limit") ?? 0);
-  const consultantCreditLimit = Number(formData.get("consultant_credit_limit") ?? 0);
-  const topupDocumentCredits = Number(formData.get("topup_document_credits") ?? 0);
-  const topupConsultantCredits = Number(formData.get("topup_consultant_credits") ?? 0);
+  const documentCreditLimit = clampInt(Number(formData.get("document_credit_limit") ?? 0));
+  const consultantCreditLimit = clampInt(Number(formData.get("consultant_credit_limit") ?? 0));
+  const topupDocumentCredits = clampInt(Number(formData.get("topup_document_credits") ?? 0));
+  const topupConsultantCredits = clampInt(Number(formData.get("topup_consultant_credits") ?? 0));
 
   if (!projectId || !planCode) return;
 
@@ -457,18 +459,32 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
     return { ok: false, error: "Live workspace credentials are not configured yet." };
   }
 
-  const projectId = String(formData.get("project_id") ?? "").trim();
-  const creditId = String(formData.get("credit_id") ?? "").trim();
-  const projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
-  const docCategory = String(formData.get("doc_category") ?? "").trim();
+  let projectId = String(formData.get("project_id") ?? "").trim();
+  if (projectId === "undefined" || projectId === "null") projectId = "";
+  
+  let rawCreditId = String(formData.get("credit_id") ?? "").trim();
+  if (rawCreditId === "undefined" || rawCreditId === "null") rawCreditId = "";
+  const creditId = rawCreditId === "" ? undefined : rawCreditId;
+  
+  let projectCreditId = String(formData.get("project_credit_id") ?? "").trim();
+  if (projectCreditId === "undefined" || projectCreditId === "null") projectCreditId = "";
+  
+  let docCategory = String(formData.get("doc_category") ?? "").trim();
+  if (docCategory === "undefined" || docCategory === "null") docCategory = "";
   const requirementSlot = String(formData.get("requirement_slot") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const fileHash = String(formData.get("file_hash") ?? "").trim();
   const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
   const file = formData.get("file");
+  const isFile = file && typeof file === "object" && "name" in file && "size" in file;
 
-  if (!projectId || !creditId || !docCategory || !(file instanceof File)) {
-    return { ok: false, error: "Choose project, mapped credit, document type, and file." };
+  if (!projectId || !(creditId || projectCreditId) || !docCategory || !isFile) {
+    const missing = [];
+    if (!projectId) missing.push("project");
+    if (!(creditId || projectCreditId)) missing.push("mapped credit");
+    if (!docCategory) missing.push("document type");
+    if (!isFile) missing.push("file");
+    return { ok: false, error: `Missing required fields: ${missing.join(", ")}` };
   }
 
   const user = await getCurrentUser();
@@ -857,19 +873,19 @@ export async function createTeamMemberAction(
 
   if (actingAsProjectAdmin) {
     if (!projectId || !allowedByProjectAdmin.includes(role)) {
-      return { status: "error", message: "Project Admin can create only Client, Project Owner, or Consultant roles for a selected project." };
+      return { status: "error", message: "Project Admin can create only Client, Project Manager (PM), or Consultant roles for a selected project." };
     }
   }
 
   if (actingAsClient) {
     if (!projectId || !allowedByClient.includes(role)) {
-      return { status: "error", message: "Client can create only the Project Owner for the selected project." };
+      return { status: "error", message: "Client can create only the Project Manager (PM) for the selected project." };
     }
   }
 
   if (actingAsOwner) {
     if (!projectId || !allowedByOwner.includes(role)) {
-      return { status: "error", message: "Project Owner can create only Architect, MEP Consultant, or Contractor roles for the selected project." };
+      return { status: "error", message: "Project Manager (PM) can create only Architect, MEP Consultant, or Contractor roles for the selected project." };
     }
   }
 
@@ -943,7 +959,7 @@ export async function createTeamMemberAction(
       .limit(1);
 
     if (!ownerMembership?.length) {
-      return { status: "error", message: "You are not assigned as Project Owner on the selected project." };
+      return { status: "error", message: "You are not assigned as Project Manager (PM) on the selected project." };
     }
   }
 
@@ -1241,8 +1257,8 @@ export async function transitionSubmittalAction(
       override,
     });
 
-    if (!result.ok) {
-      return { error: result.message || "Transition failed" };
+    if (!result.success) {
+      return { error: result.errors?.join(", ") || "Transition failed" };
     }
 
     revalidatePath("/dashboard");
@@ -1305,13 +1321,29 @@ export async function submitDocumentTransitionAction(formData: FormData) {
     idempotencyKey,
   });
 
-  if (!result.ok) {
-    throw new Error(result.message);
+  if (!result.success) {
+    throw new Error(result.errors?.join(", ") || "Transition failed");
   }
 
   revalidatePath("/review-queue");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/documents");
+
+  // Auto-dequeue to the next project item
+  const currentDocumentId = documentId;
+  const client = createClient();
+  const { data: next } = await client.from("project_document")
+    .select("id, submittal_id")
+    .eq("project_id", projectId)
+    .neq("id", currentDocumentId)
+    .or('workflow_state.eq.UNDER_REVIEW,workflow_state.eq.UNDER_L3_REVIEW')
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (next) {
+    redirect(`/projects/${projectId}/submittals/${next.submittal_id ?? next.id}`);
+  }
 }
 
 export async function runNotificationDigestAction() {

@@ -10,15 +10,18 @@ export type ProjectCertificationState =
   | "CERTIFIED_LOCKED";
 
 export type SubmittalWorkflowState =
-  | "DRAFT"
-  | "READY"
-  | "SUBMITTED"
-  | "UNDER_REVIEW"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "MAPPED"
+  | "L1_REVIEW"
+  | "L1_REJECTED"
+  | "READY_FOR_L3"
+  | "UNDER_L3_REVIEW"
   | "CLARIFICATION"
   | "RESUBMITTED"
   | "APPROVED"
   | "REJECTED"
-  | "ELIMINATED";
+  | "REVOKED";
 
 // Legacy Aliases (to prevent breakage while migrating)
 export type ProjectWorkflowState = ProjectCertificationState | string;

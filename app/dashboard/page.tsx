@@ -83,8 +83,8 @@ export default async function DashboardPage({
   ]);
   const condensedTimelineRows = collapseTimelineRows(timelineRows);
   const roi = await getRoiSnapshot();
-  const canCreateProject = ["super_user", "super_admin"].includes(user?.role ?? "");
   const activeRole = user?.role ?? "consultant";
+  const canCreateProject = ["super_user", "super_admin"].includes(activeRole);
   const isL3Operational = ["project_admin", "super_admin", "L3", "L5", "super_user"].includes(activeRole);
   const clientMode = activeRole === "client";
   const primaryProjectId = projects[0]?.id ?? null;
@@ -191,7 +191,7 @@ export default async function DashboardPage({
         `Clear your review queue (${ownerQueue.length} pending) to keep vendor submissions moving.`,
         stuckTop
           ? `Escalate ${stuckTop.projectName} / ${stuckTop.creditCode}: ${stuckTop.missingDoc}.`
-          : "No major blocker detected. Continue daily owner-review sweeps.",
+          : "No major blocker detected. Continue daily PM-review sweeps.",
         "Use precise send-back remarks so contributors can resubmit without calls.",
       ];
     }
@@ -200,7 +200,7 @@ export default async function DashboardPage({
         `Prioritize ${atRiskCount} at-risk project(s) first in validation queue.`,
         stuckTop
           ? `Resolve top blocker: ${stuckTop.projectName} / ${stuckTop.creditCode} (${stuckTop.responsibleRole}).`
-          : "No blocker cluster detected. Push owner-approved documents to final decision.",
+          : "No blocker cluster detected. Push PM-approved documents to final decision.",
         "Close repeated rejection reasons with template-based corrective guidance.",
       ];
     }

@@ -227,7 +227,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
           </div>
           <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
             <p className="dense-label">Document credits remaining</p>
-            <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{billingTotals.docRemaining}</p>
+            <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{billingTotals.docRemaining > 99999 ? "∞" : billingTotals.docRemaining}</p>
           </div>
           <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
             <p className="dense-label">Consultant credits used</p>
@@ -235,7 +235,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
           </div>
           <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
             <p className="dense-label">Consultant credits remaining</p>
-            <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{billingTotals.consultantRemaining}</p>
+            <p className="mono mt-1 text-[16px] text-[var(--color-text-primary)]">{billingTotals.consultantRemaining > 99999 ? "∞" : billingTotals.consultantRemaining}</p>
           </div>
         </div>
       </section>
@@ -278,11 +278,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                   </div>
                   <p className="mt-2">
                     Documents: <span className="mono">{project.documentCreditsUsed ?? 0}</span> /{" "}
-                    <span className="mono">{(project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0)}</span>
+                    <span className="mono">{(project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) > 99999 ? "∞" : (project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0)}</span>
                   </p>
                   <p className="mt-1">
                     Consultant sessions: <span className="mono">{project.consultantCreditsUsed ?? 0}</span> /{" "}
-                    <span className="mono">{(project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0)}</span>
+                    <span className="mono">{(project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0) > 99999 ? "∞" : (project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0)}</span>
                   </p>
                 </div>
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
@@ -454,6 +454,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                             name="document_credit_limit"
                             type="number"
                             min={0}
+                            max={999999}
                             defaultValue={project.documentCreditLimit ?? 0}
                             placeholder="Document credits"
                           />
@@ -461,6 +462,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                             name="consultant_credit_limit"
                             type="number"
                             min={0}
+                            max={999999}
                             defaultValue={project.consultantCreditLimit ?? 0}
                             placeholder="Consultant credits"
                           />
@@ -468,6 +470,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                             name="topup_document_credits"
                             type="number"
                             min={0}
+                            max={999999}
                             defaultValue={Math.max((project.documentCreditsUsed ?? 0) + (project.documentCreditsRemaining ?? 0) - (project.documentCreditLimit ?? 0), 0)}
                             placeholder="Doc top-up"
                           />
@@ -475,6 +478,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                             name="topup_consultant_credits"
                             type="number"
                             min={0}
+                            max={999999}
                             defaultValue={Math.max((project.consultantCreditsUsed ?? 0) + (project.consultantCreditsRemaining ?? 0) - (project.consultantCreditLimit ?? 0), 0)}
                             placeholder="Consultant top-up"
                           />

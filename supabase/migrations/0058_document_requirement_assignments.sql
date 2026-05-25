@@ -16,6 +16,8 @@ create unique index if not exists uq_assignments_single_active_owner_per_credit_
 create index if not exists idx_assignments_project_credit_document_active
   on public.assignments(project_id, project_credit_id, document_type, is_active);
 
+drop function if exists public.is_assigned_user(uuid, uuid);
+
 create or replace function public.is_assigned_user(
   p_project_credit_id uuid,
   p_user_id uuid,

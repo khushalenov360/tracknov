@@ -122,7 +122,7 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: "getReviewQueue",
-    description: "Get all documents pending review (owner review or admin review).",
+    description: "Get all documents pending review (Project Manager (PM) review or admin review).",
     parameters: {
       type: "object",
       properties: {

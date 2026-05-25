@@ -68,6 +68,7 @@ export async function runRuntimeTransition(
       if (!transitionResult.ok) {
         return {
           success: false,
+          status: transitionResult.status,
           errors: [transitionResult.message || "Workflow Transition Failed"],
         };
       }

@@ -12,6 +12,7 @@ export interface ExecutionContext {
 
 export interface ExecutionResult {
   success: boolean;
+  status?: string;
   workflowState?: string;
   validationState?: string;
   errors?: string[];

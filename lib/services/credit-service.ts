@@ -57,7 +57,7 @@ export class CreditService {
       metadata: { remarks: params.remarks || null }
     });
 
-    if (!result.ok) throw new Error(result.message || "Failed to update credit state.");
+    if (!result.success) throw new Error(result.errors?.join(", ") || "Failed to update credit state.");
   }
 
   async updateRequirements(user: CurrentUser, params: {
@@ -197,7 +197,33 @@ export class CreditService {
           created_by: user.id,
         });
       if (assignmentError) throw assignmentError;
+
+      // Remediation 06: Assignment Creates Momentum
+      // 1. Notify the assignee
+      const docTypeMsg = documentType ? ` for ${documentType}` : "";
+      await writer.from("notification_outbox").insert({
+        project_id: params.projectId,
+        user_id: params.assignedUserId,
+        event_type: "ASSIGNMENT",
+        message: `You have been assigned to provide evidence${docTypeMsg}.`,
+        metadata: {
+          project_credit_id: params.projectCreditId,
+          credit_id: params.creditId
+        }
+      });
+
+      // 2. Update credit state to IN_PROGRESS (if not COMPLETE)
+      await writer.from("project_credits")
+        .update({ state: "IN_PROGRESS" })
+        .eq("id", params.projectCreditId)
+        .neq("state", "COMPLETE");
     }
+
+    // Trigger explicit recalculation to update progress engine (10% assignment weight)
+    await writer.rpc("recalculate_derived_states", {
+      p_project_id: params.projectId,
+      p_project_credit_id: params.projectCreditId,
+    });
 
     if (params.assignedUserId) {
       await taskService.upsertAssignmentUploadTask({

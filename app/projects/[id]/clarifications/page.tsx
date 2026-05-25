@@ -138,7 +138,7 @@ export default async function ProjectClarificationsPage({
               <input type="hidden" name="credit_id" value={selectedCredit.id} />
               <input type="hidden" name="action" value="blocked" />
               <select name="blocked_by" className="w-full border border-[var(--color-border)] p-2 text-xs bg-[var(--color-surface)] rounded-lg">
-                <option value="owner">Blocked by owner</option>
+                <option value="owner">Blocked by Project Manager (PM)</option>
                 <option value="consultant">Blocked by consultant</option>
               </select>
               <Button type="submit" variant="danger" className="w-full text-xs h-8 rounded-lg text-white">

@@ -73,7 +73,7 @@ export default async function ProjectDocumentsPage({
     canFinalReview
       ? "Project Admin final approval is required before a document can be included in the submission pack."
       : canOwnerReview
-        ? "Project Owner reviews first and forwards valid files to Project Admin."
+        ? "Project Manager (PM) reviews first and forwards valid files to Project Admin."
         : "This user can inspect the validation context but is not the final approver.",
   ];
 

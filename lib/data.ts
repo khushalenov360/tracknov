@@ -77,6 +77,14 @@ type WorkflowState =
 
 function normalizeWorkflowState(state?: string | null, legacyStatus?: string | null): WorkflowState {
   const raw = String(state ?? "").toUpperCase();
+
+  // Aligned backend states mapped to canonical frontend states:
+  if (raw === "ASSIGNED" || raw === "IN_PROGRESS") return "DRAFT";
+  if (raw === "MAPPED" || raw === "READY_FOR_L3") return "READY";
+  if (raw === "L1_REVIEW") return "SUBMITTED";
+  if (raw === "L1_REJECTED" || raw === "REVOKED") return "REJECTED";
+  if (raw === "UNDER_L3_REVIEW") return "UNDER_REVIEW";
+
   if (
     raw === "DRAFT" ||
     raw === "READY" ||
@@ -1879,22 +1887,25 @@ export const getOwnerReviewQueue = cache(async function getOwnerReviewQueue() {
 
   const currentUser = await getCurrentUser();
   const userRole = currentUser?.role ?? "consultant";
+  const isL1 = userRole === "owner" || userRole === "L1";
   const reviewWorkflowStates =
-    userRole === "owner"
-      ? ["SUBMITTED"]
-      : ["UNDER_REVIEW"];
+    isL1
+      ? ["L1_REVIEW"]
+      : ["UNDER_L3_REVIEW"];
+  const isL5 = userRole === "super_user" || userRole === "L5";
   const projectRoleRows =
-    userRole === "super_user"
+    isL5
       ? []
       : (await client
           .from("project_users")
           .select("project_id, role")
           .eq("user_id", user.id)).data ?? [];
+  const reviewerProjectRoles = ["owner", "L1", "project_admin", "L3", "super_admin", "L5", "super_user"];
   const ownedProjectIds =
-    userRole === "super_user"
+    isL5
       ? (await client.from("projects").select("id")).data?.map((row: any) => row.id) ?? []
       : projectRoleRows
-          .filter((row: any) => normalizeRole(row.role) === "owner" || normalizeRole(row.role) === "project_admin" || normalizeRole(row.role) === "super_admin")
+          .filter((row: any) => reviewerProjectRoles.includes(row.role) || reviewerProjectRoles.includes(normalizeRole(row.role)))
           .map((row: any) => row.project_id);
   if (!ownedProjectIds.length) {
     return [];
@@ -1905,6 +1916,7 @@ export const getOwnerReviewQueue = cache(async function getOwnerReviewQueue() {
     .select("id, project_id, credit_id, submittal_id, uploaded_by, file_name, uploaded_at, notes, state")
     .in("project_id", ownedProjectIds)
     .in("state", reviewWorkflowStates)
+    .neq("uploaded_by", user.id)  // Never review your own uploads
     .order("uploaded_at", { ascending: true });
   const rows = docs ?? [];
   if (!rows.length) {
@@ -2416,7 +2428,7 @@ export async function getSuperUserCommandCenter() {
 
   const uploadsToday = (uploadLogs ?? []).length;
   const failedTransactions = (transactions ?? []).filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("failed")).length;
-  const pendingReviews = (await admin.from("project_document").select("*", { count: "exact", head: true }).in("state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"])).count ?? 0;
+  const pendingReviews = (await admin.from("project_document").select("*", { count: "exact", head: true }).in("state", ["L1_REVIEW", "UNDER_L3_REVIEW", "RESUBMITTED"])).count ?? 0;
   const activeUsers = (await admin.from("project_users").select("user_id")).data?.map((row: any) => row.user_id).filter(Boolean);
   const uniqueActiveUsers = Array.from(new Set(activeUsers ?? [])).length;
 
@@ -2780,31 +2792,54 @@ export const getUserActionQueue = cache(async function getUserActionQueue() {
 export const getUserReviewQueue = cache(async function getUserReviewQueue() {
   const user = await getCurrentUser();
   if (!user) return [];
+
+  // Only L1+ reviewer roles should see the review queue.
+  // Contributors (architect, contractor, mep, client) should NOT see reviews.
+  const reviewerRoles = ["owner", "L1", "project_admin", "super_admin", "super_user", "L3", "L5"];
+  if (!reviewerRoles.includes(user.role)) return [];
+
   const client = createClient();
+  const adminClient = env.supabaseServiceRoleKey ? createAdminClient() : client;
   
-  const states = ["L1_REVIEW", "READY_FOR_L3", "UNDER_L3_REVIEW", "UNDER_REVIEW"];
+  // L1 (owner/PM) reviews L1_REVIEW (PM review) docs from L0
+  // L3 (project_admin/super_admin/super_user) validates UNDER_L3_REVIEW docs from L1
+  // L2 has no role in document workflows
+  const isL3 = ["project_admin", "super_admin", "super_user", "L3", "L5"].includes(user.role);
+  const isL1 = user.role === "owner" || user.role === "L1";
+  const states = isL3
+    ? ["UNDER_L3_REVIEW"]
+    : isL1
+      ? ["L1_REVIEW"]
+      : ["L1_REVIEW", "UNDER_L3_REVIEW"]; // fallback
   
-  const { data: docs } = await client
+  const { data: docs, error } = await adminClient
     .from("project_document")
     .select(`
       id,
       project_id,
+      project_credit_id,
       file_name,
       doc_category,
       state,
       workflow_state,
-      projects!inner (name)
+      uploaded_by,
+      projects!inner (name),
+      project_credits (credit_code, credit_name)
     `)
     .in("workflow_state", states)
-    .eq("is_latest", true);
+    .eq("is_latest", true)
+    .neq("uploaded_by", user.id);  // Never review your own uploads
 
   return (docs ?? []).map((d: any) => ({
     id: d.id,
     projectId: d.project_id,
+    projectCreditId: d.project_credit_id,
     projectName: d.projects?.name,
     fileName: d.file_name,
     docCategory: d.doc_category,
-    state: d.workflow_state || d.state
+    state: normalizeWorkflowState(d.workflow_state || d.state),
+    creditCode: d.project_credits?.credit_code || "REVIEW",
+    creditName: d.project_credits?.credit_name || "Evidence Document"
   }));
 });
 

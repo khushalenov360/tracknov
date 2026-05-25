@@ -111,16 +111,23 @@ export default async function ProjectCreditsPage({
                   <strong className="text-[var(--color-text-primary)]">{Number(credit.available_points ?? 0).toFixed(1)}</strong>
                 </div>
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
-                  <span>Owner</span>
+                  <span>Responsibility</span>
                   <strong className="text-[var(--color-text-primary)] uppercase">
                     {(() => {
-                      if (credit.responsible_role) return String(credit.responsible_role).replace("_", " ");
-                      const assignedDocs = credit.documents_required?.filter((d: any) => d.assigned_role || d.assigned_name) || [];
-                      if (assignedDocs.length === 0) return "UNASSIGNED";
-                      const uniqueRoles = Array.from(new Set(assignedDocs.map((d: any) => d.assigned_role).filter(Boolean)));
-                      if (uniqueRoles.length === 1) return String(uniqueRoles[0]).replace("_", " ");
-                      if (uniqueRoles.length > 1) return "MIXED CONTRIBUTORS";
-                      return "ASSIGNED";
+                      let role = "UNASSIGNED";
+                      if (credit.responsible_role) {
+                        role = credit.responsible_role;
+                      } else {
+                        const assignedDocs = credit.documents_required?.filter((d: any) => d.assigned_role || d.assigned_name) || [];
+                        if (assignedDocs.length > 0) {
+                          const uniqueRoles = Array.from(new Set(assignedDocs.map((d: any) => d.assigned_role).filter(Boolean)));
+                          if (uniqueRoles.length === 1) role = String(uniqueRoles[0]);
+                          else if (uniqueRoles.length > 1) return "MIXED CONTRIBUTORS";
+                          else role = "ASSIGNED";
+                        }
+                      }
+                      if (role.toLowerCase() === "owner") return "PROJECT MANAGER (PM)";
+                      return role.replace("_", " ").toUpperCase();
                     })()}
                   </strong>
                 </div>

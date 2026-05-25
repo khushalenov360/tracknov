@@ -15,7 +15,7 @@ begin
 end $$;
 
 alter table public.documents
-  add column if not exists workflow_state public.workflow_state not null default 'DRAFT';
+  add column if not exists workflow_state public.workflow_state not null default 'DRAFT'::public.workflow_state;
 
 create table if not exists public.document_states (
   id uuid primary key default gen_random_uuid(),

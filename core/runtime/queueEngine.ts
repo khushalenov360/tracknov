@@ -48,7 +48,7 @@ export const queueEngine = {
         .from("project_document")
         .select("id, project_id, credit_id, state, status, created_at, uploaded_by")
         .eq("project_id", projectId)
-        .in("state", ["SUBMITTED", "UNDER_REVIEW", "CLARIFICATION", "RESUBMITTED"]);
+        .in("state", ["L1_REVIEW", "UNDER_L3_REVIEW", "CLARIFICATION", "RESUBMITTED"]);
 
       if (error) continue; // Skip on error
 
@@ -56,14 +56,14 @@ export const queueEngine = {
         const state = String(doc.state || doc.status || "").toUpperCase();
         
         // If the document requires review and user is an owner/admin
-        if ((state === "SUBMITTED" || state === "RESUBMITTED" || state === "UNDER_REVIEW") && 
-            ["owner", "project_admin", "super_user"].includes(userRole)) {
+        if ((state === "L1_REVIEW" || state === "RESUBMITTED" || state === "UNDER_L3_REVIEW") && 
+            ["owner", "project_admin", "super_user", "L1", "L3", "L5"].includes(userRole)) {
           queue.push({
             id: `queue-${doc.id}`,
             projectId: doc.project_id,
             creditId: doc.credit_id,
             documentId: doc.id,
-            type: state === "UNDER_REVIEW" ? "approval" : "review",
+            type: state === "UNDER_L3_REVIEW" ? "approval" : "review",
             state,
             assignedRole: userRole,
             priority: "normal",

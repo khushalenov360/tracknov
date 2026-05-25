@@ -171,14 +171,25 @@ export class DocumentService {
     }
 
     let projectCreditId = params.projectCreditId;
-    if (!projectCreditId) {
+    let creditId = params.creditId;
+
+    if (!projectCreditId && creditId) {
       const { data: mappedProjectCredit } = await this.admin
         .from("project_credits")
         .select("id")
         .eq("project_id", params.projectId)
-        .eq("credit_id", params.creditId)
+        .eq("credit_id", creditId)
         .maybeSingle();
       projectCreditId = mappedProjectCredit?.id;
+    } else if (projectCreditId && !creditId) {
+      const { data: mappedProjectCredit } = await this.admin
+        .from("project_credits")
+        .select("credit_id")
+        .eq("id", projectCreditId)
+        .maybeSingle();
+      creditId = mappedProjectCredit?.credit_id;
+      // Mutate params so subsequent calls use the resolved creditId
+      params.creditId = creditId as string;
     }
 
     if (!projectCreditId) {
@@ -239,7 +250,7 @@ export class DocumentService {
       .from("submittals")
       .select("id")
       .eq("credit_stage_id", creditStageId)
-      .in("state", ["DRAFT", "READY", "CLARIFICATION"])
+      .in("state", ["ASSIGNED", "IN_PROGRESS", "CLARIFICATION"])
       .order("iteration", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -253,9 +264,8 @@ export class DocumentService {
           credit_stage_id: creditStageId,
           project_id: params.projectId,
           credit_id: params.creditId,
-          name: "Active Work Round",
           type: params.docCategory,
-          state: "DRAFT",
+          state: "ASSIGNED",
           iteration: 1,
           created_by: user.id
         })
@@ -300,7 +310,12 @@ export class DocumentService {
 
     if (storageError) throw storageError;
 
-    // DB Insert via RPC (Atomic with token consumption)
+    // Route to correct review level:
+    // L0 (architect/contractor/mep/client) → SUBMITTED → L1 (owner/PM) reviews
+    // L1 (owner) → UNDER_REVIEW → L3 (project_admin) validates (L2 has no role)
+    // L3+ (project_admin/super_admin/super_user) → UNDER_REVIEW → peer L3 validates
+    const initialState = this.isL0Role(actorRole) ? "L1_REVIEW" : "UNDER_L3_REVIEW";
+
     const mergedNotes = [
       params.notes,
       params.requirementSlot ? `Requirement slot: ${params.requirementSlot}` : "",
@@ -309,7 +324,7 @@ export class DocumentService {
 
     const { data: documentId, error: dbError } = await this.admin.rpc("insert_document_and_consume_tokens", {
       p_project_id: params.projectId,
-      p_credit_id: params.creditId,
+      p_credit_id: params.creditId || null,
       p_project_credit_id: projectCreditId,
       p_submittal_id: submittalId,
       p_uploaded_by: user.id,
@@ -318,7 +333,7 @@ export class DocumentService {
       p_file_type: extension,
       p_doc_category: params.docCategory,
       p_notes: mergedNotes,
-      p_status: "DRAFT",
+      p_status: initialState,
       p_version: nextVersion,
       p_is_latest: true,
       p_parent_document_id: latestVersion?.id ?? null,
@@ -371,6 +386,24 @@ export class DocumentService {
     } catch (telemetryError) {
       console.error("Failed to log telemetry:", telemetryError);
     }
+    
+    // Inactivate the assignment now that the requirement is fulfilled (clears the backlog)
+    await this.admin
+      .from("assignments")
+      .update({ is_active: false })
+      .eq("project_credit_id", projectCreditId)
+      .eq("user_id", user.id)
+      .or(`document_type.eq.${params.docCategory},document_type.is.null`);
+
+    // Remediation 02: Activate Submittal Lifecycle (ASSIGNED -> L1_REVIEW)
+    if (submittalId) {
+      await this.admin
+        .from("submittals")
+        .update({ state: "L1_REVIEW", updated_at: new Date().toISOString() })
+        .eq("id", submittalId)
+        .eq("state", "ASSIGNED");
+    }
+
     // telemetry done
 
     // Post-upload side effects
@@ -395,7 +428,7 @@ export class DocumentService {
       creditId: params.creditId,
       documentId,
       userIds: ownerIds,
-      body: `New upload received for owner review: ${params.file.name}`,
+      body: `New upload received for Project Manager (PM) review: ${params.file.name}`,
       actionUrl: `/documents?project=${params.projectId}&document=${documentId}`,
     });
 
@@ -437,8 +470,8 @@ export class DocumentService {
       throw new Error("Document not found.");
     }
 
-    const workflowState = String(document.workflow_state ?? "DRAFT").toUpperCase();
-    if (workflowState === "SUBMITTED" || workflowState === "UNDER_REVIEW" || workflowState === "APPROVED") {
+    const workflowState = String(document.workflow_state ?? "ASSIGNED").toUpperCase();
+    if (workflowState === "L1_REVIEW" || workflowState === "UNDER_L3_REVIEW" || workflowState === "APPROVED") {
       throw new Error("Document is locked and cannot be modified.");
     }
 
@@ -498,7 +531,7 @@ export class DocumentService {
       throw new Error("Document not found.");
     }
 
-    const workflowState = String(document.workflow_state ?? "DRAFT").toUpperCase();
+    const workflowState = String(document.workflow_state ?? "ASSIGNED").toUpperCase();
     if (workflowState === "APPROVED" && !["super_user", "super_admin"].includes(actorRole)) {
       throw new Error("Approved documents can only be deleted by Super Users.");
     }
@@ -521,7 +554,7 @@ export class DocumentService {
       reason: `[System] Withdrawn by ${user.email} at ${new Date().toISOString()}`,
     });
 
-    if (!result.ok) throw new Error(result.message || "Failed to withdraw document through orchestration.");
+    if (!result.success) throw new Error(result.errors?.join(", ") || "Failed to withdraw document through orchestration.");
 
     const { error } = await this.admin
       .from("project_document")

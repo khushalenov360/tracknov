@@ -524,7 +524,7 @@ export class ProjectService {
       if (v.includes("mep")) return "mep";
       if (v.includes("architect")) return "architect";
       if (v.includes("contractor")) return "contractor";
-      if (v.includes("owner") || v.includes("project owner")) return "owner";
+      if (v.includes("owner") || v.includes("project owner") || v.includes("pm") || v.includes("project manager")) return "owner";
       if (v.includes("client")) return "client";
       if (v.includes("project admin") || v.includes("enov")) return "project_admin";
       return null;

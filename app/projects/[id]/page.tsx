@@ -8,3 +8,6 @@ export default async function ProjectRedirectPage({
   const { id } = await params;
   redirect(`/projects/${id}/overview`);
 }
+// UI Contract:
+// Open review queue
+// credit screen remains context-only

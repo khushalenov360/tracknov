@@ -56,7 +56,7 @@ alter table if exists public.submittals
   add column if not exists credit_id uuid references public.credits(id) on delete cascade,
   add column if not exists iteration integer not null default 1,
   add column if not exists created_by uuid references auth.users(id) on delete set null,
-  add column if not exists state public.workflow_state not null default 'DRAFT';
+  add column if not exists state public.workflow_state not null default 'DRAFT'::public.workflow_state;
 
 -- Backfill submittal routing columns from credit_stage -> project_credit
 update public.submittals s

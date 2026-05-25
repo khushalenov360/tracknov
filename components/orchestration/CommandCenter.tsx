@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { uploadDocumentAction, submitDocumentTransitionAction } from "@/app/actions";
+import { getRoleLevel } from "@/lib/rbac";
 import { 
   Bot,
   Sparkles, 
@@ -258,21 +260,39 @@ export default function CommandCenter({
   }, [initialProjects]);
 
   // Handle task execution actions
-  const handleFileUpload = (e: React.FormEvent) => {
+  const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evidenceFile) return;
+    if (!evidenceFile || !selectedTask) return;
     setIsProcessing(true);
-    setProcessingMessage("Verifying file integrity & scanning low-VOC compliance parameters...");
-    setTimeout(() => {
-      setIsProcessing(false);
-      setProcessingMessage("");
+    setProcessingMessage("Uploading and verifying file integrity...");
+    
+    try {
+      const formData = new FormData();
+      formData.set("file", evidenceFile);
+      formData.set("project_id", selectedTask.projectId);
+      formData.set("project_credit_id", selectedTask.projectCreditId);
+      formData.set("doc_category", selectedTask.documentType);
+
+      const result = await uploadDocumentAction(formData);
+      
+      if (!result?.ok) {
+        throw new Error(result?.error || "Upload failed");
+      }
+
+      setProcessingMessage("Upload complete!");
       setUploadSuccess(true);
       setEvidenceFile(null);
       setTimeout(() => {
         setSelectedTask(null);
         setUploadSuccess(false);
       }, 2000);
-    }, 1500);
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      alert("Upload failed: " + err.message);
+    } finally {
+      setIsProcessing(false);
+      setProcessingMessage("");
+    }
   };
 
   const handleClarificationSubmit = (e: React.FormEvent) => {
@@ -292,20 +312,44 @@ export default function CommandCenter({
     }, 1200);
   };
 
-  const handleReviewDecision = (decision: "approve" | "clarification") => {
+  const handleReviewDecision = async (decision: "approve" | "clarification") => {
+    if (!selectedTask) return;
     setReviewDecision(decision);
     setIsProcessing(true);
     setProcessingMessage(decision === "approve" ? "Signing cryptographic review ledger..." : "Drafting request for clarification...");
-    setTimeout(() => {
-      setIsProcessing(false);
-      setProcessingMessage("");
+    
+    try {
+      const isL3OrElevated = getRoleLevel(user?.role) >= 3;
+      const targetState = decision === "approve"
+        ? (isL3OrElevated ? "APPROVED" : "UNDER_L3_REVIEW")
+        : "CLARIFICATION";
+      const reason = decision === "approve"
+        ? (isL3OrElevated ? "L3 validation approval" : "PM review approval")
+        : (isL3OrElevated ? "L3 clarification request" : "PM clarification request");
+
+      const formData = new FormData();
+      formData.set("project_id", selectedTask.projectId);
+      formData.set("document_id", selectedTask.id.replace("review-", ""));
+      formData.set("target_state", targetState);
+      formData.set("reason", reason);
+
+      await submitDocumentTransitionAction(formData);
+
+      setProcessingMessage("Review submitted!");
       setUploadSuccess(true);
       setTimeout(() => {
         setSelectedTask(null);
         setUploadSuccess(false);
         setReviewDecision(null);
+        // Reload page to reflect state changes
+        window.location.reload();
       }, 2000);
-    }, 1500);
+    } catch (err: any) {
+      console.error("Review failed:", err);
+      alert("Review failed: " + err.message);
+      setIsProcessing(false);
+      setProcessingMessage("");
+    }
   };
 
   return (
@@ -766,8 +810,9 @@ export default function CommandCenter({
                           {selectedTask.creditName}
                         </span>
                         <a 
-                          href="#" 
-                          onClick={(e) => { e.preventDefault(); alert("Document viewer modal opened"); }}
+                          href={`/api/documents/${selectedTask.id.replace("review-", "")}`}
+                          target="_blank"
+                          rel="noreferrer"
                           className="text-[var(--color-green)] font-semibold hover:underline"
                         >
                           Open PDF

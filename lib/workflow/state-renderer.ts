@@ -29,6 +29,14 @@ const legacyStateMap: Record<string, CanonicalWorkflowState> = {
   owner_approved: "UNDER_REVIEW",
   approved: "APPROVED",
   rejected: "REJECTED",
+  L1_REVIEW: "SUBMITTED",
+  UNDER_L3_REVIEW: "UNDER_REVIEW",
+  L1_REJECTED: "REJECTED",
+  ASSIGNED: "DRAFT",
+  IN_PROGRESS: "DRAFT",
+  MAPPED: "READY",
+  READY_FOR_L3: "READY",
+  REVOKED: "REJECTED",
 };
 
 const stateContracts: Record<CanonicalWorkflowState, Omit<WorkflowStateRender, "state">> = {
@@ -121,7 +129,7 @@ export function normalizeWorkflowState(state?: DocumentStatus | string | null): 
   if (upper in stateContracts) {
     return upper as CanonicalWorkflowState;
   }
-  return legacyStateMap[raw] ?? "DRAFT";
+  return legacyStateMap[raw] ?? legacyStateMap[upper] ?? "DRAFT";
 }
 
 export function workflowStateRenderer(state?: DocumentStatus | string | null): WorkflowStateRender {

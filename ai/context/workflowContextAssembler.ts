@@ -16,8 +16,8 @@ export const workflowContextAssembler = {
     let rejected = 0;
 
     for (const doc of docs) {
-      if (["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"].includes(doc.state)) pendingReviews++;
-      if (["REJECTED", "CLARIFICATION"].includes(doc.state)) rejected++;
+      if (["L1_REVIEW", "UNDER_L3_REVIEW", "RESUBMITTED"].includes(doc.state)) pendingReviews++;
+      if (["REJECTED", "CLARIFICATION", "L1_REJECTED"].includes(doc.state)) rejected++;
     }
 
     return `

@@ -200,17 +200,11 @@ returns trigger
 language plpgsql
 as $$
 declare
-  v_assigned uuid;
+  v_is_assigned boolean;
 begin
-  select pc.assigned_user_id into v_assigned
-  from public.project_credits pc
-  where pc.id = new.project_credit_id;
+  select public.is_assigned_user(new.project_credit_id, new.uploaded_by) into v_is_assigned;
 
-  if v_assigned is null then
-    raise exception 'Assignment required before upload for this project credit.';
-  end if;
-
-  if new.uploaded_by is distinct from v_assigned then
+  if not v_is_assigned then
     raise exception 'Only the assigned owner can upload for this project credit.';
   end if;
 

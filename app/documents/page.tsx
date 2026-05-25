@@ -330,7 +330,7 @@ export default async function DocumentsPage({
                                 >
                                   {document.can_edit_status ? (
                                     <>
-                                      <option value="uploaded">Pending Project Owner Review</option>
+                                      <option value="uploaded">Pending Project Manager (PM) Review</option>
                                       <option value="owner_approved">Pending Project Admin Review</option>
                                       <option value="approved">Approved For Submission</option>
                                     </>
@@ -379,7 +379,7 @@ export default async function DocumentsPage({
                                 <input type="hidden" name="document_id" value={document.id} />
                                 <input type="hidden" name="project_id" value={document.project_id} />
                                 <label className="block text-xs uppercase tracking-[0.07em] text-[var(--color-text-tertiary)]">
-                                  Resubmit for owner review
+                                  Resubmit for Project Manager (PM) review
                                 </label>
                                 <textarea
                                   name="resubmit_note"

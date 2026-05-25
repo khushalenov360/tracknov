@@ -18,13 +18,13 @@ test.describe("workflow state machine", () => {
   test("rejects unauthorized document approval for consultant (L1)", () => {
     const machine = new SubmittalWorkflowMachine();
     const role = mapTracknovRoleToWorkflowRole("consultant"); // L1
-    expect(() => machine.validate("UNDER_REVIEW", "APPROVED", role)).toThrow();
+    expect(() => machine.validate("UNDER_L3_REVIEW", "APPROVED", role)).toThrow();
   });
 
   test("allows project_admin (L3 reviewer role) to reject submitted/under_review document", () => {
     const machine = new SubmittalWorkflowMachine();
     const role = mapTracknovRoleToWorkflowRole("project_admin"); // L3
-    expect(machine.validate("UNDER_REVIEW", "REJECTED", role)).toBe(true);
+    expect(machine.validate("UNDER_L3_REVIEW", "REJECTED", role)).toBe(true);
   });
 
   test("blocks credit close when linked docs are not approved", () => {

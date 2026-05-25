@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * 1. Consultant (L0) uploads a document.
  * 2. Consultant marks document as READY.
  * 3. Consultant submits document (moves to SUBMITTED).
- * 4. Project Owner (L1) reviews and approves (moves to UNDER_REVIEW).
+ * 4. Project Manager (PM) reviews and approves (moves to UNDER_REVIEW).
  * 5. Project Admin (L3) reviews and approves (moves to APPROVED).
  * 6. Verify activity logs and audit trail.
  */

@@ -75,7 +75,7 @@ const allowedTransitions: Record<WorkflowState, WorkflowState[]> = {
   ASSIGNED: ["IN_PROGRESS"],
   IN_PROGRESS: ["MAPPED"],
   MAPPED: ["L1_REVIEW"],
-  L1_REVIEW: ["READY_FOR_L3", "L1_REJECTED", "REJECTED"],
+  L1_REVIEW: ["READY_FOR_L3", "L1_REJECTED", "REJECTED", "UNDER_L3_REVIEW", "CLARIFICATION"],
   L1_REJECTED: ["IN_PROGRESS"],
   READY_FOR_L3: ["UNDER_L3_REVIEW"],
   UNDER_L3_REVIEW: ["APPROVED", "CLARIFICATION", "REJECTED"],
@@ -127,7 +127,7 @@ async function hasAllRequiredDocsForCredit(writer: SupabaseClient, creditId: str
     .from("project_document")
     .select("doc_category")
     .eq("project_credit_id", creditId)
-    .in("state", ["READY", "SUBMITTED", "UNDER_REVIEW", "RESUBMITTED", "APPROVED"]);
+    .in("state", ["MAPPED", "L1_REVIEW", "READY_FOR_L3", "UNDER_L3_REVIEW", "RESUBMITTED", "APPROVED"]);
   const presentTypes = new Set((docs ?? []).map((item: { doc_category: string }) => item.doc_category));
 
   for (const type of requiredTypes) {
@@ -307,7 +307,7 @@ export async function transitionDocumentState(
   if (!isOverride && l0Roles.includes(role) && !["IN_PROGRESS", "MAPPED"].includes(newState)) {
     return { ok: false as const, error: "L0 role is restricted to upload and mapping transitions only." };
   }
-  if (!isOverride && l1Roles.includes(role) && !["L1_REVIEW", "READY_FOR_L3", "L1_REJECTED", "REJECTED"].includes(newState)) {
+  if (!isOverride && l1Roles.includes(role) && !["L1_REVIEW", "READY_FOR_L3", "L1_REJECTED", "REJECTED", "UNDER_L3_REVIEW", "CLARIFICATION"].includes(newState)) {
     return { ok: false as const, error: "L1 role can only perform owner-stage review actions." };
   }
   if (!isOverride && ["APPROVED", "REJECTED", "CLARIFICATION"].includes(newState) && !(l3Roles.includes(role) || l5Roles.includes(role))) {
@@ -328,9 +328,9 @@ export async function transitionDocumentState(
   }
 
   if (!isOverride && newState === "L1_REVIEW" && !(l1Roles.includes(role) || l5Roles.includes(role))) {
-    return { ok: false as const, error: "Only L1 or L5 can move document into owner review." };
+    return { ok: false as const, error: "Only L1 or L5 can move document into Project Manager (PM) review." };
   }
-  if (!isOverride && newState === "UNDER_L3_REVIEW" && !(l3Roles.includes(role) || l5Roles.includes(role))) {
+  if (!isOverride && newState === "UNDER_L3_REVIEW" && !(l1Roles.includes(role) || l3Roles.includes(role) || l5Roles.includes(role))) {
     return { ok: false as const, error: "Only L3 or L5 can move document into admin review." };
   }
 
@@ -420,7 +420,7 @@ export async function transitionDocumentState(
       creditId: document.credit_id,
       documentId,
       userIds: owners,
-      body: `A document (${document.file_name}) is awaiting Project Owner review.`,
+      body: `A document (${document.file_name}) is awaiting Project Manager (PM) review.`,
       actionUrl: `/review-queue?project=${document.project_id}&document=${documentId}`,
     });
   } else if (["CLARIFICATION", "REJECTED", "L1_REJECTED"].includes(resolvedTargetState)) {

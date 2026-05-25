@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "Tracknov",
-  description: "IGBC certification document management for consultants and project owners.",
+  description: "IGBC certification document management for consultants and project managers.",
 };
 
 export default function RootLayout({

@@ -49,7 +49,7 @@ export default async function ReviewerCockpitPage() {
     { data: aiRecommendations },
     { data: recentActivity }
   ] = await Promise.all([
-    supabase.from("submittals").select("*, projects(name), credits(name)").in("state", ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"]).limit(10),
+    supabase.from("submittals").select("*, projects(name), credits(name)").in("state", ["L1_REVIEW", "UNDER_L3_REVIEW", "RESUBMITTED"]).limit(10),
     supabase.from("submittals").select("*, projects(name), credits(name)").eq("created_by", user.id).limit(5),
     supabase.from("ai_clarification_drafts").select("*, projects(name), submittals(*)").eq("status", "draft").limit(5),
     supabase.from("ai_recommendation_logs").select("*, projects(name)").order("created_at", { ascending: false }).limit(5),

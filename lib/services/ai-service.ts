@@ -46,10 +46,14 @@ export class AIService {
 
     let credit: any = null;
     let creditError: any = null;
+    const queryColumn = input.projectCreditId ? "id" : "credit_id";
+    const queryValue = input.projectCreditId || input.creditId;
+    
     const primary = await this.admin
       .from("project_credits")
       .select("credit_name, documents_required, what_to_submit")
-      .eq("id", input.creditId)
+      .eq(queryColumn, queryValue)
+      .eq("project_id", input.projectId)
       .maybeSingle();
     credit = primary.data;
     creditError = primary.error;
@@ -57,7 +61,8 @@ export class AIService {
       const fallback = await this.admin
         .from("project_credits")
         .select("credit_name, what_to_submit")
-        .eq("id", input.creditId)
+        .eq(queryColumn, queryValue)
+        .eq("project_id", input.projectId)
         .maybeSingle();
       credit = fallback.data ? { ...fallback.data, documents_required: [] } : null;
       creditError = fallback.error;

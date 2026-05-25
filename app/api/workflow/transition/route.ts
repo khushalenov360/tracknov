@@ -74,15 +74,25 @@ export async function POST(request: Request) {
         : null,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     const status =
       result.status === "authentication_failed" ? 401 :
       result.status === "authorization_failed" ? 403 :
       result.status === "not_found" ? 404 :
       result.status === "conflict" ? 409 :
       400;
-    return NextResponse.json(result, { status });
+    return NextResponse.json(
+      {
+        ok: false,
+        message: result.errors?.join(", ") || "Transition failed",
+        ...result,
+      },
+      { status },
+    );
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({
+    ok: true,
+    ...result,
+  });
 }

@@ -571,7 +571,7 @@ export function GeneralUploadDocumentForm({
         Upload limit: {maxFileSizeLabel}. For larger files, reduce PDF size or image resolution before upload.
       </p>
       <p className="text-xs text-[var(--color-text-tertiary)]">
-        Each upload is mapped to a credit immediately and enters owner review before final Project Admin inclusion.
+        Each upload is mapped to a credit immediately and enters Project Manager (PM) review before final Project Admin inclusion.
       </p>
 
       {pendingQueue ? (
