@@ -5,10 +5,12 @@ import { useEffect } from "react";
 export function SessionHeartbeat() {
   useEffect(() => {
     const run = () => {
-      void fetch("/api/session/heartbeat", {
+      fetch("/api/session/heartbeat", {
         method: "POST",
         credentials: "include",
         cache: "no-store",
+      }).catch((e) => {
+        console.warn("[SessionHeartbeat] Transient heartbeat failure:", e);
       });
     };
     run();
