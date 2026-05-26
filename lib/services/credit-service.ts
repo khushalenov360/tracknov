@@ -152,20 +152,23 @@ export class CreditService {
       throw new Error("Unauthorized: Insufficient role level for management.");
     }
 
-    if (params.assignedUserId) {
-      const { error } = await writer
-        .from("project_credits")
-        .update({
-          assigned_user_id: params.assignedUserId,
-          updated_at: now,
-        })
-        .eq("id", params.projectCreditId)
-        .eq("project_id", params.projectId);
+    // Stage 1: Parallelize initial updates & member checks
+    const initialPromises: Promise<any>[] = [];
 
-      if (error) throw error;
+    if (params.assignedUserId) {
+      initialPromises.push(
+        writer
+          .from("project_credits")
+          .update({
+            assigned_user_id: params.assignedUserId,
+            updated_at: now,
+          })
+          .eq("id", params.projectCreditId)
+          .eq("project_id", params.projectId)
+          .then(({ error }: { error: any }) => { if (error) throw error; })
+      );
     }
 
-    // Clear old active assignments
     let assignmentUpdate = writer
       .from("assignments")
       .update({ is_active: false, updated_at: now })
@@ -175,81 +178,116 @@ export class CreditService {
     assignmentUpdate = documentType
       ? assignmentUpdate.eq("document_type", documentType)
       : assignmentUpdate.is("document_type", null);
-    await assignmentUpdate;
+    
+    initialPromises.push(
+      assignmentUpdate.then(({ error }: { error: any }) => { if (error) throw error; })
+    );
 
+    let targetMemberPromise: Promise<any> = Promise.resolve({ data: null });
     if (params.assignedUserId) {
-      const { data: targetMember } = await this.client
-        .from("project_users")
-        .select("role")
-        .eq("project_id", params.projectId)
-        .eq("user_id", params.assignedUserId)
-        .maybeSingle();
+      targetMemberPromise = Promise.resolve(
+        this.client
+          .from("project_users")
+          .select("role")
+          .eq("project_id", params.projectId)
+          .eq("user_id", params.assignedUserId)
+          .maybeSingle()
+      );
+    }
 
-      const { error: assignmentError } = await writer
-        .from("assignments")
-        .insert({
-          project_id: params.projectId,
-          project_credit_id: params.projectCreditId,
-          document_type: documentType,
-          user_id: params.assignedUserId,
-          role: targetMember?.role ?? "L0",
-          is_active: true,
-          created_by: user.id,
-        });
-      if (assignmentError) throw assignmentError;
+    const [, , memberRes] = await Promise.all([
+      ...initialPromises,
+      targetMemberPromise
+    ]);
+    const targetMember = (memberRes as any)?.data;
 
-      // Remediation 06: Assignment Creates Momentum
-      // 1. Notify the assignee
+    // Stage 2: Parallelize insertions and state transitions
+    if (params.assignedUserId) {
+      const postInsertPromises: Promise<any>[] = [];
+
+      postInsertPromises.push(
+        writer
+          .from("assignments")
+          .insert({
+            project_id: params.projectId,
+            project_credit_id: params.projectCreditId,
+            document_type: documentType,
+            user_id: params.assignedUserId,
+            role: targetMember?.role ?? "L0",
+            is_active: true,
+            created_by: user.id,
+          })
+          .then(({ error }: { error: any }) => { if (error) throw error; })
+      );
+
       const docTypeMsg = documentType ? ` for ${documentType}` : "";
-      await writer.from("notification_outbox").insert({
-        project_id: params.projectId,
-        user_id: params.assignedUserId,
-        event_type: "ASSIGNMENT",
-        message: `You have been assigned to provide evidence${docTypeMsg}.`,
-        metadata: {
-          project_credit_id: params.projectCreditId
-        }
-      });
+      postInsertPromises.push(
+        writer.from("notification_outbox").insert({
+          project_id: params.projectId,
+          user_id: params.assignedUserId,
+          event_type: "ASSIGNMENT",
+          message: `You have been assigned to provide evidence${docTypeMsg}.`,
+          metadata: {
+            project_credit_id: params.projectCreditId
+          }
+        }).then(({ error }: { error: any }) => { if (error) throw error; })
+      );
 
-      // 2. Update credit state to IN_PROGRESS (if not COMPLETE)
-      await writer.from("project_credits")
-        .update({ state: "IN_PROGRESS" })
-        .eq("id", params.projectCreditId)
-        .neq("state", "COMPLETE");
+      postInsertPromises.push(
+        writer.from("project_credits")
+          .update({ state: "IN_PROGRESS" })
+          .eq("id", params.projectCreditId)
+          .neq("state", "COMPLETE")
+          .then(({ error }: { error: any }) => { if (error) throw error; })
+      );
+
+      await Promise.all(postInsertPromises);
     }
 
-    // Trigger explicit recalculation to update progress engine (10% assignment weight)
-    await writer.rpc("recalculate_derived_states", {
-      p_project_id: params.projectId,
-      p_project_credit_id: params.projectCreditId,
-    });
+    // Stage 3: Rekey recalculations, tasks, and system logs in parallel
+    const finalPromises: Promise<any>[] = [];
+
+    finalPromises.push(
+      writer.rpc("recalculate_derived_states", {
+        p_project_id: params.projectId,
+        p_project_credit_id: params.projectCreditId,
+      }).then(({ error }: { error: any }) => { if (error) throw error; })
+    );
 
     if (params.assignedUserId) {
-      await taskService.upsertAssignmentUploadTask({
-        projectId: params.projectId,
-        projectCreditId: params.projectCreditId,
-        assignedUserId: params.assignedUserId,
-        createdBy: user.id,
-        priority: "HIGH",
-        docType: documentType || undefined,
-      });
+      finalPromises.push(
+        taskService.upsertAssignmentUploadTask({
+          projectId: params.projectId,
+          projectCreditId: params.projectCreditId,
+          assignedUserId: params.assignedUserId,
+          createdBy: user.id,
+          priority: "HIGH",
+          docType: documentType || undefined,
+        })
+      );
     } else {
-      await taskService.closeAssignmentTasks({
-        projectId: params.projectId,
-        projectCreditId: params.projectCreditId,
-      });
+      finalPromises.push(
+        taskService.closeAssignmentTasks({
+          projectId: params.projectId,
+          projectCreditId: params.projectCreditId,
+        })
+      );
     }
 
-    await logSystemActivity(writer, {
-      projectId: params.projectId,
-      entityType: "credit",
-      entityId: params.projectCreditId,
-      action: "credit_assignee_updated",
-      actorId: user.id,
-      actorRole,
-      summary: params.assignedUserId ? "Assigned owner to credit document requirement." : "Cleared credit document requirement assignment.",
-      details: { assigned_user_id: params.assignedUserId, document_type: documentType },
-    });
+    finalPromises.push(
+      logSystemActivity(writer, {
+        projectId: params.projectId,
+        entityType: "credit",
+        entityId: params.projectCreditId,
+        action: "credit_assignee_updated",
+        actorId: user.id,
+        actorRole,
+        summary: params.assignedUserId ? "Assigned owner to credit document requirement." : "Cleared credit document requirement assignment.",
+        details: { assigned_user_id: params.assignedUserId, document_type: documentType },
+      })
+    );
+
+    await Promise.all(finalPromises);
   }
 
   async updateGuidance(user: CurrentUser, params: {

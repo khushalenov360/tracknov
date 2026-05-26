@@ -1,3 +1,26 @@
+## 2026-05-26 Performance, Compilation, and Contributor Locking Sweep
+
+### Objective
+Resolve remaining TypeScript type check errors blocking Next.js dev server hot reloads, fix the scroll behavior of the project workspace detail card to keep headers and navigation tabs static, and implement a toggleable contributor assignment locking mechanism.
+
+### Delivered in this pass
+* **Dev Server and Hot Reload Recovery**:
+  * Fixed type casting of `targetMemberPromise` in `credit-service.ts` to cleanly resolve standard `Promise.resolve` and eliminate `PostgrestBuilder` type check warnings.
+  * Added explicit type annotations `{ error: any }` to inline promise destructured catch blocks in `credit-service.ts` to satisfy strict typing rules.
+  * Resolved unhandled null check and dynamic ES module default export issues in `pdf-extractor.ts`.
+  * Verified build integrity via `npx tsc --noEmit` which now returns **0 compiler or type-checking errors**.
+* **Layout and Navigation Fixes**:
+  * Adjusted scroll overflow styles in `components/resizable-workspace.tsx` so the main card's container does not scroll the card itself out of the viewport.
+  * Applied `sticky top-0 bg-[var(--color-surface)] z-10 pt-1 pb-1` to the `<ProjectTabs>` component in `components/project/ProjectTabs.tsx`.
+  * **Result**: The project title, health badge, rating system, and navigation tabs stay statically fixed at the top, allowing the workspace tables (such as the assignments matrix) to scroll smoothly under them.
+* **Contributor Assignment Lock System**:
+  * **DB Migration**: Created and applied `0102_add_assignments_locked.sql` to add the `assignments_locked` boolean column to the `projects` table.
+  * **Toggle Server Action**: Added `toggleProjectAssignmentsLockAction` to `app/actions.ts` to allow PMs and Admins to lock/unlock assignments.
+  * **UI Control Integration**: Added a "Lock / Unlock Assignments" form button to the matrix page, complete with a state warning banner and automatic dropdown disabling.
+  * **Service Guard**: Implemented check in `workflow-orchestrator-service.ts` that rejects assignContributor mutations if the project assignments are locked.
+
+---
+
 ## 2026-05-21 UX/UI Restructure Phase 7, 8, 9 Execution
 
 ### Objective

@@ -84,7 +84,7 @@ export default async function ProjectLayout({
       email={user?.email}
       notificationCount={workspace.notifications.filter((item) => !item.read_at).length}
     >
-      <ProjectTabs projectId={projectId} />
+      <ProjectTabs projectId={projectId} userRole={workspace.userRole} />
       {children}
     </Shell>
   );

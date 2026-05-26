@@ -626,6 +626,41 @@ export const getDashboardProjects = cache(async function getDashboardProjects():
   return summaries;
 });
 
+async function instantiateLegacyCreditBridge(admin: any, projectId: string): Promise<number> {
+  const seedCredits = buildSeedCredits(projectId);
+  if (!seedCredits.length) return 0;
+
+  const { error: creditInsertError } = await admin.from("credits").insert(seedCredits);
+  if (creditInsertError && creditInsertError.code !== "23505") {
+    throw creditInsertError;
+  }
+
+  const { data: legacyCredits, error: legacyCreditsError } = await admin
+    .from("credits")
+    .select("id, credit_code, credit_name, is_mandatory, documents_required, documentation_summary")
+    .eq("project_id", projectId);
+  if (legacyCreditsError) throw legacyCreditsError;
+  if (!legacyCredits?.length) return 0;
+
+  const bridgeRows = legacyCredits.map((credit: any) => ({
+    project_id: projectId,
+    credit_id: credit.id,
+    credit_code: credit.credit_code,
+    credit_name: credit.credit_name,
+    is_mandatory: Boolean(credit.is_mandatory),
+    documents_required: credit.documents_required ?? [],
+    documentation_summary: credit.documentation_summary ?? null,
+    status: "DRAFT",
+  }));
+
+  const { error: bridgeError } = await admin.from("project_credits").insert(bridgeRows);
+  if (bridgeError && bridgeError.code !== "23505") {
+    throw bridgeError;
+  }
+
+  return bridgeRows.length;
+}
+
 export const getProjectWorkspace = cache(async function getProjectWorkspace(projectId: string) {
   if (!env.isConfigured) {
     return null;
@@ -689,7 +724,22 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
       if (fallbackCredits.length > 0) {
         const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
         if (seedError) {
-          console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+          const message = String(seedError.message ?? "").toLowerCase();
+          const code = String(seedError.code ?? "");
+          const needsLegacyBridge =
+            code === "23502" ||
+            message.includes("credit_id") ||
+            message.includes("null value") ||
+            message.includes("violates not-null constraint");
+          if (needsLegacyBridge) {
+            try {
+              await instantiateLegacyCreditBridge(admin, projectId);
+            } catch (bridgeError: any) {
+              console.error("[Workspace self-heal] Legacy bridge fallback failed:", bridgeError.message);
+            }
+          } else {
+            console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+          }
         }
         const { data: refreshedCredits } = await admin
           .from("project_credits")
@@ -794,7 +844,22 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
     if (fallbackCredits.length > 0) {
       const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
       if (seedError) {
-        console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+        const message = String(seedError.message ?? "").toLowerCase();
+        const code = String(seedError.code ?? "");
+        const needsLegacyBridge =
+          code === "23502" ||
+          message.includes("credit_id") ||
+          message.includes("null value") ||
+          message.includes("violates not-null constraint");
+        if (needsLegacyBridge) {
+          try {
+            await instantiateLegacyCreditBridge(admin, projectId);
+          } catch (bridgeError: any) {
+            console.error("[Workspace self-heal] Legacy bridge fallback failed:", bridgeError.message);
+          }
+        } else {
+          console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
+        }
       }
       const { data: refreshedCredits } = await client
         .from("project_credits")

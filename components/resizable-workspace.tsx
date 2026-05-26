@@ -104,14 +104,14 @@ export function ResizableWorkspace({
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         
         {/* CENTER PANEL: Main active workflow view */}
-        <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-          <main className="flex flex-col gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg p-5 shadow-sm min-h-full">
+        <div className="flex-1 flex flex-col p-6 min-h-0 overflow-hidden">
+          <main className="flex flex-col gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg p-5 shadow-sm h-full min-h-0 overflow-hidden">
             <div className="border-b border-[var(--color-border)] pb-4 shrink-0">
               <h1 className="text-[20px] font-bold text-[var(--color-text-primary)] leading-tight">{title}</h1>
               <p className="text-[14px] text-[var(--color-text-secondary)] mt-1">{description}</p>
             </div>
             
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
               {children}
             </div>
           </main>

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { canCreateProjects, canDeleteProjects, canManageProject, canManageProjectGuidebook } from "@/lib/rbac";
+import { canCreateProjects, canDeleteProjects, canManageProject, canManageProjectGuidebook, getRoleLevel } from "@/lib/rbac";
 import { buildProjectCreditSeedRows, buildSeedCredits } from "@/lib/catalog";
 import { igbcRatingSystems } from "@/lib/constants";
 import { ragService } from "./rag-service";
@@ -134,8 +134,8 @@ export class ProjectService {
    * Fetches the role of a user within a specific project.
    */
   async getActorProjectRole(projectId: string, user: CurrentUser): Promise<MemberRole | null> {
-    if (user.role === "super_user") return "super_user";
-    if (user.role === "super_admin") return "super_admin";
+    // Global L5/L4 roles bypass project-level membership — they always carry their global authority
+    if (getRoleLevel(user.role) >= 4) return user.role as MemberRole;
 
     const { data: membership } = await this.client
       .from("project_users")
@@ -357,7 +357,7 @@ export class ProjectService {
       throw new Error("Guidebook file is too large. Max supported size is 50 MB.");
     }
 
-    if (role !== "super_user") {
+    if (getRoleLevel(role) !== 5) {
       // Guidebook execution freeze check
       const [ { count: docCount }, { count: assignmentCount } ] = await Promise.all([
         this.admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", params.projectId),
@@ -422,7 +422,31 @@ export class ProjectService {
       .eq("id", params.projectId)
       .maybeSingle();
     await this.instantiateProjectCreditsIfMissing(params.projectId, (projectMeta as any)?.rating_system_id ?? null);
+
+    // Ingest real PDF content into Harita's RAG memory.
+    // Fetch the saved guidebook row to get its id.
+    const { data: savedGuidebook } = await this.admin
+      .from("project_guidebooks")
+      .select("id")
+      .eq("project_id", params.projectId)
+      .eq("file_path", filePath)
+      .maybeSingle();
+
+    if (savedGuidebook?.id) {
+      // Run ingestion asynchronously — don't block the upload response
+      ragService
+        .ingestGuidebookPdf({
+          projectId: params.projectId,
+          guidebookId: savedGuidebook.id,
+          filePath,
+          fileName: params.file.name,
+        })
+        .catch((err) => {
+          console.error("[project-service] Guidebook PDF ingestion failed silently:", err);
+        });
+    }
   }
+
 
   async deleteProject(user: CurrentUser, projectId: string) {
     if (!canDeleteProjects(user.role)) {
@@ -445,6 +469,18 @@ export class ProjectService {
     const fileName = params.file.name.toLowerCase();
     if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
       throw new Error("Tracker import supports only .xlsx/.xls files.");
+    }
+
+    if (getRoleLevel(role) !== 5) {
+      // Tracker execution freeze check
+      const [ { count: docCount }, { count: assignmentCount } ] = await Promise.all([
+        this.admin.from("project_document").select("*", { count: "exact", head: true }).eq("project_id", params.projectId),
+        this.admin.from("assignments").select("*", { count: "exact", head: true }).eq("project_id", params.projectId).eq("is_active", true)
+      ]);
+      
+      if ((docCount ?? 0) > 0 || (assignmentCount ?? 0) > 0) {
+        throw new Error("Tracker is immutable because project execution has already begun. Only a Super User can override this lock.");
+      }
     }
 
     // Self-heal before import: ensure project credit rows exist.

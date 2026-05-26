@@ -292,9 +292,24 @@ export class WorkflowOrchestratorService {
     if (!canUser(actorRole, "MANAGE_TEAM", "TEAM")) {
       return { ok: false, message: "Unauthorized" };
     }
+
+    // Check if assignments are locked for the project
+    const { data: project } = await this.reader
+      .from("projects")
+      .select("assignments_locked")
+      .eq("id", request.projectId)
+      .maybeSingle();
+
+    if (project?.assignments_locked) {
+      return { ok: false, message: "Assignments are locked for this project." };
+    }
+
     const { creditService } = await import("./credit-service");
-    await creditService.assignContributor(user, request, this.writer);
-    return { ok: true };
+    const { runInOperationalMode } = await import("@/lib/governance/governanceMutationInterceptor");
+    return runInOperationalMode(request.projectId, async () => {
+      await creditService.assignContributor(user, request, this.writer);
+      return { ok: true };
+    }, user.id);
   }
 }
 

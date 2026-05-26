@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { extractTextFromPdf, cleanPdfText } from "./pdf-extractor";
 
 type RAGChunk = {
   content: string;
@@ -25,6 +26,39 @@ function chunkText(text: string, maxChunkChars = 900) {
     chunks.push(slice);
     cursor += maxChunkChars;
   }
+  return chunks;
+}
+
+/**
+ * Chunk text by paragraph boundaries, respecting a max chunk size.
+ * Keeps semantically related sentences together for better RAG recall.
+ */
+function chunkByParagraphs(text: string, maxChunkChars = 900): string[] {
+  // Split on double newlines (paragraph breaks) first
+  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const para of paragraphs) {
+    if (!current) {
+      current = para;
+    } else if ((current + "\n\n" + para).length <= maxChunkChars) {
+      current += "\n\n" + para;
+    } else {
+      chunks.push(current.trim());
+      // If a single paragraph is too large, split it by character
+      if (para.length > maxChunkChars) {
+        for (const sub of chunkText(para, maxChunkChars)) {
+          chunks.push(sub);
+        }
+        current = "";
+      } else {
+        current = para;
+      }
+    }
+  }
+
+  if (current.trim()) chunks.push(current.trim());
   return chunks;
 }
 
@@ -223,6 +257,62 @@ export class RAGService {
     await this.upsertChunks(null, guidanceChunks);
   }
 
+  /**
+   * Ingest the actual PDF content of a project guidebook into the RAG embeddings store.
+   * Called after every guidebook upload. Replaces any previous guidebook embeddings for this project.
+   */
+  async ingestGuidebookPdf(params: {
+    projectId: string;
+    guidebookId: string;
+    filePath: string;
+    fileName: string;
+  }) {
+    // 1. Download the PDF from Supabase Storage
+    const { data: fileData, error: downloadError } = await this.admin
+      .storage
+      .from("project-documents")
+      .download(params.filePath);
+
+    if (downloadError || !fileData) {
+      console.error("[RAG] Failed to download guidebook for extraction:", downloadError);
+      return;
+    }
+
+    // 2. Convert Blob → Buffer and extract text
+    const arrayBuffer = await fileData.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const rawText = await extractTextFromPdf(buffer);
+    const cleanedText = cleanPdfText(rawText);
+
+    if (!cleanedText || cleanedText.length < 50) {
+      console.warn("[RAG] Guidebook PDF yielded no usable text — skipping embedding.");
+      return;
+    }
+
+    // 3. Remove stale guidebook embeddings for this project
+    await this.admin
+      .from("embeddings")
+      .delete()
+      .contains("metadata", { source: "guidebook_pdf", project_id: params.projectId });
+
+    // 4. Chunk by paragraphs and embed
+    const textChunks = chunkByParagraphs(cleanedText, 900);
+    const ragChunks: RAGChunk[] = textChunks.map((content, idx) => ({
+      content,
+      metadata: {
+        source: "guidebook_pdf",
+        project_id: params.projectId,
+        guidebook_id: params.guidebookId,
+        file_name: params.fileName,
+        chunk_index: idx,
+        total_chunks: textChunks.length,
+      },
+    }));
+
+    await this.upsertChunks(null, ragChunks);
+    console.log(`[RAG] Ingested ${ragChunks.length} chunks from guidebook "${params.fileName}" for project ${params.projectId}`);
+  }
+
   async retrieveContext(params: { query: string; projectIds: string[]; limit?: number }) {
     const queryEmbedding = deterministicEmbedding(params.query);
     const queryLower = params.query.toLowerCase();
@@ -253,7 +343,9 @@ export class RAGService {
         score:
           cosineSimilarity(queryEmbedding, parseVector(row.embedding)) +
           (isCreditQuery && String(row?.metadata?.source ?? "") === "igbc_guidance" ? 0.08 : 0) +
-          (creditCodeInQuery && String(row?.metadata?.credit_code ?? "").toUpperCase() === creditCodeInQuery ? 0.2 : 0),
+          (creditCodeInQuery && String(row?.metadata?.credit_code ?? "").toUpperCase() === creditCodeInQuery ? 0.2 : 0) +
+          // Boost real guidebook PDF content slightly so it surfaces alongside structured guidance
+          (String(row?.metadata?.source ?? "") === "guidebook_pdf" ? 0.05 : 0),
       }))
       .filter((item) => Number.isFinite(item.score))
       .sort((a, b) => b.score - a.score)

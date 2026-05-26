@@ -10,10 +10,12 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb",
+      bodySizeLimit: "50mb",
     },
-    middlewareClientMaxBodySize: "10mb",
+    middlewareClientMaxBodySize: "50mb",
   },
+  // pdf-parse uses Node.js internals — must not be bundled by webpack
+  serverExternalPackages: ["pdf-parse"],
   // Enable strict build checks for production quality
   eslint: {
     ignoreDuringBuilds: false,

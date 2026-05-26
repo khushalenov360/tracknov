@@ -39,7 +39,7 @@ import { canTransitionDocument } from "@/lib/workflow/state-machine";
 import type { RawDocumentStatus } from "@/lib/workflow/state-machine";
 import { executeDocumentTransition } from "@/lib/services/workflow-service";
 import { createTask, delegateTask, updateTaskState } from "@/lib/services/task-service";
-import { TaskPriority, TaskState } from "@/lib/types";
+import { TaskPriority, TaskState, MemberRole } from "@/lib/types";
 
 function pathFor(projectId: string) {
   return [`/dashboard`, `/projects/${projectId}`, `/projects/${projectId}/submission`];
@@ -739,12 +739,12 @@ export async function uploadProjectGuidebookAction(formData: FormData) {
       file,
       title: title || undefined,
     });
-    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}`, "layout");
     revalidatePath("/projects");
-    redirect(`/projects/${projectId}?success=${encodeURIComponent("Guidebook uploaded and instantiation checked.")}`);
+    redirect(`/projects/${projectId}/overview?success=${encodeURIComponent("Guidebook uploaded and instantiation checked.")}`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Guidebook upload failed.")}`);
+    redirect(`/projects/${projectId}/overview?error=${encodeURIComponent(error?.message ?? "Guidebook upload failed.")}`);
   }
 }
 
@@ -766,13 +766,13 @@ export async function importProjectTrackerBaselineAction(formData: FormData) {
       projectId,
       file,
     });
-    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}`, "layout");
     revalidatePath("/projects");
     revalidatePath("/credits");
-    redirect(`/projects/${projectId}?success=${encodeURIComponent("Tracker baseline imported.")}`);
+    redirect(`/projects/${projectId}/overview?success=${encodeURIComponent("Tracker baseline imported.")}`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    redirect(`/projects/${projectId}?error=${encodeURIComponent(error?.message ?? "Tracker baseline import failed.")}`);
+    redirect(`/projects/${projectId}/overview?error=${encodeURIComponent(error?.message ?? "Tracker baseline import failed.")}`);
   }
 }
 
@@ -1195,7 +1195,8 @@ export async function updateTaskStateAction(formData: FormData) {
 }
 
 export async function assignCreditContributorAction(formData: FormData) {
-  console.log("[assignCreditContributorAction] Started");
+  const startTime = Date.now();
+  console.log(`[assignCreditContributorAction] Started at ${new Date(startTime).toISOString()}`);
   const user = await getCurrentUser();
   if (!user) {
     console.log("[assignCreditContributorAction] No user found");
@@ -1211,6 +1212,7 @@ export async function assignCreditContributorAction(formData: FormData) {
   console.log("[assignCreditContributorAction] Payload:", { projectId, projectCreditId, assignedUserId, documentType });
 
   try {
+    const dbStartTime = Date.now();
     const result = await workflowOrchestratorService.assignContributor(user, {
       projectId,
       projectCreditId,
@@ -1218,15 +1220,21 @@ export async function assignCreditContributorAction(formData: FormData) {
       documentType,
       reason,
     });
+    const dbEndTime = Date.now();
     
+    console.log(`[assignCreditContributorAction] DB Query took ${dbEndTime - dbStartTime}ms`);
     console.log("[assignCreditContributorAction] Orchestrator result:", result);
 
     if (!result.ok) {
       return;
     }
 
+    const revalStartTime = Date.now();
     revalidatePath("/dashboard");
     pathFor(projectId).forEach((path) => revalidatePath(path));
+    const revalEndTime = Date.now();
+    console.log(`[assignCreditContributorAction] Revalidation took ${revalEndTime - revalStartTime}ms`);
+    console.log(`[assignCreditContributorAction] Total execution took ${Date.now() - startTime}ms`);
   } catch (error: any) {
     console.error("[assignCreditContributorAction] Error:", error);
     return;
@@ -1460,3 +1468,60 @@ export async function createValidationRuleAction(formData: FormData) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/credits");
 }
+
+export async function toggleProjectAssignmentsLockAction(formData: FormData) {
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  if (!projectId) return;
+
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  try {
+    const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+    
+    // Auth Check: only project_admin, super_admin, super_user, PM (owner), or L3/L5 can lock/unlock assignments
+    const { data: membership } = await reader
+      .from("project_users")
+      .select("role")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const actorRole = ((membership?.role as MemberRole) || user.role) as MemberRole;
+    if (!["project_admin", "super_admin", "super_user", "owner", "L3", "L5", "admin"].includes(actorRole)) {
+      throw new Error("Unauthorized to toggle assignments lock.");
+    }
+
+    const { data: project } = await reader
+      .from("projects")
+      .select("assignments_locked")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    const currentLock = !!project?.assignments_locked;
+
+    const { error } = await reader
+      .from("projects")
+      .update({ assignments_locked: !currentLock })
+      .eq("id", projectId);
+
+    if (error) throw error;
+
+    await logSystemActivity(reader, {
+      projectId,
+      entityType: "project",
+      entityId: projectId,
+      action: !currentLock ? "assignments_locked" : "assignments_unlocked",
+      actorId: user.id,
+      actorRole,
+      summary: !currentLock ? "Locked contributor assignments." : "Unlocked contributor assignments.",
+      details: { previous_state: currentLock, new_state: !currentLock },
+    });
+
+    revalidatePath(`/projects/${projectId}/assignments`);
+    revalidatePath(`/projects/${projectId}`, "layout");
+  } catch (error: any) {
+    console.error("Toggle assignments lock failed:", error);
+  }
+}
+

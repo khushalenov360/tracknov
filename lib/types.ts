@@ -283,6 +283,7 @@ export type ProjectWorkspace = {
     rating_system_id?: string | null;
     submission_flag?: boolean;
     lock_flag?: boolean;
+    assignments_locked?: boolean;
     project_code?: string;
   };
   userRole: MemberRole;

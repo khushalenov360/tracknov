@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
 
-export function ProjectTabs({ projectId }: { projectId: string }) {
+export function ProjectTabs({ projectId, userRole }: { projectId: string; userRole?: string }) {
   const segment = useSelectedLayoutSegment();
 
   const tabs = [
@@ -11,13 +11,19 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
     { key: "credits", label: "Credits" },
     { key: "documents", label: "Documents" },
     { key: "clarifications", label: "Clarifications" },
-    { key: "assignments", label: "Assignments" },
-    { key: "exports", label: "Exports" },
-    { key: "settings", label: "Settings" }
   ];
 
+  if (userRole && ["L3", "L5", "project_admin", "super_admin", "super_user"].includes(userRole)) {
+    tabs.push({ key: "assignments", label: "Assignments" });
+  }
+
+  tabs.push(
+    { key: "exports", label: "Exports" },
+    { key: "settings", label: "Settings" }
+  );
+
   return (
-    <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto whitespace-nowrap gap-1">
+    <div className="flex shrink-0 border-b border-[var(--color-border)] mb-6 overflow-x-auto whitespace-nowrap gap-1 sticky top-0 bg-[var(--color-surface)] z-10 pt-1 pb-1">
       {tabs.map((t) => {
         const active = segment === t.key;
         return (

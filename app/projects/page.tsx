@@ -24,9 +24,11 @@ import { pct } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function ProjectsPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams?: Promise<{ error?: string, tab?: string }> }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const error = resolvedSearchParams.error;
+  const activeTab = resolvedSearchParams.tab ?? "active";
+  
   const [user, projects, plans, ratingSystems] = await Promise.all([
     getCurrentUser(),
     getDashboardProjects(),
@@ -62,6 +64,72 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
           {error}
         </div>
       )}
+
+      {/* Tabs */}
+      <div className="flex border-b border-[var(--color-border)] mb-6">
+        <Link
+          href="/projects"
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "active"
+              ? "border-[var(--color-green)] text-[var(--color-text-primary)]"
+              : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]"
+          }`}
+        >
+          Active Projects
+        </Link>
+        <Link
+          href="/projects?tab=templates"
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "templates"
+              ? "border-[var(--color-green)] text-[var(--color-text-primary)]"
+              : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]"
+          }`}
+        >
+          Templates
+        </Link>
+        <Link
+          href="/projects?tab=archives"
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "archives"
+              ? "border-[var(--color-green)] text-[var(--color-text-primary)]"
+              : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]"
+          }`}
+        >
+          Archives
+        </Link>
+      </div>
+
+      {activeTab === "templates" && (
+        <section className="surface-card p-6">
+          <h3 className="text-[16px] font-medium text-[var(--color-text-primary)]">Project Templates</h3>
+          <p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">
+            Start a new project quickly from a predefined baseline template. Templates configure your documentation targets, workflows, and credits automatically.
+          </p>
+          <div className="mt-6 flex flex-col items-center justify-center p-12 border border-dashed border-[var(--color-border)] rounded-xl bg-[var(--color-surface-2)]">
+            <span className="text-[var(--color-text-tertiary)] mb-4">No templates available yet.</span>
+            {canCreateProject && (
+              <Button variant="secondary" className="h-[34px] rounded-md px-4 text-xs">
+                Create Template
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === "archives" && (
+        <section className="surface-card p-6">
+          <h3 className="text-[16px] font-medium text-[var(--color-text-primary)]">Archived Projects</h3>
+          <p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">
+            Projects that have completed their certification lifecycle or have been retired.
+          </p>
+          <div className="mt-6 flex flex-col items-center justify-center p-12 border border-dashed border-[var(--color-border)] rounded-xl bg-[var(--color-surface-2)]">
+            <span className="text-[var(--color-text-tertiary)]">No archived projects.</span>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "active" && (
+        <>
 
       {isL3OrAbove ? (
         <section className="bg-slate-900/40 backdrop-blur-xl border border-slate-850 p-6 rounded-3xl space-y-4 mb-6 relative overflow-hidden group">
@@ -567,6 +635,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
           </article>
         )}
       </section>
+        </>
+      )}
     </Shell>
   );
 }
