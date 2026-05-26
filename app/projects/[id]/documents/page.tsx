@@ -19,6 +19,45 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
   return `${parts[0]} MR ${parts.slice(1).join(" ")}`.trim();
 }
 
+function renderFormattedGuidelines(text: string) {
+  if (!text) return null;
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, idx) => {
+        // Detect main numbering (e.g., "1. ", "2. ", "10. ")
+        const mainMatch = line.match(/^(\d+)\.\s*(.*)/);
+        if (mainMatch) {
+          return (
+            <div key={idx} className="font-bold text-[var(--color-text-primary)] mt-3 first:mt-0 flex gap-2 items-start text-xs">
+              <span className="text-[var(--color-green)] shrink-0 font-extrabold">{mainMatch[1]}.</span>
+              <span>{mainMatch[2]}</span>
+            </div>
+          );
+        }
+        
+        // Detect sub numbering (e.g., "a. ", "b. ", "i. ")
+        const subMatch = line.match(/^([a-z])\.\s*(.*)/i);
+        if (subMatch) {
+          return (
+            <div key={idx} className="pl-5 text-[var(--color-text-secondary)] flex gap-2 items-start text-xs leading-relaxed">
+              <span className="text-[var(--color-green)] opacity-85 shrink-0 font-bold">{subMatch[1]}.</span>
+              <span>{subMatch[2]}</span>
+            </div>
+          );
+        }
+        
+        // Default line
+        return (
+          <p key={idx} className="text-xs text-[var(--color-text-secondary)] pl-3 leading-relaxed">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default async function ProjectDocumentsPage({
   params,
   searchParams,
@@ -250,20 +289,20 @@ export default async function ProjectDocumentsPage({
             </div>
 
             {selectedCredit.documentation_summary && (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Summary & Scope</span>
-                <p className="text-xs text-[var(--color-text-primary)] leading-relaxed bg-[var(--color-surface-2)] p-3 rounded-lg border border-[var(--color-border)]">
-                  {selectedCredit.documentation_summary}
-                </p>
+                <div className="bg-[var(--color-surface-2)] p-4 rounded-xl border border-[var(--color-border)] shadow-inner">
+                  {renderFormattedGuidelines(selectedCredit.documentation_summary)}
+                </div>
               </div>
             )}
 
             {selectedCredit.what_to_submit && (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Full Submission Guidance</span>
-                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-line bg-[var(--color-surface-2)] p-3 rounded-lg border border-[var(--color-border)]">
-                  {selectedCredit.what_to_submit}
-                </p>
+                <div className="bg-[var(--color-surface-2)] p-4 rounded-xl border border-[var(--color-border)] shadow-inner">
+                  {renderFormattedGuidelines(selectedCredit.what_to_submit)}
+                </div>
               </div>
             )}
 
