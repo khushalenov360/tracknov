@@ -1,5 +1,6 @@
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, BookOpen, FileText, Info, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
 import { CreditRequirementsManager } from "@/components/project/credit-requirements-manager";
@@ -184,33 +185,113 @@ export default async function ProjectDocumentsPage({
         )}
         </div>
 
-        <div className="surface-card p-4 space-y-3 min-w-0">
-          <h4 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">
-            Uploaded Evidence Files ({selectedCredit.documents.length})
-          </h4>
-          <div className="space-y-2">
-            {selectedCredit.documents.length > 0 ? (
-              selectedCredit.documents.map((doc: any) => (
-                <div key={doc.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-3 text-xs space-y-2">
-                  <div className="flex justify-between items-start gap-1">
-                    <span className="font-bold text-[var(--color-text-primary)] truncate max-w-[70%]">{doc.file_name}</span>
-                    <Badge className="text-xs font-black uppercase shrink-0">{doc.status}</Badge>
+        <div className="space-y-4 min-w-0">
+          <div className="surface-card p-4 space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">
+              Uploaded Evidence Files ({selectedCredit.documents.length})
+            </h4>
+            <div className="space-y-2">
+              {selectedCredit.documents.length > 0 ? (
+                selectedCredit.documents.map((doc: any) => (
+                  <div key={doc.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg p-3 text-xs space-y-2">
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="font-bold text-[var(--color-text-primary)] truncate max-w-[70%]">{doc.file_name}</span>
+                      <Badge className="text-xs font-black uppercase shrink-0">{doc.status}</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={`/api/documents/${doc.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-[var(--color-green)] font-bold hover:underline"
+                      >
+                        Download PDF
+                      </a>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <a
-                      href={`/api/documents/${doc.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-[var(--color-green)] font-bold hover:underline"
-                    >
-                      Download PDF
-                    </a>
-                  </div>
+                ))
+              ) : (
+                <div className="p-4 border border-dashed border-[var(--color-border)] text-center rounded-lg text-slate-400">
+                  <p className="text-xs font-medium">No files uploaded yet.</p>
                 </div>
-              ))
-            ) : (
-              <div className="p-4 border border-dashed border-[var(--color-border)] text-center rounded-lg text-slate-400">
-                <p className="text-xs font-medium">No files uploaded yet.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="surface-card p-5 space-y-4 border border-[var(--color-border)] rounded-xl bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-[var(--color-green)] shrink-0" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">
+                  Credit Reference & Guidelines
+                </h4>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {selectedCredit.is_mandatory ? (
+                  <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30 text-[10px] font-black uppercase tracking-wider">
+                    Mandatory
+                  </Badge>
+                ) : (
+                  <Badge className="bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/30 text-[10px] font-black uppercase tracking-wider">
+                    Optional ({selectedCredit.available_points || 0} Pts)
+                  </Badge>
+                )}
+                {selectedCredit.effort_level && (
+                  <Badge className={cn(
+                    "text-[10px] font-black uppercase tracking-wider border",
+                    selectedCredit.effort_level === "easy" && "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/30",
+                    selectedCredit.effort_level === "moderate" && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30",
+                    selectedCredit.effort_level === "hard" && "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30"
+                  )}>
+                    Effort: {selectedCredit.effort_level}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {selectedCredit.documentation_summary && (
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Summary & Scope</span>
+                <p className="text-xs text-[var(--color-text-primary)] leading-relaxed bg-[var(--color-surface-2)] p-3 rounded-lg border border-[var(--color-border)]">
+                  {selectedCredit.documentation_summary}
+                </p>
+              </div>
+            )}
+
+            {selectedCredit.what_to_submit && (
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Full Submission Guidance</span>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-line bg-[var(--color-surface-2)] p-3 rounded-lg border border-[var(--color-border)]">
+                  {selectedCredit.what_to_submit}
+                </p>
+              </div>
+            )}
+
+            {selectedCredit.effort_guidance && (
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Implementation Tips</span>
+                <div className="text-xs text-[var(--color-text-secondary)] leading-relaxed bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/60 p-3 rounded-lg flex gap-2">
+                  <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span>{selectedCredit.effort_guidance}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedCredit.sample_document_url && (
+              <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+                  <FileText className="h-4 w-4 text-slate-400" />
+                  <span>Sample template is available</span>
+                </div>
+                <a
+                  href={selectedCredit.sample_document_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[var(--color-green)] hover:bg-[var(--color-green-strong)] text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Sample
+                </a>
               </div>
             )}
           </div>
