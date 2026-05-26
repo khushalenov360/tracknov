@@ -218,7 +218,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
           setUserName(data.name);
         }
       } catch (err) {
-        console.error("Failed to fetch user profile", err);
+        console.warn("Failed to fetch user profile", err);
       }
     }
     fetchProfile();
