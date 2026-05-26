@@ -1488,7 +1488,7 @@ export async function toggleProjectAssignmentsLockAction(formData: FormData) {
       .maybeSingle();
 
     const actorRole = ((membership?.role as MemberRole) || user.role) as MemberRole;
-    if (!["project_admin", "super_admin", "super_user", "owner", "L3", "L5", "admin"].includes(actorRole)) {
+    if (!["project_admin", "super_admin", "super_user", "L3", "L5", "admin"].includes(actorRole)) {
       throw new Error("Unauthorized to toggle assignments lock.");
     }
 

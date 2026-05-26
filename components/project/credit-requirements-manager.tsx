@@ -140,7 +140,7 @@ export function CreditRequirementsManager({
                         docType={doc.type}
                         currentAssigneeId={doc.assigned_user_id || undefined}
                         members={members}
-                        isDisabled={false}
+                        isDisabled={true}
                       />
                     </div>
                   </div>

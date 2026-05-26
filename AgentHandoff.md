@@ -18,6 +18,9 @@ Resolve remaining TypeScript type check errors blocking Next.js dev server hot r
   * **Toggle Server Action**: Added `toggleProjectAssignmentsLockAction` to `app/actions.ts` to allow PMs and Admins to lock/unlock assignments.
   * **UI Control Integration**: Added a "Lock / Unlock Assignments" form button to the matrix page, complete with a state warning banner and automatic dropdown disabling.
   * **Service Guard**: Implemented check in `workflow-orchestrator-service.ts` that rejects assignContributor mutations if the project assignments are locked.
+* **Access Control Hardening**:
+  * Restricted assignments tab and locking action strictly to Level 3 (`project_admin`, `admin`, `super_admin`) and Level 5 (`super_user`, `L5`) roles, removing `owner` (L1) from allowed permission checks.
+  * Rendered the contributor assignment selector as read-only (`isDisabled={true}`) on all other tabs (i.e. the Documents tab side panel).
 
 ---
 

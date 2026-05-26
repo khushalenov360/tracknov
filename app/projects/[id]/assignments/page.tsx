@@ -41,7 +41,7 @@ export default async function AssignmentsPage({
             Rapidly assign responsible team members to individual credit documents without navigating through each workspace.
           </p>
         </div>
-        {["project_admin", "super_admin", "super_user", "owner", "L3", "L5"].includes(workspace.userRole) && (
+        {["project_admin", "super_admin", "super_user", "L3", "L5"].includes(workspace.userRole) && (
           <form action={toggleProjectAssignmentsLockAction} className="shrink-0">
             <input type="hidden" name="project_id" value={projectId} />
             <button
