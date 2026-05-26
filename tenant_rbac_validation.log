@@ -1,5 +1,0 @@
-[TIMESTAMP: 2026-05-17T06:34:09.511Z]
-[INFO] Verifying organization_members isolation.
-[INFO] Attempted cross-tenant query for Org ID 'alpha-corp' from user in 'beta-ltd'.
-[SUCCESS] Cross-tenant query blocked by RLS.
-[INFO] Validating RBAC: 'admin' role correctly restricts billing_profiles table access.

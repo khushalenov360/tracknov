@@ -173,7 +173,7 @@ export async function executeDocumentTransition(params: {
   });
 
   // Remediation 04: Approved Document Set Authority
-  if (targetStatus === "APPROVED") {
+  if (targetStatus === "approved") {
     // 1. Get or Create Active Set
     const { data: activeSet } = await writer.from("approved_document_sets").select("id").eq("project_id", projectId).eq("status", "ACTIVE").maybeSingle();
     let setId = activeSet?.id;
@@ -188,7 +188,7 @@ export async function executeDocumentTransition(params: {
         project_credit_id: creditId,
       }, { onConflict: "set_id,document_id" });
     }
-  } else if (currentStatus === "APPROVED" && targetStatus !== "APPROVED") {
+  } else if (currentStatus === "approved") {
     // If transitioning OUT of approved (e.g. revoked), remove it
     await writer.from("approved_document_set_items").delete().eq("document_id", documentId);
   }

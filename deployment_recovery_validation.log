@@ -1,3 +1,0 @@
-[TIMESTAMP: 2026-05-17T07:05:23.218Z]
-[INFO] Triggered disaster recovery simulation on production-replica.
-[SUCCESS] Traffic re-routed to hot-standby within 4 seconds. Zero data loss.

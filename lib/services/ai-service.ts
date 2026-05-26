@@ -136,7 +136,8 @@ export class AIService {
     const { data: docs } = await this.client
       .from("project_document")
       .select("state, uploaded_at")
-      .eq("project_id", projectId);
+      .eq("project_id", projectId)
+      .order("uploaded_at", { ascending: false });
 
     const { data: usage } = await this.client
       .from("project_usage_summary")

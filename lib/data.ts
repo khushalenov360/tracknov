@@ -2593,21 +2593,8 @@ export const getRoleTasks = cache(async function getRoleTasks(): Promise<RoleTas
       });
     }
 
-    if (['owner', 'project_admin', 'super_admin', 'super_user'].includes(role)) {
-      const queue = (await getOwnerReviewQueue()).filter(item => item.project_id === project.id);
-      if (queue.length > 0) {
-        tasks.push({
-          id: 'review-' + project.id,
-          type: 'review_pending',
-          title: queue.length + ' items to review',
-          subtitle: 'Project ' + project.name + ' queue',
-          projectId: project.id,
-          projectName: project.name,
-          actionUrl: role === 'owner' ? '/projects/' + project.id + '/review' : '/review-queue',
-          priority: 'medium',
-        });
-      }
-    }
+    // Redundant 'items to review' rollup has been removed
+    // The UI's Review tab natively handles rendering these items individually.
   }
 
   const { data: materializedTasks } = await client

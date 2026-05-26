@@ -28,7 +28,6 @@ export async function notifyUsers(
     .maybeSingle();
 
   if (notifyControl && !notifyControl.is_enabled) {
-    console.log("[NotificationService] Notifications are globally disabled. Skipping insert.");
     return;
   }
 

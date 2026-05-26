@@ -152,7 +152,7 @@ export default async function ProjectDocumentsPage({
             projectId={projectId}
             creditId={selectedCredit.id}
             documentsRequired={selectedCredit.documents_required}
-            documents={selectedCredit.documents || []}
+            documents={(selectedCredit.documents || []).map((d: any) => ({ id: d.id, doc_category: d.doc_category, status: d.workflow_state || d.status || "" }))}
             members={workspace.members}
             canManage={canFinalReview}
           />

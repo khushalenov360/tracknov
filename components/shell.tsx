@@ -22,14 +22,12 @@ import { NavigationRail } from "@/components/navigation-rail";
 import { ResizableWorkspace } from "@/components/resizable-workspace";
 import { Badge } from "@/components/ui/badge";
 import { env } from "@/lib/env";
-import { roleLabels } from "@/lib/constants";
 import type { MemberRole } from "@/lib/types";
-
 export function Shell({
   title,
   description,
   role,
-  email: _email,
+  email,
   notificationCount,
   children,
   aiTitle,
@@ -73,7 +71,7 @@ export function Shell({
         title={title}
         description={description}
         notificationCount={notificationCount}
-        email={_email}
+        email={email}
       >
         {children}
       </ResizableWorkspace>

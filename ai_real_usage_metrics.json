@@ -1,8 +1,0 @@
-{
-  "recommendationAcceptanceRate": 0.68,
-  "clarificationDraftUsageRate": 0.74,
-  "reviewerOverrideFrequency": 0.12,
-  "duplicateDetectionAccuracy": 0.96,
-  "productivityUpliftPercentage": 32.5,
-  "advisoryOnlyBoundaryViolations": 0
-}

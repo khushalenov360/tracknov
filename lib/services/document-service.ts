@@ -48,7 +48,7 @@ export class DocumentService {
   private async getProjectCreditAssignment(projectCreditId: string) {
     const { data, error } = await this.admin
       .from("project_credits")
-      .select("*")
+      .select("id, credit_code, credit_name, assigned_user_id, responsible_role, documents_required, what_to_submit")
       .eq("id", projectCreditId)
       .maybeSingle();
     if (error) throw error;
@@ -384,7 +384,7 @@ export class DocumentService {
           compression_applied: false
         });
     } catch (telemetryError) {
-      console.error("Failed to log telemetry:", telemetryError);
+      // Silently fail telemetry logging to not interrupt main flow
     }
     
     // Inactivate the assignment now that the requirement is fulfilled (clears the backlog)
@@ -434,7 +434,7 @@ export class DocumentService {
 
     // Trigger Document Intelligence Analysis (V2 Update)
     void documentIntelligenceService.analyzeDocument(documentId).catch((err) => {
-      console.error("Failed to trigger document intelligence", err);
+      // Silently fail to not interrupt main flow
     });
     
     // Emit Event
@@ -588,7 +588,7 @@ export class DocumentService {
 
     const { data: document } = await this.client
       .from("project_document")
-      .select("*")
+      .select("id, project_id, project_credit_id, doc_category, workflow_state, file_name, notes, state")
       .eq("id", params.documentId)
       .maybeSingle();
 

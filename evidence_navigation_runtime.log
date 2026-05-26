@@ -1,5 +1,0 @@
-[TIMESTAMP: 2026-05-17T06:16:48.035Z]
-[INFO] Evidence Explorer mounted in 0.42s
-[INFO] Fetched 142 documents for project b73d7310-df16-4d26-b6c8-61bebb197410
-[WARN] Duplicate evidence detected: doc_hash 0xabc123 mapped to Credit A and Credit B
-[INFO] Lineage trace ID: trc_884a2b9c verified for all documents.

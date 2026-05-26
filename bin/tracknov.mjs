@@ -280,6 +280,8 @@ async function main() {
 
   printNextStep(mode);
   console.log("Starting the guided local studio on localhost...");
+  console.log("Wiping previous cache to ensure clean start...");
+  run(pm, ["run", "clean:cache"]);
   console.log("When the server is ready, open the URL printed in the terminal.");
   run(pm, ["run", "dev:guided"]);
 }

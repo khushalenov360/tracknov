@@ -77,7 +77,9 @@ export class AuditService {
       summary: params.summary,
       details: params.details || {}
     });
-    if (error) console.error("[AuditService] Failed to log activity:", error);
+    if (error) {
+      // Silently fail activity logging to not interrupt main flow
+    }
   }
 }
 

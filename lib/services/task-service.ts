@@ -53,7 +53,7 @@ export class TaskService {
       notes: params.notes,
     });
     if (error) {
-      console.error("[TaskService] Failed to log task history:", error);
+      // Silently fail task history logging to not interrupt main flow
     }
   }
 

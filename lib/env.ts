@@ -1,10 +1,5 @@
-import dotenv from "dotenv";
-import path from "path";
-
-// Explicitly load .env.local (standard for Next.js) or .env
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
-
+// Environment variables are automatically loaded by Next.js
+// using process.env during build and runtime.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 

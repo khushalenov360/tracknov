@@ -28,7 +28,7 @@ export class CreditService {
     if (params.state === "APPROVED") {
       const { data: docs } = await this.admin
         .from("project_document")
-        .select("id, workflow_state")
+        .select("workflow_state")
         .eq("project_credit_id", params.creditId)
         .eq("is_latest", true);
       
@@ -87,7 +87,7 @@ export class CreditService {
 
     const { data: credit } = await this.client
       .from("project_credits")
-      .select("documents_required")
+      .select("id, documents_required")
       .eq("id", params.creditId)
       .maybeSingle();
 
@@ -207,8 +207,7 @@ export class CreditService {
         event_type: "ASSIGNMENT",
         message: `You have been assigned to provide evidence${docTypeMsg}.`,
         metadata: {
-          project_credit_id: params.projectCreditId,
-          credit_id: params.creditId
+          project_credit_id: params.projectCreditId
         }
       });
 

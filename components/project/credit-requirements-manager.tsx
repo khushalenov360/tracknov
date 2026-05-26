@@ -66,7 +66,6 @@ export function CreditRequirementsManager({
         {canManage && !isEditing && (
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setIsEditing(true)}
             className="h-6 text-[10px] uppercase font-bold text-[var(--color-green)] hover:text-[var(--color-green-strong)] hover:bg-[var(--color-green-soft)] px-2"
           >
@@ -77,7 +76,6 @@ export function CreditRequirementsManager({
           <div className="flex gap-1">
             <Button
               variant="ghost"
-              size="sm"
               onClick={handleCancel}
               disabled={isPending}
               className="h-6 text-[10px] uppercase font-bold text-slate-500 hover:text-slate-700 px-2"
@@ -85,7 +83,6 @@ export function CreditRequirementsManager({
               <X className="w-3 h-3 mr-1" /> Cancel
             </Button>
             <Button
-              size="sm"
               onClick={handleSave}
               disabled={isPending}
               className="h-6 text-[10px] uppercase font-bold bg-[var(--color-green)] text-white hover:bg-[var(--color-green-dim)] px-2"

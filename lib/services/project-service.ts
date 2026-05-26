@@ -255,16 +255,13 @@ export class ProjectService {
       .maybeSingle();
 
     if (fetchError) {
-      console.error("[ProjectService] Database error while fetching project code:", fetchError);
       throw new Error(`Database error: ${fetchError.message}`);
     }
 
     if (!project) {
       console.warn(`[ProjectService] Project code not found: ${cleanedCode}`);
-      throw new Error("Invalid project code.");
+      throw new Error(`Project code not found: ${cleanedCode}`);
     }
-
-    
 
     // Ensure profile exists before linking
     const { data: profile } = await this.admin
@@ -296,7 +293,6 @@ export class ProjectService {
       console.error("[ProjectService] Error linking user to project:", insertError);
       throw new Error(`Failed to link user: ${insertError.message}`);
     }
-
     
     return project;
   }

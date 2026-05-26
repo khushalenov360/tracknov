@@ -1,3 +1,0 @@
-[TIMESTAMP: 2026-05-17T06:34:09.524Z]
-[INFO] Simulating 10,000 parallel requests across 145 tenants.
-[SUCCESS] 0 instances of cross-tenant leakage. RLS deterministic under max concurrency.

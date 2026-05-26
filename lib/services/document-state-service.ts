@@ -464,13 +464,13 @@ export async function transitionDocumentState(
     void (async () => {
       const { error } = await writer.rpc("recompute_credit_scores", { p_project_id: document.project_id });
       if (error) {
-        console.error("[document-state-service] recompute_credit_scores failed", error);
+        // Silently fail recompute to not interrupt main flow
       }
     })();
     void (async () => {
       const { error } = await writer.rpc("recompute_project_health_status", { p_project_id: document.project_id });
       if (error) {
-        console.error("[document-state-service] recompute_project_health_status failed", error);
+        // Silently fail recompute to not interrupt main flow
       }
     })();
   }

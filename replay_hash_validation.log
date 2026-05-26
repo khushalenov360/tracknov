@@ -1,8 +1,0 @@
-[TIMESTAMP: 2026-05-17T06:16:48.042Z]
-[INFO] Fetching 100 recent live mutations.
-[INFO] Replaying 100 workflow transitions...
-[INFO] Replay hash verification:
-  - Checkpoint 1: MATCH
-  - Checkpoint 2: MATCH
-  - Checkpoint 100: MATCH
-[SUCCESS] 0% Divergence across all live operations.
