@@ -1,5 +1,4 @@
-﻿- file index.md
-- Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env
+﻿- Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env.example
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.gitignore
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/docker-compose.yml
@@ -156,6 +155,7 @@
 - harita/customization_risk_matrix.md
 - harita/delete_user.ts
 - harita/Demo_mode_developer_handoff.md
+- harita/dependency_graph.md
 - harita/deployment_governance_log.json
 - harita/deployment_risk_matrix.json
 - harita/derived_state_validation.json
@@ -172,6 +172,7 @@
 - harita/false_positive_elimination_report.md
 - harita/fetch_members.js
 - harita/fetch_testenv.js
+- harita/file_index.md
 - harita/FINAL_HANDOFF_VERIFICATION_LOG.md
 - harita/FINAL_QA_QC_MASTER_REPORT.md
 - harita/find_upload.txt
@@ -277,6 +278,7 @@
 - harita/tsconfig.json
 - harita/tsconfig.tsbuildinfo
 - harita/UAT_SIGNOFF_MATRIX.md
+- harita/update_file_index.ps1
 - harita/update_types.js
 - harita/usage_metering_validation.json
 - harita/users_developerhandoff.md
@@ -597,12 +599,17 @@
 - harita/lib/actions/table-actions.ts
 - harita/lib/api/apiAuditLogger.ts
 - harita/lib/api/apiReplayValidator.ts
+- harita/lib/api/catalog.ts
+- harita/lib/api/enovaitApiBoundary.ts
 - harita/lib/api/eventStreamingGateway.ts
 - harita/lib/api/publicApiGateway.ts
 - harita/lib/api/rateLimitGovernor.ts
 - harita/lib/api/tenantApiBoundary.ts
 - harita/lib/assignment/assignmentService.ts
 - harita/lib/assignment/taskGenerator.ts
+- harita/lib/assistant/llm-streamer.ts
+- harita/lib/assistant/orchestrator.ts
+- harita/lib/assistant/tool-registry.ts
 - harita/lib/auth/capabilityEngine.ts
 - harita/lib/auth/sso/azureAdProvider.ts
 - harita/lib/auth/sso/enterpriseSessionAudit.ts
@@ -615,6 +622,7 @@
 - harita/lib/billing/runtimeQuotaGovernor.ts
 - harita/lib/customer-health/customerHealthEngine.ts
 - harita/lib/customer-intelligence/customerRiskEngine.ts
+- harita/lib/database/catalog.ts
 - harita/lib/document-intelligence/aiCrossCreditReuseEngine.ts
 - harita/lib/document-intelligence/aiDuplicateEvidenceEngine.ts
 - harita/lib/document-intelligence/aiProjectTimelineEngine.ts
@@ -852,6 +860,7 @@
 - harita/lib/workers/export-worker.ts
 - harita/lib/workers/notification-worker.ts
 - harita/lib/workflow/base.ts
+- harita/lib/workflow/catalog.ts
 - harita/lib/workflow/exceptions.ts
 - harita/lib/workflow/machines.ts
 - harita/lib/workflow/state-machine.ts
@@ -920,6 +929,7 @@
 - harita/scripts/operations/platform_governance_harness.ts
 - harita/scripts/operations/real_customer_telemetry_harness.ts
 - harita/scripts/operations/reviewerQueueIntegrity.spec.ts
+- harita/supabase/migration_package.md
 - harita/supabase/.temp/cli-latest
 - harita/supabase/.temp/gotrue-version
 - harita/supabase/.temp/linked-project.json
@@ -929,6 +939,7 @@
 - harita/supabase/.temp/rest-version
 - harita/supabase/.temp/storage-migration
 - harita/supabase/.temp/storage-version
+- harita/supabase/functions/enovait-copilot/index.ts
 - harita/supabase/migrations/0001_initial.sql
 - harita/supabase/migrations/0002_unified_enovait_features.sql
 - harita/supabase/migrations/0003_backfill_member_emails.sql
@@ -1205,6 +1216,7 @@
 - Project_Management/Handoff/3/TRACKNOV_Repo_Aware_AI_Capability_Intelligence_Handoff.md
 - Project_Management/Handoff/3/TRACKNOV_TEAM_MEMBERSHIP_FIX_HANDOFF.md
 - Project_Management/Handoff/remote handoff/TRACKNOV_EXECUTION_BASELINE_V2_HANDOFF-1.md
+- Project_Management/Handoff/remote handoff/TRACKNOV_EXECUTION_BASELINE_V2_SIGNED.md
 - Reference_Materials/IGBC_Manuals/IGBC Green Factory Building (Version 2.0 with First Addendum) April 2025.pdf
 - Reference_Materials/IGBC_Manuals/IGBC_Green Data Center Certification Programe Aug2024_v1.pdf
 - Reference_Materials/IGBC_Manuals/IGBC_Green_Interiors_Reference_Guide_2021_(with_Addendum).pdf

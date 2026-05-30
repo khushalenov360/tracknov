@@ -35,6 +35,8 @@ import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
 import { resolveHaritaMode } from "@/lib/harita/router/resolveHaritaMode";
 import { haritaRuntimeService } from "@/lib/services/harita-runtime-service";
+import { validateEnovAitBoundary, dispatchWorkflowIntent } from "@/lib/assistant/orchestrator";
+import { createAiStream as edgeStream } from "@/lib/assistant/llm-streamer";
 export const dynamic = "force-dynamic";
 
 type AssistantRequest = {
