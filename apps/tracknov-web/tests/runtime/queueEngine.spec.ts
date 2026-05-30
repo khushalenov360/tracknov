@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { queueEngine } from "@/core/runtime/queueEngine";
-import { assignmentService } from "@/lib/assignment/assignmentService";
+import { assignmentService } from "@tracknov/harita-engine/assignment/assignmentService";
 
 vi.mock("@/lib/assignment/assignmentService", () => ({
   assignmentService: {

@@ -1,9 +1,9 @@
 import { createAdminClient } from "../lib/supabase/admin";
-import { acquireReplayLock, releaseReplayLock } from "../lib/governance/replayConflictResolutionEngine";
-import { reportGovernanceIncident } from "../lib/governance/governanceIncidentEngine";
-import { validateOverrideSafety } from "../lib/governance/overrideSafetyEngine";
-import { detectRuntimeEntropy } from "../lib/governance/runtimeEntropyEngine";
-import { governanceLocalStorage } from "../lib/governance/governanceContext";
+import { acquireReplayLock, releaseReplayLock } from "@tracknov/harita-engine/governance/replayConflictResolutionEngine";
+import { reportGovernanceIncident } from "@tracknov/harita-engine/governance/governanceIncidentEngine";
+import { validateOverrideSafety } from "@tracknov/harita-engine/governance/overrideSafetyEngine";
+import { detectRuntimeEntropy } from "@tracknov/harita-engine/governance/runtimeEntropyEngine";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import crypto from "node:crypto";
 
 const PROJECT_ID = "b73d7310-df16-4d26-b6c8-61bebb197410"; // Bhavarkua

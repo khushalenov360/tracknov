@@ -12,10 +12,10 @@ import {
   leaveProjectAction,
 } from "@/app/actions";
 import { Shell } from "@/components/shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
+import { Progress } from "@tracknov/ui/ui/progress";
 import { igbcRatingSystemGroups, projectStatuses, projectTypes, roleLabels } from "@/lib/constants";
 import { getActiveSubscriptionPlans, getCurrentUser, getDashboardProjects, getRatingSystems } from "@/lib/data";
 import { canCreateProjects, canDeleteProjects, canEditPlanControls, canManageProject, canManageTokens } from "@/lib/rbac";

@@ -12,20 +12,20 @@ import {
   updateProjectForCurrentUser,
 } from "@/lib/data";
 import { env } from "@/lib/env";
-import { projectService } from "@/lib/services/project-service";
-import { billingService } from "@/lib/services/billing-service";
-import { memberService } from "@/lib/services/member-service";
-import { documentService } from "@/lib/services/document-service";
-import { creditService } from "@/lib/services/credit-service";
-import { reviewService } from "@/lib/services/review-service";
-import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
+import { projectService } from "@tracknov/harita-engine/services/project-service";
+import { billingService } from "@tracknov/harita-engine/services/billing-service";
+import { memberService } from "@tracknov/harita-engine/services/member-service";
+import { documentService } from "@tracknov/harita-engine/services/document-service";
+import { creditService } from "@tracknov/harita-engine/services/credit-service";
+import { reviewService } from "@tracknov/harita-engine/services/review-service";
+import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
 import { runRuntimeTransition } from "@/core/runtime/orchestrator";
-import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
-import { logSystemActivity } from "@/lib/services/activity-service";
-import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@/lib/services/document-state-service";
+import { runNotificationDigestJobs } from "@tracknov/harita-engine/services/notification-jobs";
+import { logSystemActivity } from "@tracknov/harita-engine/services/activity-service";
+import { type WorkflowState, fromCanonicalReviewState, type CanonicalReviewState } from "@tracknov/harita-engine/services/document-state-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_SINGLE_UPLOAD_SIZE_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from "@tracknov/harita-engine/governance/uploadGovernance";
 
 import {
   canAccessBillingAndInvoice,
@@ -35,10 +35,10 @@ import {
   canDeleteProjects,
   canManageProject,
 } from "@/lib/rbac";
-import { canTransitionDocument } from "@/lib/workflow/state-machine";
-import type { RawDocumentStatus } from "@/lib/workflow/state-machine";
-import { executeDocumentTransition } from "@/lib/services/workflow-service";
-import { createTask, delegateTask, updateTaskState } from "@/lib/services/task-service";
+import { canTransitionDocument } from "@tracknov/core/workflow/state-machine";
+import type { RawDocumentStatus } from "@tracknov/core/workflow/state-machine";
+import { executeDocumentTransition } from "@tracknov/harita-engine/services/workflow-service";
+import { createTask, delegateTask, updateTaskState } from "@tracknov/harita-engine/services/task-service";
 import { TaskPriority, TaskState, MemberRole } from "@/lib/types";
 
 function pathFor(projectId: string) {

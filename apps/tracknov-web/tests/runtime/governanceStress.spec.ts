@@ -6,9 +6,9 @@ import * as path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { interceptMutation, runInReplayMode } from "@/lib/governance/governanceMutationInterceptor";
-import { governanceLocalStorage } from "@/lib/governance/governanceContext";
-import { emitGovernanceEvent } from "@/lib/governance/governanceObservabilityBus";
+import { interceptMutation, runInReplayMode } from "@tracknov/harita-engine/governance/governanceMutationInterceptor";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
+import { emitGovernanceEvent } from "@tracknov/harita-engine/governance/governanceObservabilityBus";
 
 /**
  * GOVERNANCE RUNTIME STRESS VALIDATION

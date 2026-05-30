@@ -1,4 +1,4 @@
-import type { AssistantSurface } from "@/lib/assistant";
+import type { AssistantSurface } from "@tracknov/harita-engine/assistant";
 import type { MemberRole } from "@/lib/types";
 
 type Capability = {

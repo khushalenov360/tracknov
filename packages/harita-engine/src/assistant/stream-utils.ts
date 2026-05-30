@@ -2,7 +2,7 @@ import {
   buildAssistantSystemPrompt,
   type AssistantContext,
   type AssistantMessage,
-} from "@/lib/assistant";
+} from "@tracknov/harita-engine/assistant";
 
 export type AssistantRequest = {
   context?: AssistantContext;

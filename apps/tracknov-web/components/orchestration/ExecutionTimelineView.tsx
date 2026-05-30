@@ -13,7 +13,7 @@ import {
   Sparkles,
   GitBranch
 } from "lucide-react";
-import { ExecutionTimelinePredictor, PredictiveCriticalPath } from "../../lib/orchestration/executionTimelinePredictor";
+import { ExecutionTimelinePredictor, PredictiveCriticalPath } from "@tracknov/harita-engine/orchestration/executionTimelinePredictor";
 
 interface PredictiveStep {
   code: string;

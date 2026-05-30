@@ -3,8 +3,8 @@
 import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
 import { createProjectInviteAction, type InviteActionState } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
 import { roleLabels } from "@/lib/constants";
 import type { MemberRole } from "@/lib/types";
 

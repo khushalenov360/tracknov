@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, UploadCloud } from "lucide-react";
 import { uploadDocumentAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
+import { Button } from "@tracknov/ui/ui/button";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@tracknov/harita-engine/governance/uploadGovernance";
 
 export function UploadDocumentForm({
   projectId,

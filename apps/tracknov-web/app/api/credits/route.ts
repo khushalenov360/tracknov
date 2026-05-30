@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
 import { env } from "@/lib/env";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";

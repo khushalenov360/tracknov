@@ -26,9 +26,9 @@ import {
   Zap,
   Cpu
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Progress } from "@tracknov/ui/ui/progress";
 
 // Constants & Hard Render Limits
 const OPERATIONAL_GOVERNOR_CONFIG = {

@@ -16,7 +16,7 @@ import {
   EvidenceReadabilityAnalyzer,
   LowConfidenceDetection,
   CorruptedDocumentDetector
-} from "../lib/document-intelligence";
+} from "@tracknov/harita-engine/document-intelligence";
 
 async function runVerification() {
   console.log("=========================================================================");

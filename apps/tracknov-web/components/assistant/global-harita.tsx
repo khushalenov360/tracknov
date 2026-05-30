@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bot, ChevronLeft, ChevronRight, MessageSquare, Plus, Send, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/assistant";
+import { Button } from "@tracknov/ui/ui/button";
+import { Textarea } from "@tracknov/ui/ui/textarea";
+import type { AssistantContext, AssistantMessage, AssistantSurface } from "@tracknov/harita-engine/assistant";
 import type { MemberRole } from "@/lib/types";
-import { sessionMemory } from "@/lib/services/session-memory-service";
+import { sessionMemory } from "@tracknov/harita-engine/services/session-memory-service";
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
 type HaritaAttachment = {

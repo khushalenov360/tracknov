@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
 console.log(`[DEBUG] SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? "EXISTS" : "MISSING"}`);
 
 // Now we can import the app code
-import { enforceDeploymentGate } from "../lib/governance/compatibilityValidator";
+import { enforceDeploymentGate } from "@tracknov/harita-engine/governance/compatibilityValidator";
 
 // Execute the gate
 enforceDeploymentGate().catch(err => {

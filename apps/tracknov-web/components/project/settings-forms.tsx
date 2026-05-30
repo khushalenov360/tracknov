@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { uploadProjectGuidebookAction, importProjectTrackerBaselineAction, uploadProjectDataTableAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 
 export default function SettingsForms({ 
   projectId,

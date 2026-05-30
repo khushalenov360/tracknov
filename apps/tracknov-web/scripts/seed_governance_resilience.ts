@@ -1,10 +1,10 @@
-import { governanceIncidents } from "../lib/governance/governanceIncidentEngine";
-import { acquireReplayLock } from "../lib/governance/replayConflictResolutionEngine";
-import { validateOverrideSafety } from "../lib/governance/overrideSafetyEngine";
-import { collectGovernanceHealthMetrics } from "../lib/governance/governanceHealthMonitor";
-import { generateDriftAnalyticsReport } from "../lib/governance/driftAnalyticsEngine";
-import { detectRuntimeEntropy } from "../lib/governance/runtimeEntropyEngine";
-import { governanceLocalStorage } from "../lib/governance/governanceContext";
+import { governanceIncidents } from "@tracknov/harita-engine/governance/governanceIncidentEngine";
+import { acquireReplayLock } from "@tracknov/harita-engine/governance/replayConflictResolutionEngine";
+import { validateOverrideSafety } from "@tracknov/harita-engine/governance/overrideSafetyEngine";
+import { collectGovernanceHealthMetrics } from "@tracknov/harita-engine/governance/governanceHealthMonitor";
+import { generateDriftAnalyticsReport } from "@tracknov/harita-engine/governance/driftAnalyticsEngine";
+import { detectRuntimeEntropy } from "@tracknov/harita-engine/governance/runtimeEntropyEngine";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import crypto from "node:crypto";
 
 const PROJECT_ID = "b73d7310-df16-4d26-b6c8-61bebb197410";

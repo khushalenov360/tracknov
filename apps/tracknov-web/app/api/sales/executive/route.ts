@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getDashboardProjects, getExecutiveInsights } from "@/lib/data";
-import { getRoiSnapshot } from "@/lib/services/roi-service";
+import { getRoiSnapshot } from "@tracknov/harita-engine/services/roi-service";
 import { canAccessBillingAndInvoice } from "@/lib/rbac";
 
 export async function GET() {

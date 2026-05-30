@@ -7,7 +7,7 @@ import {
   HierarchyLeakageDetector, 
   DuplicateRenderingDetector, 
   FrontendGovernanceScore 
-} from "../lib/governance/fgel";
+} from "@tracknov/harita-engine/governance/fgel";
 
 test.describe("Frontend Governance Enforcement Layer (FGEL) Unit Tests", () => {
   

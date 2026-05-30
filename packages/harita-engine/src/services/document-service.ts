@@ -10,7 +10,7 @@ import { aiService } from "./ai-service";
 import { documentIntelligenceService } from "./document-intelligence-service";
 import { workflowOrchestratorService } from "./workflow-orchestrator-service";
 import { runRuntimeTransition } from "@/core/runtime/orchestrator";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@tracknov/core/events/event-bus";
 import type { CurrentUser } from "@/lib/types";
 import crypto from "crypto";
 

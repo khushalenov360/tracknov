@@ -1,4 +1,4 @@
-import { PageLoading } from "@/components/ui/page-loading";
+import { PageLoading } from "@tracknov/ui/ui/page-loading";
 
 export default function DashboardLoading() {
   return <PageLoading label="Loading dashboard..." />;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Lock, ArrowRight, ChevronRight } from "lucide-react";
-import { MilestoneStatus, StageGateMilestone } from "@/lib/services/stage-gate-service";
+import { MilestoneStatus, StageGateMilestone } from "@tracknov/harita-engine/services/stage-gate-service";
 
 interface StageGateTrackerProps {
   milestones: StageGateMilestone[];

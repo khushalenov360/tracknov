@@ -1,9 +1,9 @@
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { certificationStrategyEngine } from "@/lib/services/certification-strategy-engine";
-import { submissionReadinessEngine } from "@/lib/services/submission-readiness-engine";
-import { evidenceGraphEngine } from "@/lib/services/evidence-graph-engine";
+import { certificationStrategyEngine } from "@tracknov/harita-engine/services/certification-strategy-engine";
+import { submissionReadinessEngine } from "@tracknov/harita-engine/services/submission-readiness-engine";
+import { evidenceGraphEngine } from "@tracknov/harita-engine/services/evidence-graph-engine";
 
 export type ProjectRow = {
   id: string;

@@ -20,8 +20,8 @@ import {
   ExternalLink,
   Zap
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
 
 import { formatDistanceToNow } from "date-fns";
 

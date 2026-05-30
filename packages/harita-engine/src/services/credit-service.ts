@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 import { logSystemActivity } from "./activity-service";
 import { taskService } from "./task-service";
 import { canUser, getRoleLevel } from "@/lib/rbac";
-import { interceptMutation } from "@/lib/governance/governanceMutationInterceptor";
+import { interceptMutation } from "@tracknov/harita-engine/governance/governanceMutationInterceptor";
 import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 import type { CurrentUser, MemberRole } from "@/lib/types";
 

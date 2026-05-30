@@ -12,9 +12,9 @@ import {
   ChevronRight,
   ShieldCheck
 } from "lucide-react";
-import { EvidenceSearchEngine, ReusableEvidenceItem } from "../../lib/evidence/evidenceSearchEngine";
-import { EvidenceSemanticMatcher } from "../../lib/evidence/evidenceSemanticMatcher";
-import { EvidenceReuseScorer } from "../../lib/evidence/evidenceReuseScorer";
+import { EvidenceSearchEngine, ReusableEvidenceItem } from "@tracknov/harita-engine/evidence/evidenceSearchEngine";
+import { EvidenceSemanticMatcher } from "@tracknov/harita-engine/evidence/evidenceSemanticMatcher";
+import { EvidenceReuseScorer } from "@tracknov/harita-engine/evidence/evidenceReuseScorer";
 
 interface UniversalEvidencePaletteProps {
   tenantId: string;

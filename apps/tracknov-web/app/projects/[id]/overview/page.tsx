@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { StageGateTracker } from "@/components/project/StageGateTracker";
-import { Progress } from "@/components/ui/progress";
+import { Progress } from "@tracknov/ui/ui/progress";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
-import { stageGateService } from "@/lib/services/stage-gate-service";
+import { stageGateService } from "@tracknov/harita-engine/services/stage-gate-service";
 import { formatDateTimeIST } from "@/lib/utils";
-import { toLegacyCreditStatus } from "@/lib/workflow-utils";
+import { toLegacyCreditStatus } from "@tracknov/core/workflow-utils";
 import { AiGroundingUploads } from "@/components/project/ai-grounding-uploads";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 

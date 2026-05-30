@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assignmentService } from "@/lib/assignment/assignmentService";
+import { assignmentService } from "@tracknov/harita-engine/assignment/assignmentService";
 import { executeAction } from "@/core/runtime/executionContext";
 import { createClient } from "@/lib/supabase/server";
 

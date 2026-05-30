@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { uploadProjectGuidebookAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 import { getProjectWorkspace } from "@/lib/data";
 import { canManageProjectGuidebook } from "@/lib/rbac";
 import { formatDateTimeIST } from "@/lib/utils";

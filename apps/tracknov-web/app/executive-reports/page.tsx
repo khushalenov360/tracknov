@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Building
 } from "lucide-react";
-import { ExecutiveNarrativeEngine, NarrativeSummary } from "../../lib/reporting/executiveNarrativeEngine";
+import { ExecutiveNarrativeEngine, NarrativeSummary } from "@tracknov/harita-engine/reporting/executiveNarrativeEngine";
 
 export default function ExecutiveReports() {
   const [projects] = useState([

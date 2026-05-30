@@ -3,14 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { canUser, getRoleLevel, isL5Role } from "@/lib/rbac";
 import type { CurrentUser, MemberRole } from "@/lib/types";
-import { runtimeGovernanceService } from "@/lib/services/runtime-governance-service";
-import { workflowAllowedActions } from "@/lib/workflow/state-renderer";
+import { runtimeGovernanceService } from "@tracknov/harita-engine/services/runtime-governance-service";
+import { workflowAllowedActions } from "@tracknov/core/workflow/state-renderer";
 import { 
   SubmittalWorkflowMachine, 
   ProjectCertificationMachine, 
   mapTracknovRoleToWorkflowRole 
-} from "@/lib/workflow/machines";
-import type { SubmittalWorkflowState, ProjectCertificationState } from "@/lib/workflow/types";
+} from "@tracknov/core/workflow/machines";
+import type { SubmittalWorkflowState, ProjectCertificationState } from "@tracknov/core/workflow/types";
 
 type WorkflowEntityType = "document" | "submittal" | "project" | "credit";
 

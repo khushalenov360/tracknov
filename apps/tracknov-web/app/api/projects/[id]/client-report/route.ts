@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { clientService } from "@/lib/services/client-service";
+import { clientService } from "@tracknov/harita-engine/services/client-service";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logSystemActivity } from "@/lib/services/activity-service";
+import { logSystemActivity } from "@tracknov/harita-engine/services/activity-service";
 import { canAccessBillingAndInvoice } from "@/lib/rbac";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 

@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { registerPlatformUserAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
 
 export default async function RegisterPage({
   params,

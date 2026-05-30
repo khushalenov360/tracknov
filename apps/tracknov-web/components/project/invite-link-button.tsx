@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 
 export function InviteLinkButton({ href }: { href: string }) {
   const [copied, setCopied] = useState(false);

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { creditStats, getProjectWorkspace } from "@/lib/data";
 import { creditStatuses } from "@/lib/constants";
-import { toLegacyCreditStatus } from "@/lib/workflow-utils";
+import { toLegacyCreditStatus } from "@tracknov/core/workflow-utils";
 
 export const dynamic = "force-dynamic";
 

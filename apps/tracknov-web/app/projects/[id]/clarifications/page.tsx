@@ -3,8 +3,8 @@ import {
   createTaskAction,
   setCreditStateAction,
 } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@tracknov/ui/ui/button";
+import { Textarea } from "@tracknov/ui/ui/textarea";
 import { getProjectWorkspace } from "@/lib/data";
 import { canAssignTasks, canReviewProjectDocuments } from "@/lib/rbac";
 import { formatDateTimeIST } from "@/lib/utils";

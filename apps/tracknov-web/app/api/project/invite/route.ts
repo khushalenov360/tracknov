@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { memberService } from "@/lib/services/member-service";
+import { memberService } from "@tracknov/harita-engine/services/member-service";
 import { createClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
 
 export async function POST(req: Request) {
   const throttled = checkRateLimit(req, {

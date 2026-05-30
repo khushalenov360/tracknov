@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canEditDocumentStatusAtAnyStage } from "@/lib/rbac";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@tracknov/core/events/event-bus";
 import { notifyUsers, getProjectMembersByRoles } from "./notification-service";
 import { logDocumentActivity } from "./activity-service";
 import { taskService } from "./task-service";

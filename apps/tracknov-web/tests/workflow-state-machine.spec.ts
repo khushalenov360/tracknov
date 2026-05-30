@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ProjectCertificationMachine, SubmittalWorkflowMachine, mapTracknovRoleToWorkflowRole } from "@/lib/workflow/machines";
-import { validateCreditCanClose, validateProjectCanComplete } from "@/lib/workflow/validators";
+import { ProjectCertificationMachine, SubmittalWorkflowMachine, mapTracknovRoleToWorkflowRole } from "@tracknov/core/workflow/machines";
+import { validateCreditCanClose, validateProjectCanComplete } from "@tracknov/core/workflow/validators";
 
 test.describe("workflow state machine", () => {
   test("allows valid project transition for project_admin (admin role is L5)", () => {

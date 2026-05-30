@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Shell } from "@/components/shell";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { getCurrentUser, getMyRoleTasks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";

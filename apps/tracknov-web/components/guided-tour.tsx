@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 
 export type GuidedTourStep = {
   selector?: string;

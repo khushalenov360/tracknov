@@ -1,9 +1,9 @@
 import { createAdminClient } from "../lib/supabase/admin";
-import { projectService } from "../lib/services/project-service";
-import { documentService } from "../lib/services/document-service";
-import { creditService } from "../lib/services/credit-service";
-import { runRuntimeTransition } from "../lib/services/workflow-service";
-import { workflowOrchestratorService } from "../lib/services/workflow-orchestrator-service";
+import { projectService } from "@tracknov/harita-engine/services/project-service";
+import { documentService } from "@tracknov/harita-engine/services/document-service";
+import { creditService } from "@tracknov/harita-engine/services/credit-service";
+import { runRuntimeTransition } from "@tracknov/harita-engine/services/workflow-service";
+import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
 import crypto from "crypto";
 
 async function run() {

@@ -12,9 +12,9 @@ import {
   BadgeCheck,
   Briefcase
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
 import Link from "next/link";
 
 export default async function ReviewerOnboardingPage() {

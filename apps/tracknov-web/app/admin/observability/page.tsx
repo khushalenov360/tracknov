@@ -14,8 +14,8 @@ import {
   Terminal,
   Server
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Progress } from "@tracknov/ui/ui/progress";
 import { formatDistanceToNow } from "date-fns";
 
 export default async function ObservabilityDashboard() {

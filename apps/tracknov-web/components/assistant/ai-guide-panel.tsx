@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Send, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import type { AssistantContext, AssistantMessage } from "@/lib/assistant";
+import { Button } from "@tracknov/ui/ui/button";
+import { Textarea } from "@tracknov/ui/ui/textarea";
+import type { AssistantContext, AssistantMessage } from "@tracknov/harita-engine/assistant";
 import { cn } from "@/lib/utils";
 type HaritaAttachment = {
   name: string;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { assignmentService } from "@/lib/assignment/assignmentService";
-import { taskGenerator } from "@/lib/assignment/taskGenerator";
+import { assignmentService } from "@tracknov/harita-engine/assignment/assignmentService";
+import { taskGenerator } from "@tracknov/harita-engine/assignment/taskGenerator";
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({

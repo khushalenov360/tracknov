@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { projectService } from "@/lib/services/project-service";
-import { documentService } from "@/lib/services/document-service";
+import { projectService } from "@tracknov/harita-engine/services/project-service";
+import { documentService } from "@tracknov/harita-engine/services/document-service";
 import { runRuntimeTransition } from "@/core/runtime/orchestrator";
-import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
+import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
 import crypto from "crypto";
 
 export async function GET() {

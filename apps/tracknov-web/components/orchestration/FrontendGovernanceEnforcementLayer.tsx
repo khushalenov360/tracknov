@@ -34,7 +34,7 @@ import {
   entropyMonitor, 
   FGELViolation, 
   GovernanceScoreBreakdown 
-} from "@/lib/governance/fgel";
+} from "@tracknov/harita-engine/governance/fgel";
 
 export function FrontendGovernanceEnforcementLayer() {
   const pathname = usePathname();

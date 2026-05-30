@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { interceptMutation } from "@/lib/governance/governanceMutationInterceptor";
+import { interceptMutation } from "@tracknov/harita-engine/governance/governanceMutationInterceptor";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 

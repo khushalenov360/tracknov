@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { CheckCircle2, Circle, Pencil, Save, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 import { updateCreditDocumentRequirementsAction } from "@/app/actions";
 import { MatrixAssignmentDropdown } from "@/components/project/MatrixAssignmentDropdown";
 import { ProjectMemberRecord } from "@/lib/types";

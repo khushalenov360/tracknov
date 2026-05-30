@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
-import { documentService } from "@/lib/services/document-service";
-import { projectService } from "@/lib/services/project-service";
-import { checkRateLimit } from "@/lib/security/rate-limit";
-import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB } from "@/lib/governance/uploadGovernance";
+import { documentService } from "@tracknov/harita-engine/services/document-service";
+import { projectService } from "@tracknov/harita-engine/services/project-service";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB } from "@tracknov/harita-engine/governance/uploadGovernance";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";

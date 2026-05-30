@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import type { AssistantMessage, AssistantContext } from "@/lib/assistant";
+import type { AssistantMessage, AssistantContext } from "@tracknov/harita-engine/assistant";
 
 export type HaritaSession = {
   id: string;

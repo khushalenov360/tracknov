@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { generateReplayAttestationProof } from "@/lib/governance/replayAttestation";
+import { generateReplayAttestationProof } from "@tracknov/harita-engine/governance/replayAttestation";
 
 test.describe("Layer 5 — Replay Proof Certification Spec", () => {
   test("cryptographic attestation generates unforgeable signatures", () => {

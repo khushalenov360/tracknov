@@ -6,8 +6,8 @@ import {
   requiresToolCall,
   sanitizeAiResponse,
   sanitizeUserText,
-} from "../lib/services/harita-governance";
-import { getSafeCapabilitiesContext } from "../lib/services/capability-registry";
+} from "@tracknov/harita-engine/services/harita-governance";
+import { getSafeCapabilitiesContext } from "@tracknov/harita-engine/services/capability-registry";
 
 test.describe("Harita Governance — ENOVAIT Compliance", () => {
   

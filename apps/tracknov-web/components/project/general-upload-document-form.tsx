@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, UploadCloud } from "lucide-react";
 import { uploadDocumentAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@/lib/governance/uploadGovernance";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
+import { Textarea } from "@tracknov/ui/ui/textarea";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, MAX_SINGLE_UPLOAD_SIZE_MB, ALLOWED_UPLOAD_EXTENSIONS } from "@tracknov/harita-engine/governance/uploadGovernance";
 
 type UploadProject = {
   id: string;

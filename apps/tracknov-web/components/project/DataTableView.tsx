@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ParsedSheet } from "@/lib/actions/table-actions";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { HyperFormula, CellError } from "hyperformula";
 
 export function DataTableView({ sheets, workspace, user }: { sheets: ParsedSheet[], workspace?: any, user?: any }) {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
-import { runNotificationDigestJobs } from "@/lib/services/notification-jobs";
+import { runNotificationDigestJobs } from "@tracknov/harita-engine/services/notification-jobs";
 
 export async function POST() {
   const user = await getCurrentUser();

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertCapability } from "@/lib/auth/capabilityEngine";
+import { assertCapability } from "@tracknov/core/auth/capabilityEngine";
 
 export const creditContextAssembler = {
   async assembleContext(projectId: string, creditId: string): Promise<string> {

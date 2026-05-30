@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { assertCapability } from "@/lib/auth/capabilityEngine";
+import { assertCapability } from "@tracknov/core/auth/capabilityEngine";
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(() => ({

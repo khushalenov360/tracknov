@@ -1,4 +1,4 @@
-import { orchestrateHaritaResponse } from "@/lib/harita/orchestrator";
+import { orchestrateHaritaResponse } from "@tracknov/harita-engine/harita/orchestrator";
 import type { AIIntent } from "@/ai/intents/types";
 
 export async function routeWorkflowAction(input: {

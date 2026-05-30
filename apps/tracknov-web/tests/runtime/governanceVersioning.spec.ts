@@ -5,9 +5,9 @@ import * as path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 // Use standard imports
-import { governanceEvolutionEngine } from "../../lib/governance/evolution";
+import { governanceEvolutionEngine } from "@tracknov/harita-engine/governance/evolution";
 import { createAdminClient } from "../../lib/supabase/admin";
-import { collectRuntimeProof } from "../../lib/governance/runtimeProofCollector";
+import { collectRuntimeProof } from "@tracknov/harita-engine/governance/runtimeProofCollector";
 
 /**
  * GOVERNANCE VERSIONING INTEGRITY SUITE

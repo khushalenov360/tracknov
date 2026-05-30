@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
-import { executeGovernedReplayHarness } from "../lib/governance/runtimeReplayHarness";
-import { interceptMutation, runInReplayMode } from "../lib/governance/governanceMutationInterceptor";
-import { evaluateRuntimeAcceptance } from "../lib/governance/runtimeAcceptanceEngine";
+import { executeGovernedReplayHarness } from "@tracknov/harita-engine/governance/runtimeReplayHarness";
+import { interceptMutation, runInReplayMode } from "@tracknov/harita-engine/governance/governanceMutationInterceptor";
+import { evaluateRuntimeAcceptance } from "@tracknov/harita-engine/governance/runtimeAcceptanceEngine";
 import { createAdminClient } from "../lib/supabase/admin";
 
 const BHAVARKUA_PROJECT_ID = "b73d7310-df16-4d26-b6c8-61bebb197410";

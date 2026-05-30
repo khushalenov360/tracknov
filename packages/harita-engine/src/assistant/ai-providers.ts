@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
-import { type AssistantContext, type AssistantMessage, buildAssistantSystemPrompt } from "@/lib/assistant";
-import { toGeminiTools, toOpenAiTools } from "@/lib/assistant-tools";
+import { type AssistantContext, type AssistantMessage, buildAssistantSystemPrompt } from "@tracknov/harita-engine/assistant";
+import { toGeminiTools, toOpenAiTools } from "@tracknov/harita-engine/assistant-tools";
 import {
   type AiProvider,
   type ProviderAttempt,

@@ -8,7 +8,7 @@ if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });
 }
 
-import { MAX_SINGLE_UPLOAD_SIZE_BYTES, ALLOWED_UPLOAD_EXTENSIONS, MAX_SINGLE_UPLOAD_SIZE_MB } from "../lib/governance/uploadGovernance";
+import { MAX_SINGLE_UPLOAD_SIZE_BYTES, ALLOWED_UPLOAD_EXTENSIONS, MAX_SINGLE_UPLOAD_SIZE_MB } from "@tracknov/harita-engine/governance/uploadGovernance";
 import { createAdminClient } from "../lib/supabase/admin";
 
 async function verifyUploadGovernance() {

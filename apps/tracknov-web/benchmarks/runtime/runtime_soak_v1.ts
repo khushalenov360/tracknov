@@ -1,12 +1,12 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { createAdminClient } from "../lib/supabase/admin";
-import { aggregateSoakMetrics, persistSoakMetrics } from "../lib/governance/runtimeSoakMetrics";
-import { detectSoakAnomalies } from "../lib/governance/runtimeSoakIncidentEngine";
-import { validateLongDurationReplay } from "../lib/governance/longDurationReplayValidator";
-import { acquireReplayLock, releaseReplayLock } from "../lib/governance/replayConflictResolutionEngine";
-import { detectRuntimeEntropy } from "../lib/governance/runtimeEntropyEngine";
-import { governanceLocalStorage } from "../lib/governance/governanceContext";
+import { aggregateSoakMetrics, persistSoakMetrics } from "@tracknov/harita-engine/governance/runtimeSoakMetrics";
+import { detectSoakAnomalies } from "@tracknov/harita-engine/governance/runtimeSoakIncidentEngine";
+import { validateLongDurationReplay } from "@tracknov/harita-engine/governance/longDurationReplayValidator";
+import { acquireReplayLock, releaseReplayLock } from "@tracknov/harita-engine/governance/replayConflictResolutionEngine";
+import { detectRuntimeEntropy } from "@tracknov/harita-engine/governance/runtimeEntropyEngine";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import crypto from "node:crypto";
 
 import { env } from "../lib/env";

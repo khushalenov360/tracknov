@@ -1,6 +1,6 @@
 import { getProjectWorkspace } from "@/lib/data";
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { roleLabels } from "@/lib/constants";
 import { formatDateTimeIST } from "@/lib/utils";
 import { ProjectTeamInviteForm } from "@/components/project/ProjectTeamInviteForm";

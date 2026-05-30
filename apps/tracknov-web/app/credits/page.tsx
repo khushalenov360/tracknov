@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Medal } from "lucide-react";
 import { Shell } from "@/components/shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Progress } from "@tracknov/ui/ui/progress";
 import { categoryMeta } from "@/lib/constants";
 import { getDashboardProjects, getProjectWorkspace } from "@/lib/data";
-import { getAuthoritativeProjectScore } from "@/lib/services/igbc-score-authority";
+import { getAuthoritativeProjectScore } from "@tracknov/harita-engine/services/igbc-score-authority";
 
 export const dynamic = "force-dynamic";
 

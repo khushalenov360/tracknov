@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptProjectInviteAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 import { getCurrentUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 

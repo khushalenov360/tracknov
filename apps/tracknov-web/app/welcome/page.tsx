@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createProjectAction, updateOnboardingChecklistAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
 import { getCurrentUser, getDashboardProjects, getOrCreateOnboardingChecklist } from "@/lib/data";
 
 export const dynamic = "force-dynamic";

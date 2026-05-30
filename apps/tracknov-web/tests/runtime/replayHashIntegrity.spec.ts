@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { generateLineageHash } from "@/lib/governance/hashSerializer";
+import { generateLineageHash } from "@tracknov/harita-engine/governance/hashSerializer";
 
 test.describe("Layer 5 — Replay Hash Integrity Verification", () => {
   test("bitwise identical state structures yield perfectly matching lineage hashes", () => {

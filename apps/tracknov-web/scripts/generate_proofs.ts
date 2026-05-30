@@ -1,7 +1,7 @@
-import { generateLineageHash, computeSha256, canonicalSerialize } from "../lib/governance/hashSerializer";
-import { calculateGovernanceImpactBlastRadius } from "../lib/governance/impactGraphEngine";
-import { generateReplayAttestationProof } from "../lib/governance/replayAttestation";
-import { CURRENT_REPLAY_CONTRACT } from "../lib/governance/replayContract";
+import { generateLineageHash, computeSha256, canonicalSerialize } from "@tracknov/harita-engine/governance/hashSerializer";
+import { calculateGovernanceImpactBlastRadius } from "@tracknov/harita-engine/governance/impactGraphEngine";
+import { generateReplayAttestationProof } from "@tracknov/harita-engine/governance/replayAttestation";
+import { CURRENT_REPLAY_CONTRACT } from "@tracknov/harita-engine/governance/replayContract";
 
 // Sample Data for Bhavarkua Project Reconstruction
 const BHAVARKUA_PROJECT_ID = "b73d7310-df16-4d26-b6c8-61bebb197410";

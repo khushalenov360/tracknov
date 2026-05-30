@@ -2,16 +2,16 @@ import Link from 'next/link';
 
 import { createProjectAction } from "@/app/actions";
 import { Shell } from "@/components/shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Input } from "@tracknov/ui/ui/input";
+import { Progress } from "@tracknov/ui/ui/progress";
 import { getAuditTimeline, getCurrentUser, getDashboardProjects, getExecutiveInsights, getOrCreateOnboardingChecklist, getOwnerReviewQueue, getTasksForUser, getRoleTasks, getRuntimeDesyncSummary, getUserActionQueue, getUserReviewQueue, getUserBlockerQueue } from "@/lib/data";
 import { igbcRatingSystemGroups, roleLabels } from "@/lib/constants";
-import { toLegacyCreditStatus } from "@/lib/workflow-utils";
+import { toLegacyCreditStatus } from "@tracknov/core/workflow-utils";
 import { formatDateTimeIST, pct } from "@/lib/utils";
 import { TaskDetailPanel } from "@/components/project/TaskDetailPanel";
-import { getRoiSnapshot } from "@/lib/services/roi-service";
+import { getRoiSnapshot } from "@tracknov/harita-engine/services/roi-service";
 import { RefreshTrigger } from "@/components/refresh-trigger";
 import CommandCenter from "@/components/orchestration/CommandCenter";
 

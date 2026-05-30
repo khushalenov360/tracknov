@@ -3,7 +3,7 @@
 import { useFormStatus } from "react-dom";
 import { Upload, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { uploadProjectGuidebookAction, importProjectTrackerBaselineAction, uploadProjectDataTableAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tracknov/ui/ui/button";
 
 function GuidebookSubmitButton() {
   const { pending } = useFormStatus();

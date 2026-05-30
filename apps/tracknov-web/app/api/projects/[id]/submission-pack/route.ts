@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getProjectWorkspaceForApi } from "@/lib/data";
 import { buildSubmissionZip, isSubmissionExportReady } from "@/lib/exports";
-import { logSystemActivity } from "@/lib/services/activity-service";
+import { logSystemActivity } from "@tracknov/harita-engine/services/activity-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canExportProjectArtifacts } from "@/lib/rbac";
-import { checkRateLimit } from "@/lib/security/rate-limit";
-import { runtimeGovernanceService } from "@/lib/services/runtime-governance-service";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
+import { runtimeGovernanceService } from "@tracknov/harita-engine/services/runtime-governance-service";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Building
 } from "lucide-react";
-import { SessionDetail } from "../../../lib/auth/sso/enterpriseSessionAudit";
+import { SessionDetail } from "@tracknov/core/auth/sso/enterpriseSessionAudit";
 
 export default function IdentityGovernancePage() {
   const [provider, setProvider] = useState<"SAML" | "AZURE" | "OKTA" | "GOOGLE">("OKTA");

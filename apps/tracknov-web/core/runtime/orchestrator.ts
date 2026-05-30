@@ -1,8 +1,8 @@
 import type { CurrentUser } from "@/lib/types";
-import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
-import type { WorkflowState } from "@/lib/services/document-state-service";
+import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
+import type { WorkflowState } from "@tracknov/harita-engine/services/document-state-service";
 import { recomputeDerivedState } from "@/core/runtime/derivedStateEngine";
-import { governanceLocalStorage } from "@/lib/governance/governanceContext";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import crypto from "node:crypto";
 
 import { executeAction, ExecutionContext, ExecutionResult } from "@/core/runtime/executionContext";

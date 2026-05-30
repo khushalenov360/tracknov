@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Image from "next/image";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@tracknov/ui/ui/card";
 import { LoginForm } from "@/components/auth/login-form";
 import { env } from "@/lib/env";
 

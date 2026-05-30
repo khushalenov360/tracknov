@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logAiRecommendation } from "../lib/ai/aiRuntimeAuditLogger";
-import { governanceLocalStorage } from "../lib/governance/governanceContext";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import { createAdminClient } from "../lib/supabase/admin";
 import crypto from "node:crypto";
 

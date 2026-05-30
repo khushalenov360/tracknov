@@ -1,6 +1,6 @@
 import { eventBus } from "../event-bus";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getProjectMembersByRoles, notifyUsers } from "@/lib/services/notification-service";
+import { getProjectMembersByRoles, notifyUsers } from "@tracknov/harita-engine/services/notification-service";
 
 export function registerNotificationConsumers() {
   eventBus.subscribe(async (event) => {

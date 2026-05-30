@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { notifyUsers } from "@/lib/services/notification-service";
+import { notifyUsers } from "@tracknov/harita-engine/services/notification-service";
 
 export async function runNotificationDigestJobs() {
   if (!env.supabaseServiceRoleKey) {

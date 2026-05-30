@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, BookOpen, FileText, Info, Download } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { cn } from "@/lib/utils";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
@@ -7,7 +7,7 @@ import { CreditRequirementsManager } from "@/components/project/credit-requireme
 import { getProjectWorkspace } from "@/lib/data";
 import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
 import { env } from "@/lib/env";
-import type { AssistantContext } from "@/lib/assistant";
+import type { AssistantContext } from "@tracknov/harita-engine/assistant";
 
 export const dynamic = "force-dynamic";
 

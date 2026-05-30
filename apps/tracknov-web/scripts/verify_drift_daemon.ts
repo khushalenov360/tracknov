@@ -1,4 +1,4 @@
-import { executeDriftReconciliationCycle } from "../lib/governance/driftDaemon";
+import { executeDriftReconciliationCycle } from "@tracknov/harita-engine/governance/driftDaemon";
 
 async function main() {
   console.log("Starting Enterprise Drift Reconciliation Cycle...");

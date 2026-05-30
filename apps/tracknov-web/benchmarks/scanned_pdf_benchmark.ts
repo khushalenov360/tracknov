@@ -3,7 +3,7 @@
  * Validates typographical corrections of standard scanner distortions against > 96% target.
  */
 
-import { OcrNormalizationEngine } from "../lib/document-intelligence/ocrNormalizationEngine";
+import { OcrNormalizationEngine } from "@tracknov/harita-engine/document-intelligence/ocrNormalizationEngine";
 
 export function runScannedPdfBenchmark(): { name: string; passed: boolean; score: number; target: number } {
   console.log("[BENCHMARK] Executing Scanned PDF OCR Survivability Test...");

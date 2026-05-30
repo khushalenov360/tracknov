@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import {
   buildFallbackAssistantReply,
   type AssistantContext,
-} from "@/lib/assistant";
-import { ragService } from "@/lib/services/rag-service";
-import { toneService, type AssistantTone } from "@/lib/services/tone-service";
-import { knowledgeEngine } from "@/lib/services/knowledge-engine";
+} from "@tracknov/harita-engine/assistant";
+import { ragService } from "@tracknov/harita-engine/services/rag-service";
+import { toneService, type AssistantTone } from "@tracknov/harita-engine/services/tone-service";
+import { knowledgeEngine } from "@tracknov/harita-engine/services/knowledge-engine";
 import {
   getUnknownDataResponse,
   normalizeHaritaResponse,
@@ -16,20 +16,20 @@ import {
   requiresToolCall,
   sanitizeContextText,
   sanitizeUserText,
-} from "@/lib/services/harita-governance";
-import { EnovAitBoundary } from "@/lib/api/enovaitApiBoundary";
-import { checkRateLimit } from "@/lib/security/rate-limit";
-import { executeTool } from "@/lib/assistant-tools";
-import { getSafeCapabilitiesContext } from "@/lib/services/capability-registry";
+} from "@tracknov/harita-engine/services/harita-governance";
+import { EnovAitBoundary } from "@tracknov/core/api/enovaitApiBoundary";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
+import { executeTool } from "@tracknov/harita-engine/assistant-tools";
+import { getSafeCapabilitiesContext } from "@tracknov/harita-engine/services/capability-registry";
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
-import { haritaRuntimeService } from "@/lib/services/harita-runtime-service";
-import { createAiStream as edgeStream } from "@/lib/assistant/llm-streamer";
+import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
+import { createAiStream as edgeStream } from "@tracknov/harita-engine/assistant/llm-streamer";
 
-import { type AssistantRequest, createTextStream, createResponseStream } from "@/lib/assistant/stream-utils";
-import { getWorkspaceSnapshot } from "@/lib/assistant/snapshot";
-import { isFileQuestion, isUploadMappingIntent, buildAttachmentAnalysisReply, getProjectIdFromContext } from "@/lib/assistant/attachments";
-import { applyResponseGovernance, logAiInteraction, tryDeterministicAnswer } from "@/lib/assistant/governance-filters";
-import { tryDetectFunctionCalls } from "@/lib/assistant/ai-providers";
+import { type AssistantRequest, createTextStream, createResponseStream } from "@tracknov/harita-engine/assistant/stream-utils";
+import { getWorkspaceSnapshot } from "@tracknov/harita-engine/assistant/snapshot";
+import { isFileQuestion, isUploadMappingIntent, buildAttachmentAnalysisReply, getProjectIdFromContext } from "@tracknov/harita-engine/assistant/attachments";
+import { applyResponseGovernance, logAiInteraction, tryDeterministicAnswer } from "@tracknov/harita-engine/assistant/governance-filters";
+import { tryDetectFunctionCalls } from "@tracknov/harita-engine/assistant/ai-providers";
 
 export const dynamic = "force-dynamic";
 

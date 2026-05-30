@@ -13,9 +13,9 @@ import {
   CheckCircle,
   Eye
 } from "lucide-react";
-import { FrictionAnalyticsEngine, UserFrictionScore } from "../../../lib/telemetry/frictionAnalyticsEngine";
-import { UploadFailureTrace } from "../../../lib/telemetry/uploadFailureProfiler";
-import { HesitationAudit } from "../../../lib/telemetry/reviewerHesitationTracker";
+import { FrictionAnalyticsEngine, UserFrictionScore } from "@tracknov/core/telemetry/frictionAnalyticsEngine";
+import { UploadFailureTrace } from "@tracknov/core/telemetry/uploadFailureProfiler";
+import { HesitationAudit } from "@tracknov/core/telemetry/reviewerHesitationTracker";
 
 export default function CustomerRealityPage() {
   const [sessionCount, setSessionCount] = useState(148);

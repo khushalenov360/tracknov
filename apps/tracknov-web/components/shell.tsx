@@ -20,7 +20,7 @@ import { GlobalHarita } from "@/components/assistant/global-harita";
 import { SessionHeartbeat } from "@/components/session-heartbeat";
 import { NavigationRail } from "@/components/navigation-rail";
 import { ResizableWorkspace } from "@/components/resizable-workspace";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { env } from "@/lib/env";
 import type { MemberRole } from "@/lib/types";
 export function Shell({

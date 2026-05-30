@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { runRuntimeTransition, RuntimeTransitionRequest } from "@/core/runtime/orchestrator";
 import { withExecutionContext } from "@/core/runtime/executionContext";
-import { workflowOrchestratorService } from "@/lib/services/workflow-orchestrator-service";
-import * as assertModule from "@/lib/auth/capabilityEngine";
+import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
+import * as assertModule from "@tracknov/core/auth/capabilityEngine";
 
 vi.mock("@/lib/auth/capabilityEngine", () => ({
   assertCapability: vi.fn(),

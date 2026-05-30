@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { projectService } from '../lib/services/project-service';
-import { billingService } from '../lib/services/billing-service';
-import { memberService } from '../lib/services/member-service';
+import { projectService } from '@tracknov/harita-engine/services/project-service';
+import { billingService } from '@tracknov/harita-engine/services/billing-service';
+import { memberService } from '@tracknov/harita-engine/services/member-service';
 import { getCurrentUser } from '../lib/data';
 
 // Note: These tests assume a running Supabase instance or a mocked environment.

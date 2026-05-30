@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { calculateGovernanceImpactBlastRadius } from "@/lib/governance/impactGraphEngine";
-import { type DependencyNode } from "@/lib/governance/dependencyResolver";
+import { calculateGovernanceImpactBlastRadius } from "@tracknov/harita-engine/governance/impactGraphEngine";
+import { type DependencyNode } from "@tracknov/harita-engine/governance/dependencyResolver";
 
 test.describe("Layer 4 — Override Blast Radius Assessment", () => {
   const nodes: DependencyNode[] = [

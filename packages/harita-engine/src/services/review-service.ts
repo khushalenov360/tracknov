@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { workflowOrchestratorService } from "./workflow-orchestrator-service";
 import { ragService } from "./rag-service";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@tracknov/core/events/event-bus";
 import { computeIgbcScore } from "./igbc-scoring-service";
 import { getProjectWorkspace } from "@/lib/data";
 import type { CurrentUser } from "@/lib/types";

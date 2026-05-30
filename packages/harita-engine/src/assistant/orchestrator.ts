@@ -1,8 +1,8 @@
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
-import { getWorkspaceSnapshot } from "@/lib/harita/context/getWorkspaceSnapshot";
-import { EnovAitBoundary } from "@/lib/api/enovaitApiBoundary";
-import { haritaRuntimeService } from "@/lib/services/harita-runtime-service";
-import { getProjectIdFromContext } from "@/lib/harita/context/getProjectIdFromContext";
+import { getWorkspaceSnapshot } from "@tracknov/harita-engine/harita/context/getWorkspaceSnapshot";
+import { EnovAitBoundary } from "@tracknov/core/api/enovaitApiBoundary";
+import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
+import { getProjectIdFromContext } from "@tracknov/harita-engine/harita/context/getProjectIdFromContext";
 
 /**
  * Validates the intelligence intent boundary against the EnovAIT policy.

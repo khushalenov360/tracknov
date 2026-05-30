@@ -1,4 +1,4 @@
-import { BaseStateMachine } from "@/lib/workflow/base";
+import { BaseStateMachine } from "@tracknov/core/workflow/base";
 import { getRoleLevel } from "@/lib/rbac";
 import type { MemberRole } from "@/lib/types";
 import type {
@@ -7,7 +7,7 @@ import type {
   TransitionMap,
   RoleTransitionMap,
   WorkflowRole,
-} from "@/lib/workflow/types";
+} from "@tracknov/core/workflow/types";
 
 /**
  * TRACKNOV AUTHORITATIVE WORKFLOW MACHINES

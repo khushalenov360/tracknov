@@ -7,7 +7,7 @@ import {
   runNotificationDigestAction,
 } from "@/app/actions";
 import { TeamMemberCreateForm } from "@/components/team-member-create-form";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { getCurrentUser, getDashboardProjects, getSuperUserCommandCenter, getTeamMembers } from "@/lib/data";
 import { roleLabels } from "@/lib/constants";
 import { formatDateTimeIST } from "@/lib/utils";

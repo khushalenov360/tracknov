@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assignmentService } from "@/lib/assignment/assignmentService";
+import { assignmentService } from "@tracknov/harita-engine/assignment/assignmentService";
 
 export type QueueItem = {
   id: string;

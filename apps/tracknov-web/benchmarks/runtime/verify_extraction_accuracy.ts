@@ -10,7 +10,7 @@ import {
   SemanticFailureClassifier, 
   ExtractionConfidenceAdjuster,
   AiReasoningExplainer
-} from "../lib/document-intelligence";
+} from "@tracknov/harita-engine/document-intelligence";
 
 export function runReplayValidation() {
   console.log("=============================================================");

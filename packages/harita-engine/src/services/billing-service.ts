@@ -5,7 +5,7 @@ import { canAccessBillingAndInvoice, canEditPlanControls } from "@/lib/rbac";
 import type { CurrentUser } from "@/lib/types";
 import { projectService } from "./project-service";
 import { logSystemActivity } from "./activity-service";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@tracknov/core/events/event-bus";
 
 export class BillingService {
   // Test comment

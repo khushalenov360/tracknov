@@ -15,7 +15,7 @@ import {
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { workflowStateRenderer } from "@/lib/workflow/state-renderer";
+import { workflowStateRenderer } from "@tracknov/core/workflow/state-renderer";
 import type {
   AuditTimelineRecord,
   DocumentActivityLog,

@@ -3,7 +3,7 @@ import { Shell } from "@/components/shell";
 import { WorkflowStatePanel } from "@/components/workflow/workflow-state-panel";
 import { getCurrentUser, getOwnerReviewQueue, getReviewerPerformanceSummary } from "@/lib/data";
 import { formatDateTimeIST } from "@/lib/utils";
-import { workflowStateRenderer } from "@/lib/workflow/state-renderer";
+import { workflowStateRenderer } from "@tracknov/core/workflow/state-renderer";
 
 export const dynamic = "force-dynamic";
 

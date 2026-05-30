@@ -1,5 +1,5 @@
-import { WorkflowRoleError, WorkflowTransitionError, WorkflowValidationError } from "@/lib/workflow/exceptions";
-import type { RoleTransitionMap, TransitionMap, WorkflowRole } from "@/lib/workflow/types";
+import { WorkflowRoleError, WorkflowTransitionError, WorkflowValidationError } from "@tracknov/core/workflow/exceptions";
+import type { RoleTransitionMap, TransitionMap, WorkflowRole } from "@tracknov/core/workflow/types";
 
 export abstract class BaseStateMachine<TState extends string> {
   abstract states: readonly TState[];

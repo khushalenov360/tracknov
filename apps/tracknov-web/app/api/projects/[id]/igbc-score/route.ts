@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProjectWorkspaceForApi } from "@/lib/data";
-import { computeIgbcScore } from "@/lib/services/igbc-scoring-service";
+import { computeIgbcScore } from "@tracknov/harita-engine/services/igbc-scoring-service";
 import { createClient } from "@/lib/supabase/server";
-import { runtimeGovernanceService } from "@/lib/services/runtime-governance-service";
+import { runtimeGovernanceService } from "@tracknov/harita-engine/services/runtime-governance-service";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Shell } from "@/components/shell";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { getCurrentUser, getProjectWorkspace } from "@/lib/data";
 import { ProjectTabs } from "@/components/project/ProjectTabs";
 

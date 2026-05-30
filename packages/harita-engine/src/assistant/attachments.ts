@@ -1,4 +1,4 @@
-import { type AssistantContext } from "@/lib/assistant";
+import { type AssistantContext } from "@tracknov/harita-engine/assistant";
 
 export function getProjectIdFromContext(context?: AssistantContext) {
   const current = String(context?.currentItem ?? "");

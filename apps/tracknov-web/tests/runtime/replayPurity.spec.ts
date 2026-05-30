@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { computePureDerivedStateInMemory, type ReplayMemoryContext } from "@/lib/governance/derivedStateEngine";
-import { assertSideEffectPermitted, ReplayPurityViolationError, runWithPurityGuard } from "@/lib/governance/replayPurityGuard";
+import { computePureDerivedStateInMemory, type ReplayMemoryContext } from "@tracknov/harita-engine/governance/derivedStateEngine";
+import { assertSideEffectPermitted, ReplayPurityViolationError, runWithPurityGuard } from "@tracknov/harita-engine/governance/replayPurityGuard";
 
 test.describe("Layer 3 — Replay Purity & Side-Effect Guards", () => {
   test("in-memory state recomputation is side-effect free and memory scoped", () => {

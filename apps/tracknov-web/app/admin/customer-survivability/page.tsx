@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CustomerRiskEngine, RiskFactors } from "@/lib/customer-intelligence/customerRiskEngine";
+import { CustomerRiskEngine, RiskFactors } from "@tracknov/harita-engine/customer-intelligence/customerRiskEngine";
 import { 
   Heart, 
   AlertTriangle, 

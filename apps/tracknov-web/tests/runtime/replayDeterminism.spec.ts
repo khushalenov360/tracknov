@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CURRENT_REPLAY_CONTRACT, validateReplayContractSemantics } from "@/lib/governance/replayContract";
+import { CURRENT_REPLAY_CONTRACT, validateReplayContractSemantics } from "@tracknov/harita-engine/governance/replayContract";
 
 test.describe("Layer 2 — Replay Determinism Verification", () => {
   test("CURRENT_REPLAY_CONTRACT enforces strict determinism boundaries", () => {

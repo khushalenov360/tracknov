@@ -7,7 +7,7 @@ dotenv.config({ path: ".env.local" });
 import { AiGovernanceBoundary } from "../lib/ai/aiGovernanceBoundary";
 import { logAiRecommendation, logAiRiskReport } from "../lib/ai/aiRuntimeAuditLogger";
 import { buildPromptContext } from "../lib/ai/aiPromptContextBuilder";
-import { governanceLocalStorage } from "../lib/governance/governanceContext";
+import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
 import { createAdminClient } from "../lib/supabase/admin";
 
 const BHAVARKUA_ID = "b73d7310-df16-4d26-b6c8-61bebb197410";

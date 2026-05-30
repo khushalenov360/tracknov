@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { projectService } from "@/lib/services/project-service";
-import { creditService } from "@/lib/services/credit-service";
-import { reviewService } from "@/lib/services/review-service";
-import { documentService } from "@/lib/services/document-service";
+import { projectService } from "@tracknov/harita-engine/services/project-service";
+import { creditService } from "@tracknov/harita-engine/services/credit-service";
+import { reviewService } from "@tracknov/harita-engine/services/review-service";
+import { documentService } from "@tracknov/harita-engine/services/document-service";
 import {
   getCurrentUser,
   getProjectWorkspaceForApi,

@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, LockKeyhole } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@tracknov/ui/ui/button";
+import { Card, CardContent, CardHeader } from "@tracknov/ui/ui/card";
+import { Input } from "@tracknov/ui/ui/input";
 
 export function ResetPasswordForm() {
   const router = useRouter();

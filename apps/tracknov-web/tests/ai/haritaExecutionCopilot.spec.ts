@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { projectContextAssembler } from "@/ai/context/projectContextAssembler";
-import { assertCapability } from "@/lib/auth/capabilityEngine";
+import { assertCapability } from "@tracknov/core/auth/capabilityEngine";
 
 vi.mock("@/lib/auth/capabilityEngine", () => ({
   assertCapability: vi.fn(),

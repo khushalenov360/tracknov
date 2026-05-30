@@ -15,9 +15,9 @@ import {
   LayoutDashboard,
   ClipboardList
 } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@tracknov/ui/ui/card";
+import { Badge } from "@tracknov/ui/ui/badge";
+import { Button } from "@tracknov/ui/ui/button";
 
 export default async function ReviewerCockpitPage() {
   const supabase = createClient();

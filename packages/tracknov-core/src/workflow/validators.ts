@@ -1,4 +1,4 @@
-import { WorkflowValidationError } from "@/lib/workflow/exceptions";
+import { WorkflowValidationError } from "@tracknov/core/workflow/exceptions";
 
 export function validateCreditCanClose(args: { linkedDocumentsApproved: boolean }) {
   if (!args.linkedDocumentsApproved) {

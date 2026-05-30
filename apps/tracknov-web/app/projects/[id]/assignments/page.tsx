@@ -2,7 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getProjectWorkspace, getCurrentUser } from "@/lib/data";
 import { MatrixRowControls } from "@/components/project/MatrixRowControls";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tracknov/ui/ui/badge";
 import { canUser } from "@/lib/rbac";
 import { AlertCircle, Lock, Unlock } from "lucide-react";
 import { toggleProjectAssignmentsLockAction } from "@/app/actions";

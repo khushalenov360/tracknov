@@ -1,5 +1,5 @@
 import { eventBus } from "../event-bus";
-import { billingService } from "@/lib/services/billing-service";
+import { billingService } from "@tracknov/harita-engine/services/billing-service";
 
 export function registerBillingConsumers() {
   eventBus.subscribe(async (event) => {

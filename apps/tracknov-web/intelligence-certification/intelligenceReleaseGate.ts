@@ -3,7 +3,7 @@
  * Enforces automated quality boundaries to prevent promotion of degraded model parameters.
  */
 
-import { SemanticQuarantineEngine } from "../lib/governance/semanticQuarantineEngine";
+import { SemanticQuarantineEngine } from "@tracknov/harita-engine/governance/semanticQuarantineEngine";
 
 export interface GateReport {
   allowRelease: boolean;

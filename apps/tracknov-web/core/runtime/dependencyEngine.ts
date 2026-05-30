@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@tracknov/core/events/event-bus";
 
 type EvidenceChangeParams = {
   projectId: string;

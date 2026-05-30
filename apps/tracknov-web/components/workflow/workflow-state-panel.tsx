@@ -1,4 +1,4 @@
-import type { WorkflowStateRender } from "@/lib/workflow/state-renderer";
+import type { WorkflowStateRender } from "@tracknov/core/workflow/state-renderer";
 
 const toneClasses: Record<WorkflowStateRender["tone"], string> = {
   neutral: "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]",

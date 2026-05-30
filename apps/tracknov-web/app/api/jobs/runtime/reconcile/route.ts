@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
-import { runtimeGovernanceService } from "@/lib/services/runtime-governance-service";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { runtimeGovernanceService } from "@tracknov/harita-engine/services/runtime-governance-service";
+import { checkRateLimit } from "@tracknov/harita-engine/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 

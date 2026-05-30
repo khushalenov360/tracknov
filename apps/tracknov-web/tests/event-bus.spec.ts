@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { eventBus, initEventBus } from "../lib/events/event-bus";
+import { eventBus, initEventBus } from "@tracknov/core/events/event-bus";
 
 test.describe("EventBus Hardening", () => {
   test.beforeEach(async () => {

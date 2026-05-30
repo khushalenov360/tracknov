@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { haritaRuntimeService } from "@/lib/services/harita-runtime-service";
+import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
 import {
   sanitizeAiResponse,
   filterTechnicalLeakage,
@@ -7,7 +7,7 @@ import {
   getAuthoritativeClaimRefusal,
   getUnknownDataResponse,
   normalizeHaritaResponse,
-} from "@/lib/services/harita-governance";
+} from "@tracknov/harita-engine/services/harita-governance";
 
 export function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>, sessionId?: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();

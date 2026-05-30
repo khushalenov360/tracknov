@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
-import type { WorkflowState } from "@/lib/services/document-state-service";
+import type { WorkflowState } from "@tracknov/harita-engine/services/document-state-service";
 import { runRuntimeTransition } from "@/core/runtime/orchestrator";
 
 export const dynamic = "force-dynamic";

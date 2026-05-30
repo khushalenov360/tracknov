@@ -1,13 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { recordDocumentReviewEvent } from "@/lib/services/review-service";
+import { recordDocumentReviewEvent } from "@tracknov/harita-engine/services/review-service";
 import { canEditDocumentStatusAtAnyStage } from "@/lib/rbac";
 import {
   canTransitionDocument,
   getTransitionPayload,
   getTransitionSideEffects,
   RawDocumentStatus,
-} from "@/lib/workflow/state-machine";
+} from "@tracknov/core/workflow/state-machine";
 
 type SupabaseClient = ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>;
 

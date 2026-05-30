@@ -1,4 +1,4 @@
-import { ActionCapability, assertCapability } from "@/lib/auth/capabilityEngine";
+import { ActionCapability, assertCapability } from "@tracknov/core/auth/capabilityEngine";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 
