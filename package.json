@@ -1,0 +1,8 @@
+{
+  "name": "tracknov-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
