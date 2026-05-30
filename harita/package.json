@@ -54,7 +54,7 @@
   ],
   "scripts": {
     "clean:cache": "node scripts/clean-next-cache.mjs",
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "dev:guided": "bun run scripts/dev-guided.ts",
     "build": "next build",
     "start": "next start",

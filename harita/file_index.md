@@ -1,4 +1,6 @@
-﻿- Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env
+﻿- Screenshot_20260530_154553.jpg
+- .github/workflows/intelligence-governance.yml
+- Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.env.example
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/.gitignore
 - Archive/enovait-igbc-2104/Enovait IGBC 2104/enovait-backend/docker-compose.yml
@@ -232,12 +234,6 @@
 - harita/test-invite.ts
 - harita/test-project-users.ts
 - harita/test-schema.ts
-- harita/test.js
-- harita/test2.js
-- harita/test3.js
-- harita/test4.js
-- harita/test5.js
-- harita/test6.js
 - harita/testenv.html
 - harita/testenv_debug.html
 - harita/testenv_full.html
@@ -288,7 +284,6 @@
 - harita/vitest.config.ts
 - harita/WHITEPAPER_TRACKNOV.md
 - harita/Workflow_Engine_Developer_Handoff.md
-- harita/.github/workflows/intelligence-governance.yml
 - harita/.tmp-supabase-fix/supabase/config.toml
 - harita/.tmp-supabase-fix/supabase/migrations/0006_security_definer_membership_helpers.sql
 - harita/.tmp-supabase-fix-sql/01.sql
@@ -607,8 +602,13 @@
 - harita/lib/api/tenantApiBoundary.ts
 - harita/lib/assignment/assignmentService.ts
 - harita/lib/assignment/taskGenerator.ts
+- harita/lib/assistant/ai-providers.ts
+- harita/lib/assistant/attachments.ts
+- harita/lib/assistant/governance-filters.ts
 - harita/lib/assistant/llm-streamer.ts
 - harita/lib/assistant/orchestrator.ts
+- harita/lib/assistant/snapshot.ts
+- harita/lib/assistant/stream-utils.ts
 - harita/lib/assistant/tool-registry.ts
 - harita/lib/auth/capabilityEngine.ts
 - harita/lib/auth/sso/azureAdProvider.ts
@@ -940,6 +940,9 @@
 - harita/supabase/.temp/storage-migration
 - harita/supabase/.temp/storage-version
 - harita/supabase/functions/enovait-copilot/index.ts
+- harita/supabase/functions/shared/certification-strategy-engine.ts
+- harita/supabase/functions/shared/evidence-graph-engine.ts
+- harita/supabase/functions/shared/submission-readiness-engine.ts
 - harita/supabase/migrations/0001_initial.sql
 - harita/supabase/migrations/0002_unified_enovait_features.sql
 - harita/supabase/migrations/0003_backfill_member_emails.sql
@@ -1215,6 +1218,7 @@
 - Project_Management/Handoff/3/TRACKNOV_RBAC_Hierarchy_Correction_Developer_Handoff.md
 - Project_Management/Handoff/3/TRACKNOV_Repo_Aware_AI_Capability_Intelligence_Handoff.md
 - Project_Management/Handoff/3/TRACKNOV_TEAM_MEMBERSHIP_FIX_HANDOFF.md
+- Project_Management/Handoff/remote handoff/TRACKNOV_API_Catalog_Extraction_Handoff.docx
 - Project_Management/Handoff/remote handoff/TRACKNOV_EXECUTION_BASELINE_V2_HANDOFF-1.md
 - Project_Management/Handoff/remote handoff/TRACKNOV_EXECUTION_BASELINE_V2_SIGNED.md
 - Reference_Materials/IGBC_Manuals/IGBC Green Factory Building (Version 2.0 with First Addendum) April 2025.pdf
