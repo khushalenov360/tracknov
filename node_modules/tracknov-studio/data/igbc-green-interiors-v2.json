@@ -1,0 +1,2493 @@
+[
+  {
+    "category": "Eco Design Approach",
+    "credit_label": "EDA Credit 1",
+    "credit_code": "EDA C1",
+    "credit_name": "Optimise Circulation Spaces",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Area statement in the formulae embedded excel sheet format indicating the following:\na. Total lease area/ Total built-up area\nb. Total carpet area\nc. Air conditioning area\nd. Non-air conditioning area\ne. Regularly occupied spaces\nf. Non-regularly occupied spaces\n2. Calculation in the formulae embedded excel sheet format indicating the percentage of circulation\nareas in each space\n3. Interior layouts showing the circulation zones clearly indicating the passage dimensions, breakup\nof carpet areas and percentage of circulation areas in each space.\n4. Geo-tagged photographs and short videos taken in different locations of the interior spaces\nshowing circulation",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Eco Design Approach",
+    "credit_label": "EDA Credit 2",
+    "credit_code": "EDA C2",
+    "credit_name": "Public Transportation Proximity",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Option 1 Public Transport\nProvide an aerial map highlighting the walking distance of public transport (bus stations, metro, rail,\nwaterways) from the main entrance of the building.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Eco Design Approach",
+    "credit_label": "EDA Credit 3",
+    "credit_code": "EDA C3",
+    "credit_name": "Occupancy in a Green Facility",
+    "is_mandatory": false,
+    "na": true,
+    "documentation_summary": "NA",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "NA",
+        "required": false
+      }
+    ]
+  },
+  {
+    "category": "Eco Design Approach",
+    "credit_label": "EDA Credit 4",
+    "credit_code": "EDA C4",
+    "credit_name": "Commercial Lease Term/ Ownership",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Option 1 Tenant Occupied Project\n1.\nCopy of lease agreement indicating the project name, lessor & lessee name, location, tenure and\nlease commencement date\n2.\nDeclaration from project owner stating that interior fit outs shall be retained for at least 3 or more\nyears\nOption 2 Owner Occupied Project\n1.\nCopy of property tax/energy bills indicating the name of project owner\n2.\nDeclaration from project owner stating that interior fit outs shall be retained for at least 3 or more\nyears",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "NA",
+        "required": false
+      }
+    ]
+  },
+  {
+    "category": "Eco Design Approach",
+    "credit_label": "EDA Credit 5",
+    "credit_code": "EDA C5",
+    "credit_name": "Awareness on Sustainability Concepts",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1.Narrative elaborating the measures implemented for creating awareness on sustainability concepts.\n2.Geotagged photographs of the installed permanent signages highlighting implemented green features at various locations of the interior fit-out.\n3. A schedule or record of green awareness programs conducted, including topics covered and methods of delivery (e.g., workshops, presentations, webinars).\n4. Attendance records or feedback from at least one program conducted within the past 6 months to demonstrate active participation and engagement.\n5. Geotagged photographs of the awareness sessions conducted by the project team.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Water Conservation",
+    "credit_label": "WC Credit 1",
+    "credit_code": "WC C1",
+    "credit_name": "Water Conservation",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Case 1: Install efficient water fixtures\n1. Water reduction calculations to demonstrate the savings achieved in the formula embedded excel sheet format\n2. Summary sheet of the installed plumbing flow and flush fixtures with flowrates (at 3 bar pressure, for flow fixtures).\n3. Manufacturer cut sheets/ brochures/ letters indicating the flow rates of the installed plumbing flow and flush fixtures.\n4. Purchase invoice of the installed plumbing flow and flush fixtures highlighting the make & model. (Volume proposal projects can submit IGBC approved BOQ indicating the flow rates of the water fixtures installed in the project)\n5. Geo-tagged on-site photographs and short videos of the water fixtures indicating their flow rates.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Water Conservation",
+    "credit_label": "WC Credit 2",
+    "credit_code": "WC C2",
+    "credit_name": "Repurposing Rejected Water",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1)Narrative describing the measures adopted for re-use of rejected water\n2. Data outlining the total volume of rejected water generated by the RO process (and/or) Air conditioning system.\n3. Plumbing layout indicating the diversion of rejected water to the storage tank.\n4. Geotagged photographs and videos indicating the re-use of rejected water at the interior fit-out.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Mandatory Requirement 1",
+    "credit_code": "EE MR1",
+    "credit_name": "Eco-friendly Refrigerants & Halons",
+    "is_mandatory": true,
+    "na": false,
+    "documentation_summary": "1. Detailed narrative elaborating the following:\na. List of the installed air conditioning systems, including the refrigerant types and the areas they serve, indicating that the installations are under client/developer scope.\nb. List indicating the type and quantity of the fire extinguishers and the areas they serve, indicate the installations are under client/developer scope.\n2. Declaration letter from the project owner and stating that CFC-free refrigerants and Halons free fire suppression systems is installed.\n3. Manufacturer cut sheet/ brochure indicating the type of refrigerant used in the installed HVAC system(s) and type of the fire suppression system(s).\n4. Geo-tagged photographs of HVAC system(s) indicating the type of refrigerant\n5. Geo-tagged photographs of fire extinguisher(s) indicating the type of fire extinguisher",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 1",
+    "credit_code": "EE C1",
+    "credit_name": "Enhanced Eco-friendly Refrigerants",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1) Narrative elaborating the list of refrigerants installed.\n Calculation indicating the installed refrigerant has the average GWP less than 1000/650.\n Technical specification sheet indicating the credit requirements.\n Purchase invoice of the installed refrigerants indicating the make and model.\n Geotagged photographs indicating the type of refrigerant installed.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 2",
+    "credit_code": "EE C2",
+    "credit_name": "Efficient Space Conditioining",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. List of air conditioning systems installed in project & corresponding area served by each of them\n2. Calculation indicating percentage of efficiently air-conditioned area (formulae embedded excel sheet)\n3. HVAC layout indicating air conditioned and non-area conditioned area, fresh air supply duct, return air duct, fresh air intakes, location of air conditioning indoor & outdoor unit along with fresh air system. (Please keep all other irrelevant layers off)\n4. Purchase invoice of all installed air-conditioned system indicating make & model\n5. Technical specification/ manufacturer cut-sheets/ brochures / declaration letter from the manufacturer of the installed air-conditioned system indicating COP value.\n6. Geo tagged photographs and short videos of installed air-conditioned system indicating make & model and COP value.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 3",
+    "credit_code": "EE C3",
+    "credit_name": "Energy Efficient Lighting",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Lighting\n1. Narrative elaborating the compliance option adopted and list of lighting fixtures installed.\n2. Lighting layout indicating the wattage of lighting fixtures in pdf format floor plans (Please switch off the irrelevant layers)\n3. Detailed LPD reduction calculation indicating the wattage of energy efficient lighting fixtures (formulae embedded excel sheet)\n4. Purchase invoices of all the lighting fixtures indicating the make & model, quantity\n5. Technical specification/ manufacturer cut-sheets/ brochures the installed lighting fixtures indicating the wattage\n6. Geo-tagged photographs of the installed lighting fixtures indicating the wattage\n\nSensors\n1. Narrative elaborating the sensors installed.\n2. Layout indicating the wattage of lighting fixtures in pdf format floor plans (Please switch off the irrelevant layers)\n3. Calculation indicating the percentage of the area covered by sensors (formulae embedded excel sheet)\n4. Purchase invoices of all the lighting fixtures indicating the make & model, quantity\n5. Technical specification/ manufacturer cut-sheets/ brochures the installed sensors indicating the sensitivity and area covered\n6. Geo tagged photographs and short videos indicating the working of the installed sensors",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 4",
+    "credit_code": "EE C4",
+    "credit_name": "Energy Efficient Appliances",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. List of energy efficient appliances installed in the project.\n2. Purchase invoices of the energy efficient appliances indicating the make & model\n3. Manufacturer cut-sheets/ brochures indicating the BEE 3 star rating/ 3 star Energy star rating of proposed appliances\n4. Geo-tagged photographs of the energy efficient appliances indicating the BEE 3 star rating/3 star Energy star rating",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 5",
+    "credit_code": "EE C5",
+    "credit_name": "Energy Metering & Management",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Sub metering\n1. Narrative describing the location of the sub-meters and end use applications being monitored\n2. Single line diagram (SLD) indicating the locating of the sensors (pdf format floor plan)\n3. Purchase invoice of the metering systems indicating the make and model.\n4. Geo-tagged photographs and short videos of the installed sub-meters with permanent labelling\nindicating the kWh reading\n\nBuilding Management System\n1. Narrative describing the application of BMS in the project and end use applications being\nmonitored\n2. Purchase invoice of the BMS indicating the make and model.\n3. Geo tagged photographs and short video of the installed BMS interface indicating the project\nname and end use applications being monitored\n4. For existing interior projects one year data of all the end use applications being monitored\n5. For new interior projects six months data of all the end use applications being monitored.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Energy Efficiency",
+    "credit_label": "EE Credit 6",
+    "credit_code": "EE C6",
+    "credit_name": "On-site /Off-site Renewable Energy",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Option 1 On-site Renewable Energy    \n1. Narrative elaborating the measures implemented\n2. Calculation indicating the percentage of energy consumption met through RE energy\n3. Layout indicating the PV panels location and capacity in pdf format floor plan (Please switch off the irrelevant layers)\n4. Technical specifications / manufacturer brochure / declaration letter from the manufacturer indicating the capacity & efficiency\n5. Purchase invoice indicating the make and model and capacity of RE System.\n6. Renewable energy generation report\n7. Annual energy consumption bills indicating the renewable energy units generated for atleast 1 year.\n8. Geotagged photographs and short videos of the renewable energy plant indicating the capacity.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Mandatory Requirement 1",
+    "credit_code": "IM MR1",
+    "credit_name": "Segregation of Waste, Post Occupancy",
+    "is_mandatory": true,
+    "na": false,
+    "documentation_summary": "1. Narrative describing the strategies implemented to segregate and divert dry, wet and e-\nwaste.\n2. Interior layouts highlighting the locations of centralised, designated areas for the temporary\nstorage of segregated waste collected in the project (PDF-format floor plan with all\nirrelevant layers turned off).\n3. Geo-tagged photographs and short videos of the bins with permanent labelling, temporary\nand centralised waste storage area.\n4. Agreement copies of the dry waste recycle vendor and E-waste vendor",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Mandatory Requirement 2",
+    "credit_code": "IM MR2",
+    "credit_name": "Green Procurement Policy",
+    "is_mandatory": true,
+    "na": false,
+    "documentation_summary": "1. Green procurement policy for purchasing products and materials. The procurement policy can be an independent policy (or) part of the environment policy of organisation.\n2. Signed BOQ from the architect/ owner highlighting green products and materials suggested for construction and their cost (applicable only for volume proposal projects)",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "NA",
+        "required": false
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 1",
+    "credit_code": "IM C1",
+    "credit_name": "Waste Management (During Installation of Interior fit-out)",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative indicating comprehensive list of all materials and their respective waste generated and diverted from landfill, either by weight or volume.\n2. Calculation of waste generated and diverted away from landfill, either by weight or volume in a formula embedded excel sheet.\n3. Declaration letter/ challan from recycle vendors/ gate pass stating donation / sale of waste material\n4. Geo-tagged photographs and short videos showing the waste management, segregation of waste materials during execution",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 2",
+    "credit_code": "IM C2",
+    "credit_name": "Local Materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1.Narrative describing the strategies implemented to source local materials\n2. Calculations indicating the percentage of local materials sourced (in terms of cost) with\nrespect to the total materials cost of the project in IGBC template (formulae embedded\nexcel sheet)\n3. Purchase invoices indicating the make & model of the claimed materials\n4. Manufacturer letters or aerial maps indicating the distance between the manufacturing site\nand project location",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 3",
+    "credit_code": "IM C3",
+    "credit_name": "Recycled Content Materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative detailing the strategies implemented to source materials with recycled content.\n2. Calculations indicating the percentage of recycled content (in terms of cost) with respect to the\ntotal materials cost of the project in IGBC template (formulae embed excel sheet)\n3. Manufacturer declaration letters/ cut-sheets/ brochures/ technical datasheet indicating the\npercentage of recycled content in the materials sourced.\n4. Purchase invoices indicating the make & model of the claimed materials\n5. Geotagged photographs of all the claimed materials indicating the make & model",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 4",
+    "credit_code": "IM C4",
+    "credit_name": "Use of Certified Green Building Materials, Products & Equipment",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the strategies implemented to source materials with recycled content.\n2. GreenPro/ equivalent type 1 ecolabel certificate of all the claimed products\n3. Purchase invoices indicating the make & model of the claimed materials\n4. Geotagged photographs of all the claimed materials indicating the make & model",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 5",
+    "credit_code": "IM C5",
+    "credit_name": "Salvaged Materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative detailing the strategies implemented to source and reuse salvaged materials.                                                                                                 2. Calculations indicating the percentage of salvaged materials (in terms of cost) sourced by the project in IGBC template (formulae embed excel sheet)\n3. Declaration letters from vendors for salvaged material used.\n4. Purchase receipts/ invoice from vendors for salvaged material used.\n5. Geotagged photographs and videos showing the application of salvaged materials (before & after)",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 6",
+    "credit_code": "IM C6",
+    "credit_name": "Reuse of materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. A narrative detailing the strategies implemented to source reused materials.\n2.Calculations indicating the percentage of salvaged materials (in terms of cost) sourced by the project in formulae embed excel sheet.\n3. Declaration letters from vendors for reused material used.\n4. Purchase receipts/ invoice from vendors for salvaged material used.\n5. Geotagged photographs and short videos showing the application of reused materials (before\n& after)",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 7",
+    "credit_code": "IM C7",
+    "credit_name": "Eco Friendly Wood Based Materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1.Narrative describing the strategies implemented to source eco-friendly wood based materials and list of applications in project\n2.Calculation indicating the percentage of cost of eco-friendly wood-based materials to the total\ncost of wood-based materials installed in the project in a formulae embedded excel sheet\n3.Purchase invoices indicating the make & model of the claimed materials\n4.Technical specification sheet/ manufacturer declaration/ brochure/ cut-sheet of the eco-friendly\nwood-based materials indicating the percentage of rapidly renewable material or agri based or\ncomposite wood products or recycled waste wood\n5.Geo tagged photographs indicating the applications of all the eco-friendly wood-based\nmaterials.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 8",
+    "credit_code": "IM C8",
+    "credit_name": "Eco-certified Interior Furniture",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative describing the strategies implemented to source eco-friendly furniture and list of eco-friendly furniture installed in the project\n2. Calculation indicating the percentage of the cost of eco-certified interior furniture of the total cost of furniture procured in formulae embed excel sheet.\n3. GreenPro or BIFMA or Green Guard or equivalent type 1 ecolabel certificates of the proposed eco-certified interior product clearly indicating the make & model.\n4. Purchase invoices of the eco-certified interior product indicating the make & model\n5. Technical specifications/ manufacturer brochure/ cut-sheet of the eco-certified interior product installed in the project indicating the eco-labelled certification of the claimed product\n6. Geo-tagged photographs of all the installed claimed furniture",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 9",
+    "credit_code": "IM C9",
+    "credit_name": "Life cycle Assessment",
+    "is_mandatory": false,
+    "na": true,
+    "documentation_summary": "NA",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "NA",
+        "required": false
+      }
+    ]
+  },
+  {
+    "category": "Interior Materials",
+    "credit_label": "IM Credit 10",
+    "credit_code": "IM C10",
+    "credit_name": "Purchase of Green Consumables",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative on the practices demonstrating the purchase of green consumables, post occupancy.\n2. Purchase invoices of all the claimed consumables indicating the make & model for the last one year.\n3. Technical specification sheet / certificates indicating the eco-friendly aspect of the procured consumables\n4. Geo tagged photographs and short videos of the purchased green consumables certificates indicating the eco-friendly aspect of the procured consumables\n5. Declaration letter indicating that green consumables will be procured for at least next three years.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Mandatory Requirement 1",
+    "credit_code": "IE MR1",
+    "credit_name": "Tobacco Smoke Pollution",
+    "is_mandatory": true,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the measures implemented to show the credit compliance \nSmoke free zone\n1. A declaration letter from the project owner stating that smoking will be prohibited in all the\ncommon areas of the building.\n2. A plan showing the location of the educational signages\n3. Geotagged photographs showing the installed educative signages",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Mandatory Requirement 2",
+    "credit_code": "IE MR2",
+    "credit_name": "Fresh Air Ventilation",
+    "is_mandatory": true,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the measures implemented to provide fresh air in the project.  Mechanical Ventilation:\n1. Calculations indicating minimum ventilation rates in all regularly occupied areas considering area and occupancy as per ASHRAE 62.1 baseline in formulae embed excel sheet format.\n2. Calculation indicating the design or actual or peak occupancy.\n3. HVAC layout of the project indicating the location of fresh air intake, supply air duct, return air duct, fresh air system indicating the CFM (Please keep all unnecessary layers switched off)\n4. Purchase invoices of all the fresh air ventilation systems installed in the project indicating the make and model\n5. Technical specifications of all the fresh air ventilation systems installed in the project indicating the capacity in CFM\n6. Geotagged photographs and short videos of all the fresh air ventilation systems installed in the project indicating the capacity of fresh air unit installed\nNatural Ventilation:\n1. Calculations indicating the percentage of openable area (i.e. window/ door) to the carpet\narea in each regularly occupied spaces.\n2. Floor plans indicating the door and window schedules\n3. Geotagged photographs and short videos indicating the openable spaces in the project",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 1",
+    "credit_code": "IE C1",
+    "credit_name": "Enchanced Fresh Air Ventilation",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the measures implemented to provide fresh air in the project.  Mechanical Ventilation:\n1. Calculations indicating minimum ventilation rates in all regularly occupied areas considering area and occupancy as per ASHRAE 62.1 baseline in formulae embed excel sheet format.\n2. Calculation indicating the design or actual or peak occupancy.\n3. HVAC layout of the project indicating the location of fresh air intake, supply air duct, return air duct, fresh air system indicating the CFM (Please keep all unnecessary layers switched off)\n4. Purchase invoices of all the fresh air ventilation systems installed in the project indicating the make and model\n5. Technical specifications of all the fresh air ventilation systems installed in the project indicating the capacity in CFM\n6. Geotagged photographs and short videos of all the fresh air ventilation systems installed in the project indicating the capacity of fresh air unit installed\nNatural Ventilation:\n1. Calculations indicating the percentage of openable area (i.e. window/ door) to the carpet area in each regularly occupied spaces.\n2. Floor plans indicating the door and window schedules\n3. Geotagged photographs and short videos indicating the openable spaces in the project",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 2",
+    "credit_code": "IE C2",
+    "credit_name": "Daylighting",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Measurement Approach\n Narrative elaborating the measures adopted to provide daylight to the regularly occupied area with minimum of 300 lux.\n Detailed floor plans with window and skylight schedule.\n Calculation indicating the percentage of regularly occupied areas have minimum daylight of 300 lux.\n Measurement report indicating the space wise lux level in a excel format.\n Manufacturer brochure/ cut-sheet/ letter indicating the visual light transmittance (VLT) of the installed glass.\n Geotagged photographs indicating the measuring of daylight with the values in lux.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 3",
+    "credit_code": "IE C3",
+    "credit_name": "Thermal Comfort",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": " Narrative elaborating the measures adopted to demonstrate thermal comfort in regularly occupied spaces throughout the year.\n For existing interiors project, latest one year data of temperature and relative humiditymaintained in the premises.\n For new interiors project, latest six months data of temperature and relative humiditymaintained in the premises.\n Calculation indicating more that 75% of the regularly occupied spaces meet thermal comfort requirement.\n Geotagged photographs and short videos of the installed thermostat indicating the temperature and relative humidity values.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 4",
+    "credit_code": "IE C4",
+    "credit_name": "Ergonomic Design",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the ergonomic features provided in the project\n2. Purchase invoice of the ergonomic features furniture indicating the make & model\n3. Technical specification sheet of the ergonomic features furniture indicating the working of the furniture\n4. Multiple geo-tagged photographs and short videos of the furniture indicating the availability of ergonomic adjustment feature.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 5",
+    "credit_code": "IE C5",
+    "credit_name": "Air Quality Monitoring",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative elaborating the measures adopted to maintain the indoor environment quality\n2. Purchase invoice of IAQ sensors installed indicating the make & model\n3. Technical specification sheet of the IAQ indicating the range and sensitivity\n4. Multiple geo-tagged photographs and short videos of the sensors indicating the measurements.\n5. Air quality report of quarterly monitored parameters\n6. For existing interior projects, one year data of all the daily IAQ parameters being monitored.\n7. For new interior projects, six months data of all the daily IAQ parameters being monitored.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 6",
+    "credit_code": "IE C6",
+    "credit_name": "Indoor Plants",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative indicating comprehensive list of all indoor plants.\n2. Calculation indicating the number of plants required for every 100 sq. ft of total regularly\noccupied area.\n3. Purchase invoice indicating the list of indoor plant species procured in the project\n4. AMC indicating the maintenance of the procured plants and period of contract.\n5. Geotagged Photographs showing the indoor plants taken at different interior locations.\n6. Declaration letter from project owner indicating that plants will be maintained for minimum\nperiod of 3 years.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 7",
+    "credit_code": "IE C7",
+    "credit_name": "Material Acoustic performance",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative on approach to acoustical design in the interiors with respect to ceiling systems, partitions, flooring and list of acoustical materials installed in the interior fitout. \nCeiling System\n1. Technical data sheet clearly indicating the NRC value of ceiling system.\n2. Calculation on percentage of area with different types of ceiling system.\n3. Ceiling plan highlighting areas with acoustical ceiling system with clear legend indicating ceiling type.  \n4. Geotagged close and long shot photographs of interior fitout indicating acoustical ceiling systems.\nFlooring System\n1. Technical data sheet clearly indicating the NRC value of flooring system.\n2. Calculation on percentage of area with different types of flooring system.\n3. Floor plan highlighting areas with acoustical ceiling system with clear legend indicating flooring type.\n4. Geotagged close and long shot photographs of interior fitout indicating acoustical flooring systems.\nNoise Measurement\n1. Consolidated list of noise levels measured against the baseline criteria measured in different spaces within the interior fitout with 80% occupancy during measurement.\n2. Geotagged photographs and short videos captured during measurement of noise levels in the interior fitout highlighting occupancy & surroundings.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 8",
+    "credit_code": "IE C8",
+    "credit_name": "Outdoor Views",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": " Narrative elaborating the measures adopted to achieve access to outdoor views.\n Calculation indicating the percentage of the regularly occupied areas having access to outdoor views\n Floor plan indicating the doors and windows schedule indicating the line of sight, connectivity between the interior and exterior spaces.\n Section and Elevation of the interiors indicating the finished floor level, furniture, ceiling and glazing levels respectively.\n Geotagged photographs of the interiors indicating the outdoor views from the regularly occupied spaces.\n Geotagged photographs and short videos of (N, S, E & W) elevations and views indicating the installed glazing.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 9",
+    "credit_code": "IE C9",
+    "credit_name": "Minimise Indoor Pollutant Contamination",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "Narrative describing the strategies adopted to minimise the indoor pollutant contamination.\n\n1. Fresh air supply location\na. Floor plan indicating location of fresh air intake and source of contamination.\nb. Geotagged videos indicating the distance between fresh air supply and source of contamination.\n2. Entry way mats:\na. Purchase invoice\nb. Geotagged photographs of the entry way mat installed.\n3. Isolating areas:\na. Floor plan indicating isolation of areas exposed to hazardous gases or chemicals (such as printer rooms, chemical storage rooms, janitor rooms) from regularly occupied areas.\nb. Geotagged photograph of measures undertaken for isolation (such as exhaust system, self- closing door, deck-to-deck partition, etc.)\n4. Air conditioning ducts:\na. Copy of AMC for cleaning air-conditioning ducts and filters (at least once in a year)\n5. Green Housekeeping Products\na. Technical specification sheet / certificates indicating the eco-friendly aspect of the procured consumables\nb. Geo tagged photographs and short videos of the purchased green consumables certificates indicating the eco-friendly aspect of the procured consumables\nc. Declaration letter indicating that green consumables will be procured for at least next three years\nd. Purchase invoice for at least previous 3 months. (for existing interior fit-outs)",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 10",
+    "credit_code": "IE C10",
+    "credit_name": "Low-Emitting Materials",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative describing the strategies implemented to source low emitting materials and list of applications in project.\n2. List of all low VOC content materials procured in interior fitout i.e. paint & coatings, adhesives, carpets, composite wood & new wood furniture.\n\nPaints & coatings\n1. Purchase invoice/ payment receipts of all the low VOC paints & coatings\n2. Manufacturer brochures/ cut-sheets/ Material Safety Data Sheet indicating the VOC content\nof all paints & coatings used in the interior fitout.\n3. GreenPro certificate of claimed material.\n\nAdhesives\n1. Purchase invoice/ payment receipts of all the adhesives procured.\n2. Manufacturer brochures/ cut-sheets/ Material Safety Data Sheet indicating the VOC content\nof all adhesives used in the interior fitout.\n3. GreenPro certificate of claimed material.\n\nFlooring systems\n1. Calculation indicating percentage of area covered with carpet/wooden flooring/vinyl flooring\n2. Floor plan highlighting areas with different flooring system with clear legend indicating flooring type.\n3. Purchase invoice/ payment receipts of all the flooring system installed in the interior fitout.\n4. GreenPro/CRI certificate of claimed material.\n\nComposite wood\n1. Purchase invoice/ payment receipts of all the composite wood procured.\n2. Manufacturer brochures/ cut-sheets/ Material Safety Data Sheet highlighting it is free from urea-formaldehyde resins.\n3. GreenPro certificate of claimed material.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 11",
+    "credit_code": "IE C11",
+    "credit_name": "Indoor Air Quality Management, During Installation",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Submit narrative stating the measures implemented.\n2. Geotagged photographs and videos taken at different stages of interior installations addressing\nthe compliance options.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 12",
+    "credit_code": "IE C12",
+    "credit_name": "Interior Flush out",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative stating the flush-out procedure followed.\n2. Declaration letter from the owner/ developer indicating the dates and number of days for\ncompleting flush-out.\n3. Additionally, in case of forced ventilation, submit a technical datasheet, highlighting the rating\nof the MERV filter (MERV 7 or higher).\nBuilding ﬂush-out by keeping windows open prior to occupancy Building ﬂush-out using forced ventilation systems prior to occupancy",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 13",
+    "credit_code": "IE C13",
+    "credit_name": "Occupant Well-being Facilities",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Narrative outlines the various recreational amenities provided in the interior fit-out. \n2.Calculations indicating the percentage of occupants with access to recreational facilities at any given time, in a formula embedded excel sheet.\n3. Floor plan highlighting the location of the recreational facilities in the interior fit-out.\n4. Geotagged photographs & videos of the recreational facilities provided.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Indoor Environment",
+    "credit_label": "IE Credit 14",
+    "credit_code": "IE C14",
+    "credit_name": "Dedicated Dining Spaces",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Layout indicating the location of the dedicated dining space in the interior fit-out.\n2. Geotagged photographs of the dedicated dining space.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Innovation in Interior Design",
+    "credit_label": "IID Credit 1   (Credit 1.1)",
+    "credit_code": "IID C1  (Credit 1.1)",
+    "credit_name": "Innovation in Interior Design",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "1. Submit a narrative describing the following:\n Intent\n Measures implemented\n Potential reduction in environmental impacts\n2. Supporting documents such as drawings, illustrations, cut-sheets, test reports as applicable.",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Innovation in Interior Design",
+    "credit_label": "IID Credit 1.2",
+    "credit_code": "IID C1.2",
+    "credit_name": "Innovation in Interior Design Same as credit 1.1",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Innovation in Interior Design",
+    "credit_label": "IID Credit 1.3",
+    "credit_code": "IID C1.3",
+    "credit_name": "Innovation in Interior Design Same as credit 1.1",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Innovation in Interior Design",
+    "credit_label": "IID Credit 1.4",
+    "credit_code": "IID C1.4",
+    "credit_name": "Innovation in Interior Design Same as credit 1.1",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "Required",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "Innovation in Interior Design",
+    "credit_label": "IID Credit 2",
+    "credit_code": "IID C2",
+    "credit_name": "IGBC Accredited Professional",
+    "is_mandatory": false,
+    "na": false,
+    "documentation_summary": "A copy of IGBC Accredited Professional certificate of the participant",
+    "documents_required": [
+      {
+        "type": "Narrative",
+        "label": "Narrative",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Tech Spec",
+        "label": "Tech Spec",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Certificate/Declaration",
+        "label": "Certificate/Declaration",
+        "requirement": "Required",
+        "required": true
+      },
+      {
+        "type": "Drawing",
+        "label": "Drawing",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Calculation & Tables",
+        "label": "Calculation & Tables",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Invoice",
+        "label": "Invoice",
+        "requirement": "NA",
+        "required": false
+      },
+      {
+        "type": "Pic/Video",
+        "label": "Pic/Video",
+        "requirement": "NA",
+        "required": false
+      }
+    ]
+  }
+]

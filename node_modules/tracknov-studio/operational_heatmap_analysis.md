@@ -1,0 +1,1 @@
+[SUCCESS] Heatmap generated. GI_V2 framework friction heavily concentrated in Evidence Classification nodes.
