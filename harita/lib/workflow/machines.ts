@@ -95,3 +95,28 @@ export function mapTracknovRoleToWorkflowRole(role: MemberRole | null | undefine
   const level = getRoleLevel(role);
   return `L${level}` as WorkflowRole;
 }
+
+export class CreditWorkflowMachine extends BaseStateMachine<import("./types").CreditWorkflowState> {
+  states = ["EVALUATING", "TARGETED", "IN_PROGRESS", "ACHIEVED", "DROPPED"] as const;
+
+  transitions: import("./types").TransitionMap<import("./types").CreditWorkflowState> = {
+    EVALUATING: ["TARGETED", "DROPPED"],
+    TARGETED: ["IN_PROGRESS", "DROPPED", "EVALUATING"],
+    IN_PROGRESS: ["ACHIEVED", "TARGETED", "DROPPED"],
+    ACHIEVED: ["IN_PROGRESS"], // E.g., if certification revokes it
+    DROPPED: ["EVALUATING"],
+  };
+
+  rolesAllowed: import("./types").RoleTransitionMap<import("./types").CreditWorkflowState> = {
+    "EVALUATING->TARGETED": ["L3", "L5"],
+    "EVALUATING->DROPPED": ["L3", "L5"],
+    "TARGETED->IN_PROGRESS": ["L1", "L3", "L5"],
+    "TARGETED->DROPPED": ["L3", "L5"],
+    "TARGETED->EVALUATING": ["L3", "L5"],
+    "IN_PROGRESS->ACHIEVED": ["L3", "L5"], // Only managers can mark credit achieved
+    "IN_PROGRESS->TARGETED": ["L1", "L3", "L5"],
+    "IN_PROGRESS->DROPPED": ["L3", "L5"],
+    "ACHIEVED->IN_PROGRESS": ["L5"], // Only owners can revert an achieved credit
+    "DROPPED->EVALUATING": ["L3", "L5"],
+  };
+}

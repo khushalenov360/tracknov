@@ -23,10 +23,14 @@ export type SubmittalWorkflowState =
   | "REJECTED"
   | "REVOKED";
 
-// Legacy Aliases (to prevent breakage while migrating)
-export type ProjectWorkflowState = ProjectCertificationState | string;
-export type CreditWorkflowState = string;
-export type DocumentWorkflowState = SubmittalWorkflowState | string;
+export type CreditWorkflowState =
+  | "EVALUATING"
+  | "TARGETED"
+  | "IN_PROGRESS"
+  | "ACHIEVED"
+  | "DROPPED";
 
+export type ProjectWorkflowState = ProjectCertificationState;
+export type DocumentWorkflowState = SubmittalWorkflowState;
 export type TransitionMap<TState extends string> = Record<TState, TState[]>;
 export type RoleTransitionMap<TState extends string> = Record<string, WorkflowRole[]>;
