@@ -1,4 +1,4 @@
-import { creditStatuses } from "./constants";
+import { creditStatuses } from "@tracknov/core/constants";
 
 export function toLegacyCreditStatus(rawState: string | undefined): keyof typeof creditStatuses {
   if (!rawState) return "pending";

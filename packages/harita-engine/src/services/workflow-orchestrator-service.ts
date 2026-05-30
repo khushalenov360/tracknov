@@ -305,7 +305,7 @@ export class WorkflowOrchestratorService {
     }
 
     const { creditService } = await import("./credit-service");
-    const { runInOperationalMode } = await import("@/lib/governance/governanceMutationInterceptor");
+    const { runInOperationalMode } = await import("../governance/governanceMutationInterceptor");
     return runInOperationalMode(request.projectId, async () => {
       await creditService.assignContributor(user, request, this.writer);
       return { ok: true };
