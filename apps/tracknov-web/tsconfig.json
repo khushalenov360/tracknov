@@ -25,6 +25,15 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@tracknov/core/*": [
+        "../../packages/tracknov-core/src/*"
+      ],
+      "@tracknov/harita-engine/*": [
+        "../../packages/harita-engine/src/*"
+      ],
+      "@tracknov/ui/*": [
+        "../../packages/tracknov-ui/src/*"
       ]
     }
   },
