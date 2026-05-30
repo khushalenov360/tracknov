@@ -1,0 +1,690 @@
+﻿{
+    "TotalFiles":  449,
+    "RootFolders":  [
+                        {
+                            "Name":  "1. Eco Design",
+                            "Count":  10
+                        },
+                        {
+                            "Name":  "2. Water Conservation",
+                            "Count":  15
+                        },
+                        {
+                            "Name":  "3.Energy Efficiency",
+                            "Count":  144
+                        },
+                        {
+                            "Name":  "4. Interior Material",
+                            "Count":  58
+                        },
+                        {
+                            "Name":  "5. Indoor Environment",
+                            "Count":  81
+                        },
+                        {
+                            "Name":  "IGBC Green Existing Interiors data tables sample_.xlsx",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "IGBC Green Existing Interiors data tables.xlsx",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "IGBC.pptx",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "KFC Bhavarkua - IGBC Working Tracker.xlsx",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "KFC Bhavarkua Indore.pdf",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "KFC-BHAVARKUA, INDORE-AREA BIFURCATION-R5-20.10.2023.xlsx",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "Site Photos",
+                            "Count":  122
+                        },
+                        {
+                            "Name":  "waste disposal .jpg",
+                            "Count":  1
+                        },
+                        {
+                            "Name":  "Whitewaters",
+                            "Count":  12
+                        }
+                    ],
+    "ExtensionSummary":  [
+                             {
+                                 "Name":  ".jpg",
+                                 "Count":  282
+                             },
+                             {
+                                 "Name":  ".pdf",
+                                 "Count":  93
+                             },
+                             {
+                                 "Name":  ".mp4",
+                                 "Count":  22
+                             },
+                             {
+                                 "Name":  ".docx",
+                                 "Count":  21
+                             },
+                             {
+                                 "Name":  ".xlsx",
+                                 "Count":  14
+                             },
+                             {
+                                 "Name":  ".png",
+                                 "Count":  8
+                             },
+                             {
+                                 "Name":  ".jpeg",
+                                 "Count":  4
+                             },
+                             {
+                                 "Name":  ".pptx",
+                                 "Count":  3
+                             },
+                             {
+                                 "Name":  ".zip",
+                                 "Count":  2
+                             }
+                         ],
+    "CreditSummary":  [
+                          {
+                              "Category":  "1. Eco Design",
+                              "CreditFolder":  "Credit 1",
+                              "Files":  1,
+                              "Types":  ".docx:1"
+                          },
+                          {
+                              "Category":  "1. Eco Design",
+                              "CreditFolder":  "Credit 2",
+                              "Files":  4,
+                              "Types":  ".pdf:2, .jpg:1, .png:1"
+                          },
+                          {
+                              "Category":  "1. Eco Design",
+                              "CreditFolder":  "Credit 3",
+                              "Files":  3,
+                              "Types":  ".png:2, .docx:1"
+                          },
+                          {
+                              "Category":  "1. Eco Design",
+                              "CreditFolder":  "Credit 5",
+                              "Files":  2,
+                              "Types":  ".pdf:1, .docx:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "basin faucet.jpeg",
+                              "Files":  1,
+                              "Types":  ".jpeg:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "flush valves.jpeg",
+                              "Files":  1,
+                              "Types":  ".jpeg:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "Jaguar Dual Flush FLV-CHR-1089DFP_D.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "jaguar dual flush.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "jaguar faucet.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "Jaguar flow-rates.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "jaguar food pedal.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "PLUMBING DETAILS.xlsx",
+                              "Files":  1,
+                              "Types":  ".xlsx:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "sensorless.jpg",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "Water conservation Narrative.docx",
+                              "Files":  1,
+                              "Types":  ".docx:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "water fittings",
+                              "Files":  2,
+                              "Types":  ".mp4:2"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "WE Cr1- water fixtures.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "WhatsApp Image 2024-01-13 at 15.50.40_4629476a.jpg",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Category":  "2. Water Conservation",
+                              "CreditFolder":  "WhatsApp Image 2024-01-13 at 15.50.40_79a1bf37.jpg",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Category":  "3.Energy Efficiency",
+                              "CreditFolder":  "Credit 1",
+                              "Files":  17,
+                              "Types":  ".jpg:13, .pdf:4"
+                          },
+                          {
+                              "Category":  "3.Energy Efficiency",
+                              "CreditFolder":  "Credit 2",
+                              "Files":  108,
+                              "Types":  ".jpg:87, .pdf:15, .xlsx:3, .zip:1, .png:1, .docx:1"
+                          },
+                          {
+                              "Category":  "3.Energy Efficiency",
+                              "CreditFolder":  "Credit 3",
+                              "Files":  4,
+                              "Types":  ".png:1, .jpg:1, .docx:1, .pdf:1"
+                          },
+                          {
+                              "Category":  "3.Energy Efficiency",
+                              "CreditFolder":  "Credit 4",
+                              "Files":  15,
+                              "Types":  ".jpg:9, .pdf:3, .docx:2, .mp4:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 1",
+                              "Files":  7,
+                              "Types":  ".pdf:3, .docx:2, .jpg:2"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 2",
+                              "Files":  4,
+                              "Types":  ".pdf:2, .docx:1, .xlsx:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 3",
+                              "Files":  14,
+                              "Types":  ".pdf:12, .docx:1, .png:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 4",
+                              "Files":  3,
+                              "Types":  ".pdf:2, .docx:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 5",
+                              "Files":  23,
+                              "Types":  ".pdf:10, .jpg:9, .jpeg:2, .xlsx:1, .docx:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Credit 6",
+                              "Files":  5,
+                              "Types":  ".pdf:2, .zip:1, .docx:1, .xlsx:1"
+                          },
+                          {
+                              "Category":  "4. Interior Material",
+                              "CreditFolder":  "Mandatory 1",
+                              "Files":  2,
+                              "Types":  ".jpg:2"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 10",
+                              "Files":  4,
+                              "Types":  ".pdf:2, .png:2"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 12",
+                              "Files":  2,
+                              "Types":  ".pdf:1, .docx:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 13",
+                              "Files":  12,
+                              "Types":  ".jpg:8, .mp4:3, .docx:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 14",
+                              "Files":  12,
+                              "Types":  ".jpg:8, .mp4:3, .xlsx:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 2",
+                              "Files":  14,
+                              "Types":  ".jpg:12, .mp4:1, .docx:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 3",
+                              "Files":  5,
+                              "Types":  ".jpg:4, .pdf:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 4",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 5",
+                              "Files":  6,
+                              "Types":  ".jpg:4, .mp4:2"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 6",
+                              "Files":  3,
+                              "Types":  ".pdf:2, .docx:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 8",
+                              "Files":  2,
+                              "Types":  ".docx:1, .pdf:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Credit 9",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Mandatory 1",
+                              "Files":  2,
+                              "Types":  ".pptx:1, .pdf:1"
+                          },
+                          {
+                              "Category":  "5. Indoor Environment",
+                              "CreditFolder":  "Mandatory 2 \u0026 Credit 1",
+                              "Files":  17,
+                              "Types":  ".jpg:13, .pptx:1, .pdf:1, .docx:1, .xlsx:1"
+                          },
+                          {
+                              "Category":  "Site Photos",
+                              "CreditFolder":  "Bhavarkua Pic",
+                              "Files":  34,
+                              "Types":  ".jpg:34"
+                          },
+                          {
+                              "Category":  "Site Photos",
+                              "CreditFolder":  "installed bhavarkua pic",
+                              "Files":  40,
+                              "Types":  ".jpg:30, .mp4:10"
+                          },
+                          {
+                              "Category":  "Site Photos",
+                              "CreditFolder":  "review 10042024",
+                              "Files":  48,
+                              "Types":  ".jpg:40, .pdf:8"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA FINAL INDORE-CIVIL INTERIOR IGBC DRAWINGS.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA INDORE-FINAL DWG-Calculation indicating the number of plants provided.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA INDORE-FINAL DWG-Floor plans of the zone and occupancy calculations.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA INDORE-FINAL DWG-Floor plans showing the door and window schedule.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA INDORE-FINAL DWG-Waste management layout.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA INDORE-LIGHTIGN LAYOUT.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA, INDORE- LPD CALCULATIONS.xlsx",
+                              "Files":  1,
+                              "Types":  ".xlsx:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA, INDORE- SENSORS LAYOUT -25.10.2023 (1).pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA, INDORE-RCP LAYOUT-26.10.2023.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA-INDORE-GRD FLR \u0026 1ST FLR FURNITURE LAYOUT.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "KFC-BHAVARKUA-INDORE-GRD FLR \u0026 1ST FLR GLAZING LAYOUT.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Category":  "Whitewaters",
+                              "CreditFolder":  "R1-KFC-BHAVARKUA, INDORE-MLTP LAYOUT-26.10.2023.pdf",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          }
+                      ],
+    "FolderSummary":  [
+                          {
+                              "Folder":  "IGBC Bhavarkua",
+                              "Files":  7,
+                              "Types":  ".xlsx:4, .pptx:1, .pdf:1, .jpg:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 1",
+                              "Files":  1,
+                              "Types":  ".docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 2",
+                              "Files":  3,
+                              "Types":  ".pdf:2, .png:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 2/Circulation spaces \u0026 Furniture layout",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 3",
+                              "Files":  2,
+                              "Types":  ".png:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 3/Transport proximity",
+                              "Files":  1,
+                              "Types":  ".png:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/1. Eco Design/Credit 5",
+                              "Files":  2,
+                              "Types":  ".pdf:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/2. Water Conservation",
+                              "Files":  13,
+                              "Types":  ".pdf:6, .jpg:3, .jpeg:2, .xlsx:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/2. Water Conservation/water fittings/water flow measurement",
+                              "Files":  2,
+                              "Types":  ".mp4:2"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 1",
+                              "Files":  3,
+                              "Types":  ".pdf:3"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 1/AC Gas \u0026 EER",
+                              "Files":  13,
+                              "Types":  ".jpg:13"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 1/all fire extinguishers pics",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 2",
+                              "Files":  11,
+                              "Types":  ".pdf:6, .xlsx:3, .zip:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 2/AC Gas \u0026 EER",
+                              "Files":  13,
+                              "Types":  ".jpg:13"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 2/appliance energy star",
+                              "Files":  25,
+                              "Types":  ".jpg:25"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 2/appliances pics \u0026 star ratings ",
+                              "Files":  49,
+                              "Types":  ".jpg:49"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 2/Bluestar",
+                              "Files":  10,
+                              "Types":  ".pdf:9, .png:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 3",
+                              "Files":  1,
+                              "Types":  ".docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 3/EMS",
+                              "Files":  3,
+                              "Types":  ".jpg:1, .png:1, .pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/3.Energy Efficiency/Credit 4",
+                              "Files":  15,
+                              "Types":  ".jpg:9, .pdf:3, .docx:2, .mp4:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 1",
+                              "Files":  7,
+                              "Types":  ".pdf:3, .docx:2, .jpg:2"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 2",
+                              "Files":  4,
+                              "Types":  ".pdf:2, .docx:1, .xlsx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 3",
+                              "Files":  14,
+                              "Types":  ".pdf:12, .docx:1, .png:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 4",
+                              "Files":  3,
+                              "Types":  ".pdf:2, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 5",
+                              "Files":  14,
+                              "Types":  ".pdf:10, .jpeg:2, .xlsx:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 5/Wood Usage Pics \u0026 Invoice",
+                              "Files":  9,
+                              "Types":  ".jpg:9"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Credit 6",
+                              "Files":  5,
+                              "Types":  ".pdf:2, .zip:1, .docx:1, .xlsx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/4. Interior Material/Mandatory 1",
+                              "Files":  2,
+                              "Types":  ".jpg:2"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 10",
+                              "Files":  4,
+                              "Types":  ".pdf:2, .png:2"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 12",
+                              "Files":  2,
+                              "Types":  ".pdf:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 13",
+                              "Files":  12,
+                              "Types":  ".jpg:8, .mp4:3, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 14",
+                              "Files":  1,
+                              "Types":  ".xlsx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 14/Chess \u0026 Games",
+                              "Files":  11,
+                              "Types":  ".jpg:8, .mp4:3"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 2",
+                              "Files":  1,
+                              "Types":  ".docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 2/Daylight ",
+                              "Files":  13,
+                              "Types":  ".jpg:12, .mp4:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 3",
+                              "Files":  5,
+                              "Types":  ".jpg:4, .pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 4",
+                              "Files":  1,
+                              "Types":  ".pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 5/sensors",
+                              "Files":  6,
+                              "Types":  ".jpg:4, .mp4:2"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 6",
+                              "Files":  3,
+                              "Types":  ".pdf:2, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 8/Outdoor View from Inside",
+                              "Files":  2,
+                              "Types":  ".docx:1, .pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Credit 9/entry door",
+                              "Files":  1,
+                              "Types":  ".jpg:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Mandatory 1",
+                              "Files":  2,
+                              "Types":  ".pptx:1, .pdf:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Mandatory 2 \u0026 Credit 1",
+                              "Files":  4,
+                              "Types":  ".xlsx:1, .pptx:1, .pdf:1, .docx:1"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/5. Indoor Environment/Mandatory 2 \u0026 Credit 1/Fresh Air Measurement",
+                              "Files":  13,
+                              "Types":  ".jpg:13"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/Site Photos/Bhavarkua Pic",
+                              "Files":  34,
+                              "Types":  ".jpg:34"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/Site Photos/installed bhavarkua pic",
+                              "Files":  40,
+                              "Types":  ".jpg:30, .mp4:10"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/Site Photos/review 10042024",
+                              "Files":  23,
+                              "Types":  ".jpg:15, .pdf:8"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/Site Photos/review 10042024/visit",
+                              "Files":  25,
+                              "Types":  ".jpg:25"
+                          },
+                          {
+                              "Folder":  "IGBC Bhavarkua/Whitewaters",
+                              "Files":  12,
+                              "Types":  ".pdf:11, .xlsx:1"
+                          }
+                      ]
+}

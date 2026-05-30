@@ -1,0 +1,30 @@
+name: Tracknov Intelligence Governance & Safety Layer CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  intelligence-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 18
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Extraction Accuracy Benchmarks
+        run: npx tsx benchmarks/run_all_benchmarks.ts
+      - name: Run Intelligence Governance & Replay Proofs
+        run: npx tsx scripts/verify_intelligence_governance.ts

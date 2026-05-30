@@ -1,0 +1,22 @@
+{
+  "profile": "enterprise",
+  "tier": "Premium Multi-Tenant SaaS / VPC",
+  "features": {
+    "tenantIsolation": "strict-database-rls",
+    "replayVerification": "real-time-commit-attestation",
+    "embeddingProvider": "gemini-api-pooled",
+    "cacheStrategy": "clustered-redis",
+    "auditStorage": "immutable-telemetry-ledger"
+  },
+  "limits": {
+    "maxDocumentsPerProject": 5000,
+    "maxFileSizeMb": 50,
+    "concurrentReplays": 16,
+    "vectorTtlDays": 365
+  },
+  "redundancy": {
+    "databaseReplication": true,
+    "aiProviderFallback": true,
+    "fallbackChain": ["gemini-pro-1.5", "gemini-flash-1.5", "local-onnx"]
+  }
+}

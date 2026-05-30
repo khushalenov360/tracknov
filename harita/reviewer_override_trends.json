@@ -1,0 +1,24 @@
+{
+  "weeklyOverrideRate": [
+    14.2,
+    11.8,
+    8.4,
+    5.1,
+    2.9
+  ],
+  "falsePositivesSuppressedCount": [
+    18,
+    27,
+    34,
+    45,
+    59
+  ],
+  "accuracyScoreTrend": [
+    91.2,
+    92.8,
+    94.6,
+    96.2,
+    98.1
+  ],
+  "timestamp": "2026-05-18T05:40:57.011Z"
+}

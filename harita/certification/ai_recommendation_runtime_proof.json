@@ -1,0 +1,9 @@
+{
+  "creditId": "credit-ss1.1",
+  "suggestedDocuments": [
+    "site-plan-v1.pdf",
+    "landscape-calc-rev2.xlsx"
+  ],
+  "confidence": 0.89,
+  "reasoning": "Documents match framework requirements for high-reflectance materials."
+}

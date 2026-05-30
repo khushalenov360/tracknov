@@ -1,0 +1,117 @@
+export type AIActionContract = {
+  action_id: string;
+  action_name: string;
+  allowed_roles: string[];
+  workflow_requirements: string[];
+  entity_requirements: string[];
+  side_effects: string[];
+  audit_requirements: string[];
+  queue_updates: string[];
+  realtime_events: string[];
+};
+
+export const AI_ACTION_CONTRACTS: Record<string, AIActionContract> = {
+  assignContributor: {
+    action_id: "assignContributor",
+    action_name: "Assign contributor",
+    allowed_roles: ["owner", "project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["project_member_exists"],
+    entity_requirements: ["project_credit_id", "assignee_user_id", "document_type"],
+    side_effects: ["assignment_updated", "task_created_or_updated"],
+    audit_requirements: ["assignment_audit_log"],
+    queue_updates: ["personal_queue", "project_queue"],
+    realtime_events: ["assignment.updated"],
+  },
+  uploadDocument: {
+    action_id: "uploadDocument",
+    action_name: "Upload project document",
+    allowed_roles: ["architect", "mep", "contractor", "owner", "project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["assignment_valid", "workflow_state_allows_upload"],
+    entity_requirements: ["project_id", "project_credit_id", "document_type", "file"],
+    side_effects: ["document_created", "workflow_transitioned_if_needed"],
+    audit_requirements: ["document_upload_audit_log"],
+    queue_updates: ["personal_queue", "project_queue", "review_queue"],
+    realtime_events: ["document.uploaded"],
+  },
+  requestClarification: {
+    action_id: "requestClarification",
+    action_name: "Request clarification",
+    allowed_roles: ["owner", "project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["under_review_state"],
+    entity_requirements: ["document_id", "reason"],
+    side_effects: ["workflow_to_clarification", "clarification_task_upserted"],
+    audit_requirements: ["clarification_audit_log"],
+    queue_updates: ["personal_queue", "project_queue"],
+    realtime_events: ["workflow.clarification_requested"],
+  },
+  approveSubmittal: {
+    action_id: "approveSubmittal",
+    action_name: "Approve submittal",
+    allowed_roles: ["project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["under_review_state", "validation_passed"],
+    entity_requirements: ["submittal_id"],
+    side_effects: ["workflow_to_approved", "derived_state_recompute"],
+    audit_requirements: ["approval_audit_log", "workflow_history"],
+    queue_updates: ["review_queue", "approval_queue", "project_queue"],
+    realtime_events: ["workflow.approved"],
+  },
+  rejectSubmittal: {
+    action_id: "rejectSubmittal",
+    action_name: "Reject submittal",
+    allowed_roles: ["project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["under_review_state"],
+    entity_requirements: ["submittal_id", "reason"],
+    side_effects: ["workflow_to_rejected", "owner_resubmit_task_upserted"],
+    audit_requirements: ["rejection_audit_log", "workflow_history"],
+    queue_updates: ["personal_queue", "project_queue", "review_queue"],
+    realtime_events: ["workflow.rejected"],
+  },
+  generateSubmissionPack: {
+    action_id: "generateSubmissionPack",
+    action_name: "Generate submission pack",
+    allowed_roles: ["owner", "project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["submission_readiness_true"],
+    entity_requirements: ["project_id"],
+    side_effects: ["submission_pack_generated"],
+    audit_requirements: ["submission_pack_audit_log"],
+    queue_updates: ["project_queue"],
+    realtime_events: ["submission.pack_generated"],
+  },
+  escalateIssue: {
+    action_id: "escalateIssue",
+    action_name: "Escalate issue",
+    allowed_roles: ["owner", "project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["blocker_or_conflict_exists"],
+    entity_requirements: ["project_id", "reason"],
+    side_effects: ["escalation_recorded"],
+    audit_requirements: ["escalation_audit_log"],
+    queue_updates: ["governance_queue"],
+    realtime_events: ["governance.escalated"],
+  },
+  reassignReviewer: {
+    action_id: "reassignReviewer",
+    action_name: "Reassign reviewer",
+    allowed_roles: ["project_admin", "super_admin", "super_user"],
+    workflow_requirements: ["review_assignment_exists"],
+    entity_requirements: ["project_credit_id", "assignee_user_id", "document_type"],
+    side_effects: ["assignment_updated"],
+    audit_requirements: ["assignment_override_log"],
+    queue_updates: ["personal_queue", "project_queue", "review_queue"],
+    realtime_events: ["assignment.reassigned"],
+  },
+  reopenSubmission: {
+    action_id: "reopenSubmission",
+    action_name: "Reopen submission",
+    allowed_roles: ["super_user"],
+    workflow_requirements: ["approved_or_rejected_state"],
+    entity_requirements: ["submittal_id", "reason"],
+    side_effects: ["workflow_reopened"],
+    audit_requirements: ["override_audit_log", "workflow_history"],
+    queue_updates: ["review_queue", "project_queue"],
+    realtime_events: ["workflow.reopened"],
+  },
+};
+
+export function getAIActionContract(actionId: string): AIActionContract | null {
+  return AI_ACTION_CONTRACTS[actionId] ?? null;
+}
