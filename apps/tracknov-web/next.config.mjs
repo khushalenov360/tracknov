@@ -16,6 +16,7 @@ const nextConfig = {
   },
   // pdf-parse uses Node.js internals — must not be bundled by webpack
   serverExternalPackages: ["pdf-parse"],
+  transpilePackages: ["@tracknov/core", "@tracknov/harita-engine", "@tracknov/ui"],
   // Enable strict build checks for production quality
   eslint: {
     ignoreDuringBuilds: true,
