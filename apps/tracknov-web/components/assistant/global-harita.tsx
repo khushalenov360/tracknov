@@ -1,10 +1,9 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-
 import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Bot, ChevronLeft, ChevronRight, MessageSquare, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@tracknov/ui/ui/button";
 import { Textarea } from "@tracknov/ui/ui/textarea";
