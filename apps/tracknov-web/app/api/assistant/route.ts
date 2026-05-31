@@ -498,6 +498,7 @@ async function resolveFactualQuery(
           }
         }
 
+        lines.push(``); // Blank line to break the list block
         lines.push(`**Status:** ${credit.status}`);
         lines.push(`**Completion:** ${credit.completion_pct ?? 0}%`);
         
