@@ -81,6 +81,10 @@ export async function POST(request: Request) {
   const focusedProjectId = getProjectIdFromContext(context);
   const { user, role, snapshot, projectIds, userEmail, userName: rawUserName } = await getWorkspaceSnapshot();
 
+  console.log("=== AI SNAPSHOT PREVIEW ===");
+  console.log(snapshot);
+  console.log("===========================");
+
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -309,7 +313,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const edgeContextPayload = sanitizeContextText(["Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n"));
+    const edgeContextPayload = sanitizeContextText(combinedSnapshot);
     
     // Wire up the Quarantine Boundary
     const quarantineKeywords = ["ignore all instructions", "override constraints", "system prompt", "drop table"];
