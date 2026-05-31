@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { certificationStrategyEngine } from "@tracknov/harita-engine/services/certification-strategy-engine";
 import { submissionReadinessEngine } from "@tracknov/harita-engine/services/submission-readiness-engine";
 import { evidenceGraphEngine } from "@tracknov/harita-engine/services/evidence-graph-engine";
+import { CreditAssignmentGraph, getCreditAssignmentGraph } from "../services/credit-assignment-graph";
 
 export type ProjectRow = {
   id: string;
@@ -50,6 +51,7 @@ export function buildWorkspaceSnapshot(
   role: string,
   guidebooks: Array<{ project_id: string; title: string; file_name: string; created_at?: string }>,
   profileMap: ProfileMap = new Map(),
+  creditAssignmentGraph?: Map<string, CreditAssignmentGraph>
 ) {
   if (!projects.length) {
     return "No accessible projects were found for this user.";
@@ -117,16 +119,34 @@ export function buildWorkspaceSnapshot(
     // --- Full credit tracker (LIVE DATA) ---
     lines.push(`\n--- FULL CREDIT TRACKER ---`);
     for (const credit of projectCredits) {
-      const assignedProfile = credit.assigned_user_id ? profileMap.get(credit.assigned_user_id) : null;
-      const assignedTo = assignedProfile
-        ? `${assignedProfile.full_name} (${assignedProfile.email})`
-        : credit.responsible_role ?? "UNASSIGNED";
+      const graph = creditAssignmentGraph?.get(credit.id);
       const completion = credit.completion_pct != null ? `${credit.completion_pct}%` : "0%";
       const mandatory = credit.is_mandatory ? " [MANDATORY]" : "";
       const blocked = credit.blocked_by ? ` [BLOCKED BY: ${credit.blocked_by}]` : "";
-      lines.push(
-        `${credit.credit_code}${mandatory} | ${credit.credit_name ?? ""} | status=${credit.state} | assigned=${assignedTo} | completion=${completion}${blocked}`
-      );
+      
+      lines.push(`${credit.credit_code}${mandatory} | ${credit.credit_name ?? ""} | status=${credit.state} | completion=${completion}${blocked}`);
+      
+      if (!graph || graph.requirements.length === 0) {
+        const assignedProfile = credit.assigned_user_id ? profileMap.get(credit.assigned_user_id) : null;
+        const assignedTo = assignedProfile
+          ? `${assignedProfile.full_name} (${assignedProfile.email})`
+          : credit.responsible_role ?? "UNASSIGNED";
+        lines.push(`  Assigned to: ${assignedTo} (Single Owner)`);
+      } else {
+        const assignedContributors = new Set(graph.requirements.filter(r => r.contributorId).map(r => r.contributorId));
+        if (assignedContributors.size <= 1) {
+          const singleContributor = graph.requirements.find(r => r.contributorName)?.contributorName ?? "Unassigned";
+          lines.push(`  Assigned to: ${singleContributor} (Single Owner)`);
+        } else {
+          lines.push(`  ${credit.credit_code} currently has multiple contributors.`);
+          for (const req of graph.requirements) {
+            lines.push(`    ${req.requirementType}`);
+            lines.push(`    • ${req.contributorName ?? "Unassigned"}`);
+            lines.push(``); // Blank line for formatting
+          }
+          lines.push(`    This credit does not currently have a single owner.`);
+        }
+      }
     }
 
     // --- Document state ---
@@ -284,7 +304,8 @@ export async function getWorkspaceSnapshot() {
     .select("*")
     .in("document_id", documents.slice(0, 5).map(d => d.id));
 
-  let snapshot = buildWorkspaceSnapshot(projects, credits, documents, resolvedRole, guidebooks, profileMap);
+  const creditAssignmentGraph = await getCreditAssignmentGraph(projectIds, credits, reader);
+  let snapshot = buildWorkspaceSnapshot(projects, credits, documents, resolvedRole, guidebooks, profileMap, creditAssignmentGraph);
 
   if (intelligence?.length) {
     snapshot += "\n\n--- DOCUMENT INTELLIGENCE ---\n";

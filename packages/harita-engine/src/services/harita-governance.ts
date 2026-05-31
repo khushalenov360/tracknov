@@ -29,6 +29,7 @@ export type ConsultantIntent =
   | "workflow_action"
   | "clarification_response"
   | "knowledge_question"
+  | "MULTI_CONTRIBUTOR_QUERY"
   | "general_conversation";
 
 export type HaritaIntent =
@@ -39,6 +40,7 @@ export type HaritaIntent =
   | "summary"
   | "comparison"
   | "next_step"
+  | "MULTI_CONTRIBUTOR_QUERY"
   | "general";
 
 export type NormalizedHaritaResponse = {
@@ -265,6 +267,7 @@ export function sanitizeContextText(input: string) {
 /** Legacy fine-grained intent router — kept for deterministic shortcircuit paths in route.ts */
 export function routeHaritaIntent(query: string): HaritaIntent {
   const q = query.toLowerCase();
+  if (q.includes("who owns") || q.includes("who is responsible") || q.includes("list contributors") || q.includes("who is working on")) return "MULTI_CONTRIBUTOR_QUERY";
   if (q.includes("how many pending") || q.includes("total counts") || q.includes("overall status")) return "status";
   if (q.includes("check validation") || q.includes("is it compliant") || q.includes("validation rules")) return "validation";
   if (q.includes("workflow status") || q.includes("show my workflow") || q.includes("status of my documents")) return "workflow";
