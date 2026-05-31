@@ -2,7 +2,6 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
 
 import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -15,11 +14,86 @@ import { sessionMemory } from "@tracknov/harita-engine/services/session-memory-s
 
 const MemoizedMarkdown = memo(function MemoizedMarkdown({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{content}</ReactMarkdown>
+    <div className="harita-prose text-inherit text-sm leading-relaxed">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => (
+            <p className="mb-3 last:mb-0">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 mb-3 last:mb-0 space-y-1">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 mb-3 last:mb-0 space-y-1">{children}</ol>
+          ),
+          li: ({ children }) => (
+            <li className="mb-1 leading-snug">{children}</li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-[var(--color-text-primary)]">{children}</strong>
+          ),
+          em: ({ children }) => (
+            <em className="italic opacity-90">{children}</em>
+          ),
+          h1: ({ children }) => (
+            <h1 className="text-base font-bold mt-4 mb-2 first:mt-0 text-[var(--color-text-primary)]">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-sm font-bold mt-3 mb-1.5 first:mt-0 text-[var(--color-text-primary)]">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-sm font-semibold mt-3 mb-1 first:mt-0 text-[var(--color-text-primary)]">{children}</h3>
+          ),
+          hr: () => (
+            <hr className="my-3 border-[var(--color-border)] opacity-40" />
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-[var(--color-border)] pl-3 my-2 opacity-80 italic">{children}</blockquote>
+          ),
+          // De-emphasise inline code — AI output uses backticks for field names, not actual code
+          code: ({ children, className }) => {
+            const isBlock = className?.includes("language-");
+            if (isBlock) {
+              return (
+                <code className="block bg-[var(--color-surface-2)] text-xs px-3 py-2 rounded-md my-2 overflow-x-auto font-mono whitespace-pre">
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <code className="bg-[var(--color-surface-2)] text-xs px-1 py-0.5 rounded font-mono">
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => (
+            <pre className="bg-[var(--color-surface-2)] text-xs p-3 rounded-md my-2 overflow-x-auto">
+              {children}
+            </pre>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-[var(--color-surface-2)]">{children}</thead>
+          ),
+          th: ({ children }) => (
+            <th className="text-left px-2 py-1.5 font-semibold border border-[var(--color-border)] text-[var(--color-text-primary)]">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="px-2 py-1.5 border border-[var(--color-border)]">{children}</td>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 });
+
 
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
@@ -891,7 +965,7 @@ Important:
                   : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-primary)]"
               }`}
             >
-              <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit"><ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{message.content}</ReactMarkdown></div>
+              <MemoizedMarkdown content={message.content} />
             </div>
           ))}
           {loading ? (
@@ -1136,7 +1210,7 @@ Important:
                     : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-bl-none"
                 }`}
               >
-                <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit"><ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{message.content}</ReactMarkdown></div>
+                <MemoizedMarkdown content={message.content} />
               </div>
             ))}
             {loading ? (
