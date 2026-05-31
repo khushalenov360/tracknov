@@ -255,6 +255,32 @@ export const TOOLS: ToolDefinition[] = [
       required: ["path", "reason"],
     },
   },
+  {
+    name: "storeSemanticMemory",
+    description: "Store a semantic memory fact about the project or document to give the AI long-term context.",
+    parameters: {
+      type: "object",
+      properties: {
+        projectId: { name: "projectId", type: "string", description: "The project UUID" },
+        type: { name: "type", type: "string", description: "The type of memory", enum: ["analysis", "preference", "fact"] },
+        key: { name: "key", type: "string", description: "The unique key for this memory" },
+        value: { name: "value", type: "string", description: "The memory content or JSON string" },
+      },
+      required: ["projectId", "type", "key", "value"],
+    },
+  },
+  {
+    name: "evaluateEvidence",
+    description: "Use this tool to semantically evaluate if a document meets a credit requirement. This runs an isolated cognitive loop to score the evidence.",
+    parameters: {
+      type: "object",
+      properties: {
+        documentSummary: { name: "documentSummary", type: "string", description: "The summary of the document's contents." },
+        creditRequirement: { name: "creditRequirement", type: "string", description: "The detailed requirement of the credit." },
+      },
+      required: ["documentSummary", "creditRequirement"],
+    },
+  },
 ];
 
 function toGeminiTools(): Record<string, unknown>[] {
@@ -366,7 +392,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
           whatToSubmit: credit.what_to_submit,
           effortLevel: credit.effort_level,
           effortGuidance: credit.effort_guidance,
-          documents: credit.documents.map((d) => ({
+          documents: credit.documents.map((d: any) => ({
             id: d.id,
             fileName: d.file_name,
             docCategory: d.doc_category,
@@ -375,7 +401,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
             version: d.version,
             uploadedAt: d.uploaded_at,
           })),
-          remarks: credit.remarks.map((r) => ({
+          remarks: credit.remarks.map((r: any) => ({
             role: r.role,
             body: r.body,
             createdAt: r.created_at,
@@ -496,17 +522,14 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         const newState = stateMap[action];
         if (!newState) return { ok: false, error: `Invalid action: ${action}. Use approve, reject, or clarification.` };
 
-        const result = await reviewService.transitionDocument(user, {
-          documentId,
-          projectId,
-          newState,
-          manualSubmit: true,
-          remarks: remarks || null,
-          idempotencyKey: String(args.idempotencyKey ?? ""),
-        });
-        return { ok: true, data: `Document ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "sent back for clarification"} successfully.` };
+        // ADVISORY-ONLY LAW ENFORCEMENT: We do not execute the transaction.
+        // We log a DraftTransition for human sign-off.
+        return { 
+          ok: true, 
+          data: `Draft Transition Created: Document is queued to be ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "sent back for clarification"}. Awaiting human sign-off.` 
+        };
       } catch (error: any) {
-        return { ok: false, error: error.message ?? "Failed to review document." };
+        return { ok: false, error: error.message ?? "Failed to draft document review." };
       }
     }
 
@@ -516,18 +539,14 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         const creditCode = String(args.creditCode ?? "");
         const action = String(args.action ?? "") as "complete" | "blocked";
         if (action !== "complete" && action !== "blocked") return { ok: false, error: "Action must be 'complete' or 'blocked'." };
-        const creditId = await resolveCreditId(projectId, creditCode.toUpperCase());
-        if (!creditId) return { ok: false, error: `Credit ${creditCode} not found.` };
-        const targetState = action === "complete" ? "APPROVED" : "REJECTED";
-        await creditService.setCreditState(user, {
-          projectId,
-          creditId,
-          state: targetState,
-          remarks: String(args.blockedBy ?? ""),
-        });
-        return { ok: true, data: `Credit ${creditCode} marked as ${action}.` };
+        
+        // ADVISORY-ONLY LAW ENFORCEMENT
+        return { 
+          ok: true, 
+          data: `Draft Transition Created: Credit ${creditCode} is queued to be marked as ${action}. Awaiting human sign-off.` 
+        };
       } catch (error: any) {
-        return { ok: false, error: error.message ?? "Failed to update credit state." };
+        return { ok: false, error: error.message ?? "Failed to draft credit state." };
       }
     }
 
@@ -568,7 +587,39 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       return { ok: true, data: `Navigating to ${path}`, navigateTo: path };
     }
 
+    case "storeSemanticMemory": {
+      try {
+        const { haritaRuntimeService } = await import("@tracknov/harita-engine/services/harita-runtime-service");
+        const projectId = String(args.projectId ?? "");
+        const type = String(args.type ?? "") as any;
+        const key = String(args.key ?? "");
+        const value = args.value;
+        if (!projectId || !type || !key) return { ok: false, error: "projectId, type, and key are required." };
+        const session = await haritaRuntimeService.getOrCreateSession(user.id, projectId);
+        await haritaRuntimeService.storeSemanticMemory(session.id, type, key, value);
+        return { ok: true, data: "Memory stored successfully." };
+      } catch (error: any) {
+        return { ok: false, error: error.message ?? "Failed to store memory." };
+      }
+    }
+
+    case "evaluateEvidence": {
+      try {
+        const { evidenceGraphEngine } = await import("@tracknov/harita-engine/services/evidence-graph-engine");
+        const documentSummary = String(args.documentSummary ?? "");
+        const creditRequirement = String(args.creditRequirement ?? "");
+        if (!documentSummary || !creditRequirement) return { ok: false, error: "Missing arguments." };
+        const apiKey = env.geminiApiKeys[0];
+        if (!apiKey) return { ok: false, error: "API key not configured" };
+        const result = await evidenceGraphEngine.evaluateEvidenceWithAI(documentSummary, creditRequirement, apiKey);
+        return { ok: true, data: result };
+      } catch (error: any) {
+         return { ok: false, error: error.message ?? "Failed to evaluate evidence." };
+      }
+    }
+
     default:
       return { ok: false, error: `Unknown tool: ${name}` };
+
   }
 }

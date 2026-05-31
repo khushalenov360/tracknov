@@ -59,7 +59,9 @@ export type NormalizedHaritaResponse = {
  * This prevents unnecessary latency and false tool triggers.
  */
 export function requiresToolCall(category: ConsultantIntent): boolean {
-  return category === "workflow_action" || category === "analyze_document" || category === "mapping_recommendation";
+  // Overridden for Cognitive Intelligence Loop: We allow tool calls across all intents 
+  // so the AI can invoke storeSemanticMemory or evaluateEvidence at any time.
+  return true;
 }
 
 // ─────────────────────────────────────────────

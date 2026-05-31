@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildFallbackAssistantReply,
   type AssistantContext,
@@ -23,6 +24,7 @@ import { executeTool } from "@tracknov/harita-engine/assistant-tools";
 import { getSafeCapabilitiesContext } from "@tracknov/harita-engine/services/capability-registry";
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
 import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
+import { SemanticQuarantineEngine } from "@tracknov/harita-engine/governance/semanticQuarantineEngine";
 import { createAiStream as edgeStream } from "@tracknov/harita-engine/assistant/llm-streamer";
 
 import { type AssistantRequest, createTextStream, createResponseStream } from "@tracknov/harita-engine/assistant/stream-utils";
@@ -63,7 +65,12 @@ export async function POST(request: Request) {
   const latestPrompt = sanitizeUserText(latestPromptRaw);
   const intent = routeHaritaIntent(latestPrompt);
   const recentContext = messages.slice(-3).map(m => m.content).join(" ");
-  const intentCategory = semanticDisambiguateIntent(latestPrompt, recentContext);
+  let intentCategory = semanticDisambiguateIntent(latestPrompt, recentContext);
+  
+  // Phase 2: Attachment-First Enforcement
+  if (attachments.length > 0) {
+    intentCategory = "analyze_document";
+  }
   
   try {
     EnovAitBoundary.validateIntelligenceRequest("/api/assistant", "POST", { action: intentCategory });
@@ -147,7 +154,7 @@ export async function POST(request: Request) {
           return `RAG ${index + 1} [${source}${code ? `/${code}` : ""}] score=${item.score.toFixed(3)}: ${item.content}`;
         })
         .join("\n")
-    : "No RAG matches found for current query.";
+    : "No directly relevant RAG context found for this prompt.";
     
   const attachmentSummary = attachments.length
     ? [
@@ -158,49 +165,20 @@ export async function POST(request: Request) {
         }),
       ].join("\n")
     : "Uploaded attachments: none";
-    
-  const compactSnapshot = focusedProjectId
-    ? [snapshot, "", "Note: focus on current project only.", focusedProjectId].join("\n")
-    : snapshot;
-    
-  const combinedSnapshot = sanitizeContextText([compactSnapshot, "", "Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n"));
-  const hasManualLock = combinedSnapshot.includes("Manual version lock:") && !combinedSnapshot.includes("Manual version lock: none");
 
-  const deterministic = tryDeterministicAnswer(intent, combinedSnapshot);
-  if (deterministic) {
-    await logAiInteraction({
-      userId: user.id,
-      intent,
-      query: latestPrompt,
-      model: "deterministic",
-      contextSize: combinedSnapshot.length,
-      tokenUsage: 0,
-      fallbackUsed: false,
-      latencyMs: Date.now() - startedAt,
-    });
-    return createResponseStream(createTextStream(deterministic));
-  }
+  const combinedSnapshot = [
+    `--- WORKSPACE ---`,
+    snapshot,
+    `--- AUGMENTED AI MEMORY ---`,
+    augmentedContext,
+    `--- RAG CONTEXT ---`,
+    ragSnapshot,
+    `--- ATTACHMENTS ---`,
+    attachmentSummary
+  ].join("\n\n");
+  const hasManualLock = snapshot.includes("Project manual version: LOCKED");
 
-  if ((intent === "mapping" || intent === "comparison" || intent === "summary") && !hasManualLock) {
-    const manualLockReply = normalizeHaritaResponse({
-      assessment: getUnknownDataResponse(),
-      fit: "Not suitable",
-      reason: "Project manual version is not locked for this workspace.",
-      recommendation: "Ask Project Admin/Super User to upload and lock the guidebook first.",
-      confirm: "Confirm?",
-    });
-    await logAiInteraction({
-      userId: user.id,
-      intent,
-      query: latestPrompt,
-      model: "deterministic",
-      contextSize: combinedSnapshot.length,
-      tokenUsage: 0,
-      fallbackUsed: false,
-      latencyMs: Date.now() - startedAt,
-    });
-    return createResponseStream(createTextStream(manualLockReply));
-  }
+  // Phase 1: Removed tryDeterministicAnswer and the related manualLock deterministic short-circuits here.
 
   let resolvedTone: AssistantTone;
   if (body.tone) {
@@ -222,6 +200,24 @@ export async function POST(request: Request) {
       latencyMs: Date.now() - startedAt,
     });
     return createResponseStream(createTextStream(message));
+  }
+
+  // P1: Direct-DB factual query layer — answers structured questions without LLM
+  if (attachments.length === 0) {
+    const factualAnswer = await resolveFactualQuery(latestPrompt, focusedProjectId, projectIds, role);
+    if (factualAnswer) {
+      await logAiInteraction({
+        userId: user.id,
+        intent: "factual_db_query",
+        query: latestPrompt,
+        model: "deterministic-db",
+        contextSize: 0,
+        tokenUsage: 0,
+        fallbackUsed: false,
+        latencyMs: Date.now() - startedAt,
+      });
+      return createResponseStream(createTextStream(factualAnswer));
+    }
   }
 
   const isAnalysisAttachmentFlow =
@@ -315,6 +311,21 @@ export async function POST(request: Request) {
   try {
     const edgeContextPayload = sanitizeContextText(["Retrieved context:", ragSnapshot, "", attachmentSummary].join("\n"));
     
+    // Wire up the Quarantine Boundary
+    const quarantineKeywords = ["ignore all instructions", "override constraints", "system prompt", "drop table"];
+    if (quarantineKeywords.some(kw => latestPrompt.toLowerCase().includes(kw))) {
+      SemanticQuarantineEngine.quarantine(
+        "Detected high-entropy override or prompt injection attempt",
+        ["assistant"],
+        0.95
+      );
+    }
+
+    if (SemanticQuarantineEngine.isModuleContaminated("assistant")) {
+      const quarantineFallback = "ERROR ENCOUNTERED: Prompt quarantined due to safety constraints. Execution halted.";
+      return createResponseStream(createTextStream(quarantineFallback));
+    }
+    
     const toolsNeeded = requiresToolCall(intentCategory);
     const functionCalls = toolsNeeded
       ? await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role)
@@ -366,43 +377,166 @@ export async function POST(request: Request) {
         return createResponseStream(finalStream);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("[Assistant] AI pipeline failed:", error);
-    
-    if (attachments.length && isFileQuestion(latestPrompt)) {
-      const analysis = buildAttachmentAnalysisReply(userName, attachments[0], ragMatches);
-      await haritaRuntimeService.storeSemanticMemory(session.id, "analysis", attachments[0].name, {
-        summary: analysis,
-        timestamp: new Date().toISOString()
-      });
-      await haritaRuntimeService.storeMessage(session.id, "assistant", analysis);
-      
-      await logAiInteraction({
-        userId: user.id,
-        intent,
-        query: latestPrompt,
-        model: "fallback-analysis",
-        contextSize: combinedSnapshot.length,
-        tokenUsage: 0,
-        fallbackUsed: true,
-        latencyMs: Date.now() - startedAt,
-      });
-      return createResponseStream(createTextStream(analysis));
+    const fallbackText = `ERROR ENCOUNTERED: ${error?.message || String(error)}\n\n` + buildFallbackAssistantReply(context, latestPrompt);
+    return createResponseStream(createTextStream(fallbackText));
+  }
+}
+
+// ─── P1: Direct-DB Factual Query Resolver ─────────────────────────────────────
+// For high-confidence factual questions, query Supabase directly.
+// No LLM. No hallucination. Instant, accurate answers.
+
+async function resolveFactualQuery(
+  prompt: string,
+  focusedProjectId: string | null,
+  projectIds: string[],
+  role: string,
+): Promise<string | null> {
+  const q = prompt.toLowerCase().trim();
+  if (!projectIds.length) return null;
+
+  const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
+  const targetIds = focusedProjectId ? [focusedProjectId] : projectIds;
+
+  // --- Credit count query ---
+  if (
+    (q.includes("how many credits") || q.includes("total credits") || q.includes("credits total") || q.includes("how many total credits")) &&
+    !q.includes("who") && !q.includes("assign")
+  ) {
+    const { data: credits } = await reader
+      .from("project_credits")
+      .select("id, credit_code, category_name, category, status, project_id")
+      .in("project_id", targetIds);
+
+    if (!credits?.length) return null;
+
+    const total = credits.length;
+    const complete = credits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
+    const inProgress = credits.filter(c => c.status === "IN_PROGRESS").length;
+    const draft = credits.filter(c => c.status === "DRAFT").length;
+    const blocked = credits.filter(c => c.status === "BLOCKED").length;
+
+    const byCategory = new Map<string, number>();
+    for (const c of credits) {
+      const cat = c.category_name ?? c.category ?? "Uncategorised";
+      byCategory.set(cat, (byCategory.get(cat) ?? 0) + 1);
+    }
+
+    const categoryBreakdown = [...byCategory.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, count]) => `  • ${cat}: ${count}`)
+      .join("\n");
+
+    return [
+      `**Total Credits: ${total}**`,
+      ``,
+      `**By Status:**`,
+      `  • Complete / Approved: ${complete}`,
+      `  • In Progress: ${inProgress}`,
+      `  • Draft: ${draft}`,
+      `  • Blocked: ${blocked}`,
+      ``,
+      `**By Category:**`,
+      categoryBreakdown,
+    ].join("\n");
+  }
+
+  // --- Assignment lookup: "who is assigned to [CODE]" ---
+  const assignMatch = q.match(/who.*(assigned|working|owns|responsible).*(to|on|for)?\s+([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i)
+    ?? q.match(/assigned.*(to|on)?\s+([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i);
+  if (assignMatch) {
+    const rawCode = (assignMatch[3] ?? assignMatch[2] ?? "").trim().toUpperCase().replace(/\s+/, " ");
+    if (rawCode) {
+      const { data: credit } = await reader
+        .from("project_credits")
+        .select("credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct")
+        .in("project_id", targetIds)
+        .ilike("credit_code", `%${rawCode}%`)
+        .maybeSingle();
+
+      if (credit) {
+        let assignedTo = "Unassigned";
+        if (credit.assigned_user_id) {
+          const { data: prof } = await reader
+            .from("profiles")
+            .select("full_name, email")
+            .eq("user_id", credit.assigned_user_id)
+            .maybeSingle();
+          if (prof) assignedTo = `${prof.full_name} (${prof.email})`;
+        } else if (credit.responsible_role) {
+          assignedTo = credit.responsible_role;
+        }
+
+        return [
+          `**${credit.credit_code} — ${credit.credit_name ?? ""}**`,
+          ``,
+          `**Assigned to:** ${assignedTo}`,
+          `**Status:** ${credit.status}`,
+          `**Completion:** ${credit.completion_pct ?? 0}%`,
+        ].join("\n");
+      }
     }
   }
 
-  const fallbackText = buildFallbackAssistantReply(context, latestPrompt);
-  await haritaRuntimeService.storeMessage(session.id, "assistant", fallbackText);
-  
-  await logAiInteraction({
-    userId: user.id,
-    intent,
-    query: latestPrompt,
-    model: "fallback",
-    contextSize: combinedSnapshot.length,
-    tokenUsage: 0,
-    fallbackUsed: true,
-    latencyMs: Date.now() - startedAt,
-  });
-  return createResponseStream(createTextStream(fallbackText));
+  // --- Blocked credits ---
+  if (q.includes("blocked") || q.includes("what is blocking") || q.includes("what's blocking")) {
+    const { data: credits } = await reader
+      .from("project_credits")
+      .select("credit_code, credit_name, status, blocked_by, assigned_user_id")
+      .in("project_id", targetIds)
+      .eq("status", "BLOCKED");
+
+    if (!credits?.length) {
+      return "**No blocked credits found** in the current project(s). All credits are progressing normally.";
+    }
+
+    const lines = [`**Blocked Credits (${credits.length}):**`, ``];
+    for (const c of credits) {
+      lines.push(`  • **${c.credit_code}** — ${c.credit_name ?? ""}`);
+      if (c.blocked_by) lines.push(`    Blocked by: ${c.blocked_by}`);
+    }
+    return lines.join("\n");
+  }
+
+  // --- List all credits / show tracker ---
+  if (
+    (q.includes("list") || q.includes("show") || q.includes("all credits") || q.includes("credit tracker") || q.includes("full tracker"))
+    && (q.includes("credit") || q.includes("tracker"))
+    && !q.includes("who")
+  ) {
+    const { data: credits } = await reader
+      .from("project_credits")
+      .select("credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct, category_name")
+      .in("project_id", targetIds)
+      .order("credit_code");
+
+    if (!credits?.length) return null;
+
+    // Batch resolve assignments
+    const uids = [...new Set(credits.map(c => c.assigned_user_id).filter(Boolean))] as string[];
+    const profileMap = new Map<string, string>();
+    if (uids.length) {
+      const { data: profs } = await reader.from("profiles").select("user_id, full_name").in("user_id", uids);
+      for (const p of profs ?? []) profileMap.set(p.user_id, p.full_name ?? "Unknown");
+    }
+
+    const lines = [`**Full Credit Tracker (${credits.length} credits):**`, ``];
+    let lastCat = "";
+    for (const c of credits) {
+      const cat = c.category_name ?? "Uncategorised";
+      if (cat !== lastCat) {
+        lines.push(``, `**${cat}**`);
+        lastCat = cat;
+      }
+      const assigned = c.assigned_user_id
+        ? (profileMap.get(c.assigned_user_id) ?? "Unknown")
+        : (c.responsible_role ?? "Unassigned");
+      lines.push(`  • ${c.credit_code} | ${c.credit_name ?? ""} | ${c.status} | ${assigned} | ${c.completion_pct ?? 0}%`);
+    }
+    return lines.join("\n");
+  }
+
+  return null;
 }

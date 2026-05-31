@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
+
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bot, ChevronLeft, ChevronRight, MessageSquare, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@tracknov/ui/ui/button";
@@ -8,6 +12,15 @@ import { Textarea } from "@tracknov/ui/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@tracknov/harita-engine/assistant";
 import type { MemberRole } from "@/lib/types";
 import { sessionMemory } from "@tracknov/harita-engine/services/session-memory-service";
+
+const MemoizedMarkdown = memo(function MemoizedMarkdown({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit">
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{content}</ReactMarkdown>
+    </div>
+  );
+});
+
 
 type AssistantTone = "Auto" | "Executive" | "Guided" | "Fast";
 type HaritaAttachment = {
@@ -155,7 +168,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   const [userName, setUserName] = useState<string>("");
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
@@ -289,7 +302,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   }, [messages, storageKey, historyLoaded]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages, loading]);
 
   useEffect(() => {
@@ -339,7 +352,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
     if (attachmentFile && shouldAttemptProjectUpload(text)) {
       const uploaded = await uploadAttachmentToProject(text);
       if (uploaded) {
-        setInput("");
+        if (inputRef.current) inputRef.current.value = "";
       }
       return;
     }
@@ -363,7 +376,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
       { role: "assistant", content: "" },
     ];
     setMessages(nextMessages);
-    setInput("");
+    if (inputRef.current) inputRef.current.value = "";
 
     try {
       const requestMessages = [...nextMessages.slice(0, -1)];
@@ -560,7 +573,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
       setError("No editable form fields found on this page.");
       return;
     }
-    const userGoal = input.trim() || "Fill this form with sensible values based on current page context.";
+    const userGoal = inputRef.current?.value?.trim() || "Fill this form with sensible values based on current page context.";
     setFillingForm(true);
     setError("");
     try {
@@ -608,7 +621,9 @@ ${fields.map((field) => `- key="${field.key}" label="${field.label}" type="${fie
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void sendPrompt(input);
+    if (inputRef.current) {
+      void sendPrompt(inputRef.current.value);
+    }
   }
 
   async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
@@ -705,7 +720,7 @@ Important:
     setMessages([{ role: "assistant", content: personalizedGreeting }]);
     setAttachment(null);
     setAttachmentFile(null);
-    setInput("");
+    if (inputRef.current) inputRef.current.value = "";
     setError("");
     // SECTION 9 & Phase 3: Clear session memory on "New Chat"
     sessionMemory.clear();
@@ -876,7 +891,7 @@ Important:
                   : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-primary)]"
               }`}
             >
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit"><ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{message.content}</ReactMarkdown></div>
             </div>
           ))}
           {loading ? (
@@ -941,18 +956,17 @@ Important:
                 ) : null}
 
                 <Textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
+                  defaultValue="" ref={inputRef}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
-                      void sendPrompt(input);
+                      void sendPrompt(event.currentTarget.value);
                     }
                   }}
                   placeholder="Ask Harita..."
                   className="min-h-[80px] resize-none text-[12px]"
                 />
-                <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
+                <Button type="submit" className="h-10 rounded-full px-4" disabled={loading}>
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -1122,7 +1136,7 @@ Important:
                     : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-bl-none"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <div className="prose prose-sm max-w-none break-words leading-relaxed [&>p]:mb-3 [&>p]:last:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul>li]:mb-1 [&>ul]:mb-3 [&>ul]:last:mb-0 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol>li]:mb-1 [&>ol]:mb-3 [&>ol]:last:mb-0 [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:font-bold [&>h2]:mb-2 [&>h3]:font-bold [&>h3]:mb-2 [&>pre]:bg-[var(--color-surface-2)] [&>pre]:p-2 [&>pre]:rounded-md [&>code]:bg-[var(--color-surface-2)] [&>code]:px-1 [&>code]:rounded [&>strong]:font-bold [&>strong]:text-[var(--color-text-primary)] text-inherit"><ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{message.content}</ReactMarkdown></div>
               </div>
             ))}
             {loading ? (
@@ -1187,25 +1201,22 @@ Important:
                 ) : null}
 
                 <Textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
+                  defaultValue=""
+                  ref={inputRef}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
-                      void sendPrompt(input);
+                      void sendPrompt(event.currentTarget.value);
                     }
                   }}
                   placeholder="Ask Harita..."
                   className="min-h-[84px] resize-none"
                 />
-                <Button type="submit" className="h-10 rounded-full px-4" disabled={!input.trim() || loading}>
+                <Button type="submit" className="h-10 rounded-full px-4" disabled={loading}>
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Ask Harita to upload after analysis, for example: &quot;Map this to EDA C1 as Drawing and upload.&quot;
-                {canManageGuidebookTracker ? " Project Admin/Super User can also ask to upload as guidebook or import as tracker." : ""}
-              </p>
+
             </div>
             {error ? <p className="text-xs text-[var(--color-red)]">{error}</p> : null}
           </form>

@@ -153,7 +153,7 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
 export function buildFallbackAssistantReply(context: AssistantContext, prompt: string) {
   const normalized = prompt.toLowerCase().trim();
 
-  // Handle greetings naturally
+  // Handle greetings naturally (Phase 3)
   const isGreeting =
     normalized === "hi" ||
     normalized === "hello" ||
@@ -163,91 +163,35 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
     normalized.startsWith("hello ");
   if (isGreeting) {
     return [
-      "Hi! I'm Harita, your certification workflow assistant.",
+      "I am Harita.",
       "",
-      "Here's what I can help you with right now:",
-      `- ${context.nextSteps[0] ?? "Review your action queue and identify open items."}`,
-      "- Check blockers and stalled credits across projects",
-      "- Answer questions about document requirements and IGBC credits",
-      "- Guide you through upload, review, and clarification workflows",
-      "",
-      "What would you like to work on?",
+      "How can I help with your certification project today?"
     ].join("\n");
   }
 
-  const unknown = "I don't have enough context to answer that precisely.";
-  const lead = context.nextSteps[0] ?? "Review the current workspace and identify the open items first.";
-  const creditMatch = prompt.match(/\b([A-Z]{2,3}\s?[A-Z]?\s?\d{1,2})\b/i);
-  const creditCode = creditMatch?.[1]?.replace(/\s+/g, " ").toUpperCase();
-
-  if (normalized.includes("next") || normalized.includes("what should") || normalized.includes("priorit")) {
+  // Phase 5: Ban Generic Capability Responses
+  // Instead of generic "I can help with...", return context-specific readiness/risks if asked what it can do.
+  if (normalized.includes("what can you do") || normalized.includes("how can you help") || normalized.includes("what do you do")) {
+    const highestRisk = context.nextSteps[0] ?? "Unknown";
     return [
-      `Next step: ${lead}`,
+      `Project context loaded.`,
       "",
-      "Why this is first:",
-      context.facts[0] ?? "It is the clearest current priority based on the workspace context.",
+      `Highest risk / priority:`,
+      `${highestRisk}`,
       "",
-      "I can break this into files to upload, notes to resolve, and submission checkpoints.",
+      `Missing / Pending items:`,
+      `- Please review workspace data to identify blocks.`,
+      "",
+      `Recommended next action:`,
+      `Provide document evidence to resolve the highest risk.`
     ].join("\n");
   }
 
-  if (normalized.includes("block") || normalized.includes("hold") || normalized.includes("stuck")) {
-    return [
-      "The main blockers are the items still listed in the workspace context.",
-      "",
-      ...context.nextSteps.slice(0, 3).map((step, index) => `${index + 1}. ${step}`),
-    ].join("\n");
-  }
-
-  if (
-    normalized.includes("attached file") ||
-    normalized.includes("tell me more") ||
-    normalized.includes("analyze") ||
-    normalized.includes("analyse") ||
-    normalized.includes("file uploaded") ||
-    normalized.includes("about the file")
-  ) {
-    return [
-      unknown,
-      "",
-      "Please attach the file in this message, then ask: `Analyze this attached file and suggest likely credit mapping.`",
-    ].join("\n");
-  }
-
-  if (
-    normalized.includes("upload") ||
-    normalized.includes("map") ||
-    normalized.includes("add file") ||
-    normalized.includes("attach")
-  ) {
-    return [
-      creditCode
-        ? `Got it. I can map this file to ${creditCode} and push it into workflow.`
-        : "Got it. I can map this file and push it into workflow.",
-      "",
-      creditCode
-        ? `Sure, what should I tag this as for ${creditCode}? (for example: Drawing, Narrative, Invoice, Certificate)`
-        : "Sure, tell me the credit code and document type you want for this file.",
-    ].join("\n");
-  }
-
-  if (normalized.includes("applicable") || normalized.includes("is this file") || normalized.includes("does this file")) {
-    return [
-      unknown,
-      "",
-      "Share one of these and I will give a direct yes/no with reason:",
-      "1. Attach the file and ask: `Check if this is valid for <credit code>`",
-      "2. Paste the credit requirement for that code.",
-    ].join("\n");
-  }
-
+  // If hitting the fallback for other reasons, keep it extremely brief and consultant-like.
+  const unknown = "I don't have enough context to answer that precisely based on current evidence.";
   return [
     unknown,
     "",
-    "Try asking me:",
-    "- \"What should I do next?\" — I'll prioritise your action queue",
-    "- \"Show blockers\" — I'll surface stalled credits",
-    "- \"Is [document] valid for [credit code]?\" — I'll check applicability",
-    "- Attach a file and say \"Analyze this\" — I'll identify the credit match",
+    "Please provide more project-specific details or document evidence."
   ].join("\n");
 }
