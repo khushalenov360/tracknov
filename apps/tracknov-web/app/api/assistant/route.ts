@@ -455,31 +455,53 @@ async function resolveFactualQuery(
     if (rawCode) {
       const { data: credit } = await reader
         .from("project_credits")
-        .select("credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct")
+        .select("id, project_id, credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct, documents_required")
         .in("project_id", targetIds)
         .ilike("credit_code", `%${rawCode}%`)
         .maybeSingle();
 
       if (credit) {
-        let assignedTo = "Unassigned";
-        if (credit.assigned_user_id) {
-          const { data: prof } = await reader
-            .from("profiles")
-            .select("full_name, email")
-            .eq("user_id", credit.assigned_user_id)
-            .maybeSingle();
-          if (prof) assignedTo = `${prof.full_name} (${prof.email})`;
-        } else if (credit.responsible_role) {
-          assignedTo = credit.responsible_role;
-        }
+        // Need to import or re-fetch getCreditAssignmentGraph
+        // But since this is inside route.ts, I can just dynamically import it
+        const { getCreditAssignmentGraph } = await import("@tracknov/harita-engine/services/credit-assignment-graph");
+        const graphMap = await getCreditAssignmentGraph(targetIds, [credit as any], reader);
+        const graph = graphMap.get(credit.id);
 
-        return [
+        let lines = [
           `**${credit.credit_code} — ${credit.credit_name ?? ""}**`,
           ``,
-          `**Assigned to:** ${assignedTo}`,
-          `**Status:** ${credit.status}`,
-          `**Completion:** ${credit.completion_pct ?? 0}%`,
-        ].join("\n");
+        ];
+
+        if (!graph || graph.requirements.length === 0) {
+          let assignedTo = "Unassigned";
+          if (credit.assigned_user_id) {
+            const { data: prof } = await reader
+              .from("profiles")
+              .select("full_name, email")
+              .eq("user_id", credit.assigned_user_id)
+              .maybeSingle();
+            if (prof) assignedTo = `${prof.full_name} (${prof.email})`;
+          } else if (credit.responsible_role) {
+            assignedTo = credit.responsible_role;
+          }
+          lines.push(`**Assigned to:** ${assignedTo}`);
+        } else {
+          const assignedContributors = new Set(graph.requirements.filter(r => r.contributorId).map(r => r.contributorId));
+          if (assignedContributors.size <= 1) {
+            const singleContributor = graph.requirements.find(r => r.contributorName)?.contributorName ?? "Unassigned";
+            lines.push(`**Assigned to:** ${singleContributor}`);
+          } else {
+            lines.push(`**${credit.credit_code} currently has multiple contributors.**`);
+            for (const req of graph.requirements) {
+              lines.push(`- **${req.requirementType}**: ${req.contributorName ?? "Unassigned"}`);
+            }
+          }
+        }
+
+        lines.push(`**Status:** ${credit.status}`);
+        lines.push(`**Completion:** ${credit.completion_pct ?? 0}%`);
+        
+        return lines.join("\n");
       }
     }
   }
