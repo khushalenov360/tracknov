@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,9 +27,12 @@ import { executeIntent } from "@/ai/orchestrator/execute-intent";
 import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
 import { SemanticQuarantineEngine } from "@tracknov/harita-engine/governance/semanticQuarantineEngine";
 import { createAiStream as edgeStream } from "@tracknov/harita-engine/assistant/llm-streamer";
+import { QuestionClassifier, QuestionType } from "@tracknov/harita-engine/intelligence/reasoning/question-classifier";
+import { ReasoningEngine } from "@tracknov/harita-engine/intelligence/reasoning/reasoning-engine";
+import { ConsultantResponsePlannerV2 } from "@tracknov/harita-engine/intelligence/consultant-response-planner-v2";
 
 import { type AssistantRequest, createTextStream, createResponseStream } from "@tracknov/harita-engine/assistant/stream-utils";
-import { getWorkspaceSnapshot } from "@tracknov/harita-engine/assistant/snapshot";
+import { assembleRuntimeContext, formatRuntimeContext } from "@tracknov/harita-engine/lib/runtime/runtime-context-assembler";
 import { isFileQuestion, isUploadMappingIntent, buildAttachmentAnalysisReply, getProjectIdFromContext } from "@tracknov/harita-engine/assistant/attachments";
 import { applyResponseGovernance, logAiInteraction, tryDeterministicAnswer } from "@tracknov/harita-engine/assistant/governance-filters";
 import { tryDetectFunctionCalls } from "@tracknov/harita-engine/assistant/ai-providers";
@@ -79,7 +83,15 @@ export async function POST(request: Request) {
   }
 
   const focusedProjectId = getProjectIdFromContext(context);
-  const { user, role, snapshot, projectIds, userEmail, userName: rawUserName } = await getWorkspaceSnapshot();
+  const runtimeCtx = await assembleRuntimeContext(focusedProjectId);
+  if (!runtimeCtx || !runtimeCtx.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const user = runtimeCtx.user;
+  const { role, email: userEmail, name: rawUserName } = user;
+  const projectIds = runtimeCtx.accessibleProjects.map((p) => p.id);
+  const snapshot = formatRuntimeContext(runtimeCtx);
 
   console.log("=== AI SNAPSHOT PREVIEW ===");
   console.log(snapshot);
@@ -92,7 +104,7 @@ export async function POST(request: Request) {
   const supabase = createClient();
 
   if (focusedProjectId && !projectIds.includes(focusedProjectId)) {
-    const traceId = crypto.randomUUID();
+    const traceId = uuidv4();
     await supabase.from("security_events").insert({
       id: traceId,
       project_id: focusedProjectId,
@@ -121,10 +133,11 @@ export async function POST(request: Request) {
   }
 
   if (intentCategory === "workflow_action" && focusedProjectId) {
-    const { user: workflowUser, role: workflowRole } = await getWorkspaceSnapshot();
-    if (!workflowUser) {
+    const workflowCtx = await assembleRuntimeContext(focusedProjectId);
+    if (!workflowCtx || !workflowCtx.user) {
       return new Response("Unauthorized", { status: 401 });
     }
+    const { user: workflowUser, role: workflowRole } = workflowCtx.user;
     const intentResult = await executeIntent({
       userId: workflowUser.id,
       role: workflowRole,
@@ -206,23 +219,23 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(message));
   }
 
-  // P1: Direct-DB factual query layer — answers structured questions without LLM
-  if (attachments.length === 0) {
-    const factualAnswer = await resolveFactualQuery(latestPrompt, focusedProjectId, projectIds, role);
-    if (factualAnswer) {
-      await logAiInteraction({
-        userId: user.id,
-        intent: "factual_db_query",
-        query: latestPrompt,
-        model: "deterministic-db",
-        contextSize: 0,
-        tokenUsage: 0,
-        fallbackUsed: false,
-        latencyMs: Date.now() - startedAt,
-      });
-      return createResponseStream(createTextStream(factualAnswer));
-    }
-  }
+  // P1: Direct-DB factual query layer — REMOVED to force Consultant Pipeline
+  // if (attachments.length === 0) {
+  //   const factualAnswer = await resolveFactualQuery(latestPrompt, focusedProjectId, projectIds, role);
+  //   if (factualAnswer) {
+  //     await logAiInteraction({
+  //       userId: user.id,
+  //       intent: "factual_db_query",
+  //       query: latestPrompt,
+  //       model: "deterministic-db",
+  //       contextSize: 0,
+  //       tokenUsage: 0,
+  //       fallbackUsed: false,
+  //       latencyMs: Date.now() - startedAt,
+  //     });
+  //     return createResponseStream(createTextStream(factualAnswer));
+  //   }
+  // }
 
   const isAnalysisAttachmentFlow =
     Boolean(attachments?.length) &&
@@ -315,6 +328,8 @@ export async function POST(request: Request) {
   try {
     const edgeContextPayload = sanitizeContextText(combinedSnapshot);
     
+    const questionType = QuestionClassifier.classify(latestPrompt);
+    
     // Wire up the Quarantine Boundary
     const quarantineKeywords = ["ignore all instructions", "override constraints", "system prompt", "drop table"];
     if (quarantineKeywords.some(kw => latestPrompt.toLowerCase().includes(kw))) {
@@ -329,11 +344,9 @@ export async function POST(request: Request) {
       const quarantineFallback = "ERROR ENCOUNTERED: Prompt quarantined due to safety constraints. Execution halted.";
       return createResponseStream(createTextStream(quarantineFallback));
     }
-    
-    const toolsNeeded = requiresToolCall(intentCategory);
-    const functionCalls = toolsNeeded
-      ? await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role)
-      : null;
+
+    // Phase 2: Agentic Tool Routing (Allow LLM to call tools on ANY prompt)
+    const functionCalls = await tryDetectFunctionCalls(mergedContext, messages, combinedSnapshot, role);
 
     if (functionCalls && functionCalls.length > 0) {
       const results: Array<{ name: string; response: unknown }> = [];
@@ -343,7 +356,7 @@ export async function POST(request: Request) {
         if (idempotencyKey && (fc.name === "reviewDocument" || fc.name.includes("Transition"))) {
            fc.args.idempotencyKey = fc.args.idempotencyKey || idempotencyKey;
         }
-        const result = await executeTool(fc.name, fc.args);
+        const result = await executeTool(fc.name, fc.args, { projectId: focusedProjectId, runtimeContext: runtimeCtx });
         results.push({ name: fc.name, response: result });
         if (result.navigateTo) {
           navigateTo = result.navigateTo;
@@ -365,6 +378,8 @@ export async function POST(request: Request) {
         return createResponseStream(aiStream, navigateTo);
       }
     } else {
+      // Execute Agentic reasoning fallback if LLM chose NO tools
+      // Instead of forcing ReasoningEngine, we let the LLM reply directly with standard context
       const aiStream = await edgeStream(mergedContext, messages, edgeContextPayload, role);
       if (aiStream) {
         await logAiInteraction({
@@ -383,7 +398,18 @@ export async function POST(request: Request) {
     }
   } catch (error: any) {
     console.error("[Assistant] AI pipeline failed:", error);
-    const fallbackText = `ERROR ENCOUNTERED: ${error?.message || String(error)}\n\n` + buildFallbackAssistantReply(context, latestPrompt);
+    
+    // Sanitize user-facing error message to prevent raw JSON/API leaks
+    let userFacingError = "";
+    const errMsg = error?.message || String(error);
+    if (errMsg.includes("Gemini API Error") || errMsg.includes("503")) {
+      userFacingError = "⚠️ **Service Temporarily Unavailable**: The AI models are currently experiencing high demand. Please try again in a moment.\n\n";
+    } else if (!errMsg.includes("{")) {
+      // Only show simple text errors, not json dumps
+      userFacingError = `⚠️ **Error**: ${errMsg}\n\n`;
+    }
+    
+    const fallbackText = userFacingError + buildFallbackAssistantReply(context, latestPrompt);
     return createResponseStream(createTextStream(fallbackText));
   }
 }

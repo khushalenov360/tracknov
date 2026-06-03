@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { createAdminClient } from "../lib/supabase/admin";
@@ -80,7 +81,7 @@ async function simulateReplayTraffic() {
   const concurrency = 3;
   await Promise.allSettled(
     Array.from({ length: concurrency }).map(() => {
-      const traceId = crypto.randomUUID();
+      const traceId = uuidv4();
       return (governanceLocalStorage as any).run({ traceId, actorId: ACTOR_ID, projectId: PROJECT_ID }, async () => {
         const acquired = await acquireReplayLock(PROJECT_ID);
         if (acquired) {
@@ -123,7 +124,7 @@ async function simulateDriftPressure() {
 async function simulateQueuePressure() {
   console.log("  > Simulating Queue Pressure...");
   const admin = createAdminClient();
-  const traceId = crypto.randomUUID();
+  const traceId = uuidv4();
   
   // Rapid enqueue/dequeue churn
   await admin.from("replay_queue").insert({
@@ -137,7 +138,7 @@ async function simulateQueuePressure() {
   // Starvation simulation: Insert old items
   await admin.from("replay_queue").insert({
     project_id: PROJECT_ID,
-    trace_id: crypto.randomUUID(),
+    trace_id: uuidv4(),
     target_timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour old
     status: "queued",
     priority: 0

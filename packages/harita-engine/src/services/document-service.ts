@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
@@ -292,7 +293,7 @@ export class DocumentService {
     const extension = params.file.name.split(".").pop()?.toLowerCase() ?? "bin";
     const safeDocType = params.docCategory.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
     const safeBaseName = params.file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "_").slice(0, 80) || "file";
-    const filePath = `${params.projectId}/${projectCreditId}/${safeDocType}/v${nextVersion}-${crypto.randomUUID()}-${safeBaseName}.${extension}`;
+    const filePath = `${params.projectId}/${projectCreditId}/${safeDocType}/v${nextVersion}-${uuidv4()}-${safeBaseName}.${extension}`;
 
     // Calculate Hash for Checksum Verification (Section 7)
     const fileBuffer = Buffer.from(await params.file.arrayBuffer());

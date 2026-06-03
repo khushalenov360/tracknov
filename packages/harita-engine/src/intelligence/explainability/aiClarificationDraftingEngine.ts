@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../../supabase/admin";
 import { logAiRecommendation } from "../../telemetry/aiRuntimeAuditLogger";
 import { buildPromptContext } from "../../document-intelligence/aiPromptContextBuilder";
@@ -32,8 +33,8 @@ export async function draftClarification(projectId: string, submittalId: string,
     submittal_id: submittalId,
     draft_content: draft,
     status: "draft",
-    trace_id: crypto.randomUUID(),
-    causality_chain_id: crypto.randomUUID()
+    trace_id: uuidv4(),
+    causality_chain_id: uuidv4()
   }).select().single();
 
   if (error) throw error;

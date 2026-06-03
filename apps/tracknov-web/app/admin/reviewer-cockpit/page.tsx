@@ -33,7 +33,7 @@ export default async function ReviewerCockpitPage() {
 
   if (profile?.global_role !== "super_user" && profile?.global_role !== "L5") {
     return (
-      <div className="p-8 text-center min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white">
+      <div className="p-8 text-center min-h-screen flex flex-col items-center justify-center bg-[var(--color-bg)] text-white">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
         <h1 className="text-3xl font-bold">Access Denied</h1>
         <p className="mt-2 text-slate-400 max-w-md">This cockpit is restricted to Authoritative Governance Administrators and Reviewers only.</p>
@@ -57,9 +57,9 @@ export default async function ReviewerCockpitPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 p-6 lg:p-10 font-sans">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] p-6 lg:p-10 font-sans">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-white/5 pb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-[var(--color-border)] pb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
@@ -77,10 +77,10 @@ export default async function ReviewerCockpitPage() {
             <input 
               type="text" 
               placeholder="Search project or credit..." 
-              className="bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-64"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-64"
             />
           </div>
-          <Button variant="secondary" className="border-white/10 bg-white/5 hover:bg-white/10 text-white">
+          <Button variant="secondary" className="border-[var(--color-border)] bg-[var(--color-surface-2)] hover:bg-white/10 text-white">
             <Filter className="w-4 h-4 mr-2" />
             Filter
           </Button>
@@ -90,8 +90,8 @@ export default async function ReviewerCockpitPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Left Column - Main Queue */}
         <div className="xl:col-span-8 space-y-8">
-          <section className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl">
-            <div className="px-6 py-5 bg-white/5 border-b border-white/10 flex justify-between items-center">
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl">
+            <div className="px-6 py-5 bg-[var(--color-surface-2)] border-b border-[var(--color-border)] flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Inbox className="w-5 h-5 text-indigo-400" />
                 <h2 className="text-lg font-bold text-white tracking-tight">Active Review Queue</h2>
@@ -101,9 +101,9 @@ export default async function ReviewerCockpitPage() {
               </Badge>
             </div>
             
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-[var(--color-border)]">
               {submittalsInQueue?.length ? submittalsInQueue.map((item) => (
-                <div key={item.id} className="p-5 hover:bg-white/[0.05] transition-all group cursor-pointer">
+                <div key={item.id} className="p-5 hover:bg-[var(--color-border)] transition-all group cursor-pointer">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-4">
                       <div className="p-2.5 bg-indigo-500/20 rounded-xl group-hover:bg-indigo-500/30 transition-colors">
@@ -125,8 +125,8 @@ export default async function ReviewerCockpitPage() {
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5">ROUND {item.iteration}</span>
-                      <span className="text-xs bg-white/5 text-slate-400 px-2 py-0.5 rounded border border-white/5 font-mono">{item.id.slice(0, 8)}</span>
+                      <span className="text-xs bg-[var(--color-surface-2)] text-slate-400 px-2 py-0.5 rounded border border-[var(--color-border)]">ROUND {item.iteration}</span>
+                      <span className="text-xs bg-[var(--color-surface-2)] text-slate-400 px-2 py-0.5 rounded border border-[var(--color-border)] font-mono">{item.id.slice(0, 8)}</span>
                     </div>
                     <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg px-4 h-8">
                       EXECUTE
@@ -139,14 +139,14 @@ export default async function ReviewerCockpitPage() {
               )}
             </div>
             
-            <div className="p-4 bg-white/5 border-t border-white/5 text-center">
+            <div className="p-4 bg-[var(--color-surface-2)] border-t border-[var(--color-border)] text-center">
               <Button variant="ghost" className="text-xs text-slate-400 hover:text-white font-bold">VIEW FULL QUEUE</Button>
             </div>
           </section>
 
           {/* Pending Clarifications */}
-          <section className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl">
-            <div className="px-6 py-5 bg-amber-500/5 border-b border-white/10 flex justify-between items-center">
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl">
+            <div className="px-6 py-5 bg-amber-500/5 border-b border-[var(--color-border)] flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-400" />
                 <h2 className="text-lg font-bold text-white tracking-tight">Draft Clarifications</h2>
@@ -157,15 +157,15 @@ export default async function ReviewerCockpitPage() {
             </div>
             <div className="p-6 space-y-4">
               {pendingClarifications?.map((draft) => (
-                <div key={draft.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all">
+                <div key={draft.id} className="p-4 bg-[var(--color-surface-2)] rounded-2xl border border-[var(--color-border)] hover:border-amber-500/30 transition-all">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="text-xs font-bold text-white">{(draft.projects as any)?.name}</p>
                       <p className="text-xs text-amber-400 font-mono mt-0.5 uppercase tracking-tighter">SUGGESTED BY AI</p>
                     </div>
-                    <Badge className="bg-white/5 text-slate-400 border border-white/10 text-[9px]">DRAFT</Badge>
+                    <Badge className="bg-[var(--color-surface-2)] text-slate-400 border border-[var(--color-border)] text-[9px]">DRAFT</Badge>
                   </div>
-                  <div className="bg-black/40 p-4 rounded-xl border border-white/5 mb-4">
+                  <div className="bg-black/40 p-4 rounded-xl border border-[var(--color-border)] mb-4">
                     <p className="text-xs text-slate-400 leading-relaxed italic line-clamp-2">"{draft.draft_content}"</p>
                   </div>
                   <div className="flex gap-2">
@@ -216,8 +216,8 @@ export default async function ReviewerCockpitPage() {
           </Card>
 
           {/* Assigned Projects */}
-          <section className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 My Assignments
@@ -226,7 +226,7 @@ export default async function ReviewerCockpitPage() {
             </div>
             <div className="p-2">
               {activeAssignments?.length ? activeAssignments.map((sub) => (
-                <div key={sub.id} className="p-4 hover:bg-white/5 rounded-2xl transition-all group">
+                <div key={sub.id} className="p-4 hover:bg-[var(--color-surface-2)] rounded-2xl transition-all group">
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-xs font-bold text-white">{(sub.projects as any)?.name}</p>
@@ -244,8 +244,8 @@ export default async function ReviewerCockpitPage() {
           </section>
 
           {/* Operational Health Feed */}
-          <section className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-white/5">
+          <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-[var(--color-border)]">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Operational History
@@ -253,7 +253,7 @@ export default async function ReviewerCockpitPage() {
             </div>
             <div className="p-4 space-y-4">
               {recentActivity?.map((act) => (
-                <div key={act.id} className="relative pl-6 border-l border-white/10 py-1">
+                <div key={act.id} className="relative pl-6 border-l border-[var(--color-border)] py-1">
                   <div className="absolute left-[-4px] top-0 w-2 h-2 rounded-full bg-indigo-500"></div>
                   <p className="text-xs font-bold text-white uppercase tracking-tight">{act.activity_type.replace(/_/g, ' ')}</p>
                   <p className="text-xs text-slate-500 mt-1 font-medium italic">{(act.projects as any)?.name}</p>

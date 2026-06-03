@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../supabase/admin";
 import { logAiRecommendation } from "../telemetry/aiRuntimeAuditLogger";
 
@@ -22,8 +23,8 @@ export async function detectEvidenceReuse(projectId: string, documentId: string)
       source_document_id: documentId,
       target_credit_id: opp.targetCreditId,
       confidence_score: opp.confidence,
-      trace_id: crypto.randomUUID(),
-      causality_chain_id: crypto.randomUUID()
+      trace_id: uuidv4(),
+      causality_chain_id: uuidv4()
     });
   }
 

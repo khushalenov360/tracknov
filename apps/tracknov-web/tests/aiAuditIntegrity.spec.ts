@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { test, expect } from "@playwright/test";
 import { logAiRecommendation } from "../lib/ai/aiRuntimeAuditLogger";
 import { governanceLocalStorage } from "@tracknov/harita-engine/governance/governanceContext";
@@ -8,8 +9,8 @@ const PROJECT_ID = "b73d7310-df16-4d26-b6c8-61bebb197410"; // Bhavarkua
 
 test.describe("AI Audit Integrity Validation", () => {
   test("should generate immutable audit logs with trace and causality IDs", async () => {
-    const traceId = crypto.randomUUID();
-    const causalityChainId = crypto.randomUUID();
+    const traceId = uuidv4();
+    const causalityChainId = uuidv4();
 
     // Mock governance context
     await (governanceLocalStorage as any).run(

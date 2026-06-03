@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import dotenv from "dotenv";
@@ -13,7 +14,7 @@ async function test() {
   const projectId = '1fabd316-6d0f-4de3-a149-7e23c528aab9';
   const email = "testinvite@example.com";
   const role = "consultant";
-  const token = crypto.randomUUID();
+  const token = uuidv4();
 
   // Test inserting into project_invites
   const { data, error } = await supabase.from("project_invites").insert({

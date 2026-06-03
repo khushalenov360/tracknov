@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../lib/supabase/admin";
 import { projectService } from "@tracknov/harita-engine/services/project-service";
 import { documentService } from "@tracknov/harita-engine/services/document-service";
@@ -68,7 +69,7 @@ async function run() {
       projectCreditId: credit.id,
       docCategory: "guide",
       file: makeFile("Guide.pdf"),
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: uuidv4(),
     });
     console.log("PASS: L3 Uploaded Guide");
     
@@ -80,7 +81,7 @@ async function run() {
       projectCreditId: credit.id,
       docCategory: "tracker",
       file: makeFile("Tracker.pdf"),
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: uuidv4(),
     });
     console.log("PASS: L3 Uploaded Tracker");
     
@@ -104,7 +105,7 @@ async function run() {
       projectCreditId: credit.id,
       docCategory: "evidence",
       file: makeFile("Evidence-A.pdf"),
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: uuidv4(),
     });
     
     const { data: docA } = await admin.from("project_document").select("*").eq("project_credit_id", credit.id).eq("file_name", "Evidence-A.pdf").order("created_at", { ascending: false }).limit(1).single();
@@ -150,7 +151,7 @@ async function run() {
       projectCreditId: credit.id,
       docCategory: "evidence",
       file: makeFile("Evidence-B.pdf"),
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: uuidv4(),
     });
     const { data: docB } = await admin.from("project_document").select("*").eq("project_credit_id", credit.id).eq("file_name", "Evidence-B.pdf").order("created_at", { ascending: false }).limit(1).single();
     console.log("PASS: Evidence B uploaded. State =", docB?.state, "Workflow State =", docB?.workflow_state);

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceLocalStorage } from "./governanceContext";
 import { validateEvidence } from "./evidenceValidationEngine";
@@ -26,8 +27,8 @@ export async function frameworkExecutionOrchestrator(params: {
   payload: any;
 }): Promise<OrchestrationResult> {
   const admin = createAdminClient();
-  const traceId = crypto.randomUUID();
-  const causalityChainId = params.payload.causalityChainId || crypto.randomUUID();
+  const traceId = uuidv4();
+  const causalityChainId = params.payload.causalityChainId || uuidv4();
 
   // 1. Framework Version Discovery
   const { data: project } = await admin
@@ -150,7 +151,7 @@ export async function frameworkExecutionOrchestrator(params: {
         traceId,
         status: "SUCCESS",
         causalityChainId,
-        lineageHash: "LINEAGE_" + crypto.randomUUID().split("-")[0] // Placeholder
+        lineageHash: "LINEAGE_" + uuidv4().split("-")[0] // Placeholder
       };
 
     } catch (err: any) {

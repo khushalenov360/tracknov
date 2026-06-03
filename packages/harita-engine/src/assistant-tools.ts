@@ -306,6 +306,65 @@ export const TOOLS: ToolDefinition[] = [
       required: ["filename", "evidenceType", "parsedContent"],
     },
   },
+  {
+    name: "queryKnowledgeOntology",
+    description: "Query the IGBC knowledge ontology for information about credits, requirements, or evidence types. Use this when the user asks a factual question about what a credit needs or who is responsible for it.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { name: "query", type: "string", description: "The specific question asked by the user." },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "assessSubmissionReadiness",
+    description: "Evaluate if a specific credit is ready for submission based on current project evidence.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { name: "query", type: "string", description: "The user query containing the credit code to evaluate." },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "generateNarrativeDraft",
+    description: "Generate a draft narrative for a specific credit based on project context and evidence.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { name: "query", type: "string", description: "The user query containing the credit code." },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "getContributorBrief",
+    description: "Get actionable advice and current workload brief for a specific contributor (e.g. Architect, Sustainability Consultant).",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { name: "query", type: "string", description: "The user query specifying the role." },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "getExecutivePriorities",
+    description: "Calculate and rank the highest ROI actions for the project across all disciplines.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "getWorkloads",
+    description: "Analyze the current workloads of all project contributors to identify bottlenecks or overloads.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "getCertificationGap",
+    description: "Calculate the mathematical gap between secured points, points at risk, and the target certification level.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
 ];
 
 function toGeminiTools(): Record<string, unknown>[] {
@@ -358,9 +417,11 @@ async function resolveProjectRole(projectId: string, user: CurrentUser): Promise
   return membership?.role ?? null;
 }
 
-export async function executeTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
+export async function executeTool(name: string, args: Record<string, unknown>, contextParams?: { projectId?: string | null; runtimeContext?: any }): Promise<ToolResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "User is not authenticated." };
+
+  const resolvedProjectId = contextParams?.projectId || String(args.projectId ?? "");
 
   switch (name) {
     case "getDashboardSummary": {
@@ -686,13 +747,12 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
 
     case "assessUpload": {
       try {
-        const { UploadCopilotEngine } = await import("@tracknov/harita-engine/intelligence/evidence/upload-copilot-engine");
-        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const { UploadCopilotEngine } = await import("./intelligence/evidence/upload-copilot-engine");
         const supabase = createAdminClient();
         const filename = String(args.filename ?? "");
         const evidenceType = String(args.evidenceType ?? "UNKNOWN");
         const parsedContent = String(args.parsedContent ?? "");
-        const projectId = String(args.projectId ?? "") || undefined;
+        const projectId = resolvedProjectId || undefined;
 
         const result = await UploadCopilotEngine.guide(
           supabase,
@@ -703,6 +763,105 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
           projectId
         );
         return { ok: true, data: result.uploadGuidance };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    // --- PHASE 2 AGENTIC TOOLS ---
+    case "queryKnowledgeOntology": {
+      try {
+        const { KnowledgeOntologyReasoner } = await import("./intelligence/reasoning/knowledge-ontology-reasoner");
+        const query = String(args.query ?? "");
+        const result = await KnowledgeOntologyReasoner.evaluate(query);
+        return { ok: true, data: result };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "assessSubmissionReadiness": {
+      try {
+        const { SubmissionReadinessReasoner } = await import("./intelligence/reasoning/submission-readiness-reasoner");
+        const query = String(args.query ?? "");
+        if (!resolvedProjectId) return { ok: false, error: "projectId is required in context for this tool." };
+        const result = await SubmissionReadinessReasoner.evaluate(query, resolvedProjectId);
+        return { ok: true, data: result };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "generateNarrativeDraft": {
+      try {
+        const { NarrativeAssistanceEngine } = await import("./intelligence/evidence/narrative-assistance-engine");
+        const query = String(args.query ?? "");
+        if (!contextParams?.runtimeContext) return { ok: false, error: "runtimeContext is missing." };
+        const result = await NarrativeAssistanceEngine.draft(query, contextParams.runtimeContext);
+        return { ok: true, data: result };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "getContributorBrief": {
+      try {
+        const { ContributorCopilotEngine } = await import("./intelligence/evidence/contributor-copilot-engine");
+        const query = String(args.query ?? "");
+        if (!resolvedProjectId || !contextParams?.runtimeContext) return { ok: false, error: "projectId and runtimeContext are missing." };
+        const result = await ContributorCopilotEngine.brief(query, resolvedProjectId, contextParams.runtimeContext);
+        return { ok: true, data: result };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "getExecutivePriorities": {
+      try {
+        const { ExecutivePrioritizationEngine } = await import("./intelligence/reasoning/executive-prioritization-engine");
+        const { DecisionIntelligenceEngine } = await import("./intelligence/reasoning/decision-intelligence-engine");
+        const { PortfolioEvidenceEngine } = await import("./intelligence/reasoning/portfolio-evidence-engine");
+        const { WorkloadIntelligenceEngine } = await import("./intelligence/reasoning/workload-intelligence-engine");
+        const { CertificationGapEngine } = await import("./intelligence/reasoning/certification-gap-engine");
+        
+        if (!resolvedProjectId || !contextParams?.runtimeContext) return { ok: false, error: "projectId and runtimeContext are missing." };
+        
+        const topActions = await ExecutivePrioritizationEngine.getTopActions(resolvedProjectId, contextParams.runtimeContext);
+        const evidenceGaps = await PortfolioEvidenceEngine.getEvidenceGaps(resolvedProjectId, contextParams.runtimeContext);
+        const workloads = await WorkloadIntelligenceEngine.getContributorWorkloads(resolvedProjectId, contextParams.runtimeContext);
+        const certGap = await CertificationGapEngine.calculateCertificationGap(resolvedProjectId, contextParams.runtimeContext);
+
+        const decision = DecisionIntelligenceEngine.evaluate({
+          certificationGap: certGap,
+          evidenceGaps,
+          workloads,
+          topActions,
+          runtimeContext: contextParams.runtimeContext,
+        });
+
+        return { ok: true, data: decision };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "getWorkloads": {
+      try {
+        const { WorkloadIntelligenceEngine } = await import("./intelligence/reasoning/workload-intelligence-engine");
+        if (!resolvedProjectId || !contextParams?.runtimeContext) return { ok: false, error: "projectId and runtimeContext are missing." };
+        const workloads = await WorkloadIntelligenceEngine.getContributorWorkloads(resolvedProjectId, contextParams.runtimeContext);
+        return { ok: true, data: workloads };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    }
+
+    case "getCertificationGap": {
+      try {
+        const { CertificationGapEngine } = await import("./intelligence/reasoning/certification-gap-engine");
+        if (!resolvedProjectId || !contextParams?.runtimeContext) return { ok: false, error: "projectId and runtimeContext are missing." };
+        const certGap = await CertificationGapEngine.calculateCertificationGap(resolvedProjectId, contextParams.runtimeContext);
+        return { ok: true, data: certGap };
       } catch (e: any) {
         return { ok: false, error: e.message };
       }

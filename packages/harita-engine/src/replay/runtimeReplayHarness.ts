@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { executeDeterministicReplay } from "./replayEngine";
 import { generateLineageHash } from "./hashSerializer";
 import { runInReplayMode } from "../governance/governanceMutationInterceptor";
@@ -28,7 +29,7 @@ export async function executeGovernedReplayHarness(
   targetTimestamp: string,
   expectedLineageHash?: string
 ): Promise<ReplayHarnessResult> {
-  const replayId = crypto.randomUUID();
+  const replayId = uuidv4();
   const admin = createAdminClient();
 
   await governanceTelemetry.replayStarted(projectId, targetTimestamp);

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../lib/supabase/admin";
 import { acquireReplayLock, releaseReplayLock } from "@tracknov/harita-engine/governance/replayConflictResolutionEngine";
 import { reportGovernanceIncident } from "@tracknov/harita-engine/governance/governanceIncidentEngine";
@@ -61,7 +62,7 @@ async function testReplayStorm() {
   const concurrency = 10;
   const results = await Promise.allSettled(
     Array.from({ length: concurrency }).map((_, i) => {
-      const traceId = crypto.randomUUID();
+      const traceId = uuidv4();
       return (governanceLocalStorage as any).run({ traceId, actorId: ACTOR_ID, projectId: PROJECT_ID }, async () => {
         const acquired = await acquireReplayLock(PROJECT_ID);
         if (acquired) {
@@ -174,7 +175,7 @@ async function testQueueStarvation() {
   
   await admin.from("replay_queue").insert({
     project_id: PROJECT_ID,
-    trace_id: crypto.randomUUID(),
+    trace_id: uuidv4(),
     target_timestamp: new Date().toISOString(),
     status: "queued",
     created_at: staleDate
@@ -233,12 +234,12 @@ async function testReplayRollbackRace() {
   console.log("\n[TEST] Replay Rollback Race: Deterministic State Recovery...");
   
   // This test simulates a rollback request while a replay is in progress
-  const traceId = crypto.randomUUID();
+  const traceId = uuidv4();
   await (governanceLocalStorage as any).run({ traceId, actorId: ACTOR_ID, projectId: PROJECT_ID }, async () => {
     await acquireReplayLock(PROJECT_ID);
     
     // Attempt another acquisition with different trace (simulating race)
-    const raceTraceId = crypto.randomUUID();
+    const raceTraceId = uuidv4();
     const result = await (governanceLocalStorage as any).run({ traceId: raceTraceId, actorId: ACTOR_ID, projectId: PROJECT_ID }, async () => {
       return await acquireReplayLock(PROJECT_ID);
     });
@@ -258,7 +259,7 @@ async function testIsolationFlood() {
   
   // High frequency cross-project noise
   for (let i = 0; i < 5; i++) {
-    const traceId = crypto.randomUUID();
+    const traceId = uuidv4();
     await (governanceLocalStorage as any).run({ traceId, actorId: ACTOR_ID, projectId: ALT_PROJECT_ID }, async () => {
       await reportGovernanceIncident({
         type: "tenant_boundary_violation",

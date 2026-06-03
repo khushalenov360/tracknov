@@ -1,4 +1,5 @@
 "use client";
+import { v4 as uuidv4 } from "uuid";
 
 import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -474,7 +475,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
           messages: requestMessages,
           tone: selectedTone !== "Auto" ? selectedTone : undefined,
           attachments: attachment ? [attachment] : [],
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: uuidv4(),
         }),
       });
 
@@ -1060,7 +1061,7 @@ Important:
           lg:relative lg:inset-auto lg:h-full lg:w-full lg:border-none lg:shadow-none lg:rounded-none lg:z-auto lg:translate-y-0 lg:flex
           ${isMobileOpen 
             ? 'fixed inset-0 z-[100] h-[100dvh] w-full translate-y-0' 
-            : 'fixed inset-0 z-[100] h-[100dvh] w-full translate-y-[120%] lg:translate-y-0'}
+            : 'hidden lg:flex'}
         `}
       >
         {/* DESKTOP HEADER */}
@@ -1139,9 +1140,9 @@ Important:
             <div className="grid grid-cols-1 gap-2 mb-6">
               <button 
                 onClick={() => { setMobileMode("chat"); void sendPrompt("Show my pending queue."); }}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors group"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">📋</div>
+                <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0 group-hover:bg-blue-500/20">📋</div>
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text-primary)]">Review My Queue</div>
                   <div className="text-xs text-[var(--color-text-secondary)]">See tasks awaiting your action</div>
@@ -1150,9 +1151,9 @@ Important:
               
               <button 
                 onClick={() => { setMobileMode("chat"); void sendPrompt("Show pending clarifications."); }}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors group"
               >
-                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">❓</div>
+                <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0 group-hover:bg-amber-500/20">❓</div>
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text-primary)]">Pending Clarifications</div>
                   <div className="text-xs text-[var(--color-text-secondary)]">Resolve open queries</div>
@@ -1161,9 +1162,9 @@ Important:
               
               <button 
                 onClick={() => { setMobileMode("chat"); void sendPrompt("Check certification readiness for the current project."); }}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors group"
               >
-                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">✅</div>
+                <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0 group-hover:bg-emerald-500/20">✅</div>
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text-primary)]">Project Readiness</div>
                   <div className="text-xs text-[var(--color-text-secondary)]">Check overall status</div>
@@ -1176,9 +1177,9 @@ Important:
                   setPickedIntent("workflow");
                   setTimeout(() => uploadInputRef.current?.click(), 300);
                 }}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-left hover:border-[var(--color-green)] transition-colors group"
               >
-                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">📄</div>
+                <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0 group-hover:bg-purple-500/20">📄</div>
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text-primary)]">Upload Evidence</div>
                   <div className="text-xs text-[var(--color-text-secondary)]">Attach and map a document</div>

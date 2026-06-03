@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -81,7 +82,7 @@ async function validateNonAuthority() {
 
 async function validateReplaySafety() {
   console.log("- Validating AI Replay Safety...");
-  const traceId = crypto.randomUUID();
+  const traceId = uuidv4();
   const logStream = [
     `[REPLAY_SAFETY_START] Trace: ${traceId}`,
     `Timestamp: ${new Date().toISOString()}`
@@ -178,8 +179,8 @@ async function validateAuditIntegrity() {
     "---"
   ];
 
-  const traceId = crypto.randomUUID();
-  const causalityChainId = crypto.randomUUID();
+  const traceId = uuidv4();
+  const causalityChainId = uuidv4();
 
   await (governanceLocalStorage as any).run(
     { traceId, causalityChainId, projectId: BHAVARKUA_ID, frameworkVersion: "GI_V1_CERT" },

@@ -8,20 +8,23 @@ const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY
 const doublewordApiKeys = (process.env.DOUBLEWORD_API_KEYS || process.env.DOUBLEWORD_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
 const groqApiKeys = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
 const openRouterApiKeys = (process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+const openAiApiKeys = (process.env.OPENAI_API_KEYS || process.env.OPENAI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
 
 export const env = {
   doublewordApiKeys,
   geminiApiKeys,
   groqApiKeys,
   openRouterApiKeys,
+  openAiApiKeys,
   geminiApiKey: geminiApiKeys[0] ?? "",
   aiProvider: process.env.AI_PROVIDER ?? "auto",
   aiModel: process.env.AI_MODEL ?? "",
   doublewordModel: process.env.DOUBLEWORD_MODEL ?? "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8",
   geminiModel: process.env.GEMINI_MODEL ?? process.env.AI_MODEL ?? "gemini-2.5-flash",
   groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+  openAiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
   openRouterModel: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
-  aiReady: Boolean(doublewordApiKeys.length || geminiApiKeys.length || groqApiKeys.length || openRouterApiKeys.length),
+  aiReady: Boolean(doublewordApiKeys.length || geminiApiKeys.length || groqApiKeys.length || openRouterApiKeys.length || openAiApiKeys.length),
   supabaseUrl: url,
   supabaseAnonKey: anonKey,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",

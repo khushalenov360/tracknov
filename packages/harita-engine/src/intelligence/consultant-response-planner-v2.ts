@@ -211,6 +211,50 @@ Provide standard consultant context.`,
 The user explicitly commanded an action: "${q}".
 Proceed with the requested tool execution. Guide the user through the workflow.`,
 
+    [QuestionType.SUBMISSION_READINESS]: (r, q) => `
+[ENOV-AIT CONSULTANT: SUBMISSION READINESS]
+The user asked about submission readiness: "${q}".
+Consultant Guidance:
+Answer: ${r.directAnswer}
+Evidence: ${r.evidence}
+IGBC Requirement: ${r.igbcInterpretation}
+Risks: ${r.risks}
+Recommendation: ${r.recommendations}
+Provide an authoritative assessment of submission readiness.`,
+
+    [QuestionType.NARRATIVE_ASSISTANCE]: (r, q) => `
+[ENOV-AIT CONSULTANT: NARRATIVE ASSISTANCE]
+The user requested narrative assistance: "${q}".
+Consultant Guidance:
+Answer: ${r.directAnswer}
+Evidence: ${r.evidence}
+IGBC Requirement: ${r.igbcInterpretation}
+Risks: ${r.risks}
+Recommendation: ${r.recommendations}
+Provide clear guidance for drafting the IGBC narrative.`,
+
+    [QuestionType.CLARIFICATION_ASSISTANCE]: (r, q) => `
+[ENOV-AIT CONSULTANT: CLARIFICATION ASSISTANCE]
+The user asked for clarification assistance: "${q}".
+Consultant Guidance:
+Answer: ${r.directAnswer}
+Evidence: ${r.evidence}
+IGBC Requirement: ${r.igbcInterpretation}
+Risks: ${r.risks}
+Recommendation: ${r.recommendations}
+Provide clear consultant rationale and clarification.`,
+
+    [QuestionType.CONTRIBUTOR_COPILOT]: (r, q) => `
+[ENOV-AIT CONSULTANT: CONTRIBUTOR COPILOT]
+The user asked for contributor guidance: "${q}".
+Consultant Guidance:
+Answer: ${r.directAnswer}
+Evidence: ${r.evidence}
+IGBC Requirement: ${r.igbcInterpretation}
+Risks: ${r.risks}
+Recommendation: ${r.recommendations}
+Provide actionable contributor-level guidance.`,
+
     [QuestionType.KNOWLEDGE_QUERY]: (r, q) => `
 [ENOV-AIT CONSULTANT: KNOWLEDGE INQUIRY]
 The user queried the IGBC credit knowledgebase: "${q}".
@@ -220,7 +264,7 @@ Evidence: ${r.evidence}
 IGBC Requirement: ${r.igbcInterpretation}
 Risks: ${r.risks}
 Recommendation: ${r.recommendations}
-Provide an authoritative response based on verified IGBC requirements and submission criteria.`
+INSTRUCTIONS: You are an expert IGBC Consultant. Use the deterministic reasoning data provided above to inform your response. If the data says "not found" or "no documents mapped", politely and naturally explain this to the user without making up missing facts. Keep your tone empathetic and conversational.`
   };
 
   public static validatePlannerCoverage(): void {

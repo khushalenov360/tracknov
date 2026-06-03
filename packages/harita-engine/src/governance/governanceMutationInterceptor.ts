@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceLocalStorage } from "./governanceContext";
 import type { GovernanceContext } from "./governanceContext";
@@ -113,8 +114,8 @@ export async function runInReplayMode<T>(
   return governanceLocalStorage.run({ 
     projectId, 
     replayMode: true,
-    traceId: crypto.randomUUID(),
-    causalityChainId: crypto.randomUUID()
+    traceId: uuidv4(),
+    causalityChainId: uuidv4()
   }, fn);
 }
 
@@ -131,8 +132,8 @@ export async function runInOperationalMode<T>(
       projectId, 
       actorId, 
       replayMode: false,
-      traceId: crypto.randomUUID(),
-      causalityChainId: crypto.randomUUID()
+      traceId: uuidv4(),
+      causalityChainId: uuidv4()
     },
     fn
   );

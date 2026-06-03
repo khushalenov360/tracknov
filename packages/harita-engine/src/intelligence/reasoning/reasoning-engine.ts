@@ -381,11 +381,11 @@ export class ReasoningEngine {
       );
 
       return {
-        directAnswer: "I detected a discrepancy in my entity resolution while analyzing this request.",
+        directAnswer: `The credit or entity you mentioned (${review.violations.join(", ").replace(/Hallucinated Entity Detected:\s*/g, "")}) is not currently active in this project scope.`,
         evidence: "Self-Review Blocked: " + review.violations.join(", "),
-        igbcInterpretation: "Data integrity is critical. A safe fallback was triggered.",
-        risks: "Potential context hallucination prevented.",
-        recommendations: "Please verify the exact credit codes and try your request again.",
+        igbcInterpretation: "Please verify the credit code. If it belongs to a newer IGBC standard or needs to be mapped to this project, let me know.",
+        risks: "Data mismatch prevented.",
+        recommendations: "You can ask me general IGBC knowledge questions about this credit, or we can map it to your active project.",
       };
     }
 

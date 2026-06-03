@@ -43,11 +43,11 @@ export class QuestionClassifier {
     const knownRolesEarly = ["architect", "mep consultant", "contractor", "pmc", "sustainability consultant", "structural consultant", "landscape architect"];
     const hasRoleEarly = knownRolesEarly.some(r => q.includes(r));
     if (
-      hasRoleEarly &&
+      (hasRoleEarly || q.includes("copilot") || q.match(/what should .* do today/i)) &&
       (
         q.includes("do next") || q.includes("pending") || q.includes("status") ||
         q.includes("what should") || q.includes("what does") || q.includes("copilot") ||
-        q.includes("upload") || q.includes("items") || q.includes("brief")
+        q.includes("upload") || q.includes("items") || q.includes("brief") || q.includes("today")
       )
     ) {
       return QuestionType.CONTRIBUTOR_COPILOT;
@@ -85,22 +85,20 @@ export class QuestionClassifier {
         q.includes("submit today") ||
         q.includes("ready to submit") ||
         q.includes("ready for submission") ||
-        q.includes("can") && q.includes("submitted") ||
+        (q.includes("can") && q.includes("submitted")) ||
         q.includes("should we submit") ||
         q.includes("submission readiness") ||
         q.includes("evidence strength") ||
         q.includes("assess evidence") ||
-        q.includes("evidence assessment")
+        q.includes("evidence assessment") ||
+        q.includes("not ready")
       )
     ) {
       return QuestionType.SUBMISSION_READINESS;
     }
 
     // NARRATIVE_ASSISTANCE
-    if (
-      (q.includes("write") || q.includes("draft") || q.includes("help me write") || q.includes("generate") || q.includes("create")) &&
-      (q.includes("narrative") || q.includes("write-up") || q.includes("writeup") || q.includes("statement"))
-    ) {
+    if (q.includes("draft narrative") || q.includes("write narrative") || q.includes("draft a narrative") || q.includes("narrative for") || (q.includes("draft") && q.includes("narrative")) || (q.includes("write") && q.includes("narrative"))) {
       return QuestionType.NARRATIVE_ASSISTANCE;
     }
 

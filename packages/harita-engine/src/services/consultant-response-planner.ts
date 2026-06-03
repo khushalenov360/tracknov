@@ -35,7 +35,7 @@ NEVER use preamble phrases like "I analyzed the data" or "Here is the breakdown"
 
 Provide your response in the following sequence:
 
-1. [Your immediate, direct answer in 1-3 sentences. Be specific. Use actual credit codes, names, and numbers from the project context. Do NOT use any heading for this, just start typing the answer.]
+1. [Start immediately with the answer in 1-3 sentences. Be specific. Use actual credit codes, names, and numbers from the project context. Do not use any headings or labels for this first section.]
 
 2. **Evidence** (if applicable):
 [Bullet list of actual data points from the project — credit codes, assignment names, completion %, document counts. Not generic IGBC facts.]
@@ -50,7 +50,6 @@ Provide your response in the following sequence:
 [One concrete, specific, operational next step — name the person, credit, or action.]
 
 RULES:
-- Do NOT output a "Direct Answer:" heading. Just write the answer immediately.
 - Use a blank line (two newlines) between every section.
 - If you cannot find specific data in the context, say so explicitly — do not fabricate.
 - Keep total response under 250 words unless the question demands detail.

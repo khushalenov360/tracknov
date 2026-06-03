@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Sparkles, Check, X, FileText, Briefcase, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@tracknov/ui/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@tracknov/ui/ui/card";
 import { acceptCopilotSuggestionsAction, dismissCopilotSuggestionsAction } from "@/app/actions/copilot-actions";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface CopilotProps {
   documentId: string;
@@ -20,7 +20,6 @@ interface CopilotProps {
 
 export function UploadWorkflowCopilot({ documentId, projectId, intelligence }: CopilotProps) {
   const [isPending, setIsPending] = useState(false);
-  const { toast } = useToast();
 
   if (!intelligence || (!intelligence.suggested_credits?.length && !intelligence.responsible_roles?.length)) {
     return null;
@@ -38,16 +37,9 @@ export function UploadWorkflowCopilot({ documentId, projectId, intelligence }: C
     setIsPending(false);
 
     if (res.ok) {
-      toast({
-        title: "Suggestions Accepted",
-        description: "Document mapped and roles assigned successfully.",
-      });
+      toast.success("Document mapped and roles assigned successfully.");
     } else {
-      toast({
-        title: "Error",
-        description: res.error || "Failed to accept suggestions.",
-        variant: "destructive",
-      });
+      toast.error(res.error || "Failed to accept suggestions.");
     }
   };
 
@@ -57,11 +49,7 @@ export function UploadWorkflowCopilot({ documentId, projectId, intelligence }: C
     setIsPending(false);
     
     if (!res.ok) {
-      toast({
-        title: "Error",
-        description: res.error || "Failed to dismiss suggestions.",
-        variant: "destructive",
-      });
+      toast.error(res.error || "Failed to dismiss suggestions.");
     }
   };
 
@@ -116,7 +104,6 @@ export function UploadWorkflowCopilot({ documentId, projectId, intelligence }: C
       <CardFooter className="py-3 pt-2 flex justify-end gap-2 border-t border-emerald-500/10">
         <Button 
           variant="ghost" 
-          size="sm" 
           onClick={handleDismiss} 
           disabled={isPending}
           className="text-muted-foreground hover:text-[var(--color-text-primary)] text-xs h-8"
@@ -126,7 +113,6 @@ export function UploadWorkflowCopilot({ documentId, projectId, intelligence }: C
         </Button>
         <Button 
           variant="default" 
-          size="sm" 
           onClick={handleAccept} 
           disabled={isPending}
           className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8"

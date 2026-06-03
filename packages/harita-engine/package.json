@@ -15,6 +15,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "glob": "^13.0.6",
+    "headroom-ai": "^0.22.4",
     "hyperformula": "^3.3.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
@@ -26,5 +27,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }

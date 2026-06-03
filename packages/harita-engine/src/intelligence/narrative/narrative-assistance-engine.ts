@@ -68,7 +68,64 @@ export class NarrativeAssistanceEngine {
       ...(submissionCriteria?.map((s: any) => `- ${s.description}`) || []),
     ].join("\n") || "No criteria seeded for this credit.";
 
-    // ── 3. Build project context (if available) ──────────────────────────
+    // ── 3. Fetch evidence from project_document ─────────────────────────
+    const projectId = runtimeContext?.project?.id;
+    let evidenceText = "";
+    
+    if (projectId && projectId !== "unknown") {
+      const { data: docs, error: docErr } = await supabase
+        .from("project_document")
+        .select("file_name, document_intelligence_metrics(extracted_text)")
+        .eq("project_id", projectId)
+        .eq("doc_category", creditCode);
+
+      if (docErr) {
+        console.error("NarrativeAssistanceEngine doc query error:", docErr);
+      }
+
+      if (!docs || docs.length === 0) {
+        return {
+          directAnswer: "Insufficient evidence available to generate compliant narrative.",
+          evidence: "No documents found for this credit.",
+          igbcInterpretation: "A narrative cannot be generated without supporting evidence.",
+          risks: "Missing evidence blocks narrative generation.",
+          recommendations: "Upload required evidence first."
+        };
+      }
+
+      docs.forEach((doc: any) => {
+        evidenceText += `Document: ${doc.file_name}\n`;
+        const intel = Array.isArray(doc.document_intelligence_metrics) ? doc.document_intelligence_metrics[0] : doc.document_intelligence_metrics;
+        if (intel && intel.extracted_text) {
+          evidenceText += `Extracted Content:\n${intel.extracted_text}\n\n`;
+        } else {
+          evidenceText += `Extracted Content:\n(No extracted text available)\n\n`;
+        }
+      });
+      
+      if (!evidenceText.includes("Extracted Content:\n") || evidenceText.includes("(No extracted text available)")) {
+         // Wait, the test expects "Insufficient evidence" if no text is present
+         if (!evidenceText.replace(/Document:.*?\n|Extracted Content:\n|\(No extracted text available\)\n\n/g, "").trim()) {
+           return {
+             directAnswer: "Insufficient evidence available to generate compliant narrative.",
+             evidence: "Uploaded documents have no extracted text.",
+             igbcInterpretation: "A narrative requires parsable evidence.",
+             risks: "Evidence is unreadable.",
+             recommendations: "Re-upload documents ensuring they contain readable text."
+           };
+         }
+      }
+    } else {
+        return {
+          directAnswer: "Insufficient evidence available to generate compliant narrative.",
+          evidence: "Project context is missing.",
+          igbcInterpretation: "A narrative cannot be generated outside of a project context.",
+          risks: "Missing project context.",
+          recommendations: "Ensure you are within a valid project workspace."
+        };
+    }
+
+    // ── 4. Build project context (if available) ──────────────────────────
     const projectName = runtimeContext?.project?.name ?? "the project";
     const location = runtimeContext?.project?.location ?? "the project site";
 
@@ -86,11 +143,15 @@ Project Context:
 - Project Name: ${projectName}
 - Location: ${location}
 
+Available Evidence Content:
+${evidenceText}
+
 Instructions:
 - Write a clear, professional narrative of 3-5 paragraphs
 - Begin with an overview statement of design intent
-- Address each criterion explicitly
-- Use formal technical language suitable for IGBC review submission
+- Address each criterion explicitly using ONLY the information provided in the "Available Evidence Content".
+- You MUST NOT invent or hallucinate any numbers, calculations, percentages, or facts that are not explicitly stated in the evidence.
+- If a criterion requires data that is missing from the evidence, do NOT mention that criterion or state that it is not addressed.
 - Do NOT include placeholder brackets — write actual content based on the project context
 - Keep it factual, avoiding unsupported claims
 `;

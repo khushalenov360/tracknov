@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/data";
 import { documentService } from "@tracknov/harita-engine/services/document-service";
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
         projectCreditId: creditId,
         docCategory,
         file,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: uuidv4(),
       });
       return NextResponse.json({ ok: true, mode: "document", documentId: result.id });
     }

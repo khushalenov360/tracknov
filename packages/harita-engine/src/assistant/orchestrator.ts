@@ -1,5 +1,5 @@
 import { executeIntent } from "@/ai/orchestrator/execute-intent";
-import { getWorkspaceSnapshot } from "@tracknov/harita-engine/harita/context/getWorkspaceSnapshot";
+
 import { EnovAitBoundary } from "@tracknov/core/api/enovaitApiBoundary";
 import { haritaRuntimeService } from "@tracknov/harita-engine/services/harita-runtime-service";
 import { getProjectIdFromContext } from "@tracknov/harita-engine/harita/context/getProjectIdFromContext";

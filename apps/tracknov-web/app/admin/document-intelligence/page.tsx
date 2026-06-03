@@ -148,13 +148,13 @@ export default function DocumentIntelligenceDashboard() {
       role="super_admin"
     >
       {/* Dynamic Tab Header */}
-      <div className="flex gap-4 border-b border-white/10 pb-4 mb-8">
+      <div className="flex gap-4 border-b border-[var(--color-border)] pb-4 mb-8">
         <button
           onClick={() => setActiveTab("telemetry")}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all text-sm ${
             activeTab === "telemetry"
               ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-              : "bg-white/5 text-slate-400 hover:bg-white/10"
+              : "bg-[var(--color-surface-2)] text-slate-400 hover:bg-white/10"
           }`}
           id="btn-tab-telemetry"
         >
@@ -166,7 +166,7 @@ export default function DocumentIntelligenceDashboard() {
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all text-sm ${
             activeTab === "playground"
               ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-              : "bg-white/5 text-slate-400 hover:bg-white/10"
+              : "bg-[var(--color-surface-2)] text-slate-400 hover:bg-white/10"
           }`}
           id="btn-tab-playground"
         >
@@ -179,46 +179,46 @@ export default function DocumentIntelligenceDashboard() {
         <div className="space-y-8 animate-fadeIn">
           {/* Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
+            <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">OCR Mean Accuracy</p>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
                 <p className="text-3xl font-black text-white">96.8%</p>
               </div>
-              <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
+              <div className="w-full h-1 bg-[var(--color-surface-2)] rounded-full mt-4 overflow-hidden">
                 <div className="h-full bg-emerald-500" style={{ width: "96.8%" }} />
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
+            <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">HVAC Spec Normalization</p>
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-amber-400" />
                 <p className="text-3xl font-black text-white">95.4%</p>
               </div>
-              <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
+              <div className="w-full h-1 bg-[var(--color-surface-2)] rounded-full mt-4 overflow-hidden">
                 <div className="h-full bg-amber-500" style={{ width: "95.4%" }} />
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
+            <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Reviewer Trust Index</p>
               <div className="flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-indigo-400" />
                 <p className="text-3xl font-black text-white">98.2%</p>
               </div>
-              <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
+              <div className="w-full h-1 bg-[var(--color-surface-2)] rounded-full mt-4 overflow-hidden">
                 <div className="h-full bg-indigo-500" style={{ width: "98.2%" }} />
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
+            <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Clarification Reduction Rate</p>
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-blue-400" />
                 <p className="text-3xl font-black text-white">-48.0%</p>
               </div>
-              <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
+              <div className="w-full h-1 bg-[var(--color-surface-2)] rounded-full mt-4 overflow-hidden">
                 <div className="h-full bg-blue-500" style={{ width: "88%" }} />
               </div>
             </div>
@@ -228,7 +228,7 @@ export default function DocumentIntelligenceDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Main Graph Column */}
             <div className="lg:col-span-8 space-y-8">
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+              <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
                 <h3 className="text-md font-bold text-white mb-6 flex items-center gap-3">
                   <Activity className="w-5 h-5 text-indigo-400" />
                   Self-Improving Extraction Analytics
@@ -240,7 +240,7 @@ export default function DocumentIntelligenceDashboard() {
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Table Extraction Continuity Success</span>
                       <span className="text-xs font-black text-emerald-400">95.4%</span>
                     </div>
-                    <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400" style={{ width: "95.4%" }} />
                     </div>
                   </div>
@@ -250,7 +250,7 @@ export default function DocumentIntelligenceDashboard() {
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Duplicate Semantic Block Detection</span>
                       <span className="text-xs font-black text-blue-400">99.2%</span>
                     </div>
-                    <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-400" style={{ width: "99.2%" }} />
                     </div>
                   </div>
@@ -260,7 +260,7 @@ export default function DocumentIntelligenceDashboard() {
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Manufacturer Alias Normalization Success</span>
                       <span className="text-xs font-black text-indigo-400">97.8%</span>
                     </div>
-                    <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-400" style={{ width: "97.8%" }} />
                     </div>
                   </div>
@@ -268,8 +268,8 @@ export default function DocumentIntelligenceDashboard() {
               </div>
 
               {/* Ingestion Stream Logs */}
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-5 bg-white/5 border-b border-white/10 flex justify-between items-center">
+              <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-5 bg-[var(--color-surface-2)] border-b border-[var(--color-border)] flex justify-between items-center">
                   <h3 className="text-md font-bold text-white flex items-center gap-3">
                     <Layers className="w-5 h-5 text-blue-400" />
                     Reviewer Correction & Override Telemetry Log
@@ -280,7 +280,7 @@ export default function DocumentIntelligenceDashboard() {
                 </div>
                 <div className="p-4 h-[280px] overflow-y-auto space-y-2 font-mono text-xs bg-black/20">
                   {recentLogs.map((log) => (
-                    <div key={log.id} className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2 text-slate-300">
+                    <div key={log.id} className="p-3 bg-[var(--color-surface-2)] hover:bg-white/10 border border-[var(--color-border)] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2 text-slate-300">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-xs">{log.timestamp}</span>
                         <span className="text-amber-400 font-bold">[{log.type} Correction]</span>
@@ -299,7 +299,7 @@ export default function DocumentIntelligenceDashboard() {
 
             {/* Sidebar Alerts */}
             <div className="lg:col-span-4 space-y-8">
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+              <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-6 flex items-center gap-2">
                   <AlertOctagon className="w-4 h-4 text-amber-500" />
                   Accuracy Recalibration Alerts
@@ -336,7 +336,7 @@ export default function DocumentIntelligenceDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
           {/* Left Ingestion & Input Cockpit */}
           <div className="lg:col-span-6 space-y-6">
-            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl flex flex-col">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-md font-bold text-white flex items-center gap-2">
                   <Brain className="w-5 h-5 text-blue-400" />
@@ -347,7 +347,7 @@ export default function DocumentIntelligenceDashboard() {
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="w-full h-[180px] bg-black/20 border border-white/10 rounded-2xl p-4 font-mono text-xs text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none mb-4"
+                className="w-full h-[180px] bg-black/20 border border-[var(--color-border)] rounded-2xl p-4 font-mono text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none mb-4"
                 placeholder="Paste engineering schedules, technical spec lists, or OCR outputs..."
                 id="area-playground-input"
               />
@@ -365,7 +365,7 @@ export default function DocumentIntelligenceDashboard() {
             </div>
 
             {/* Real-time Reviewer Feedback Loop Interface */}
-            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex items-center gap-2 mb-4">
                 <Sliders className="w-5 h-5 text-indigo-400" />
                 <h3 className="text-md font-bold text-white">Reviewer Feedback Loop Engine</h3>
@@ -396,7 +396,7 @@ export default function DocumentIntelligenceDashboard() {
                           setCorrectedValue("ENERGY_EFFICIENCY");
                         }
                       }}
-                      className="bg-black/20 border border-white/10 rounded-xl text-xs font-bold text-white px-3 py-2 w-full focus:outline-none focus:border-indigo-500"
+                      className="bg-black/20 border border-[var(--color-border)] rounded-xl text-xs font-bold text-white px-3 py-2 w-full focus:outline-none focus:border-indigo-500"
                     >
                       <option value="Efficiency">Chiller Efficiency (COP)</option>
                       <option value="Cooling Capacity">Cooling Capacity (TR)</option>
@@ -410,7 +410,7 @@ export default function DocumentIntelligenceDashboard() {
                       type="text"
                       value={reviewerId}
                       onChange={(e) => setReviewerId(e.target.value)}
-                      className="bg-black/20 border border-white/10 rounded-xl text-xs font-bold text-slate-300 px-3 py-2 w-full focus:outline-none"
+                      className="bg-black/20 border border-[var(--color-border)] rounded-xl text-xs font-bold text-slate-300 px-3 py-2 w-full focus:outline-none"
                       disabled
                     />
                   </div>
@@ -422,7 +422,7 @@ export default function DocumentIntelligenceDashboard() {
                     <input
                       type="text"
                       value={originalValue}
-                      className="bg-black/20 border border-white/10 rounded-xl text-xs font-bold text-slate-400 px-3 py-2 w-full focus:outline-none"
+                      className="bg-black/20 border border-[var(--color-border)] rounded-xl text-xs font-bold text-slate-400 px-3 py-2 w-full focus:outline-none"
                       disabled
                     />
                   </div>
@@ -443,7 +443,7 @@ export default function DocumentIntelligenceDashboard() {
                     type="text"
                     value={correctionReason}
                     onChange={(e) => setCorrectionReason(e.target.value)}
-                    className="bg-black/20 border border-white/10 rounded-xl text-xs font-bold text-slate-300 px-3 py-2 w-full focus:outline-none focus:border-indigo-500"
+                    className="bg-black/20 border border-[var(--color-border)] rounded-xl text-xs font-bold text-slate-300 px-3 py-2 w-full focus:outline-none focus:border-indigo-500"
                     placeholder="Enter audit evidence verification note..."
                   />
                 </div>
@@ -486,7 +486,7 @@ export default function DocumentIntelligenceDashboard() {
           <div className="lg:col-span-6 space-y-6 max-h-[920px] overflow-y-auto pr-2 no-scrollbar">
             
             {/* AI Reasoning & Transparency card */}
-            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl relative overflow-hidden">
               <div className="flex items-center gap-2 mb-4">
                 <Info className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">AI Transparency Explainer</h3>
@@ -505,7 +505,7 @@ export default function DocumentIntelligenceDashboard() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 bg-black/20 p-4 border border-white/5 rounded-2xl leading-relaxed">
+                  <p className="text-xs text-slate-300 bg-black/20 p-4 border border-[var(--color-border)] rounded-2xl leading-relaxed">
                     {activeExplaination.explanation}
                   </p>
                 </div>
@@ -514,10 +514,10 @@ export default function DocumentIntelligenceDashboard() {
 
             {/* Semantic Evidence Lineage Trace */}
             {evidenceTrace && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+              <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Lineage & Text Trace Origin</h3>
-                <div className="bg-black/20 rounded-2xl p-4 border border-white/5 font-mono text-xs text-slate-300">
-                  <div className="flex justify-between text-slate-500 mb-2 border-b border-white/5 pb-1">
+                <div className="bg-black/20 rounded-2xl p-4 border border-[var(--color-border)] font-mono text-xs text-slate-300">
+                  <div className="flex justify-between text-slate-500 mb-2 border-b border-[var(--color-border)] pb-1">
                     <span>Source Snippet Match</span>
                     <span>Line {evidenceTrace.lineNumber}</span>
                   </div>
@@ -527,7 +527,7 @@ export default function DocumentIntelligenceDashboard() {
             )}
 
             {/* Duplicate Reasoning Warning */}
-            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Duplicate Evidence Warning</h3>
               <div className="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-4 text-xs text-amber-400 flex items-start gap-2">
                 <AlertOctagon className="w-4 h-4 shrink-0 mt-0.5" />
@@ -540,7 +540,7 @@ export default function DocumentIntelligenceDashboard() {
 
             {/* AI Reviewer Clarification & Evidence Gap Explorer */}
             {clarificationReason && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-2xl">
+              <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">AI Evidence Gap Analysis</h3>
                 <div className="bg-indigo-500/5 border border-indigo-500/15 rounded-2xl p-4 text-xs text-indigo-400 space-y-3">
                   <div className="flex items-start gap-2">

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import type { CurrentUser } from "@/lib/types";
 import { workflowOrchestratorService } from "@tracknov/harita-engine/services/workflow-orchestrator-service";
 import type { WorkflowState } from "@tracknov/harita-engine/services/document-state-service";
@@ -42,8 +43,8 @@ export async function runRuntimeTransition(
   }
 
   // Wrap in Governance Context for Forensic Traceability (Section 10)
-  const traceId = (request.metadata?.traceId as string) || crypto.randomUUID();
-  const causalityChainId = (request.metadata?.causalityChainId as string) || crypto.randomUUID();
+  const traceId = (request.metadata?.traceId as string) || uuidv4();
+  const causalityChainId = (request.metadata?.causalityChainId as string) || uuidv4();
 
   return governanceLocalStorage.run({
     projectId: request.projectId || "SYSTEM",

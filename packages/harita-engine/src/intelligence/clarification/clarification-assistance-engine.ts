@@ -41,12 +41,12 @@ export class ClarificationAssistanceEngine {
 
     if (projectId && projectId !== "unknown") {
       const { data: docs } = await supabase
-        .from("project_documents")
-        .select("id, file_name, state, created_at")
+        .from("project_document")
+        .select("id, file_name, state, uploaded_at")
         .eq("project_id", projectId)
         .eq("doc_category", creditCode)
         .in("state", ["REJECTED", "CLARIFICATION"])
-        .order("created_at", { ascending: false })
+        .order("uploaded_at", { ascending: false })
         .limit(1);
 
       if (docs && docs.length > 0) {
@@ -55,7 +55,7 @@ export class ClarificationAssistanceEngine {
 
         // Fetch review remarks for this document
         const { data: remarks } = await supabase
-          .from("review_remarks")
+          .from("remarks")
           .select("body, role, created_at")
           .eq("document_id", doc.id)
           .order("created_at", { ascending: false })
@@ -70,7 +70,7 @@ export class ClarificationAssistanceEngine {
     // Fallback: try to get credit description for context
     const { data: credit } = await supabase
       .from("knowledge_credit")
-      .select("code, title")
+      .select("id, code, title")
       .eq("code", creditCode)
       .maybeSingle();
 
@@ -96,7 +96,11 @@ ${criteriaContext || "Review criteria not available."}
 Document: ${documentName}
 Project: ${runtimeContext?.project?.name ?? "Unknown Project"}
 
-Draft a professional clarification response the project team can send back to the reviewer. The response should:
+First, determine if the Reviewer Remarks are relevant to the IGBC Review Criteria for ${creditCode}.
+If the reviewer's request clearly contradicts or has no relevance to the criteria (e.g. asking for a daylight simulation for a credit about water), you MUST output EXACTLY this string and nothing else:
+Clarification cannot be mapped to any known review criteria.
+
+If the remarks are relevant, draft a professional clarification response the project team can send back to the reviewer. The response should:
 1. Acknowledge the reviewer's specific concern
 2. Explain what the project team will provide or correct
 3. Reference the relevant IGBC criteria
@@ -114,6 +118,16 @@ Draft a professional clarification response the project team can send back to th
     } catch { /* ignore */ }
 
     const clarificationDraft = await ClarificationAssistanceEngine._callLLM(systemPrompt, geminiContents);
+
+    if (clarificationDraft.trim() === "Clarification cannot be mapped to any known review criteria.") {
+      return {
+        directAnswer: clarificationDraft,
+        evidence: JSON.stringify({ creditCode, rejectionRemarks }),
+        igbcInterpretation: "The reviewer's remarks do not align with the standard IGBC review criteria for this credit.",
+        risks: "Irrelevant or incorrect clarification request from reviewer.",
+        recommendations: "Double check the credit requirements or appeal the reviewer's remark."
+      };
+    }
 
     return {
       directAnswer: `**Clarification Response Draft for ${creditCode}:**\n\n${clarificationDraft}`,

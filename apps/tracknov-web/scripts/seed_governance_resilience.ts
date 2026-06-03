@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { governanceIncidents } from "@tracknov/harita-engine/governance/governanceIncidentEngine";
 import { acquireReplayLock } from "@tracknov/harita-engine/governance/replayConflictResolutionEngine";
 import { validateOverrideSafety } from "@tracknov/harita-engine/governance/overrideSafetyEngine";
@@ -14,7 +15,7 @@ async function seed() {
   console.log("Starting Governance Resilience Seeding...");
 
   // Mock context
-  const traceId = crypto.randomUUID();
+  const traceId = uuidv4();
   
   // We need to simulate the AsyncLocalStorage behavior if possible, 
   // or just call the engines directly if they allow passing project IDs.

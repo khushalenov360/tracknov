@@ -1,4 +1,5 @@
 "use server";
+import { v4 as uuidv4 } from "uuid";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -374,7 +375,7 @@ export async function setDocumentStatusAction(formData: FormData) {
   const rejectionRemark = String(formData.get("rejection_remark") ?? "").trim();
   const rejectionType = String(formData.get("rejection_type") ?? "").trim();
 
-  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? uuidv4()).trim();
 
   const user = await getCurrentUser();
   if (!user) return;
@@ -486,7 +487,7 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ ok: bo
   const requirementSlot = String(formData.get("requirement_slot") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const fileHash = String(formData.get("file_hash") ?? "").trim();
-  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? uuidv4()).trim();
   const file = formData.get("file");
   const isFile = file && typeof file === "object" && "name" in file && "size" in file;
 
@@ -681,7 +682,7 @@ export async function resubmitDocumentAction(formData: FormData) {
   const documentId = String(formData.get("document_id") ?? "").trim();
   const projectId = String(formData.get("project_id") ?? "").trim();
   const resubmitNote = String(formData.get("resubmit_note") ?? "").trim();
-  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? uuidv4()).trim();
   if (!documentId || !projectId) return;
 
   const user = await getCurrentUser();
@@ -1358,7 +1359,7 @@ export async function submitDocumentTransitionAction(formData: FormData) {
   const documentId = String(formData.get("document_id") ?? "").trim();
   const nextState = String(formData.get("target_state") ?? "").trim().toUpperCase() as WorkflowState;
   const reason = String(formData.get("reason") ?? "").trim();
-  const idempotencyKey = String(formData.get("idempotency_key") ?? crypto.randomUUID()).trim();
+  const idempotencyKey = String(formData.get("idempotency_key") ?? uuidv4()).trim();
 
   if (!projectId || !documentId || !nextState) {
     throw new Error("Missing transition payload.");

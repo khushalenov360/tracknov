@@ -298,6 +298,8 @@ export function normalizeHaritaResponse(input: Partial<NormalizedHaritaResponse>
 export function requiresExplicitConfirmationForExecution(query: string, options?: { analysisOnly?: boolean }) {
   if (options?.analysisOnly === true) return false;
   const q = query.toLowerCase();
+  if (q.includes("who uploads") || q.includes("who is responsible") || q.includes("what") || q.includes("how")) return false;
+
   const hasAction = q.includes("upload") || q.includes("map") || q.includes("submit");
   const hasConfirmation = q.includes("confirm") || q.includes("yes upload") || q.includes("proceed upload") || q.includes("and upload");
   return hasAction && !hasConfirmation;

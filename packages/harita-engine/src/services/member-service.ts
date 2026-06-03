@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
@@ -217,7 +218,7 @@ export class MemberService {
       throw new Error("Only Administrators can create invites.");
     }
 
-    const token = crypto.randomUUID();
+    const token = uuidv4();
 
     const { error } = await this.admin.from("project_invites").insert({
       project_id: params.projectId,
@@ -254,7 +255,7 @@ export class MemberService {
       throw new Error("Only Administrators can create platform invites.");
     }
 
-    const token = crypto.randomUUID();
+    const token = uuidv4();
 
     const { error } = await this.admin.from("platform_invites").insert({
       email: params.email,

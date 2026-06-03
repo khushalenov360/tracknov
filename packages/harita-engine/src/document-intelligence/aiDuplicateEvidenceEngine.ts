@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../supabase/admin";
 import { logAiRecommendation } from "../telemetry/aiRuntimeAuditLogger";
 
@@ -32,8 +33,8 @@ export async function detectDuplicates(projectId: string, newDocumentId: string,
       document_b_id: duplicateReport.documentB,
       similarity_score: duplicateReport.similarity,
       detection_details: duplicateReport,
-      trace_id: crypto.randomUUID(),
-      causality_chain_id: crypto.randomUUID()
+      trace_id: uuidv4(),
+      causality_chain_id: uuidv4()
     });
 
     await logAiRecommendation({

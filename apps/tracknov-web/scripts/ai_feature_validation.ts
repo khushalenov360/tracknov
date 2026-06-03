@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
@@ -45,7 +46,7 @@ async function validateEvidenceRec() {
 
 async function validateDuplicateDetection() {
   console.log("- Validating Duplicate Detection...");
-  const results = await detectDuplicates(BHAVARKUA_ID, crypto.randomUUID(), "mock-hash");
+  const results = await detectDuplicates(BHAVARKUA_ID, uuidv4(), "mock-hash");
   const report = [
     "# AI Duplicate Detection Report",
     `Date: ${new Date().toISOString()}`,

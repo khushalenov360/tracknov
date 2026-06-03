@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "../../lib/supabase/admin";
 import { format } from "date-fns";
 
@@ -62,8 +63,8 @@ async function runReviewerQueueIntegrity() {
     item_count: queue?.length || 0,
     avg_wait_time_ms: Math.round(totalLatency / (latencyRecords?.length || 1)),
     max_wait_time_ms: Math.max(...(latencyRecords?.map(r => new Date().getTime() - new Date(r.created_at).getTime()) || [0])),
-    trace_id: crypto.randomUUID(),
-    causality_chain_id: crypto.randomUUID(),
+    trace_id: uuidv4(),
+    causality_chain_id: uuidv4(),
     framework_version: "PILOT_V1"
   });
 
