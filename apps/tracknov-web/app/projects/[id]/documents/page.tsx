@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { AiGuidePanel } from "@/components/assistant/ai-guide-panel";
 import { UploadDocumentForm } from "@/components/project/upload-document-form";
 import { CreditRequirementsManager } from "@/components/project/credit-requirements-manager";
+import { UploadWorkflowCopilot } from "@/components/project/upload-workflow-copilot";
 import { getProjectWorkspace } from "@/lib/data";
 import { canReviewProjectDocuments, canUploadProjectDocuments } from "@/lib/rbac";
 import { env } from "@/lib/env";
@@ -247,6 +248,13 @@ export default async function ProjectDocumentsPage({
                         Download PDF
                       </a>
                     </div>
+                    {doc.intelligence && (
+                      <UploadWorkflowCopilot
+                        documentId={doc.id}
+                        projectId={projectId}
+                        intelligence={doc.intelligence}
+                      />
+                    )}
                   </div>
                 ))
               ) : (

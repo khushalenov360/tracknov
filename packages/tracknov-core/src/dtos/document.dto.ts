@@ -45,6 +45,12 @@ export type DocumentResponse = {
   compression_applied?: boolean | null;
   mime_type?: string | null;
   upload_duration_ms?: number | null;
+  intelligence?: {
+    evidence_type?: string | null;
+    suggested_credits?: Array<{ creditCode: string; creditId: string }>;
+    responsible_roles?: Array<{ roleName: string; roleId: string; action: string }>;
+    summary?: string | null;
+  } | null;
 };
 
 export type DocumentActivityAction = "uploaded" | "metadata_updated" | "status_updated" | "deleted";

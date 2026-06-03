@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { cookies } from "next/headers";
@@ -757,6 +758,28 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
+
+    const documentIds = (documents ?? []).map((d: any) => d.id);
+    const { data: documentIntelligence } = documentIds.length
+      ? await admin.from("document_intelligence").select("*").in("document_id", documentIds)
+      : { data: [] };
+
+    const docsWithIntelligence = (documents ?? []).map((doc: any) => {
+      const intel = (documentIntelligence ?? []).find((i: any) => i.document_id === doc.id);
+      if (intel) {
+        return {
+          ...doc,
+          intelligence: {
+            evidence_type: intel.evidence_type,
+            suggested_credits: intel.suggested_credits,
+            responsible_roles: intel.responsible_roles,
+            summary: intel.summary,
+          }
+        };
+      }
+      return doc;
+    });
+
     let effectiveCredits = (credits ?? []) as Array<any>;
     if (effectiveCredits.length === 0) {
       const fallbackCredits = buildProjectCreditSeedRows(projectId);
@@ -799,7 +822,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
       member_email: memberByUserId.get(assignment.user_id)?.member_email ?? null,
       full_name: memberByUserId.get(assignment.user_id)?.full_name ?? null,
     }));
-    const mappedCredits = effectiveCredits.map((credit: any) => mapCredit(credit, documents ?? [], remarks ?? [], mappedAssignments));
+    const mappedCredits = effectiveCredits.map((credit: any) => mapCredit(credit, docsWithIntelligence, remarks ?? [], mappedAssignments));
     const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
     const mappedDataTables = await mapProjectGuidebooksWithSignedUrls(admin, dataTables ?? []);
 
@@ -880,6 +903,28 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
       getProjectMembers(client, projectId),
       getProjectInvites(client, projectId),
     ]);
+
+  const documentIds = (documents ?? []).map((d: any) => d.id);
+  const { data: documentIntelligence } = documentIds.length
+    ? await admin.from("document_intelligence").select("*").in("document_id", documentIds)
+    : { data: [] };
+
+  const docsWithIntelligence = (documents ?? []).map((doc: any) => {
+    const intel = (documentIntelligence ?? []).find((i: any) => i.document_id === doc.id);
+    if (intel) {
+      return {
+        ...doc,
+        intelligence: {
+          evidence_type: intel.evidence_type,
+          suggested_credits: intel.suggested_credits,
+          responsible_roles: intel.responsible_roles,
+          summary: intel.summary,
+        }
+      };
+    }
+    return doc;
+  });
+
   let effectiveCredits = (credits ?? []) as Array<any>;
   if (effectiveCredits.length === 0) {
     const fallbackCredits = buildProjectCreditSeedRows(projectId);
@@ -922,7 +967,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
     member_email: memberByUserId.get(assignment.user_id)?.member_email ?? null,
     full_name: memberByUserId.get(assignment.user_id)?.full_name ?? null,
   }));
-  const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, documents ?? [], remarks ?? [], mappedAssignments));
+  const mappedCredits = effectiveCredits.map((credit) => mapCredit(credit, docsWithIntelligence, remarks ?? [], mappedAssignments));
   const mappedGuidebooks = await mapProjectGuidebooksWithSignedUrls(admin, guidebooks ?? []);
   const mappedDataTables = await mapProjectGuidebooksWithSignedUrls(client, dataTables ?? []);
 
@@ -1556,7 +1601,7 @@ export async function createProjectTopupInvoiceForCurrentUser({
   }
 
   const now = new Date();
-  const invoiceNumber = `TRK-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const invoiceNumber = `TRK-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${uuidv4().slice(0, 8).toUpperCase()}`;
   const lineItems = [
     {
       item: "Document credit top-up",
