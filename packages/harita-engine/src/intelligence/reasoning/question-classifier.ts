@@ -19,6 +19,9 @@ export enum QuestionType {
   EVIDENCE_PORTFOLIO = "EVIDENCE_PORTFOLIO",
   KNOWLEDGE_QUERY = "KNOWLEDGE_QUERY",
   SUBMISSION_READINESS = "SUBMISSION_READINESS",
+  NARRATIVE_ASSISTANCE = "NARRATIVE_ASSISTANCE",
+  CLARIFICATION_ASSISTANCE = "CLARIFICATION_ASSISTANCE",
+  CONTRIBUTOR_COPILOT = "CONTRIBUTOR_COPILOT",
   GENERAL = "GENERAL"
 }
 
@@ -34,6 +37,20 @@ export class QuestionClassifier {
     // WORKLOAD
     if (q.includes("workload") || q.includes("overloaded") || q.includes("support") || q.includes("allocate") || q.includes("resources")) {
       return QuestionType.WORKLOAD;
+    }
+
+    // CONTRIBUTOR_COPILOT — check before EXECUTIVE_PRIORITY so role-specific "do next" wins
+    const knownRolesEarly = ["architect", "mep consultant", "contractor", "pmc", "sustainability consultant", "structural consultant", "landscape architect"];
+    const hasRoleEarly = knownRolesEarly.some(r => q.includes(r));
+    if (
+      hasRoleEarly &&
+      (
+        q.includes("do next") || q.includes("pending") || q.includes("status") ||
+        q.includes("what should") || q.includes("what does") || q.includes("copilot") ||
+        q.includes("upload") || q.includes("items") || q.includes("brief")
+      )
+    ) {
+      return QuestionType.CONTRIBUTOR_COPILOT;
     }
 
     // EXECUTIVE_PRIORITY
@@ -77,6 +94,36 @@ export class QuestionClassifier {
       )
     ) {
       return QuestionType.SUBMISSION_READINESS;
+    }
+
+    // NARRATIVE_ASSISTANCE
+    if (
+      (q.includes("write") || q.includes("draft") || q.includes("help me write") || q.includes("generate") || q.includes("create")) &&
+      (q.includes("narrative") || q.includes("write-up") || q.includes("writeup") || q.includes("statement"))
+    ) {
+      return QuestionType.NARRATIVE_ASSISTANCE;
+    }
+
+    // CLARIFICATION_ASSISTANCE
+    if (
+      (q.includes("clarification") || q.includes("respond to") || q.includes("reply to") || q.includes("rejection")) &&
+      (q.includes("draft") || q.includes("help") || q.includes("write") || q.includes("how do i") || q.includes("response"))
+    ) {
+      return QuestionType.CLARIFICATION_ASSISTANCE;
+    }
+
+    // CONTRIBUTOR_COPILOT
+    const knownRoles = ["architect", "mep consultant", "contractor", "pmc", "sustainability consultant", "structural consultant", "landscape architect"];
+    const hasRole = knownRoles.some(r => q.includes(r));
+    if (
+      hasRole &&
+      (
+        q.includes("do next") || q.includes("pending") || q.includes("status") ||
+        q.includes("what should") || q.includes("what does") || q.includes("copilot") ||
+        q.includes("upload") || q.includes("items") || q.includes("brief")
+      )
+    ) {
+      return QuestionType.CONTRIBUTOR_COPILOT;
     }
 
     // ACTION_REQUEST (Phase 9 Threshold)

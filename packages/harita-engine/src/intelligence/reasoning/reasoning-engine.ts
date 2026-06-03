@@ -27,6 +27,9 @@ import { submissionReadinessEngine } from "../../services/submission-readiness-e
 import { KnowledgeGraphEngine } from "../knowledge-graph/knowledge-graph-engine";
 import { KnowledgeOntologyReasoner } from "./knowledge-ontology-reasoner";
 import { SubmissionReadinessReasoner } from "./submission-readiness-reasoner";
+import { NarrativeAssistanceEngine } from "../narrative/narrative-assistance-engine";
+import { ClarificationAssistanceEngine } from "../clarification/clarification-assistance-engine";
+import { ContributorCopilotEngine } from "../contributor/contributor-copilot-engine";
 import { SelfReviewEngine } from "../self-review-engine";
 import { FailureLibrary } from "../failure-library";
 import { PipelineTracer } from "../debug/pipeline-tracer";
@@ -173,6 +176,24 @@ export class ReasoningEngine {
         reasonerName = "SubmissionReadinessReasoner";
         draftOutput = await SubmissionReadinessReasoner.evaluate(query, projectId);
         activeTracer.logStage("SubmissionReadinessReasoner", query, `Readiness assessment complete for credit in: "${query}"`);
+        break;
+
+      case QuestionType.NARRATIVE_ASSISTANCE:
+        reasonerName = "NarrativeAssistanceEngine";
+        draftOutput = await NarrativeAssistanceEngine.draft(query, runtimeContext);
+        activeTracer.logStage("NarrativeAssistanceEngine", query, "Narrative draft generated.");
+        break;
+
+      case QuestionType.CLARIFICATION_ASSISTANCE:
+        reasonerName = "ClarificationAssistanceEngine";
+        draftOutput = await ClarificationAssistanceEngine.draft(query, projectId, runtimeContext);
+        activeTracer.logStage("ClarificationAssistanceEngine", query, "Clarification draft generated.");
+        break;
+
+      case QuestionType.CONTRIBUTOR_COPILOT:
+        reasonerName = "ContributorCopilotEngine";
+        draftOutput = await ContributorCopilotEngine.brief(query, projectId, runtimeContext);
+        activeTracer.logStage("ContributorCopilotEngine", query, "Contributor brief generated.");
         break;
 
       // ── Executive-scope engines ────────────────────────────────────────

@@ -292,6 +292,20 @@ export const TOOLS: ToolDefinition[] = [
       required: ["filename"],
     },
   },
+  {
+    name: "assessUpload",
+    description: "Run full Evidence Assessment on an uploaded document. Returns detected type, mapped credit, evidence found, missing evidence, strength score, readiness state, and recommended action. Use this after any document upload or when the user asks for upload feedback.",
+    parameters: {
+      type: "object",
+      properties: {
+        filename: { name: "filename", type: "string", description: "The original filename (e.g. Layout.pdf)" },
+        evidenceType: { name: "evidenceType", type: "string", description: "Classified evidence type (e.g. DRAWING, CALCULATION, NARRATIVE)" },
+        parsedContent: { name: "parsedContent", type: "string", description: "Extracted text content from the document parser" },
+        projectId: { name: "projectId", type: "string", description: "Optional project UUID for portfolio duplicate detection" },
+      },
+      required: ["filename", "evidenceType", "parsedContent"],
+    },
+  },
 ];
 
 function toGeminiTools(): Record<string, unknown>[] {
@@ -667,6 +681,30 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         };
       } catch (e: any) {
          return { ok: false, error: e.message };
+      }
+    }
+
+    case "assessUpload": {
+      try {
+        const { UploadCopilotEngine } = await import("@tracknov/harita-engine/intelligence/evidence/upload-copilot-engine");
+        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const supabase = createAdminClient();
+        const filename = String(args.filename ?? "");
+        const evidenceType = String(args.evidenceType ?? "UNKNOWN");
+        const parsedContent = String(args.parsedContent ?? "");
+        const projectId = String(args.projectId ?? "") || undefined;
+
+        const result = await UploadCopilotEngine.guide(
+          supabase,
+          { geminiApiKey: env.geminiApiKeys[0], groqApiKey: env.groqApiKeys[0], openaiApiKey: env.openAiApiKeys[0] },
+          filename,
+          evidenceType,
+          parsedContent,
+          projectId
+        );
+        return { ok: true, data: result.uploadGuidance };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
       }
     }
 
