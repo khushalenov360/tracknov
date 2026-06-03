@@ -1,0 +1,9 @@
+﻿{
+  "advisories": {
+    "1117015": {
+      "ignore": true,
+      "reason": "postcss < 8.5.10 is bundled inside next/dist/compiled — it processes only build-time CSS from our own source files, never user-supplied input. The XSS vector (injecting </style> into externally-provided CSS strings) does not apply. Suppressed until Next.js ships a patch release.",
+      "expires": "2026-12-31T00:00:00.000Z"
+    }
+  }
+}
