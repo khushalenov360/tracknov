@@ -281,6 +281,17 @@ export const TOOLS: ToolDefinition[] = [
       required: ["documentSummary", "creditRequirement"],
     },
   },
+  {
+    name: "processMockUpload",
+    description: "Simulates processing an uploaded document through the Document Intelligence pipeline to get evidence type, credit suggestion, and responsible role.",
+    parameters: {
+      type: "object",
+      properties: {
+        filename: { name: "filename", type: "string", description: "The name of the uploaded file." },
+      },
+      required: ["filename"],
+    },
+  },
 ];
 
 function toGeminiTools(): Record<string, unknown>[] {
@@ -615,6 +626,47 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         return { ok: true, data: result };
       } catch (error: any) {
          return { ok: false, error: error.message ?? "Failed to evaluate evidence." };
+      }
+    }
+
+    case "processMockUpload": {
+      try {
+        const { DocumentClassifier } = await import("./document-intelligence/DocumentClassifier");
+        const filename = String(args.filename ?? "");
+        const mockText = filename.toLowerCase().includes("layout") ? "Floor plan layout drawing showing architectural design" : "Sample document text";
+        
+        const classifier = new DocumentClassifier();
+        const evidenceType = classifier.classifyText(mockText, filename);
+
+        const client = createClient();
+        const { data: evData } = await client.from("knowledge_evidence_type").select("id").eq("name", evidenceType).maybeSingle();
+        
+        if (!evData) {
+            return { ok: true, data: `File classified as ${evidenceType}, but no ontology mapping found.` };
+        }
+
+        const { data: mappingData } = await client.from("credit_evidence_mapping")
+          .select("knowledge_credit(code, title)")
+          .eq("evidence_type_id", evData.id);
+        const suggestedCredits = mappingData?.map((m: any) => m.knowledge_credit?.code).filter(Boolean) || [];
+
+        const { data: roleData } = await client.from("workflow_document_responsibility")
+          .select("workflow_role(name)")
+          .eq("evidence_type_id", evData.id)
+          .eq("action", "UPLOADS");
+        const roles = roleData?.map((r: any) => r.workflow_role?.name).filter(Boolean) || [];
+
+        return { 
+          ok: true, 
+          data: {
+             filename,
+             evidenceType,
+             suggestedCredits,
+             responsibleRoles: roles
+          }
+        };
+      } catch (e: any) {
+         return { ok: false, error: e.message };
       }
     }
 
