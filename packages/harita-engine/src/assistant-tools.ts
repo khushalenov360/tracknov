@@ -308,11 +308,11 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: "queryKnowledgeOntology",
-    description: "Query the IGBC knowledge ontology for information about credits, requirements, or evidence types. Use this when the user asks a factual question about what a credit needs or who is responsible for it.",
+    description: "Query the IGBC knowledge ontology for IGBC-specific credit information. ONLY use this when the user asks about a specific IGBC credit code (e.g. EDA C1, WC C2), what documents or evidence types a specific credit requires, what review criteria apply to a specific credit, or which role is responsible for uploading a specific document type. Do NOT use this for general questions about the platform, project status, or anything not referencing an IGBC credit code or evidence type.",
     parameters: {
       type: "object",
       properties: {
-        query: { name: "query", type: "string", description: "The specific question asked by the user." },
+        query: { name: "query", type: "string", description: "The specific IGBC-related question asked by the user, including the credit code." },
       },
       required: ["query"],
     },
@@ -820,7 +820,7 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
       try {
         const { ExecutivePrioritizationEngine } = await import("./intelligence/reasoning/executive-prioritization-engine");
         const { DecisionIntelligenceEngine } = await import("./intelligence/reasoning/decision-intelligence-engine");
-        const { PortfolioEvidenceEngine } = await import("./intelligence/reasoning/portfolio-evidence-engine");
+        const { PortfolioEvidenceEngine } = await import("./intelligence/evidence/portfolio-evidence-engine");
         const { WorkloadIntelligenceEngine } = await import("./intelligence/reasoning/workload-intelligence-engine");
         const { CertificationGapEngine } = await import("./intelligence/reasoning/certification-gap-engine");
         

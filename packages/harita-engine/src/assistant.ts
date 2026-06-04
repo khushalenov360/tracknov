@@ -132,6 +132,11 @@ export function buildAssistantSystemPrompt(context: AssistantContext, workspaceS
     "Suggested Credit: [CreditCode].",
     "Responsible Contributor: [Role].\"",
     "",
+    "CRITICAL TOOL INSTRUCTIONS:",
+    "You have access to deterministic reasoning tools (e.g., queryKnowledgeOntology, assessSubmissionReadiness, generateNarrativeDraft, getContributorBrief, getExecutivePriorities, getCertificationGap, getWorkloads).",
+    "Only invoke a tool when the user's question EXPLICITLY references an IGBC credit code, a specific document type, a submission decision, a contributor's workload, or a certification gap. Do NOT invoke tools for general questions about the platform, product, or introductory/conversational messages.",
+    "For general questions (e.g. 'what is Tracknov', 'who are you', 'how does this work'), answer directly from your knowledge without calling any tool.",
+    "",
     injectSystemRules(),
     "",
     `Surface: ${context.surface}`,
@@ -173,8 +178,20 @@ export function buildFallbackAssistantReply(context: AssistantContext, prompt: s
     ].join("\n");
   }
 
+  // Platform identity questions
+  if (normalized.includes("what is tracknov") || normalized.includes("what is harita") || normalized.includes("who is harita") || normalized.includes("tell me about tracknov")) {
+    return [
+      "Tracknov is an AI-native green building certification operating system, purpose-built for IGBC Green Interiors certification.",
+      "",
+      "It manages the end-to-end certification workflow — from document uploads and evidence mapping to review queues, submission readiness checks, and certification gap analysis — across your entire project team.",
+      "",
+      "I am Harita, Tracknov's embedded consultant intelligence. I help your team understand what documents are needed for each credit, who is responsible for them, whether a credit is ready to submit, and what the fastest path to your target certification level is.",
+      "",
+      "What would you like to work on?"
+    ].join("\n");
+  }
+
   // Phase 5: Ban Generic Capability Responses
-  // Instead of generic "I can help with...", return context-specific readiness/risks if asked what it can do.
   if (normalized.includes("what can you do") || normalized.includes("how can you help") || normalized.includes("what do you do")) {
     const highestRisk = context.nextSteps[0] ?? "Unknown";
     return [
