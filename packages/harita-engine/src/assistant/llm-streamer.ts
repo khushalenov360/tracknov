@@ -12,7 +12,7 @@
 // unless every provider in the chain is simultaneously down.
 // ============================================================
 
-import { env } from "@/lib/env";
+import { env } from "../../../../apps/tracknov-web/lib/env";
 import { buildAssistantSystemPrompt } from "../assistant";
 import { compress } from "headroom-ai";
 
@@ -162,8 +162,33 @@ function buildFallbackChain(
 ): ProviderConfig[] {
   const chain: ProviderConfig[] = [];
 
+  // ── 0. Ollama Local Model ──────────────────────────────────────────────
+  const ollamaUrl = env.ollamaUrl || "http://192.168.29.48:11434/v1/chat/completions";
+  if (ollamaUrl) {
+    chain.push({
+      name: `Ollama (${env.ollamaModel || "gemma2:latest"})`,
+      call: (sp, _contents) =>
+        fetch(ollamaUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: env.ollamaModel || "gemma2:latest",
+            messages: [{ role: "system", content: sp }, ...geminiContents.map(c => ({ role: c.role === "model" ? "assistant" : "user", content: c.parts ? c.parts.map((p: any) => p.text || "").join("") : c.content || "" }))],
+            temperature: 0.4,
+            max_tokens: 1200,
+            stream: true,
+          }),
+          signal: AbortSignal.timeout(300000),
+        }),
+      parseStream: buildOpenAiStream,
+      isRetryable: (s) => s >= 500,
+    });
+  }
+
   // ── 1. Gemini 2.5 Flash (primary) ──────────────────────────────────────
-  const geminiKey = env.geminiApiKeys[0];
+  const geminiKey = process.env.GEMINI_API_KEY || env.geminiApiKeys?.[0];
   if (geminiKey) {
     chain.push({
       name: "Gemini 2.5 Flash",
@@ -206,10 +231,10 @@ function buildFallbackChain(
   // Uses the same API key but a different model with a separate quota bucket.
   if (geminiKey) {
     chain.push({
-      name: "Gemini 1.5 Flash",
+      name: "Gemini 3.5 Flash",
       call: (sp, contents) =>
         fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse",
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse",
           {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
@@ -225,8 +250,8 @@ function buildFallbackChain(
     });
   }
 
-  // ── 3. Groq Llama-3.3-70b (independent infra, extremely fast) ──────────
-  const groqKey = env.groqApiKeys[0];
+  // ── 3. Groq Llama-3.3-70b ──────────────────────────────────────────────
+  const groqKey = process.env.GROQ_API_KEY || env.groqApiKeys?.[0];
   if (groqKey) {
     chain.push({
       name: "Groq Llama-3.3-70b",
@@ -250,33 +275,8 @@ function buildFallbackChain(
     });
   }
 
-  // ── 4. OpenAI GPT-4o-mini (direct, independent infra) ─────────────────
-  const openAiKey = env.openAiApiKeys[0];
-  if (openAiKey) {
-    chain.push({
-      name: "OpenAI GPT-4o-mini",
-      call: (sp, _contents) =>
-        fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${openAiKey}`,
-          },
-          body: JSON.stringify({
-            model: env.openAiModel || "gpt-4o-mini",
-            messages: [{ role: "system", content: sp }],
-            temperature: 0.4,
-            max_tokens: 1200,
-            stream: true,
-          }),
-        }),
-      parseStream: buildOpenAiStream,
-      isRetryable: (s) => s === 429 || s >= 500,
-    });
-  }
-
-  // ── 5. OpenRouter (last resort, any key available) ─────────────────────
-  const openRouterKey = env.openRouterApiKeys[0];
+  // ── 4. OpenRouter (Final Fallback) ─────────────────────────────────────
+  const openRouterKey = process.env.OPENROUTER_API_KEY || env.openRouterApiKeys?.[0];
   if (openRouterKey) {
     chain.push({
       name: "OpenRouter GPT-4o-mini",
@@ -324,14 +324,14 @@ export async function createAiStream(
   }));
 
   try {
-    const compressionResult = await compress(geminiContents, { 
-      model: "gemini-2.5-flash", 
-      fallback: true 
-    });
-    geminiContents = compressionResult.messages || geminiContents;
-    if (process.env.HARITA_DEBUG === "true" && compressionResult.tokensSaved) {
-      console.log(`[Headroom] Saved ${compressionResult.tokensSaved} tokens (${compressionResult.savingsPercent?.toFixed(1)}%)`);
-    }
+    // const compressionResult = await compress(geminiContents, { 
+    //   model: "gemini-2.5-flash", 
+    //   fallback: true 
+    // });
+    // geminiContents = compressionResult.messages || geminiContents;
+    // if (process.env.HARITA_DEBUG === "true" && compressionResult.tokensSaved) {
+    //   console.log(`[Headroom] Saved ${compressionResult.tokensSaved} tokens (${compressionResult.savingsPercent?.toFixed(1)}%)`);
+    // }
   } catch (err) {
     if (process.env.HARITA_DEBUG === "true") {
       console.warn(`[Headroom] Compression warning:`, err);
@@ -409,19 +409,19 @@ export async function tryDetectFunctionCalls(
   }));
 
   try {
-    const compressionResult = await compress(geminiContents, { 
-      model: "gemini-2.5-flash", 
-      fallback: true 
-    });
-    geminiContents = compressionResult.messages || geminiContents;
+    // const compressionResult = await compress(geminiContents, { 
+    //   model: "gemini-2.5-flash", 
+    //   fallback: true 
+    // });
+    // geminiContents = compressionResult.messages || geminiContents;
   } catch (err) {
     // Ignore compression errors and proceed with original context
   }
 
   // Try every Gemini key available (supports multiple keys for higher quota)
-  for (const apiKey of env.geminiApiKeys) {
+  for (const apiKey of [process.env.GEMINI_API_KEY, ...(env.geminiApiKeys || [])].filter(Boolean)) {
     // Try primary model first, then fallback model
-    for (const model of ["gemini-2.5-flash", "gemini-1.5-flash"]) {
+    for (const model of ["gemini-2.5-flash", "gemini-3.5-flash"]) {
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,

@@ -12,19 +12,21 @@ import {
 } from "./stream-utils";
 
 export function buildProviderAttempts(): ProviderAttempt[] {
-  const configuredOrder: AiProvider[] = ["doubleword", "gemini", "groq", "openrouter"];
+  const configuredOrder: AiProvider[] = ["ollama", "doubleword", "gemini", "groq", "openrouter"];
   const requestedProvider = env.aiProvider.toLowerCase();
   const order = configuredOrder.includes(requestedProvider as AiProvider)
     ? [requestedProvider as AiProvider, ...configuredOrder.filter((provider) => provider !== requestedProvider)]
     : configuredOrder;
 
   const keysByProvider: Record<AiProvider, string[]> = {
+    ollama: ["local"],
     doubleword: env.doublewordApiKeys,
     gemini: env.geminiApiKeys,
     groq: env.groqApiKeys,
     openrouter: env.openRouterApiKeys,
   };
   const modelByProvider: Record<AiProvider, string> = {
+    ollama: env.ollamaModel || "gemma2",
     doubleword: env.doublewordModel,
     gemini: env.geminiModel,
     groq: env.groqModel,
@@ -32,7 +34,7 @@ export function buildProviderAttempts(): ProviderAttempt[] {
   };
 
   return order.flatMap((provider) =>
-    keysByProvider[provider].map((apiKey) => ({
+    (keysByProvider[provider] || []).map((apiKey) => ({
       provider,
       model: modelByProvider[provider],
       apiKey,
@@ -84,6 +86,9 @@ export async function callGeminiWithTools(
 }
 
 function openAiCompatibleEndpoint(provider: AiProvider) {
+  if (provider === "ollama") {
+    return env.ollamaUrl || "http://192.168.29.48:11434/v1/chat/completions";
+  }
   if (provider === "doubleword") {
     return "https://api.doubleword.ai/v1/chat/completions";
   }
@@ -98,9 +103,11 @@ function openAiCompatibleEndpoint(provider: AiProvider) {
 
 function openAiHeaders(attempt: ProviderAttempt): Record<string, string> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${attempt.apiKey}`,
+    "Content-Type": "application/json"
   };
+  if (attempt.provider !== "ollama") {
+    headers["Authorization"] = `Bearer ${attempt.apiKey}`;
+  }
   if (attempt.provider === "openrouter") {
     headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
     headers["X-Title"] = "Tracknov";

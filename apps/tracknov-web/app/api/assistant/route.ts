@@ -36,6 +36,7 @@ import { assembleRuntimeContext, formatRuntimeContext } from "@tracknov/harita-e
 import { isFileQuestion, isUploadMappingIntent, buildAttachmentAnalysisReply, getProjectIdFromContext } from "@tracknov/harita-engine/assistant/attachments";
 import { applyResponseGovernance, logAiInteraction, tryDeterministicAnswer } from "@tracknov/harita-engine/assistant/governance-filters";
 import { tryDetectFunctionCalls } from "@tracknov/harita-engine/assistant/ai-providers";
+import { getCurrentUser } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,16 @@ export async function POST(request: Request) {
   }
 
   const focusedProjectId = getProjectIdFromContext(context);
-  const runtimeCtx = await assembleRuntimeContext(focusedProjectId);
+  console.log("[route.ts] Calling assembleRuntimeContext with focusedProjectId:", focusedProjectId);
+  const reqUser = await getCurrentUser();
+  const runtimeCtx = await assembleRuntimeContext(focusedProjectId, reqUser);
+  
+  if (!runtimeCtx) {
+    console.log("[route.ts] assembleRuntimeContext returned null!");
+  } else if (!runtimeCtx.user) {
+    console.log("[route.ts] runtimeCtx.user is null!");
+  }
+
   if (!runtimeCtx || !runtimeCtx.user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -302,6 +312,7 @@ export async function POST(request: Request) {
       `Resolved role: ${role}`,
       `Current Tone: ${resolvedTone}`,
       "Responses must be grounded in the workspace snapshot attached in system instructions.",
+      "MANDATORY FORMATTING RULE (Explanation-First Architecture): Every recommendation MUST include the following explicit sections: 'Answer:', 'Evidence:', 'Reasoning:', 'Source:', and 'Recommended Action:'. Do not deviate from this structure for recommendations."
     ],
   };
   const mergedContext = { ...enrichedContext, summary: context.summary + "\n\n" + toneInstructions };
