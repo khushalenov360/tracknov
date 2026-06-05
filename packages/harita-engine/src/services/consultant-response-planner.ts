@@ -28,26 +28,28 @@ When evaluating evidence or answering questions:
 - LOW Confidence: DO NOT fallback. Ask exactly ONE clarifying question. Never use generic fallback responses.
 
 MANDATORY RESPONSE FORMAT (Phase 4):
-Structure your response cleanly using markdown. Use blank lines between sections.
+For complex credit, risk, or evidence analysis, structure your response cleanly using markdown. Use blank lines between sections.
 NEVER wrap multiple sections inside a single bullet point.
 NEVER start with "Previous Context" or recap what the system reported.
 NEVER use preamble phrases like "I analyzed the data" or "Here is the breakdown".
 
-Provide your response in the following sequence:
+For simple conversational queries, greetings, or general platform questions (e.g. "what is tracknov"), ANSWER NATURALLY in 1-2 paragraphs WITHOUT using the structured headings below.
 
-1. [Start immediately with the answer in 1-3 sentences. Be specific. Use actual credit codes, names, and numbers from the project context. Do not use any headings or labels for this first section.]
+When answering complex credit analysis, provide your response in the following sequence:
 
-2. **Evidence** (if applicable):
-[Bullet list of actual data points from the project — credit codes, assignment names, completion %, document counts. Not generic IGBC facts.]
+1. [Answer: Start immediately with the answer in 1-3 sentences. Be specific.]
 
-3. **IGBC Relevance**:
-[One short paragraph on how this maps to IGBC certification requirements.]
+2. **Evidence**:
+[Bullet list of actual data points from the project or uploaded documents.]
 
-4. **Gap / Risk**:
-[What is actually missing or at risk in THIS project based on the context provided. Be specific, not generic.]
+3. **Reasoning**:
+[Explanation of how the evidence supports the answer.]
+
+4. **Source**:
+[Explicit mention of the source document, requirement, or workflow state.]
 
 5. **Recommended Next Action**:
-[One concrete, specific, operational next step — name the person, credit, or action.]
+[One concrete, specific, operational next step.]
 
 RULES:
 - Use a blank line (two newlines) between every section.
@@ -64,26 +66,26 @@ Answer the question FIRST. Explain workflows only if asked or absolutely necessa
       properties: {
         directAnswer: {
           type: "STRING",
-          description: "A clear, concise answer to the user's specific question (e.g., 'This drawing appears to be an interior area chart.')"
+          description: "A clear, concise answer to the user's specific question."
         },
         evidence: {
           type: "STRING",
           description: "What specific data or facts lead to this conclusion based on project memory or the active document."
         },
-        igbcRelevance: {
+        reasoning: {
           type: "STRING",
-          description: "How this impacts the certification (e.g., 'For IGBC, this supports EDA documentation requirements.')"
+          description: "Explanation of how the evidence supports the answer."
         },
-        gapOrRisk: {
+        source: {
           type: "STRING",
-          description: "What is missing, blocking, or risky about the current state (e.g., 'However, occupancy calculations are not visible.')"
+          description: "Explicit mention of the source document, requirement, or workflow state."
         },
         recommendedNextAction: {
           type: "STRING",
           description: "One clear, operational next step the user should take."
         }
       },
-      required: ["directAnswer", "evidence", "igbcRelevance", "gapOrRisk", "recommendedNextAction"]
+      required: ["directAnswer", "evidence", "reasoning", "source", "recommendedNextAction"]
     };
   }
 }

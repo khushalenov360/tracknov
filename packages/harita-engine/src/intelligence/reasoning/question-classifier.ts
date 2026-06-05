@@ -22,7 +22,8 @@ export enum QuestionType {
   NARRATIVE_ASSISTANCE = "NARRATIVE_ASSISTANCE",
   CLARIFICATION_ASSISTANCE = "CLARIFICATION_ASSISTANCE",
   CONTRIBUTOR_COPILOT = "CONTRIBUTOR_COPILOT",
-  GENERAL = "GENERAL"
+  GENERAL = "GENERAL",
+  FILE_MAPPING_EXPLANATION = "FILE_MAPPING_EXPLANATION"
 }
 
 export class QuestionClassifier {
@@ -122,6 +123,11 @@ export class QuestionClassifier {
       )
     ) {
       return QuestionType.CONTRIBUTOR_COPILOT;
+    }
+
+    // FILE_MAPPING_EXPLANATION
+    if (q.includes("why") && (q.includes("map") || q.includes("mapped") || q.includes("suggest") || q.includes("classified"))) {
+      return QuestionType.FILE_MAPPING_EXPLANATION;
     }
 
     // ACTION_REQUEST (Phase 9 Threshold)

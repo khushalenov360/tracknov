@@ -18,7 +18,7 @@ export type AssistantRequest = {
   idempotencyKey?: string | null;
 };
 
-export type AiProvider = "doubleword" | "gemini" | "groq" | "openrouter";
+export type AiProvider = "ollama" | "doubleword" | "gemini" | "groq" | "openrouter";
 
 export type ProviderAttempt = {
   provider: AiProvider;

@@ -365,6 +365,17 @@ export const TOOLS: ToolDefinition[] = [
     description: "Calculate the mathematical gap between secured points, points at risk, and the target certification level.",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  {
+    name: "discardArtifact",
+    description: "Use this to discard an artifact (e.g. an uploaded image or document) from the current session context so it will no longer influence reasoning or narrative generation.",
+    parameters: {
+      type: "object",
+      properties: {
+        artifactId: { name: "artifactId", type: "string", description: "The ID of the artifact to discard. Usually the document ID." },
+      },
+      required: ["artifactId"],
+    },
+  },
 ];
 
 function toGeminiTools(): Record<string, unknown>[] {
@@ -686,6 +697,20 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
         return { ok: true, data: "Memory stored successfully." };
       } catch (error: any) {
         return { ok: false, error: error.message ?? "Failed to store memory." };
+      }
+    }
+
+    case "discardArtifact": {
+      try {
+        const artifactId = String(args.artifactId ?? "");
+        if (!artifactId) return { ok: false, error: "artifactId is required." };
+        if (!resolvedProjectId) return { ok: false, error: "projectId is required in context." };
+        
+        const { contextIsolationEngine, ArtifactState } = await import("@tracknov/harita-engine/runtime/context-isolation-engine");
+        await contextIsolationEngine.setArtifactState(user.id, resolvedProjectId, artifactId, ArtifactState.DISCARDED);
+        return { ok: true, data: `Artifact ${artifactId} has been discarded and isolated from context.` };
+      } catch (error: any) {
+        return { ok: false, error: error.message ?? "Failed to discard artifact." };
       }
     }
 

@@ -136,6 +136,18 @@ export class HaritaRuntimeService {
   }
 
   /**
+   * Retrieve all raw semantic memory rows.
+   */
+  async getSessionMemoryRaw(sessionId: string): Promise<any[]> {
+    const { data } = await this.admin
+      .from("semantic_memory")
+      .select("memory_type, memory_key, memory_value")
+      .eq("session_id", sessionId);
+
+    return data ?? [];
+  }
+
+  /**
    * Build the augmented context for the AI prompt.
    */
   async buildAugmentedContext(
@@ -149,7 +161,7 @@ export class HaritaRuntimeService {
     return {
       ...baseContext,
       facts: [
-        ...baseContext.facts,
+        ...(baseContext.facts || []),
         ...memories
       ]
     };
