@@ -81,22 +81,28 @@ end;
 -- ---------------------------------------------------------------------------
 -- Convert to ENUM-backed fields
 -- ---------------------------------------------------------------------------
-alter table public.projects
-  alter column status type public.project_state_enum
-  using status::public.project_state_enum;
-
-alter table public.credits
-  alter column status type public.credit_state_enum
-  using status::public.credit_state_enum;
-
-alter table public.documents
-  alter column status type public.document_state_enum
-  using status::public.document_state_enum;
-
 -- Legacy check constraints no longer needed for enum-backed columns.
 alter table public.projects drop constraint if exists projects_status_check;
 alter table public.credits drop constraint if exists credits_status_check;
 alter table public.documents drop constraint if exists documents_status_check;
+
+alter table public.projects alter column status drop default;
+alter table public.projects
+  alter column status type public.project_state_enum
+  using status::public.project_state_enum;
+alter table public.projects alter column status set default 'active'::public.project_state_enum;
+
+alter table public.credits alter column status drop default;
+alter table public.credits
+  alter column status type public.credit_state_enum
+  using status::public.credit_state_enum;
+alter table public.credits alter column status set default 'assigned'::public.credit_state_enum;
+
+alter table public.documents alter column status drop default;
+alter table public.documents
+  alter column status type public.document_state_enum
+  using status::public.document_state_enum;
+alter table public.documents alter column status set default 'uploaded'::public.document_state_enum;
 
 -- ---------------------------------------------------------------------------
 -- CHECK constraints (extra safety)
@@ -185,11 +191,8 @@ create policy "workflow_transitions_read_all_authenticated"
 -- ---------------------------------------------------------------------------
 -- Audit table enrichment
 -- ---------------------------------------------------------------------------
-alter table public.workflow_logs
-  add column if not exists is_override boolean not null default false,
-  add column if not exists override_reason text;
+-- workflow_logs alteration moved to 0126
 
--- ---------------------------------------------------------------------------
 -- Trigger function: transition + role + dependency + audit
 -- ---------------------------------------------------------------------------
 create or replace function public.resolve_workflow_actor_role(

@@ -8,21 +8,14 @@ begin
   end if;
 end $$;
 
-do $$
-begin
-  if exists (select 1 from pg_type where typname = 'workflow_state') then
-    begin
-      alter type public.workflow_state add value if not exists 'DRAFT';
-      alter type public.workflow_state add value if not exists 'READY';
-      alter type public.workflow_state add value if not exists 'SUBMITTED';
-      alter type public.workflow_state add value if not exists 'UNDER_REVIEW';
-      alter type public.workflow_state add value if not exists 'APPROVED';
-      alter type public.workflow_state add value if not exists 'REJECTED';
-    exception when duplicate_object then
-      null;
-    end;
-  end if;
-end $$;
+COMMIT;
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'DRAFT';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'READY';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'SUBMITTED';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'UNDER_REVIEW';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'APPROVED';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'REJECTED';
+BEGIN;
 
 alter table if exists public.credit_stages
   add column if not exists project_credit_id uuid references public.project_credits(id) on delete cascade;
@@ -217,4 +210,6 @@ begin
   return v_document_id;
 end;
 $$;
+
+COMMIT;
 

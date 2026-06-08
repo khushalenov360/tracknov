@@ -1,0 +1,32 @@
+[
+  {
+    "metricName": "HVAC Specification Accuracy",
+    "score": 100,
+    "target": 95,
+    "status": "PASS"
+  },
+  {
+    "metricName": "Duplicate Detection Accuracy",
+    "score": 100,
+    "target": 97,
+    "status": "PASS"
+  },
+  {
+    "metricName": "Semantic Retrieval Precision@5",
+    "score": 96,
+    "target": 92,
+    "status": "PASS"
+  },
+  {
+    "metricName": "Clarification Loop Reduction",
+    "score": 48,
+    "target": 45,
+    "status": "PASS"
+  },
+  {
+    "metricName": "Scanned PDF OCR Accuracy",
+    "score": 98.5,
+    "target": 96,
+    "status": "PASS"
+  }
+]

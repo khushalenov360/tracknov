@@ -1,0 +1,180 @@
+Every future Harita release must answer these correctly.
+
+I would organize them by intelligence domain.
+
+SECTION A — Assignment Intelligence (15)
+A01
+Who owns EDA C1?
+A02
+Who owns the Drawing requirement for EDA C1?
+A03
+Who owns the Calculation & Tables requirement for EDA C1?
+A04
+Why is the Architect assigned Drawings for EDA C1?
+A05
+Why is the Architect assigned Calculations for EDA C1?
+A06
+Which contributors are assigned to EDA C1?
+A07
+Which requirements currently have no contributor assigned?
+A08
+Which credits have unassigned deliverables?
+A09
+Which contributor has the highest workload?
+A10
+Which contributor has the lowest workload?
+A11
+What credits are currently assigned to the Architect?
+A12
+What credits are currently assigned to the Contractor?
+A13
+What credits are currently assigned to the Project Manager?
+A14
+Which assignments are overdue?
+A15
+What assignment changes would reduce project risk?
+SECTION B — Evidence Intelligence (15)
+B01
+What evidence is missing for EDA C1?
+B02
+Which documents are incomplete?
+B03
+Which documents have been rejected?
+B04
+Which credits have rejected evidence?
+B05
+What documents must be uploaded before EDA C1 can be reviewed?
+B06
+Which credits are missing calculations?
+B07
+Which credits are missing drawings?
+B08
+Which credits are missing narratives?
+B09
+Which uploaded documents are not mapped to any credit?
+B10
+Which uploaded documents have the weakest evidence value?
+B11
+What evidence is preventing submission?
+B12
+Which documents require resubmission?
+B13
+Which credits have complete evidence packages?
+B14
+Which evidence gaps pose the highest risk?
+B15
+What evidence should be prioritized next?
+SECTION C — Blocker & Risk Intelligence (15)
+C01
+What is preventing EDA C1 from being submitted today?
+C02
+What are the top risks in EDA C1?
+C03
+Which credits are currently blocked?
+C04
+Why is EDA C1 blocked?
+C05
+Which blockers have the greatest certification impact?
+C06
+Which risks require immediate attention?
+C07
+Which credits are most likely to fail review?
+C08
+Which credits are least likely to achieve compliance?
+C09
+Which rejected documents create the highest risk?
+C10
+What risks are caused by missing assignments?
+C11
+What risks are caused by missing evidence?
+C12
+Which risks threaten Gold certification?
+C13
+Which risks threaten Platinum certification?
+C14
+What is the single biggest project risk?
+C15
+How can the current project risks be mitigated?
+SECTION D — Readiness Intelligence (15)
+D01
+What is the readiness score of EDA C1?
+D02
+Why is EDA C1 only 20% complete?
+D03
+Which credits are submission-ready?
+D04
+Which credits are review-ready?
+D05
+Which credits are farthest from completion?
+D06
+Which credits could become ready this week?
+D07
+What prevents EDA C1 from becoming review-ready?
+D08
+What prevents EDA C1 from becoming submission-ready?
+D09
+Which credits require the least effort to complete?
+D10
+Which credits require the most effort to complete?
+D11
+What is the overall project readiness?
+D12
+What is delaying project completion?
+D13
+How much progress was made this month?
+D14
+Which credits improved readiness recently?
+D15
+Which credits lost readiness recently?
+SECTION E — Certification Intelligence (10)
+E01
+What certification level are we currently projected to achieve?
+E02
+What is preventing Gold certification?
+E03
+What is preventing Platinum certification?
+E04
+How many points are currently secured?
+E05
+How many points remain at risk?
+E06
+Which credits contribute most to Gold certification?
+E07
+Which credits contribute most to Platinum certification?
+E08
+What certification points are easiest to secure next?
+E09
+Which certification points are most likely to be lost?
+E10
+What is the shortest path to Gold certification?
+SECTION F — Recommendation Intelligence (15)
+F01
+What should we do next?
+F02
+Which action would improve EDA C1 readiness the most?
+F03
+Which action would reduce project risk the most?
+F04
+Which action would improve certification readiness the most?
+F05
+What should the Architect do next?
+F06
+What should the Project Manager do next?
+F07
+What should the Contractor do next?
+F08
+What is the highest-priority task in the project?
+F09
+What are the top 5 actions we should take this week?
+F10
+Which blocked credit should we resolve first?
+F11
+Where should resources be allocated?
+F12
+Which contributor needs support?
+F13
+Which task provides the highest certification impact?
+F14
+If we only have 30 minutes, what should we do?
+F15
+What is the recommended action plan for the next 7 days?

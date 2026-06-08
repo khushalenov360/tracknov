@@ -16,6 +16,10 @@ BEGIN
           AND p.prokind = 'f' -- functions
           AND (p.proconfig IS NULL OR NOT ('search_path' = ANY (p.proconfig::text[]))) -- search_path not set
     LOOP
-        EXECUTE format('ALTER FUNCTION %I.%I(%s) SET search_path = public', rec.schema_name, rec.function_name, rec.args);
+        BEGIN
+            EXECUTE format('ALTER FUNCTION %I.%I(%s) SET search_path = public', rec.schema_name, rec.function_name, rec.args);
+        EXCEPTION WHEN OTHERS THEN
+            NULL;
+        END;
     END LOOP;
 END $$;

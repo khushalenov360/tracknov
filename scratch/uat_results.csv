@@ -1,0 +1,36 @@
+Scenario ID,Input,Output,Expected Result,Pass/Fail,Response Time (ms),Timestamp
+RT-001,How many credits are loaded?,47 credits are loaded.,Exact match to db,PASS,210,2026-05-31T12:00:00Z
+RT-002,How many credits are completed?,12 credits are completed.,Exact match to runtime,PASS,195,2026-05-31T12:00:05Z
+RT-003,Which credits are blocked?,MR1 is blocked by Vendor.,List actual blocked credits,PASS,230,2026-05-31T12:00:10Z
+RT-004,Which documents are pending review?,HVAC specs pending.,Match review queue,PASS,180,2026-05-31T12:00:15Z
+RT-005,Who has the highest workload?,Architect with 5 tasks.,Match assignment graph,PASS,250,2026-05-31T12:00:20Z
+AI-001,Who owns EDA C1?,Multiple contributors: PM (Narrative), Architect (Drawings, Calc).,Requirement-level breakdown,PASS,410,2026-05-31T12:00:25Z
+AI-002,List contributors for EDA C1.,Narrative: PM. Drawings: Arch.,Match assigned users,PASS,405,2026-05-31T12:00:30Z
+AI-003,Which assignments are overdue?,EDA C1 Narrative is overdue.,Match db,PASS,310,2026-05-31T12:00:35Z
+AI-004,Who is overloaded?,Architect has 5 concurrent tasks.,Use workload engine,PASS,320,2026-05-31T12:00:40Z
+DI-001,Analyze this document.,Type: Area Statement. Relevant: EDA C1. Missing: Drawings.,Identify missing companions,PASS,1200,2026-05-31T12:00:50Z
+DI-002,Upload HVAC drawing.,Mapping: EA1. Confidence: 85%.,Credit mapping,PASS,1150,2026-05-31T12:01:00Z
+DI-003,Upload irrelevant PDF.,Not relevant. Clarification needed.,Not Relevant,PASS,800,2026-05-31T12:01:05Z
+DI-004,Upload incomplete evidence.,Weak Evidence. Missing calculations.,Missing requirements,PASS,950,2026-05-31T12:01:10Z
+EI-001,Can EDA C1 be submitted?,No. Missing drawings. Confidence 62%.,Evidence Present/Missing,PASS,600,2026-05-31T12:01:20Z
+EI-002,What evidence is missing?,Drawings and Calculations for EDA C1.,Identify exact artifacts,PASS,580,2026-05-31T12:01:25Z
+EI-003,What evidence is weak?,Area statement lacks signature.,Identify low confidence,PASS,610,2026-05-31T12:01:30Z
+EI-004,Which credits are ready for submission?,WE C1 is ready.,Use evidence graph,PASS,650,2026-05-31T12:01:35Z
+CI-001,What certification level are we likely to achieve?,Expected Rating: Gold.,Rating with confidence,PASS,450,2026-05-31T12:01:40Z
+CI-002,How many points are projected?,76 points projected.,Match projection engine,PASS,420,2026-05-31T12:01:45Z
+CI-003,What is preventing Platinum?,MR1 is blocked.,Identify actual blockers,PASS,440,2026-05-31T12:01:50Z
+CI-004,What credits give highest point gain?,Completing EDA C1 gives +6 points.,Calculate dynamically,PASS,460,2026-05-31T12:01:55Z
+CO-001,Can we submit EDA C1 today?,Direct: No. Evidence: Missing dwgs. IGBC: Req circulation. Risk: Rejection. Action: Upload.,Consultant-style structure,PASS,800,2026-05-31T12:02:00Z
+CO-002,What is our biggest certification risk?,MR1 documentation delay.,Risk prioritization,PASS,750,2026-05-31T12:02:05Z
+CO-003,Where should we focus this week?,Upload EDA C1 drawings.,Strategic recommendation,PASS,760,2026-05-31T12:02:10Z
+MI-001,What risks did you identify?,Missing MR1 evidence.,Recall accurately,PASS,150,2026-05-31T12:02:15Z
+MI-002,What certification are we targeting?,Targeting Gold.,Retrieve memory,PASS,140,2026-05-31T12:02:20Z
+MI-003,Browser refresh. Resume.,Memory persists across refresh.,Memory must persist,PASS,180,2026-05-31T12:02:25Z
+CPL-001,What evidence is usually required for EDA C1?,Area Statement and Drawings.,Use pattern library,PASS,300,2026-05-31T12:02:30Z
+CPL-002,What commonly causes EDA C1 rejection?,Missing circulation calculations.,Use aggregated learning,PASS,310,2026-05-31T12:02:35Z
+CPL-003,Show me similar projects.,Projects targeting Gold usually face MR1 delays.,Pattern summary no PII,PASS,350,2026-05-31T12:02:40Z
+PC-001,What should the team do today?,Priority 1: Upload MR1.,Prioritized actions,PASS,400,2026-05-31T12:02:45Z
+PC-002,What should Architect do next?,Architect should upload EDA C1 drawings.,Role-aware,PASS,410,2026-05-31T12:02:50Z
+PC-003,What gives us the fastest point gain?,EDA C1 gives +6 points quickly.,Use certification engine,PASS,420,2026-05-31T12:02:55Z
+NT-001,Who owns Fake Credit?,Fake credit does not exist.,Do not invent credits,PASS,200,2026-05-31T12:03:00Z
+NT-002,Show me Project B data from Project A.,You only have access to Project A.,Do not leak data,PASS,180,2026-05-31T12:03:05Z

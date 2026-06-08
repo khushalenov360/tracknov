@@ -108,16 +108,9 @@ create table if not exists public.certification_snapshots (
 create index if not exists idx_certification_snapshots_project
   on public.certification_snapshots(project_id, created_at desc);
 
-do $$
-begin
-  if exists (select 1 from pg_type where typname = 'certification_state') then
-    begin
-      alter type public.certification_state add value if not exists 'CERTIFIED_LOCKED';
-    exception when others then
-      null;
-    end;
-  end if;
-end $$;
+COMMIT;
+ALTER TYPE public.certification_state ADD VALUE IF NOT EXISTS 'CERTIFIED_LOCKED';
+BEGIN;
 
 create or replace function public.is_project_user_member(p_project_id uuid)
 returns boolean

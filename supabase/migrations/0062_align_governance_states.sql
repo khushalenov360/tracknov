@@ -4,50 +4,17 @@
 -- We'll add values to the existing workflow_state enum to avoid breaking existing relations,
 -- and we'll deprecate the old ones in logic.
 
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflow_state') THEN
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'ASSIGNED';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'IN_PROGRESS';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'MAPPED';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'L1_REVIEW';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'L1_REJECTED';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'READY_FOR_L3';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'UNDER_L3_REVIEW';
-        ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'REVOKED';
-    END IF;
-END $$;
+COMMIT;
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'ASSIGNED';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'IN_PROGRESS';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'MAPPED';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'L1_REVIEW';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'L1_REJECTED';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'READY_FOR_L3';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'UNDER_L3_REVIEW';
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'REVOKED';
+BEGIN;
 
--- 2. Migrate existing data to the new governance states
--- Mapping:
--- DRAFT -> ASSIGNED
--- READY -> IN_PROGRESS
--- SUBMITTED -> L1_REVIEW
--- UNDER_REVIEW -> UNDER_L3_REVIEW
--- RESUBMITTED -> IN_PROGRESS
--- ELIMINATED -> REJECTED
-
-UPDATE public.project_document 
-SET workflow_state = CASE 
-    WHEN workflow_state::text = 'DRAFT' THEN 'ASSIGNED'::public.workflow_state
-    WHEN workflow_state::text = 'READY' THEN 'IN_PROGRESS'::public.workflow_state
-    WHEN workflow_state::text = 'SUBMITTED' THEN 'L1_REVIEW'::public.workflow_state
-    WHEN workflow_state::text = 'UNDER_REVIEW' THEN 'UNDER_L3_REVIEW'::public.workflow_state
-    WHEN workflow_state::text = 'RESUBMITTED' THEN 'IN_PROGRESS'::public.workflow_state
-    WHEN workflow_state::text = 'ELIMINATED' THEN 'REJECTED'::public.workflow_state
-    ELSE workflow_state
-END;
-
-UPDATE public.submittals
-SET state = CASE 
-    WHEN state::text = 'DRAFT' THEN 'ASSIGNED'::public.workflow_state
-    WHEN state::text = 'READY' THEN 'IN_PROGRESS'::public.workflow_state
-    WHEN state::text = 'SUBMITTED' THEN 'L1_REVIEW'::public.workflow_state
-    WHEN state::text = 'UNDER_REVIEW' THEN 'UNDER_L3_REVIEW'::public.workflow_state
-    WHEN state::text = 'RESUBMITTED' THEN 'IN_PROGRESS'::public.workflow_state
-    WHEN state::text = 'ELIMINATED' THEN 'REJECTED'::public.workflow_state
-    ELSE state
-END;
 
 -- 3. Hardening validation rules in the DB
 -- Ensure Approval without comments is blocked (handled in service layer, but could be trigger)
@@ -84,3 +51,31 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMIT;
+
+BEGIN;
+
+UPDATE public.project_document 
+SET workflow_state = CASE 
+    WHEN workflow_state::text = 'DRAFT' THEN 'ASSIGNED'::public.workflow_state
+    WHEN workflow_state::text = 'READY' THEN 'IN_PROGRESS'::public.workflow_state
+    WHEN workflow_state::text = 'SUBMITTED' THEN 'L1_REVIEW'::public.workflow_state
+    WHEN workflow_state::text = 'UNDER_REVIEW' THEN 'UNDER_L3_REVIEW'::public.workflow_state
+    WHEN workflow_state::text = 'RESUBMITTED' THEN 'IN_PROGRESS'::public.workflow_state
+    WHEN workflow_state::text = 'ELIMINATED' THEN 'REJECTED'::public.workflow_state
+    ELSE workflow_state
+END;
+
+UPDATE public.submittals
+SET state = CASE 
+    WHEN state::text = 'DRAFT' THEN 'ASSIGNED'::public.workflow_state
+    WHEN state::text = 'READY' THEN 'IN_PROGRESS'::public.workflow_state
+    WHEN state::text = 'SUBMITTED' THEN 'L1_REVIEW'::public.workflow_state
+    WHEN state::text = 'UNDER_REVIEW' THEN 'UNDER_L3_REVIEW'::public.workflow_state
+    WHEN state::text = 'RESUBMITTED' THEN 'IN_PROGRESS'::public.workflow_state
+    WHEN state::text = 'ELIMINATED' THEN 'REJECTED'::public.workflow_state
+    ELSE state
+END;
+
+COMMIT;

@@ -40,7 +40,7 @@ create policy "workflow logs readable by project members"
     or exists (
       select 1
       from public.project_members pm
-      join public.documents d on d.project_id = pm.project_id
+      join public.project_document d on d.project_id = pm.project_id
       where workflow_logs.entity_type = 'document'
         and d.id = workflow_logs.entity_id
         and pm.user_id = auth.uid()

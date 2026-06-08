@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "apps/tracknov-web/app/**/page.{tsx,ts,js,jsx}",
+    "apps/tracknov-web/app/**/route.{ts,js}",
+    "apps/tracknov-web/app/**/layout.{tsx,js}",
+    "apps/tracknov-web/app/global-error.{tsx,js}",
+    "apps/tracknov-web/app/not-found.{tsx,js}",
+    "apps/tracknov-web/app/error.{tsx,js}",
+    "apps/tracknov-web/middleware.{ts,js}",
+    "apps/enovait-server/src/index.ts",
+    "packages/harita-engine/src/index.ts",
+    "packages/tracknov-core/src/index.ts",
+    "packages/tracknov-ui/src/index.ts"
+  ],
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ]
+  },
+  "ignorePatterns": [
+    "%TEMP%/**",
+    "scratch/**",
+    "apps/web/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test.js",
+    "**/node_modules/**"
+  ],
+  "duplicates": {
+    "enabled": false
+  },
+  "health": {
+    "ignore": ["**/*"]
+  },
+  "rules": {
+    "unused-files": "warn",
+    "unused-exports": "warn",
+    "unused-types": "warn",
+    "private-type-leaks": "warn",
+    "unused-dependencies": "warn",
+    "unused-dev-dependencies": "warn",
+    "unused-optional-dependencies": "warn",
+    "unused-enum-members": "warn",
+    "unused-class-members": "warn",
+    "unresolved-imports": "warn",
+    "unlisted-dependencies": "warn",
+    "duplicate-exports": "warn",
+    "type-only-dependencies": "warn",
+    "test-only-dependencies": "warn",
+    "circular-dependencies": "warn",
+    "re-export-cycle": "warn",
+    "boundary-violation": "warn",
+    "coverage-gaps": "off",
+    "feature-flags": "off",
+    "stale-suppressions": "warn",
+    "unused-catalog-entries": "warn",
+    "empty-catalog-groups": "warn",
+    "unresolved-catalog-references": "warn",
+    "unused-dependency-overrides": "warn",
+    "misconfigured-dependency-overrides": "warn",
+    "security-client-server-leak": "off",
+    "security-sink": "off"
+  }
+}

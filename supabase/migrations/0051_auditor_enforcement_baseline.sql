@@ -5,16 +5,9 @@
 -- 4) Version/audit lineage append tables
 -- 5) Derived state recalculation hooks
 
-do $$
-begin
-  if exists (select 1 from pg_type where typname = 'workflow_state') then
-    begin
-      alter type public.workflow_state add value if not exists 'ELIMINATED';
-    exception when others then
-      null;
-    end;
-  end if;
-end $$;
+COMMIT;
+ALTER TYPE public.workflow_state ADD VALUE IF NOT EXISTS 'ELIMINATED';
+BEGIN;
 
 do $$
 begin
@@ -93,6 +86,7 @@ create table if not exists public.workflow_history (
 
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id) on delete cascade,
   entity_type text not null,
   entity_id text not null,
   action text not null,
@@ -405,3 +399,5 @@ drop trigger if exists trg_project_document_recalc_derived_states on public.proj
 create trigger trg_project_document_recalc_derived_states
 after insert or update of state, is_latest, project_credit_id on public.project_document
 for each row execute function public.recalc_derived_states_on_doc_change();
+
+COMMIT;

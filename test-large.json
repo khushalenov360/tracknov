@@ -1,0 +1,14 @@
+{
+  "model": "llama3.2:1b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "This is a dummy system prompt that will be repeated to reach 6000 characters. "
+    },
+    {
+      "role": "user",
+      "content": "Hello! Please answer this briefly."
+    }
+  ],
+  "stream": true
+}

@@ -6,7 +6,7 @@ begin;
 -- 1. Normalize Membership Helpers
 -- Ensure they are security definer and robust against RLS
 
-create or replace function public.is_project_user_member(project_uuid uuid)
+create or replace function public.is_project_user_member(p_project_id uuid)
 returns boolean
 language sql
 stable
@@ -15,20 +15,20 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.project_users
-    where project_id = project_uuid
+    where project_id = p_project_id
     and user_id = auth.uid()
   );
 $$;
 
 -- Alias for backward compatibility if needed
-create or replace function public.is_project_member(project_uuid uuid)
+create or replace function public.is_project_member(project uuid)
 returns boolean
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select public.is_project_user_member(project_uuid);
+  select public.is_project_user_member(project);
 $$;
 
 -- 2. Update project_users RLS Policies

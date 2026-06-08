@@ -1,0 +1,25 @@
+# Tracknov AI Assistant Rules
+
+## Mandatory Validation Subroutine
+
+Bypassing or forgetting validation is **unforgivable** in this project. You must strictly adhere to the following workflow whenever an issue or bug is reported:
+
+1. **Root Cause Analysis (`rca_agent`)**
+   - **Trigger:** Whenever the user reports a bug, issue, or unexpected behavior.
+   - **Action:** Before writing any code or proposing a fix, invoke the `rca_agent` subagent.
+   - **Purpose:** To thoroughly search the codebase, trace execution flow, and definitively identify the root cause of the issue to prevent "patchwork" or "bluffing".
+
+2. **Implementation**
+   - Wait for the `rca_agent` to complete its diagnosis.
+   - Apply the fixes structurally based *only* on the verified root cause.
+
+3. **Implementation Validation (`validation_agent`)**
+   - **Trigger:** Immediately after making any codebase changes to fix the issue.
+   - **Action:** Invoke the `validation_agent` subagent.
+   - **Purpose:** To mathematically, logically, and programmatically verify the changes. Ensure there are no regressions, broken imports, or flawed fallbacks.
+   - **Condition:** Do NOT report the issue as "fixed" to the user until the `validation_agent` returns a definitive `PASS`.
+
+## General Guidelines
+- Do not add "Direct Answer:" or any other negative constraint hallucination to system prompts.
+- When working with the IGBC certification engine, always use `max_points` (or `points` in edge functions) and handle 0-point prerequisites gracefully using the nullish coalescing operator `?? 0`.
+- The primary AI provider configured for this system is `atomesus` (Cipher 8B). Do not overwrite this configuration.

@@ -1,12 +1,25 @@
 -- Master tables for IGBC rating systems
-create table if not exists public.rating_systems (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  version text not null,
-  description text,
-  created_at timestamptz not null default timezone('utc', now()),
-  unique(name, version)
-);
+alter table public.rating_systems
+  add column if not exists version text not null default '1.0',
+  add column if not exists description text;
+
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint where conname = 'rating_systems_name_key'
+  ) then
+    alter table public.rating_systems drop constraint rating_systems_name_key;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'rating_systems_name_version_key'
+  ) then
+    alter table public.rating_systems add constraint rating_systems_name_version_key unique(name, version);
+  end if;
+end $$;
 
 create table if not exists public.credit_categories (
   id uuid primary key default gen_random_uuid(),
