@@ -64,9 +64,9 @@ export class DocumentParser {
       }
 
       // Simple regex to extract text from XML tags
-      const textMatches = documentXml.match(/<w:t[^>]*>(.*?)<\/w:t>/g);
-      const text = textMatches 
-        ? textMatches.map(t => t.replace(/<[^>]+>/g, '')).join(" ") 
+      const textMatches = [...documentXml.matchAll(/<w:t[^>]*>(.*?)<\/w:t>/g)];
+      const text = textMatches.length 
+        ? textMatches.map(m => m[1]).join(" ") 
         : "";
 
       return {

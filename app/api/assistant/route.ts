@@ -560,10 +560,10 @@ async function resolveFactualQuery(
   }
 
   // --- Assignment lookup: "who is assigned to [CODE]" ---
-  const assignMatch = q.match(/who.*(assigned|working|owns|responsible).*(to|on|for)?\s+([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i)
-    ?? q.match(/assigned.*(to|on)?\s+([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i);
+  const assignMatch = q.match(/who\s+(?:is\s+|are\s+)?(?:assigned|working|owns|responsible)\s+(?:to\s+|on\s+|for\s+)?([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i)
+    ?? q.match(/assigned\s+(?:to\s+|on\s+)?([a-z]{2,4}\s?[a-z0-9]{1,4}\s*[0-9]{0,2})/i);
   if (assignMatch) {
-    const rawCode = (assignMatch[3] ?? assignMatch[2] ?? "").trim().toUpperCase().replace(/\s+/, " ");
+    const rawCode = (assignMatch[1] ?? "").trim().toUpperCase().replace(/\s+/, " ");
     if (rawCode) {
       const { data: credit } = await reader
         .from("project_credits")

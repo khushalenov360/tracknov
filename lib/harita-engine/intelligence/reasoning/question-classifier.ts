@@ -44,7 +44,7 @@ export class QuestionClassifier {
     const knownRolesEarly = ["architect", "mep consultant", "contractor", "pmc", "sustainability consultant", "structural consultant", "landscape architect"];
     const hasRoleEarly = knownRolesEarly.some(r => q.includes(r));
     if (
-      (hasRoleEarly || q.includes("copilot") || q.match(/what should .* do today/i)) &&
+      (hasRoleEarly || q.includes("copilot") || (q.includes("what should") && q.includes("do today"))) &&
       (
         q.includes("do next") || q.includes("pending") || q.includes("status") ||
         q.includes("what should") || q.includes("what does") || q.includes("copilot") ||
