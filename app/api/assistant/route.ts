@@ -501,7 +501,7 @@ async function resolveFactualQuery(
         `  \u2022 Blocked (at risk): ${blockedPoints} pts`,
         ``,
         `**Total Active Credits:** ${activeCredits.length} credits (${naCredits.length} marked Not Required — excluded from scoring)`,
-        ...(naCredits.length > 0 ? [`**Not Required (NA):** ${naCredits.map(c => c.credit_code).join(", ")} — these ${naPoints} pts are excluded from the total possible score`] : []),
+        ...(naCredits.length > 0 ? [`**Not Required (NA):** ${naCredits.map(c => `${c.credit_code} (${Number(c.max_points ?? 0)} pts)`).join(", ")} — these ${naPoints} pts are excluded from the total possible score`] : []),
         ``,
         `**Maximum certification level achievable:** ${certLevel} (${totalPossible} pts)`,
         `  \u2022 Certified = 50 pts | Silver = 51–59 | Gold = 60–79 | Platinum = 80+`,
