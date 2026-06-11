@@ -1,4 +1,4 @@
-import { logAiRiskReport } from "../telemetry/aiRuntimeAuditLogger";
+import { logAiRiskReport } from "@/lib/core/telemetry/aiRuntimeAuditLogger";
 
 /**
  * TRACKNOV AI EXECUTION HEALTH ENGINE

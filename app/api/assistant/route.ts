@@ -157,7 +157,8 @@ export async function POST(request: Request) {
     if (!workflowCtx || !workflowCtx.user) {
       return new Response("Unauthorized", { status: 401 });
     }
-    const { user: workflowUser, role: workflowRole } = workflowCtx.user;
+    const workflowUser = workflowCtx.user;
+    const workflowRole = workflowCtx.user.role;
     const intentResult = await executeIntent({
       userId: workflowUser.id,
       role: workflowRole,
@@ -239,23 +240,23 @@ export async function POST(request: Request) {
     return createResponseStream(createTextStream(message));
   }
 
-  // P1: Direct-DB factual query layer — REMOVED to force Consultant Pipeline
-  // if (attachments.length === 0) {
-  //   const factualAnswer = await resolveFactualQuery(latestPrompt, focusedProjectId, projectIds, role);
-  //   if (factualAnswer) {
-  //     await logAiInteraction({
-  //       userId: user.id,
-  //       intent: "factual_db_query",
-  //       query: latestPrompt,
-  //       model: "deterministic-db",
-  //       contextSize: 0,
-  //       tokenUsage: 0,
-  //       fallbackUsed: false,
-  //       latencyMs: Date.now() - startedAt,
-  //     });
-  //     return createResponseStream(createTextStream(factualAnswer));
-  //   }
-  // }
+  // P1: Direct-DB factual query layer — handles high-confidence factual questions without LLM
+  if (attachments.length === 0) {
+    const factualAnswer = await resolveFactualQuery(latestPrompt, focusedProjectId, projectIds, role);
+    if (factualAnswer) {
+      await logAiInteraction({
+        userId: user.id,
+        intent: "factual_db_query",
+        query: latestPrompt,
+        model: "deterministic-db",
+        contextSize: 0,
+        tokenUsage: 0,
+        fallbackUsed: false,
+        latencyMs: Date.now() - startedAt,
+      });
+      return createResponseStream(createTextStream(factualAnswer));
+    }
+  }
 
   const isAnalysisAttachmentFlow =
     Boolean(attachments?.length) &&
@@ -322,7 +323,6 @@ export async function POST(request: Request) {
       `Resolved role: ${role}`,
       `Current Tone: ${resolvedTone}`,
       "Responses must be grounded in the workspace snapshot attached in system instructions.",
-      "MANDATORY FORMATTING RULE (Explanation-First Architecture): Every recommendation MUST include the following explicit sections: 'Evidence:', 'Reasoning:', 'Source:', and 'Recommended Action:'. Do not deviate from this structure for recommendations. Begin the response immediately with the answer text itself, without any introductory label or prefix."
     ],
   };
   const mergedContext = { ...enrichedContext, summary: context.summary + "\n\n" + toneInstructions };
@@ -367,7 +367,7 @@ export async function POST(request: Request) {
     }
 
     // Phase 2: Agentic Tool Routing (Allow LLM to call tools on ANY prompt)
-    const toolDetectionSnapshot = sanitizeContextText(combinedSnapshot).slice(0, 4000);
+    const toolDetectionSnapshot = sanitizeContextText(combinedSnapshot);
     const functionCalls = await tryDetectFunctionCalls(mergedContext, messages, toolDetectionSnapshot, role);
 
     if (functionCalls && functionCalls.length > 0) {
@@ -397,7 +397,8 @@ export async function POST(request: Request) {
           fallbackUsed: false,
           latencyMs: Date.now() - startedAt,
         });
-        return createResponseStream(aiStream, navigateTo);
+        const finalStream = applyResponseGovernance(aiStream, session.id);
+        return createResponseStream(finalStream, navigateTo);
       }
     } else {
       // Execute Agentic reasoning fallback if LLM chose NO tools
@@ -452,6 +453,62 @@ async function resolveFactualQuery(
   const reader = env.supabaseServiceRoleKey ? createAdminClient() : createClient();
   const targetIds = focusedProjectId ? [focusedProjectId] : projectIds;
 
+  // --- Score / points query ---
+  if (
+    q.includes("point") || q.includes("score") || q.includes("how much") ||
+    q.includes("total score") || q.includes("max score") || q.includes("maximum score") ||
+    q.includes("comply all") || q.includes("complete all") || q.includes("if we complete")
+  ) {
+    const { data: credits } = await reader
+      .from("project_credits")
+      .select("credit_code, credit_name, status, max_points, na, category_name")
+      .in("project_id", targetIds);
+
+    if (credits?.length) {
+      // Fetch project name for display
+      let projectLabel = "this project";
+      if (focusedProjectId) {
+        const { data: proj } = await reader.from("projects").select("name").eq("id", focusedProjectId).maybeSingle();
+        if (proj?.name) projectLabel = `the ${proj.name} project`;
+      }
+
+      const activeCredits = credits.filter(c => !c.na);
+      const naCredits = credits.filter(c => c.na);
+      const totalPossible = activeCredits.reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+      const currentScore = activeCredits
+        .filter(c => c.status === "APPROVED" || c.status === "complete")
+        .reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+      const inProgressPoints = activeCredits
+        .filter(c => c.status === "IN_PROGRESS")
+        .reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+      const draftPoints = activeCredits
+        .filter(c => c.status === "DRAFT")
+        .reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+      const blockedPoints = activeCredits
+        .filter(c => c.status === "BLOCKED")
+        .reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+      const naPoints = credits.filter(c => c.na).reduce((sum, c) => sum + Number(c.max_points ?? 0), 0);
+
+      const certLevel = totalPossible >= 80 ? "Platinum" : totalPossible >= 60 ? "Gold" : totalPossible >= 50 ? "Silver" : "Certified";
+
+      return [
+        `**If all active credits are complied, ${projectLabel} can achieve a maximum of ${totalPossible} points.**`,
+        ``,
+        `**Score Breakdown:**`,
+        `  \u2022 Currently earned (Approved/Complete): **${currentScore} pts**`,
+        `  \u2022 In Progress (potential): ${inProgressPoints} pts`,
+        `  \u2022 Draft (not yet started): ${draftPoints} pts`,
+        `  \u2022 Blocked (at risk): ${blockedPoints} pts`,
+        ``,
+        `**Total Active Credits:** ${activeCredits.length} credits (${naCredits.length} marked Not Required — excluded from scoring)`,
+        ...(naCredits.length > 0 ? [`**Not Required (NA):** ${naCredits.map(c => c.credit_code).join(", ")} — these ${naPoints} pts are excluded from the total possible score`] : []),
+        ``,
+        `**Maximum certification level achievable:** ${certLevel} (${totalPossible} pts)`,
+        `  \u2022 Certified = 50 pts | Silver = 51–59 | Gold = 60–79 | Platinum = 80+`,
+      ].join("\n");
+    }
+  }
+
   // --- Credit count query ---
   if (
     (q.includes("how many credits") || q.includes("total credits") || q.includes("credits total") || q.includes("how many total credits")) &&
@@ -459,19 +516,22 @@ async function resolveFactualQuery(
   ) {
     const { data: credits } = await reader
       .from("project_credits")
-      .select("id, credit_code, category_name, category, status, project_id")
+      .select("id, credit_code, category_name, category, status, project_id, na, max_points")
       .in("project_id", targetIds);
 
     if (!credits?.length) return null;
 
     const total = credits.length;
-    const complete = credits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
-    const inProgress = credits.filter(c => c.status === "IN_PROGRESS").length;
-    const draft = credits.filter(c => c.status === "DRAFT").length;
-    const blocked = credits.filter(c => c.status === "BLOCKED").length;
+    const naCount = credits.filter(c => c.na).length;
+    const activeCredits = credits.filter(c => !c.na);
+    const complete = activeCredits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
+    const inProgress = activeCredits.filter(c => c.status === "IN_PROGRESS").length;
+    const draft = activeCredits.filter(c => c.status === "DRAFT").length;
+    const blocked = activeCredits.filter(c => c.status === "BLOCKED").length;
+    const naCredits = credits.filter(c => c.na);
 
     const byCategory = new Map<string, number>();
-    for (const c of credits) {
+    for (const c of activeCredits) {
       const cat = c.category_name ?? c.category ?? "Uncategorised";
       byCategory.set(cat, (byCategory.get(cat) ?? 0) + 1);
     }
@@ -482,15 +542,19 @@ async function resolveFactualQuery(
       .join("\n");
 
     return [
-      `**Total Credits: ${total}**`,
+      `**Total Credits: ${total}** (${activeCredits.length} active, ${naCount} not required/NA)`,
       ``,
-      `**By Status:**`,
+      `**Active Credit Status (${activeCredits.length} credits):**`,
       `  • Complete / Approved: ${complete}`,
       `  • In Progress: ${inProgress}`,
       `  • Draft: ${draft}`,
       `  • Blocked: ${blocked}`,
       ``,
-      `**By Category:**`,
+      ...(naCount > 0 ? [
+        `**Not Required / Not Applicable (${naCount}):** ${naCredits.map(c => c.credit_code).join(", ")}`,
+        ``,
+      ] : []),
+      `**Active Credits By Category:**`,
       categoryBreakdown,
     ].join("\n");
   }
@@ -583,7 +647,7 @@ async function resolveFactualQuery(
   ) {
     const { data: credits } = await reader
       .from("project_credits")
-      .select("credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct, category_name")
+      .select("credit_code, credit_name, status, assigned_user_id, responsible_role, completion_pct, category_name, na, max_points")
       .in("project_id", targetIds)
       .order("credit_code");
 
@@ -597,7 +661,9 @@ async function resolveFactualQuery(
       for (const p of profs ?? []) profileMap.set(p.user_id, p.full_name ?? "Unknown");
     }
 
-    const lines = [`**Full Credit Tracker (${credits.length} credits):**`, ``];
+    const activeCredits = credits.filter(c => !c.na);
+    const naCredits = credits.filter(c => c.na);
+    const lines = [`**Full Credit Tracker (${credits.length} total: ${activeCredits.length} active, ${naCredits.length} not required):**`, ``];
     let lastCat = "";
     for (const c of credits) {
       const cat = c.category_name ?? "Uncategorised";
@@ -608,7 +674,9 @@ async function resolveFactualQuery(
       const assigned = c.assigned_user_id
         ? (profileMap.get(c.assigned_user_id) ?? "Unknown")
         : (c.responsible_role ?? "Unassigned");
-      lines.push(`  • ${c.credit_code} | ${c.credit_name ?? ""} | ${c.status} | ${assigned} | ${c.completion_pct ?? 0}%`);
+      const naTag = c.na ? " [NOT REQUIRED]" : "";
+      const maxPts = c.max_points ? ` | ${c.max_points}pts` : "";
+      lines.push(`  • ${c.credit_code} | ${c.credit_name ?? ""} | ${c.status}${naTag}${maxPts} | ${assigned} | ${c.completion_pct ?? 0}%`);
     }
     return lines.join("\n");
   }

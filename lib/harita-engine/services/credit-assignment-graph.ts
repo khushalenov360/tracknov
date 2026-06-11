@@ -1,5 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { CreditRow, ProfileMap } from "../assistant/snapshot";
+import { CreditRow, ProfileMap } from "../lib/runtime/runtime-context-assembler";
 
 export interface RequirementAssignment {
   requirementId: string;

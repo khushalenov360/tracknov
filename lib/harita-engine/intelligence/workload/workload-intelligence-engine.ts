@@ -39,6 +39,7 @@ export class WorkloadIntelligenceEngine {
     for (const [creditId, node] of creditMap.entries()) {
       const assignments = (node as any).assignments || [];
       const credit = (runtimeContext.credits || []).find((c: any) => c.id === creditId);
+      if (credit && credit.na) continue;
       const isBlocked = credit && credit.status === "BLOCKED";
       
       for (const assignment of assignments) {

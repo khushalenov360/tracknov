@@ -1,4 +1,4 @@
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type SoakMetrics = {
   replayDriftRate: number;

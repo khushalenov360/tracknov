@@ -3,7 +3,7 @@
  * Analyzes historical logs to dynamically adjust threshold metrics prospectively.
  */
 
-import { createAdminClient } from "../../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface TuningResult {
   extractionType: string;

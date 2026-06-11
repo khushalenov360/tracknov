@@ -1,4 +1,4 @@
-import { logAiRecommendation } from "../../telemetry/aiRuntimeAuditLogger";
+import { logAiRecommendation } from "@/lib/core/telemetry/aiRuntimeAuditLogger";
 import { AiGovernanceBoundary } from "../governance/aiGovernanceBoundary";
 import { buildPromptContext } from "../../document-intelligence/aiPromptContextBuilder";
 

@@ -88,7 +88,7 @@ export default async function ProjectTeamPage({
                   </td>
                   <td className="px-4 py-3">
                     <Badge className={roleTone[member.role] || "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"}>
-                      {roleLabels[member.role] || member.role}
+                      {(roleLabels as Record<string, string>)[member.role] || member.role}
                     </Badge>
                   </td>
                 </tr>

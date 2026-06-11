@@ -1,4 +1,4 @@
-import type { MemberRole } from '../types';
+import type { MemberRole } from '@/lib/types';
 
 export type CreditStatus = "pending" | "in_progress" | "blocked" | "complete";
 
@@ -22,6 +22,7 @@ export type CatalogCreditDTO = {
   na: boolean;
   documentation_summary: string;
   documents_required: DocumentRequirement[];
+  max_points: number;
 };
 
 export type CreditWorkspaceResponse = {

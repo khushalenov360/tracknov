@@ -3,7 +3,7 @@
  * Identifies and stitches together single tables that split across physical page breaks.
  */
 
-import { ExtractedTable } from "../types";
+import { ExtractedTable } from "@/lib/types";
 
 export class MultiPageTableResolver {
   /**

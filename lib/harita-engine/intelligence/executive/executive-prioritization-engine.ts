@@ -18,7 +18,7 @@ export class ExecutivePrioritizationEngine {
     const documents = runtimeContext.documents || [];
     
     for (const credit of credits) {
-      if (credit.status === "APPROVED") continue;
+      if (credit.status === "APPROVED" || credit.na) continue;
       
       const rejectedDocs = documents.filter((d: any) => d.doc_category === credit.credit_code && d.state === "REJECTED");
       if (rejectedDocs.length > 0) {

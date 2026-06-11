@@ -38,7 +38,7 @@ export class DocumentParser {
     try {
       // @ts-ignore
       const pdfParseModule = require("pdf-parse");
-      const Uint8ArrayBuffer = new Uint8Array(buffer);
+      const Uint8ArrayBuffer = new Uint8Array(buffer as unknown as ArrayBufferLike);
       const parser = new pdfParseModule.PDFParse(Uint8ArrayBuffer, {});
       const data = await parser.getText();
       return {
@@ -83,7 +83,7 @@ export class DocumentParser {
   private async parseXlsx(buffer: Buffer): Promise<ParsedDocument> {
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+      await workbook.xlsx.load(buffer as any);
       
       let text = "";
       const tables: any[] = [];

@@ -27,7 +27,8 @@ export function buildProjectCreditSeedRows(projectId: string) {
     is_mandatory: credit.is_mandatory,
     documents_required: credit.documents_required,
     documentation_summary: credit.documentation_summary ?? null,
-    max_points: 0,
+    max_points: credit.max_points ?? 0,
     status: "DRAFT",
+    na: credit.na ?? false,
   }));
 }

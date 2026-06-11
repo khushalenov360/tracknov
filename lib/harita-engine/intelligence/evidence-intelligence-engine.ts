@@ -10,7 +10,8 @@
  * The static shim methods (determineMissingEvidence / evaluateSubmissionConfidence)
  * are preserved for backward compatibility but now delegate to the real engine.
  */
-export { EvidenceAssessmentEngine, AssessmentResult } from "./evidence/evidence-assessment-engine";
+export { EvidenceAssessmentEngine } from "./evidence/evidence-assessment-engine";
+export type { AssessmentResult } from "./evidence/evidence-assessment-engine";
 
 export class EvidenceIntelligenceEngine {
   /** @deprecated  Use EvidenceAssessmentEngine.assess() directly. */

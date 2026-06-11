@@ -4,7 +4,7 @@ import { getTeamMembers } from "@/lib/data";
 export const dynamic = "force-dynamic";
 
 export default async function TestEnvPage() {
-  let members = [];
+  let members: any[] = [];
   try {
     members = await getTeamMembers();
   } catch (e: any) {

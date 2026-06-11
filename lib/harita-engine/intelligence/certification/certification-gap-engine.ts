@@ -14,12 +14,12 @@ export class CertificationGapEngine {
     let securedPoints = 0;
     let riskPoints = 0;
     
-    const credits = runtimeContext.credits || [];
+    const credits = (runtimeContext.credits || []).filter((c: any) => !c.na);
     const highestRiskCredits: string[] = [];
     
     let totalPoints = 0;
     for (const credit of credits) {
-      const points = Number(credit.max_points ?? 0); 
+      const points = Number(credit.points ?? credit.max_points ?? 0); 
       totalPoints += points;
       
       if (credit.status === "APPROVED" || credit.completion_pct === 100) {

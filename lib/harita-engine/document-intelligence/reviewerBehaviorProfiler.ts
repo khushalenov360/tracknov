@@ -3,7 +3,7 @@
  * Models individual reviewer profiles and expected rigor levels.
  */
 
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface ReviewerProfile {
   reviewerId: string;

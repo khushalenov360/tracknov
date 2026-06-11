@@ -154,7 +154,7 @@ export class ReasoningEngine {
             consultantAssessment: `The status for ${creditMatch.credit_code} is ${evalStatus.approvalStatus}.`,
             evidence: `Status returned as ${evalStatus.approvalStatus} with score: ${evalStatus.readinessScore}/100. Blockers: ${evalStatus.blockers.join(", ") || "None"}`,
             igbcInterpretation: `Based on the uploaded documents, the credit is ${evalStatus.readyForSubmission ? 'ready' : 'not ready'}.`,
-            risks: evalStatus.blockers.length > 0 || evalStatus.approvalStatus === "REJECTED"
+            risks: evalStatus.blockers.length > 0 || !evalStatus.readyForSubmission
                 ? evalStatus.blockers.join(", ") || evalStatus.recommendedAction
                 : evalStatus.recommendedAction,
             recommendations: "Please review the credit requirements and ensure all mandatory documents are uploaded.",
@@ -401,10 +401,10 @@ export class ReasoningEngine {
     runtimeContext: any
   ): ExecutiveValidationPayload {
     const blockedCredits = (runtimeContext.credits || []).filter(
-      (c: any) => c.status === "BLOCKED"
+      (c: any) => !c.na && c.status === "BLOCKED"
     ).length;
 
-    const creditCompletionState = (runtimeContext.credits || []).map((c: any) => {
+    const creditCompletionState = (runtimeContext.credits || []).filter((c: any) => !c.na).map((c: any) => {
       const rejectedDocs = (runtimeContext.documents || []).filter(
         (d: any) => d.doc_category === c.credit_code && d.state === "REJECTED"
       ).length;

@@ -15,34 +15,34 @@ export type MemberRole =
   | "contractor"
   | "project_admin"
   | "super_admin";
-export type CreditStatus = import('./dtos').CreditStatus;
-export type DocumentStatus = import('./dtos').DocumentStatus;
-export type ProjectStatus = import('./dtos').ProjectStatus;
-export type ProjectType = import('./dtos').ProjectType;
-export type IgbcVariant = import('./dtos').IgbcVariant;
+export type CreditStatus = import('./core/dtos').CreditStatus;
+export type DocumentStatus = import('./core/dtos').DocumentStatus;
+export type ProjectStatus = import('./core/dtos').ProjectStatus;
+export type ProjectType = import('./core/dtos').ProjectType;
+export type IgbcVariant = import('./core/dtos').IgbcVariant;
 
-export type ProjectRatingSystem = import('./dtos').ProjectRatingSystem;
+export type ProjectRatingSystem = import('./core/dtos').ProjectRatingSystem;
 
-export type TaskPriority = import('./dtos').TaskPriority;
-export type TaskState = import('./dtos').TaskState;
-export type TaskRecord = import('./dtos').TaskResponse;
-export type TaskHistoryRecord = import('./dtos').TaskHistoryResponse;
+export type TaskPriority = import('./core/dtos').TaskPriority;
+export type TaskState = import('./core/dtos').TaskState;
+export type TaskRecord = import('./core/dtos').TaskResponse;
+export type TaskHistoryRecord = import('./core/dtos').TaskHistoryResponse;
 
-export type DocumentRequirement = import('./dtos').DocumentRequirement;
-export type CatalogCredit = import('./dtos').CatalogCreditDTO;
-export type DocumentRecord = import('./dtos').DocumentResponse;
-export type DocumentActivityAction = import('./dtos').DocumentActivityAction;
-export type DocumentActivityLog = import('./dtos').DocumentActivityResponse;
-export type SystemActivityLog = import('./dtos').SystemActivityResponse;
+export type DocumentRequirement = import('./core/dtos').DocumentRequirement;
+export type CatalogCredit = import('./core/dtos').CatalogCreditDTO;
+export type DocumentRecord = import('./core/dtos').DocumentResponse;
+export type DocumentActivityAction = import('./core/dtos').DocumentActivityAction;
+export type DocumentActivityLog = import('./core/dtos').DocumentActivityResponse;
+export type SystemActivityLog = import('./core/dtos').SystemActivityResponse;
 
-export type CreditWorkspace = import('./dtos').CreditWorkspaceResponse;
-export type ProjectSummary = import('./dtos').ProjectSummaryDTO;
-export type ProjectInviteRecord = import('./dtos').ProjectInviteResponse;
-export type ProjectMemberRecord = import('./dtos').ProjectMemberResponse;
+export type CreditWorkspace = import('./core/dtos').CreditWorkspaceResponse;
+export type ProjectSummary = import('./core/dtos').ProjectSummaryDTO;
+export type ProjectInviteRecord = import('./core/dtos').ProjectInviteResponse;
+export type ProjectMemberRecord = import('./core/dtos').ProjectMemberResponse;
 
-export type DocumentLibraryRecord = import('./dtos').DocumentLibraryResponse;
-export type TeamMemberRecord = import('./dtos').TeamMemberResponse;
-export type CurrentUser = import('./dtos').CurrentUserDTO;
+export type DocumentLibraryRecord = import('./core/dtos').DocumentLibraryResponse;
+export type TeamMemberRecord = import('./core/dtos').TeamMemberResponse;
+export type CurrentUser = import('./core/dtos').CurrentUserDTO;
 
 export type RemarkRecord = {
   id: string;

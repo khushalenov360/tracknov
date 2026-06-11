@@ -60,6 +60,24 @@ export class SubmissionReadinessReasoner {
       };
     }
 
+    // Check if the credit is marked as NA (Not Applicable / Not Required) for the project
+    const { data: projCredit } = await supabase
+      .from("project_credits")
+      .select("na")
+      .eq("project_id", projectId)
+      .ilike("credit_code", creditCode)
+      .maybeSingle();
+
+    if (projCredit?.na) {
+      return {
+        consultantAssessment: `No. ${creditCode} is marked as Not Required (Not Applicable) for this project, so it is excluded from submission.`,
+        evidence: JSON.stringify({ creditCode, projectId, na: true }),
+        igbcInterpretation: `${creditCode} is not applicable to the current project scope.`,
+        risks: "None (Credit is NA)",
+        recommendations: "No action required. This credit is excluded from the project's certification score."
+      };
+    }
+
     // ── 3. Find latest uploaded document for this credit ─────────────────────
     const { data: docs } = await supabase
       .from("project_documents")

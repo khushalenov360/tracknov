@@ -50,7 +50,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Eco Design Approach",
@@ -103,7 +104,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Eco Design Approach",
@@ -156,7 +158,8 @@
         "requirement": "NA",
         "required": false
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Eco Design Approach",
@@ -209,7 +212,8 @@
         "requirement": "NA",
         "required": false
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Eco Design Approach",
@@ -262,7 +266,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Water Conservation",
@@ -315,7 +320,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 12
   },
   {
     "category": "Water Conservation",
@@ -368,7 +374,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Energy Efficiency",
@@ -421,7 +428,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Energy Efficiency",
@@ -474,7 +482,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Energy Efficiency",
@@ -527,7 +536,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 10
   },
   {
     "category": "Energy Efficiency",
@@ -580,7 +590,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Energy Efficiency",
@@ -633,7 +644,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 6
   },
   {
     "category": "Energy Efficiency",
@@ -686,7 +698,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Energy Efficiency",
@@ -739,7 +752,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -792,7 +806,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -845,7 +860,8 @@
         "requirement": "NA",
         "required": false
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -898,7 +914,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 3
   },
   {
     "category": "Interior Materials",
@@ -951,7 +968,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Interior Materials",
@@ -1004,7 +1022,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Interior Materials",
@@ -1057,7 +1076,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Interior Materials",
@@ -1110,7 +1130,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 6
   },
   {
     "category": "Interior Materials",
@@ -1163,7 +1184,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Interior Materials",
@@ -1216,7 +1238,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -1269,7 +1292,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -1322,7 +1346,8 @@
         "requirement": "NA",
         "required": false
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Interior Materials",
@@ -1375,7 +1400,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Indoor Environment",
@@ -1428,7 +1454,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Indoor Environment",
@@ -1481,7 +1508,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Indoor Environment",
@@ -1534,7 +1562,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -1587,7 +1616,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Indoor Environment",
@@ -1640,7 +1670,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Indoor Environment",
@@ -1693,7 +1724,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -1746,7 +1778,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -1799,7 +1832,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -1852,7 +1886,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 3
   },
   {
     "category": "Indoor Environment",
@@ -1905,7 +1940,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Indoor Environment",
@@ -1958,7 +1994,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -2011,7 +2048,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 4
   },
   {
     "category": "Indoor Environment",
@@ -2064,7 +2102,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -2117,7 +2156,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Indoor Environment",
@@ -2170,7 +2210,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 2
   },
   {
     "category": "Indoor Environment",
@@ -2223,7 +2264,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 0
   },
   {
     "category": "Innovation in Interior Design",
@@ -2276,7 +2318,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Innovation in Interior Design",
@@ -2329,7 +2372,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Innovation in Interior Design",
@@ -2382,7 +2426,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Innovation in Interior Design",
@@ -2435,7 +2480,8 @@
         "requirement": "Required",
         "required": true
       }
-    ]
+    ],
+    "max_points": 1
   },
   {
     "category": "Innovation in Interior Design",
@@ -2488,6 +2534,7 @@
         "requirement": "NA",
         "required": false
       }
-    ]
+    ],
+    "max_points": 1
   }
 ]

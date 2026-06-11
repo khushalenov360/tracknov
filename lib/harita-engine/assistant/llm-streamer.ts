@@ -21,6 +21,7 @@ import { compress } from "headroom-ai";
 // ---------------------------------------------------------------------------
 
 interface ProviderConfig {
+  id: string;
   name: string;
   call: (
     systemPrompt: string,
@@ -170,7 +171,7 @@ function buildFallbackChain(
   if (ollamaUrl) {
     availableProviders.push({
       id: "ollama",
-      name: `Ollama (${env.ollamaModel || "llama3.2:1b"})`,
+      name: `Local (Gemma 3)`,
       call: (sp, _contents) =>
         fetch(ollamaUrl, {
           method: "POST",
@@ -178,7 +179,7 @@ function buildFallbackChain(
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: env.ollamaModel || "llama3.2:1b",
+            model: env.ollamaModel || "gemma3",
             // Truncate the massive system prompt (which contains the full workspace) to 6000 chars for local Ollama
             // to prevent 2+ minute prompt evaluation times on consumer hardware.
             messages: [{ role: "system", content: sp.slice(0, 6000) }, ...geminiContents.map(c => ({ role: c.role === "model" ? "assistant" : "user", content: c.parts ? c.parts.map((p: any) => p.text || "").join("") : c.content || "" }))],
@@ -353,20 +354,19 @@ function buildFallbackChain(
     chain.push(...restProviders);
   } else {
     // If auto or invalid provider, prioritize Atomesus, then OpenAI, then others
+    const gemini = availableProviders.find(p => p.id === "gemini");
+    if (gemini) chain.push(gemini);
+
+    const ollama = availableProviders.find(p => p.id === "ollama");
+    if (ollama) chain.push(ollama);
+    
     const atomesus = availableProviders.find(p => p.id === "atomesus");
     if (atomesus) chain.push(atomesus);
-    
+
     const openai = availableProviders.find(p => p.id === "openai");
     if (openai) chain.push(openai);
     
-    const gemini = availableProviders.find(p => p.id === "gemini");
-    if (gemini) chain.push(gemini);
-    
-    const rest = availableProviders.filter(p => p.id !== "atomesus" && p.id !== "openai" && p.id !== "gemini").sort((a, b) => {
-      if (a.id === "ollama") return 1;
-      if (b.id === "ollama") return -1;
-      return 0;
-    });
+    const rest = availableProviders.filter(p => !["gemini", "ollama", "atomesus", "openai"].includes(p.id));
     chain.push(...rest);
   }
 
@@ -495,7 +495,7 @@ export async function tryDetectFunctionCalls(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey as string },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: systemPrompt }] },
               contents: geminiContents,

@@ -3,7 +3,7 @@
  * Analyzes recurring correction sequences to propose normalization mappings prospectively.
  */
 
-import { createAdminClient } from "../../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface LearnedPatterns {
   recurringOcrMistakes: Record<string, string>;

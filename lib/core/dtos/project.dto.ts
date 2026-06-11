@@ -1,4 +1,4 @@
-import type { MemberRole } from '../types';
+import type { MemberRole } from '@/lib/types';
 
 export type ProjectStatus = "active" | "on_hold" | "completed" | "archived";
 export type ProjectType = "residential" | "commercial" | "industrial" | "infrastructure" | "mixed_use";

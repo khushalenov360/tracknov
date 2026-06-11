@@ -3,7 +3,7 @@
  * Persists auditor override logs of AI warnings or rules.
  */
 
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface OverrideParams {
   projectId: string;

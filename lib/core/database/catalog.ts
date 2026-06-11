@@ -1,8 +1,8 @@
-import type { ProjectDto } from "../dtos/project";
-import type { TaskDto } from "../dtos/task";
-import type { DocumentDto } from "../dtos/document";
-import type { CreditDto } from "../dtos/credit";
-import type { MemberRole } from "../types";
+import type { ProjectSummaryDTO as ProjectDto } from "../dtos/project.dto";
+import type { TaskResponse as TaskDto } from "../dtos/task.dto";
+import type { DocumentResponse as DocumentDto } from "../dtos/document.dto";
+import type { CreditWorkspaceResponse as CreditDto } from "../dtos/credit.dto";
+import type { MemberRole } from "../../types";
 
 /**
  * 06_DATABASE_CATALOG
@@ -15,8 +15,8 @@ export interface DatabaseCatalog {
   Tables: {
     projects: {
       Row: ProjectDto;
-      Insert: Omit<ProjectDto, 'id' | 'created_at' | 'updated_at'>;
-      Update: Partial<Omit<ProjectDto, 'id' | 'created_at' | 'updated_at'>>;
+      Insert: Omit<ProjectDto, 'id' | 'created_at'>;
+      Update: Partial<Omit<ProjectDto, 'id' | 'created_at'>>;
     };
     tasks: {
       Row: TaskDto;

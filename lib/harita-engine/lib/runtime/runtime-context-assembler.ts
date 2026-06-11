@@ -31,6 +31,7 @@ export interface CreditRow {
   completion_pct?: number | null;
   is_mandatory?: boolean | null;
   blocked_by?: string | null;
+  na?: boolean | null;
 }
 
 export interface DocumentRow {
@@ -123,7 +124,7 @@ export async function assembleRuntimeContext(
   const [creditsResult, documentsResult, guidebooksResult] = await Promise.all([
     reader
       .from("project_credits")
-      .select("id, project_id, credit_code, credit_name, status, category, category_name, assigned_user_id, responsible_role, completion_pct, max_points, is_mandatory, documents_required, what_to_submit, blocked_by")
+      .select("id, project_id, credit_code, credit_name, status, category, category_name, assigned_user_id, responsible_role, completion_pct, max_points, is_mandatory, documents_required, what_to_submit, blocked_by, na")
       .in("project_id", targetProjectIds)
       .order("credit_code"),
     reader
@@ -150,7 +151,7 @@ export async function assembleRuntimeContext(
   // Filter Active Evidence (Context Isolation WS1)
   const { contextIsolationEngine } = await import("../../runtime/context-isolation-engine");
   const discardedIds = await contextIsolationEngine.getDiscardedArtifactIds(user.id, targetProjectIds[0]);
-  const documents = contextIsolationEngine.filterActiveEvidence(rawDocuments as any, discardedIds) as DocumentRow[];
+  const documents = contextIsolationEngine.filterActiveEvidence(rawDocuments as any, discardedIds) as unknown as DocumentRow[];
 
   const assignedUserIds = [...new Set(credits.map(c => c.assigned_user_id).filter(Boolean))] as string[];
   const profilesMap: ProfileMap = {};
@@ -200,21 +201,24 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
     lines.push(`Accessible projects: ${ctx.accessibleProjects.length}`);
   }
 
-  const completeCredits = ctx.credits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
-  const blockedCredits = ctx.credits.filter(c => c.status === "BLOCKED").length;
-  const inProgressCredits = ctx.credits.filter(c => c.status === "IN_PROGRESS").length;
+  const activeCredits = ctx.credits.filter(c => !c.na);
+  const completeCredits = activeCredits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
+  const blockedCredits = activeCredits.filter(c => c.status === "BLOCKED").length;
+  const inProgressCredits = activeCredits.filter(c => c.status === "IN_PROGRESS").length;
+  const draftCredits = activeCredits.filter(c => c.status === "DRAFT").length;
+  const naCredits = ctx.credits.filter(c => c.na);
   
   lines.push(`\nCredits Loaded: ${ctx.credits.length}`);
-  lines.push(`Completed: ${completeCredits}`);
-  lines.push(`Blocked: ${blockedCredits}`);
-  lines.push(`In Progress: ${inProgressCredits}`);
+  lines.push(`Active: ${activeCredits.length} (In Progress: ${inProgressCredits}, Completed: ${completeCredits}, Blocked: ${blockedCredits}, Draft: ${draftCredits})`);
+  lines.push(`Not Required / Not Applicable: ${naCredits.length} (${naCredits.map(c => c.credit_code).join(", ") || "None"})`);
 
   lines.push(`\nAssignments:`);
   for (const credit of ctx.credits) {
     const graph = ctx.creditAssignmentGraph.get(credit.id);
     const completion = credit.completion_pct != null ? `${credit.completion_pct}%` : "0%";
     const blocked = credit.blocked_by ? ` [BLOCKED BY: ${credit.blocked_by}]` : "";
-    const baseStr = `${credit.credit_code} | ${credit.credit_name} | status=${credit.status} | completion=${completion}${blocked}`;
+    const naSuffix = credit.na ? " [NOT REQUIRED / NA]" : "";
+    const baseStr = `${credit.credit_code} | ${credit.credit_name} | status=${credit.status} | completion=${completion}${blocked}${naSuffix}`;
     
     if (!graph || graph.requirements.length === 0) {
       const p = credit.assigned_user_id ? ctx.profiles[credit.assigned_user_id] : null;
@@ -252,9 +256,9 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
     }
   }
 
-  // Submission Readiness
+  // Submission Readiness — EXCLUDE na credits
   const topPendingEvaluated = ctx.credits
-    .filter((credit) => credit.status !== "APPROVED" && credit.status !== "complete")
+    .filter((credit) => !credit.na && credit.status !== "APPROVED" && credit.status !== "complete")
     .slice(0, 3)
     .map(credit => submissionReadinessEngine.generateContextString(credit, ctx.documents))
     .join("\n");
@@ -267,6 +271,17 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
   const strategy = certificationStrategyEngine.getStrategy(ctx.credits);
   lines.push(`\n--- CERTIFICATION STRATEGY ---`);
   lines.push(certificationStrategyEngine.generateContextString(strategy));
+
+  // Full credit matrix — gives Harita complete awareness of every credit
+  lines.push(`\n--- FULL CREDIT STATUS MATRIX ---`);
+  lines.push(`(All ${ctx.credits.length} credits loaded. NA=Not Required/Not Applicable for this project.)`);
+  lines.push(`CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%`);
+  for (const c of ctx.credits) {
+    const maxPts = (c as any).max_points ?? 0;
+    const na = c.na ? "YES" : "NO";
+    const pct = c.completion_pct != null ? `${c.completion_pct}%` : "0%";
+    lines.push(`${c.credit_code} | ${c.credit_name ?? ""} | ${c.status} | ${maxPts} | ${na} | ${pct}`);
+  }
 
   return lines.join("\n");
 }

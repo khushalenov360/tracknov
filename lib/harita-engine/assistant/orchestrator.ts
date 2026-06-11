@@ -2,7 +2,7 @@ import { executeIntent } from "@/ai/orchestrator/execute-intent";
 
 import { EnovAitBoundary } from "@/lib/core/api/enovaitApiBoundary";
 import { haritaRuntimeService } from "@/lib/harita-engine/services/harita-runtime-service";
-import { getProjectIdFromContext } from "@/lib/harita-engine/harita/context/getProjectIdFromContext";
+import { getProjectIdFromContext } from "@/lib/harita-engine/assistant/attachments";
 
 /**
  * Validates the intelligence intent boundary against the EnovAIT policy.

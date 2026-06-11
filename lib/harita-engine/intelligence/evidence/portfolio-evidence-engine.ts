@@ -13,7 +13,7 @@ export class PortfolioEvidenceEngine {
     const documents = runtimeContext.documents || [];
 
     for (const credit of credits) {
-      if (credit.status === "APPROVED") continue;
+      if (credit.status === "APPROVED" || credit.na) continue;
       
       const missingDocuments: string[] = [];
       const rejectedDocuments: string[] = [];

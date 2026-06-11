@@ -3,7 +3,7 @@
  * Parses tabular content from text, capturing headers, cells, units, and structural alignments.
  */
 
-import { ExtractedTable, SemanticType } from "../types";
+import { ExtractedTable, SemanticType } from "@/lib/types";
 
 export class TableExtractionEngine {
   /**

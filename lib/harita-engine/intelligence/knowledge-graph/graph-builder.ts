@@ -26,7 +26,7 @@ export class GraphBuilder {
     if (runtimeContext.profiles) {
       for (const [userId, profile] of Object.entries(runtimeContext.profiles || {})) {
         const p = profile as any;
-        graph.nodes.set(userId, { id: userId, type: GraphNodeType.CONTRIBUTOR, label: p.full_name || userId, metadata: profile });
+        graph.nodes.set(userId, { id: userId, type: GraphNodeType.CONTRIBUTOR, label: p.full_name || userId, metadata: p as Record<string, unknown> });
       }
     }
 

@@ -1,4 +1,4 @@
-import type { MemberRole } from '../types';
+import type { MemberRole } from '@/lib/types';
 
 export type DocumentStatus =
   | "uploaded"

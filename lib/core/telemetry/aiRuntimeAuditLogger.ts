@@ -1,5 +1,5 @@
-import { createAdminClient } from "../supabase/admin";
-import { governanceLocalStorage } from "../governance/governanceContext";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { governanceLocalStorage } from "@/lib/harita-engine/governance/governanceContext";
 
 /**
  * TRACKNOV AI RUNTIME AUDIT LOGGER

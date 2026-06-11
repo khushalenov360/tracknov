@@ -31,6 +31,15 @@ export function applyResponseGovernance(inputStream: ReadableStream<Uint8Array>,
         safe = getAuthoritativeClaimRefusal();
       }
       
+      // Strip banned response prefixes that the LLM may still produce (anywhere in text, including mid-sentence)
+      // Pattern 1: At line start (with or without bold markers)
+      safe = safe.replace(/(?:^|\n)\*{0,2}(Direct Answer|Consultant Assessment|Answer)\*{0,2}\s*:\s*/gi, (match) => {
+        return match.startsWith("\n") ? "\n" : "";
+      });
+      // Pattern 2: Mid-sentence after punctuation e.g. '." Direct Answer: ...'
+      safe = safe.replace(/([.!?])\s*\*{0,2}(Direct Answer|Consultant Assessment)\*{0,2}\s*:\s*/gi, "$1 ");
+
+      
       if (sessionId) {
         void haritaRuntimeService.storeMessage(sessionId, "assistant", safe).catch(() => {});
       }

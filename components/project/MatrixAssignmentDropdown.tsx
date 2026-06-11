@@ -70,7 +70,7 @@ export const MatrixAssignmentDropdown: React.FC<MatrixAssignmentDropdownProps> =
         <optgroup label="Coordinators">
           {coordinators.map((m) => (
             <option key={m.user_id} value={m.user_id}>
-              {m.full_name ? `${m.full_name} (${roleLabels[m.role]})` : cleanRoleLabel(m.member_email || "Unknown")}
+              {m.full_name ? `${m.full_name} (${(roleLabels as Record<string, string>)[m.role]})` : cleanRoleLabel(m.member_email || "Unknown")}
             </option>
           ))}
         </optgroup>
@@ -79,7 +79,7 @@ export const MatrixAssignmentDropdown: React.FC<MatrixAssignmentDropdownProps> =
         <optgroup label="Contributors">
           {contributors.map((m) => (
             <option key={m.user_id} value={m.user_id}>
-              {m.full_name ? `${m.full_name} (${roleLabels[m.role]})` : cleanRoleLabel(m.member_email || "Unknown")}
+              {m.full_name ? `${m.full_name} (${(roleLabels as Record<string, string>)[m.role]})` : cleanRoleLabel(m.member_email || "Unknown")}
             </option>
           ))}
         </optgroup>

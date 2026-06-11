@@ -1,4 +1,4 @@
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceIncidents } from "./governanceIncidentEngine";
 
 /**

@@ -1,4 +1,4 @@
-import { logAiRecommendation } from "../../telemetry/aiRuntimeAuditLogger";
+import { logAiRecommendation } from "@/lib/core/telemetry/aiRuntimeAuditLogger";
 
 /**
  * TRACKNOV AI REVIEWER ASSIST ENGINE

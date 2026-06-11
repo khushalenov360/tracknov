@@ -35,26 +35,26 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "DRAFT").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "DRAFT").length,
       0,
     ),
     ready: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "READY").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "READY").length,
       0,
     ),
     submitted: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "SUBMITTED").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "SUBMITTED").length,
       0,
     ),
     under_review: credits.reduce(
       (sum, credit) =>
         sum +
         credit.documents.filter(
-          (document) => String((document as any).state ?? "").toUpperCase() === "UNDER_REVIEW",
+          (document: any) => String(document.state ?? "").toUpperCase() === "UNDER_REVIEW",
         ).length,
       0,
     ),
@@ -62,7 +62,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       (sum, credit) =>
         sum +
         credit.documents.filter(
-          (document) => String((document as any).state ?? "").toUpperCase() === "CLARIFICATION",
+          (document: any) => String(document.state ?? "").toUpperCase() === "CLARIFICATION",
         ).length,
       0,
     ),
@@ -70,26 +70,26 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       (sum, credit) =>
         sum +
         credit.documents.filter(
-          (document) => String((document as any).state ?? "").toUpperCase() === "RESUBMITTED",
+          (document: any) => String(document.state ?? "").toUpperCase() === "RESUBMITTED",
         ).length,
       0,
     ),
     approved: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "APPROVED").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "APPROVED").length,
       0,
     ),
     rejected: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "REJECTED").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "REJECTED").length,
       0,
     ),
     eliminated: credits.reduce(
       (sum, credit) =>
         sum +
-        credit.documents.filter((document) => String((document as any).state ?? "").toUpperCase() === "ELIMINATED").length,
+        credit.documents.filter((document: any) => String(document.state ?? "").toUpperCase() === "ELIMINATED").length,
       0,
     ),
   };

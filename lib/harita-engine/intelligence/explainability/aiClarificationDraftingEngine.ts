@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import { createAdminClient } from "../../supabase/admin";
-import { logAiRecommendation } from "../../telemetry/aiRuntimeAuditLogger";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { logAiRecommendation } from "@/lib/core/telemetry/aiRuntimeAuditLogger";
 import { buildPromptContext } from "../../document-intelligence/aiPromptContextBuilder";
 
 /**

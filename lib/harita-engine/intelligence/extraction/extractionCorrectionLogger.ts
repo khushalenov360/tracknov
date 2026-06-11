@@ -3,7 +3,7 @@
  * Orchestrates logging, failure classification, and confidence recalibration.
  */
 
-import { createAdminClient } from "../../supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ReviewerCorrectionDiffEngine } from "../../document-intelligence/reviewerCorrectionDiffEngine";
 import { SemanticFailureClassifier } from "../../document-intelligence/semanticFailureClassifier";
 import { ExtractionConfidenceAdjuster } from "./extractionConfidenceAdjuster";

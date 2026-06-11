@@ -82,6 +82,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "glob": "^13.0.6",
+    "headroom-ai": "^0.22.4",
     "hyperformula": "^3.3.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
@@ -95,14 +96,14 @@
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
-    "zod": "^4.3.6",
-    "headroom-ai": "^0.22.4"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^20.19.41",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
+    "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.5.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.0.0",

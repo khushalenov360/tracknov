@@ -25,6 +25,16 @@ export class BlockerReasoner {
       };
     }
 
+    if (creditMatch.na) {
+      return {
+        consultantAssessment: `${creditMatch.credit_code} is marked as Not Required (Not Applicable) for this project.`,
+        evidence: "Credit is excluded from project scope (na = true).",
+        igbcInterpretation: "Not applicable credits do not require evidence and cannot be blocked.",
+        risks: "None (Credit is NA)",
+        recommendations: "No action required. This credit is excluded from the project's certification score."
+      };
+    }
+
     const creditId = creditMatch.id;
     const graph = runtimeContext.creditAssignmentGraph?.get(creditId);
     const docs = runtimeContext.documents.filter((d: any) => d.doc_category === creditMatch.credit_code);

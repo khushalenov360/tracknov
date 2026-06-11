@@ -7,13 +7,13 @@ export class CreditIntelligenceEngine {
     
     const graph = context.creditAssignmentGraph.get(creditId);
     const hasAssignments = graph && graph.requirements.length > 0;
-    const requirementsMet = graph ? graph.requirements.every(r => r.status === 'complete' || r.status === 'APPROVED') : false;
+    const requirementsMet = credit.status === 'complete' || credit.status === 'APPROVED';
 
     return {
       creditCode: credit.credit_code,
       status: credit.status,
       actionable: !hasAssignments || requirementsMet,
-      missingTasks: graph?.requirements.filter(r => r.status !== 'complete').map(r => r.requirementType) || []
+      missingTasks: graph?.requirements.map(r => r.requirementType) || []
     };
   }
 }

@@ -92,23 +92,23 @@ export default async function DashboardPage({
   const isOwner = activeRole === "owner";
 
   const totals = {
-    totalCredits: projects.reduce((sum, project) => sum + (project.totalCredits || 0), 0),
-    uploadedDocs: projects.reduce((sum, project) => sum + (project.uploadedDocs || 0), 0),
-    mandatoryCreditsMet: projects.reduce((sum, project) => sum + (project.mandatoryCreditsMet || 0), 0),
-    openRemarks: projects.reduce((sum, project) => sum + (project.openRemarks || 0), 0),
+    totalCredits: projects.reduce((sum: number, project: any) => sum + (project.totalCredits || 0), 0),
+    uploadedDocs: projects.reduce((sum: number, project: any) => sum + (project.uploadedDocs || 0), 0),
+    mandatoryCreditsMet: projects.reduce((sum: number, project: any) => sum + (project.mandatoryCreditsMet || 0), 0),
+    openRemarks: projects.reduce((sum: number, project: any) => sum + (project.openRemarks || 0), 0),
   };
 
-  const totalTokensLoaded = projects.reduce((sum, project) => {
+  const totalTokensLoaded = projects.reduce((sum: number, project: any) => {
     const used = Math.max(project.documentCreditsUsed || 0, 0);
     const remaining = Math.max(project.documentCreditsRemaining || 0, 0);
     return sum + used + remaining;
   }, 0);
-  const totalTokensUsed = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
-  const totalTokensRemaining = projects.reduce((sum, project) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
+  const totalTokensUsed = projects.reduce((sum: number, project: any) => sum + Math.max(project.documentCreditsUsed || 0, 0), 0);
+  const totalTokensRemaining = projects.reduce((sum: number, project: any) => sum + Math.max(project.documentCreditsRemaining || 0, 0), 0);
   const weeklyTokenBurn = Math.max(
     1,
     Math.round(
-      projects.reduce((sum, project) => {
+      projects.reduce((sum: number, project: any) => {
         const docs = Math.max(project.documentCreditsUsed || 0, 0);
         const consult = Math.max(project.consultantCreditsUsed || 0, 0);
         return sum + docs + consult;
@@ -116,12 +116,12 @@ export default async function DashboardPage({
     ),
   );
   const exhaustionWeeks = totalTokensRemaining > 0 ? Math.ceil(totalTokensRemaining / weeklyTokenBurn) : 0;
-  const portfolioCompleted = projects.filter((project) => project.overallCompletion >= 95).length;
-  const portfolioDelayed = projects.filter((project) => (project.statusFlag ?? "green") === "red").length;
+  const portfolioCompleted = projects.filter((project: any) => project.overallCompletion >= 95).length;
+  const portfolioDelayed = projects.filter((project: any) => (project.statusFlag ?? "green") === "red").length;
   const portfolioInProgress = Math.max(projects.length - portfolioCompleted, 0);
-  const atRiskCount = projects.filter((project) => (project.statusFlag ?? "green") !== "green").length;
+  const atRiskCount = projects.filter((project: any) => (project.statusFlag ?? "green") !== "green").length;
   const overallCompletionPct = projects.length
-    ? Math.round(projects.reduce((sum, project) => sum + (project.overallCompletion || 0), 0) / projects.length)
+    ? Math.round(projects.reduce((sum: number, project: any) => sum + (project.overallCompletion || 0), 0) / projects.length)
     : 0;
   const projectedRating = overallCompletionPct >= 80 ? "Gold" : overallCompletionPct >= 60 ? "Silver" : "Certified";
   const projectedOutcome =
@@ -131,10 +131,10 @@ export default async function DashboardPage({
         ? "Moderate confidence: needs steady weekly closure."
         : "At risk: improve upload and review velocity.";
   const approvalBase = projects.reduce(
-    (sum, project) => sum + Math.max((project.pendingReviewsCount || 0) + (project.rejectedCount || 0), 0),
+    (sum: number, project: any) => sum + Math.max((project.pendingReviewsCount || 0) + (project.rejectedCount || 0), 0),
     0,
   );
-  const rejectionTotal = projects.reduce((sum, project) => sum + Math.max(project.rejectedCount || 0, 0), 0);
+  const rejectionTotal = projects.reduce((sum: number, project: any) => sum + Math.max(project.rejectedCount || 0, 0), 0);
   const rejectionRate = approvalBase > 0 ? Math.round((rejectionTotal / approvalBase) * 100) : 0;
   const firstTimeApprovalRate = Math.max(100 - rejectionRate, 0);
   const avgTokensPerProject = projects.length ? Math.round(totalTokensUsed / projects.length) : 0;
@@ -143,7 +143,7 @@ export default async function DashboardPage({
     Math.min(100, Math.round((firstTimeApprovalRate * 0.7) + (Math.max(0, 100 - rejectionRate) * 0.3))),
   );
 
-  const executiveRiskRows = projects.map((project) => {
+  const executiveRiskRows = projects.map((project: any) => {
     const pending = Math.max(project.pendingReviewsCount ?? 0, 0);
     const rejected = Math.max(project.rejectedCount ?? 0, 0);
     const risk =
@@ -162,8 +162,8 @@ export default async function DashboardPage({
     };
   });
 
-  const ownerRows = projects.map((project) => {
-    const queueForProject = ownerQueue.filter((item) => item.project_id === project.id);
+  const ownerRows = projects.map((project: any) => {
+    const queueForProject = ownerQueue.filter((item: any) => item.project_id === project.id);
     const pendingUploads = Math.max(project.totalCredits - project.uploadedDocs, 0);
     const pendingMyReview = queueForProject.length;
     const pendingApprovals = Number(project.pendingReviewsCount ?? 0);
@@ -184,7 +184,7 @@ export default async function DashboardPage({
   });
   const nextBestActions = (() => {
     const stuckTop = insights.stuckItems[0];
-    const atRiskCount = projects.filter((p) => (p.statusFlag ?? "green") !== "green").length;
+    const atRiskCount = projects.filter((p: any) => (p.statusFlag ?? "green") !== "green").length;
 
     if (activeRole === "owner") {
       return [
@@ -223,7 +223,7 @@ export default async function DashboardPage({
 
   return (
     <Shell
-      title={clientMode ? "Client Dashboard" : `${roleLabels[activeRole]} Dashboard`}
+      title={clientMode ? "Client Dashboard" : `${roleLabels[activeRole as keyof typeof roleLabels]} Dashboard`}
       description={
         clientMode
           ? "AI-native green certification operating system. Real-time preflight and workflow orchestration."

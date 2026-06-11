@@ -1,2 +1,2 @@
-// Re-export manifest to support backward-compatibility for active governance verification and CI
-export * from "../../../packages/harita-engine/src/knowledge-governance";
+// Re-export from actual implementation (monorepo package path no longer exists)
+export * from "./harita-engine/knowledge-governance";

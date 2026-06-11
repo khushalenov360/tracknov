@@ -3,7 +3,7 @@
  * Map connections between evidence documents, submittal credits, and audit approval chains.
  */
 
-import { EvidenceRelationship } from "../types";
+import { EvidenceRelationship } from "@/lib/types";
 
 export class EvidenceRelationshipEngine {
   /**

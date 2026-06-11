@@ -3,7 +3,7 @@ import { buildWorkflowContext } from "./context/buildWorkflowContext";
 import { WorkflowResponseSchema, FallbackResponseSchema } from "./contracts/workflow";
 import { generateDeterministicFallback } from "./fallbacks/deterministicFallback";
 import { aiService } from "../services/ai-service";
-import { createClient } from "../supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export type HaritaRequest = {
   query: string;

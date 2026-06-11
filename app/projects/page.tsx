@@ -334,7 +334,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                 <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-secondary)]">
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
                   <p className="dense-label">Role</p>
-                  <p className="mt-1">{roleLabels[project.role]}</p>
+                  <p className="mt-1">{(roleLabels as Record<string, string>)[project.role]}</p>
                 </div>
                 <div className="rounded-lg bg-[var(--color-surface-2)] p-3 text-xs text-[var(--color-text-secondary)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -413,7 +413,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams?: Pr
                         </p>
                       </div>
                       <Badge className="border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
-                        {roleLabels[project.role]}
+                        {(roleLabels as Record<string, string>)[project.role]}
                       </Badge>
                     </div>
 

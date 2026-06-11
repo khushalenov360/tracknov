@@ -10,35 +10,36 @@ export type CertificationStrategy = {
 export class CertificationStrategyEngine {
   calculateScore(credits: any[]): number {
     return credits
-      .filter((c) => c.state === "APPROVED" || c.state === "complete")
-      .reduce((sum, c) => sum + Number(c.points ?? 0), 0);
+      .filter((c) => !c.na && (c.state === "APPROVED" || c.state === "complete"))
+      .reduce((sum, c) => sum + Number(c.points ?? c.max_points ?? 0), 0);
   }
 
   getStrategy(credits: any[]): CertificationStrategy {
-    const currentScore = this.calculateScore(credits);
+    const activeCredits = credits.filter(c => !c.na);
+    const currentScore = this.calculateScore(activeCredits);
     
     // Simplistic heuristic for now
-    const blockedCredits = credits.filter(c => c.state === "blocked");
-    const blockedPoints = blockedCredits.reduce((sum, c) => sum + Number(c.points ?? 0), 0);
+    const blockedCredits = activeCredits.filter(c => c.state === "blocked");
+    const blockedPoints = blockedCredits.reduce((sum, c) => sum + Number(c.points ?? c.max_points ?? 0), 0);
     
-    const pendingCredits = credits.filter(c => c.state !== "APPROVED" && c.state !== "complete" && c.state !== "blocked");
-    pendingCredits.sort((a, b) => Number(b.points ?? 0) - Number(a.points ?? 0));
+    const pendingCredits = activeCredits.filter(c => c.state !== "APPROVED" && c.state !== "complete" && c.state !== "blocked");
+    pendingCredits.sort((a, b) => Number(b.points ?? b.max_points ?? 0) - Number(a.points ?? a.max_points ?? 0));
 
-    const totalAvailable = currentScore + pendingCredits.reduce((sum, c) => sum + Number(c.points ?? 0), 0);
+    const totalAvailable = currentScore + pendingCredits.reduce((sum, c) => sum + Number(c.points ?? c.max_points ?? 0), 0);
 
     const roadmapToGold: string[] = [];
     let simScore = currentScore;
     for (const c of pendingCredits) {
       if (simScore >= 60) break;
       roadmapToGold.push(c.credit_code);
-      simScore += Number(c.points ?? 0);
+      simScore += Number(c.points ?? c.max_points ?? 0);
     }
 
     const roadmapToPlatinum: string[] = [...roadmapToGold];
     for (const c of pendingCredits.slice(roadmapToGold.length)) {
       if (simScore >= 80) break;
       roadmapToPlatinum.push(c.credit_code);
-      simScore += Number(c.points ?? 0);
+      simScore += Number(c.points ?? c.max_points ?? 0);
     }
 
     return {
