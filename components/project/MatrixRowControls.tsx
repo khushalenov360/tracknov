@@ -127,8 +127,8 @@ export const MatrixRowControls: React.FC<MatrixRowControlsProps> = ({
             disabled={isDisabled}
             className={`h-6 rounded-md border text-[10px] uppercase font-bold focus:outline-none disabled:opacity-50 px-1 cursor-pointer w-28 transition-colors ${
               localRequired 
-                ? "border-[var(--color-red)] bg-[var(--color-red-soft)] text-[var(--color-red)]" 
-                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                : "border-[var(--color-red)] bg-[var(--color-red-soft)] text-[var(--color-red)]" 
             }`}
           >
             <option value="true">Required</option>
