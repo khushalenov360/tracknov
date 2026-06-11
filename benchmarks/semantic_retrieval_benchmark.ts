@@ -3,7 +3,7 @@
  * Validates candidate retrieval reranking and overlap matching against > 92% target.
  */
 
-import { ExtractionRankingOptimizer, SemanticEvidenceTrace } from "../lib/extraction-feedback";
+import { ExtractionRankingOptimizer, SemanticEvidenceTrace } from "../lib/harita-engine/extraction-feedback";
 
 export function runRetrievalBenchmark(): { name: string; passed: boolean; score: number; target: number } {
   console.log("[BENCHMARK] Executing Semantic Retrieval Precision@5 Test...");

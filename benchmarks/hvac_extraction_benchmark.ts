@@ -3,7 +3,7 @@
  * Validates specifications matching and canonical unit alignments against > 95% target.
  */
 
-import { SpecificationCanonicalizer, UnitNormalizationEngine } from "../lib/extraction-feedback";
+import { SpecificationCanonicalizer, UnitNormalizationEngine } from "../lib/harita-engine/extraction-feedback";
 
 export function runHvacBenchmark(): { name: string; passed: boolean; score: number; target: number } {
   console.log("[BENCHMARK] Executing HVAC Specification Parsing Quality Test...");

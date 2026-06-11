@@ -3,7 +3,7 @@
  * Validates cross-document overlap and false positive suppression against > 97% target.
  */
 
-import { DuplicateReasoningViewer } from "../lib/extraction-feedback";
+import { DuplicateReasoningViewer } from "../lib/harita-engine/extraction-feedback";
 
 export function runDuplicateBenchmark(): { name: string; passed: boolean; score: number; target: number } {
   console.log("[BENCHMARK] Executing Duplicate Evidence Detection Accuracy Test...");

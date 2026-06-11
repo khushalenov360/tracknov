@@ -3,7 +3,7 @@
  * Validates missing evidence gap classification and loop reduction against > 45% target.
  */
 
-import { ClarificationEvidenceExplorer } from "../lib/extraction-feedback";
+import { ClarificationEvidenceExplorer } from "../lib/harita-engine/extraction-feedback";
 
 export function runClarificationBenchmark(): { name: string; passed: boolean; score: number; target: number } {
   console.log("[BENCHMARK] Executing Clarification Quality Test...");
