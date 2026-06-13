@@ -1,0 +1,122 @@
+import type { ProjectWorkspace } from "@/lib/types";
+
+export type ReviewerCheckStatus = "pass" | "warning" | "fail";
+
+export type ReviewerFinding = {
+  creditId: string;
+  creditCode: string;
+  creditName: string;
+  severity: ReviewerCheckStatus;
+  message: string;
+};
+
+export type ReviewerSimulationResult = {
+  status: ReviewerCheckStatus;
+  summary: {
+    creditsChecked: number;
+    findings: number;
+    failed: number;
+    warnings: number;
+    complianceScore: number;
+    completenessScore: number;
+    consistencyScore: number;
+  };
+  findings: ReviewerFinding[];
+};
+
+function normalizeState(value: unknown): string {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function isApprovedState(state: string): boolean {
+  return state === "APPROVED";
+}
+
+export function runReviewerSimulation(workspace: ProjectWorkspace): ReviewerSimulationResult {
+  const findings: ReviewerFinding[] = [];
+  let completenessPenalty = 0;
+  let consistencyPenalty = 0;
+  let compliancePenalty = 0;
+
+  for (const credit of workspace.credits ?? []) {
+    const requirements = (credit.documents_required ?? []).filter((item) => item.required);
+    const latestDocs = (credit.documents ?? []).filter((doc: any) => doc.is_latest !== false);
+
+    // Completeness check: required slots must have at least one latest document.
+    const missingRequired = requirements.filter(
+      (required) => !latestDocs.some((doc) => doc.doc_category === required.type),
+    );
+    if (missingRequired.length > 0) {
+      completenessPenalty += missingRequired.length * 8;
+      findings.push({
+        creditId: credit.id,
+        creditCode: credit.credit_code,
+        creditName: credit.credit_name,
+        severity: "fail",
+        message: `Missing required evidence: ${missingRequired.map((item) => item.label || item.type).join(", ")}.`,
+      });
+    }
+
+    // Consistency check: latest docs should not have duplicate categories.
+    const counts = new Map<string, number>();
+    for (const doc of latestDocs) {
+      const key = String(doc.doc_category ?? "").trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const duplicated = Array.from(counts.entries()).filter(([, count]) => count > 1);
+    if (duplicated.length > 0) {
+      consistencyPenalty += duplicated.length * 4;
+      findings.push({
+        creditId: credit.id,
+        creditCode: credit.credit_code,
+        creditName: credit.credit_name,
+        severity: "warning",
+        message: `Multiple latest documents detected for: ${duplicated.map(([key]) => key).join(", ")}.`,
+      });
+    }
+
+    // Compliance check: mandatory credits should have approved latest docs in required slots.
+    if (credit.is_mandatory) {
+      const nonApprovedRequired = requirements.filter((required) => {
+        const candidates = latestDocs.filter((doc) => doc.doc_category === required.type);
+        if (candidates.length === 0) return true;
+        return !candidates.some((doc) => isApprovedState(normalizeState((doc as any).state ?? doc.status)));
+      });
+      if (nonApprovedRequired.length > 0) {
+        compliancePenalty += nonApprovedRequired.length * 10;
+        findings.push({
+          creditId: credit.id,
+          creditCode: credit.credit_code,
+          creditName: credit.credit_name,
+          severity: "fail",
+          message: `Mandatory credit has pending/non-approved required evidence: ${nonApprovedRequired
+            .map((item) => item.label || item.type)
+            .join(", ")}.`,
+        });
+      }
+    }
+  }
+
+  const failed = findings.filter((item) => item.severity === "fail").length;
+  const warnings = findings.filter((item) => item.severity === "warning").length;
+  const status: ReviewerCheckStatus = failed > 0 ? "fail" : warnings > 0 ? "warning" : "pass";
+  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
+  const completenessScore = clamp(100 - completenessPenalty);
+  const consistencyScore = clamp(100 - consistencyPenalty);
+  const complianceScore = clamp(100 - compliancePenalty);
+
+  return {
+    status,
+    summary: {
+      creditsChecked: workspace.credits.length,
+      findings: findings.length,
+      failed,
+      warnings,
+      complianceScore,
+      completenessScore,
+      consistencyScore,
+    },
+    findings,
+  };
+}

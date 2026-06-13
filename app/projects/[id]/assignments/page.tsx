@@ -32,6 +32,48 @@ export default async function AssignmentsPage({
 
   // Filter out credits that are not applicable
   const activeCredits = workspace.credits.filter(c => c.documents_required?.length > 0);
+
+  // Sort as per the IGBC guidebook categories and numbering
+  const categoryOrder = [
+    "EDA", // Eco Design Approach
+    "WC",  // Water Conservation
+    "EE",  // Energy Efficiency
+    "IM",  // Interior Materials
+    "IE",  // Indoor Environment
+    "IID"  // Innovation in Interior Design
+  ];
+
+  activeCredits.sort((a, b) => {
+    // Extract the category prefix from credit code (e.g. "EE 1.2" -> "EE")
+    const getPrefix = (code: string) => code ? code.split(" ")[0] : "";
+    
+    const prefixA = getPrefix(a.credit_code);
+    const prefixB = getPrefix(b.credit_code);
+    
+    // 1. Sort by category sequence
+    const idxA = categoryOrder.indexOf(prefixA);
+    const idxB = categoryOrder.indexOf(prefixB);
+    
+    if (idxA !== idxB) {
+      if (idxA === -1) return 1; // Put unknown categories at the bottom
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    }
+    
+    // 2. Sort Mandatory Requirements (MR) before Credits
+    const isMRA = a.is_mandatory || a.credit_code.includes("MR");
+    const isMRB = b.is_mandatory || b.credit_code.includes("MR");
+    
+    if (isMRA && !isMRB) return -1;
+    if (!isMRA && isMRB) return 1;
+    
+    // 3. Sort by credit number extracted from code (e.g. "EE 1.2" -> 1.2)
+    const numA = parseFloat(a.credit_code.match(/\d+(\.\d+)?/)?.[0] || "0");
+    const numB = parseFloat(b.credit_code.match(/\d+(\.\d+)?/)?.[0] || "0");
+    
+    return numA - numB;
+  });
+
   const isLocked = !!workspace.project.assignments_locked;
 
   return (

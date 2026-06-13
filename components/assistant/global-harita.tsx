@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, ChevronLeft, ChevronRight, MessageSquare, Plus, Send, Sparkles } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, MessageSquare, Plus, Trash2, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui-lib/ui/button";
 import { Textarea } from "@/components/ui-lib/ui/textarea";
 import type { AssistantContext, AssistantMessage, AssistantSurface } from "@/lib/harita-engine/assistant";
@@ -178,7 +178,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
   }
 
   try {
-    const raw = window.localStorage.getItem(storageKey);
+    const raw = window.sessionStorage.getItem(storageKey);
     if (!raw) {
       return fallback;
     }
@@ -199,7 +199,25 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   const pathname = usePathname();
   const router = useRouter();
   const surface = mapSurface(pathname);
-  const storageKey = "tracknov-harita:history";
+  const [userId, setUserId] = useState<string>("");
+  const [projectId, setProjectId] = useState<string>("");
+
+  useEffect(() => {
+    const match = pathname.match(/\/?projects\/([^/?#\s\/]+)/i);
+    if (match?.[1]) {
+      setProjectId(match[1]);
+    } else {
+      setProjectId("");
+    }
+  }, [pathname]);
+
+  const storageKey = useMemo(() => {
+    if (userId) {
+      return `tracknov-harita:history:${userId}:global`;
+    }
+    return "tracknov-harita:history";
+  }, [userId]);
+
   const collapseKey = "tracknov-harita-collapsed";
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -245,6 +263,9 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [lateWarning, setLateWarning] = useState<string | null>(null);
+  const [inputLocked, setInputLocked] = useState(false);
   const [selectedTone, setSelectedTone] = useState<AssistantTone>("Auto");
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachment, setAttachment] = useState<HaritaAttachment | null>(null);
@@ -315,6 +336,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
         if (response.ok) {
           const data = await response.json();
           setUserName(data.name);
+          setUserId(data.id);
         }
       } catch (err) {
         console.warn("Failed to fetch user profile", err);
@@ -372,7 +394,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
     if (!historyLoaded || typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(storageKey, JSON.stringify(messages));
+    window.sessionStorage.setItem(storageKey, JSON.stringify(messages));
   }, [messages, storageKey, historyLoaded]);
 
   useEffect(() => {
@@ -399,6 +421,7 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -407,21 +430,57 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
       }
       const text = decoder.decode(value, { stream: true });
       if (text) {
-        onChunk(text);
+        buffer += text;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.type === "token") {
+              onChunk(parsed.content);
+            } else if (parsed.type === "control") {
+              if (parsed.action === "RESET_STREAM") {
+                onChunk("RESET_STREAM");
+              } else if (parsed.action === "WARNING") {
+                onChunk(`WARNING:${parsed.message}`);
+              }
+            }
+          } catch {
+            onChunk(trimmed);
+          }
+        }
       }
     }
 
     const tail = decoder.decode();
-    if (tail) {
-      onChunk(tail);
+    buffer += tail;
+    if (buffer.trim()) {
+      try {
+        const parsed = JSON.parse(buffer.trim());
+        if (parsed.type === "token") {
+          onChunk(parsed.content);
+        } else if (parsed.type === "control") {
+          if (parsed.action === "RESET_STREAM") {
+            onChunk("RESET_STREAM");
+          } else if (parsed.action === "WARNING") {
+            onChunk(`WARNING:${parsed.message}`);
+          }
+        }
+      } catch {
+        onChunk(buffer);
+      }
     }
   }
 
   async function sendPrompt(prompt: string) {
     const text = prompt.trim();
-    if (!text || loading) {
+    if (!text || loading || inputLocked) {
       return;
     }
+    setLateWarning(null);
+    setInputLocked(false);
 
     if (attachmentFile && shouldAttemptProjectUpload(text)) {
       const uploaded = await uploadAttachmentToProject(text);
@@ -496,13 +555,36 @@ export function GlobalHarita({ enabled, role, title, description, persistent }: 
       }
 
       let assistantText = "";
+      let isStreamReset = false;
       await readStream(response, (chunk) => {
-        assistantText += chunk;
-        setMessages((current) => {
-          const copy = [...current];
-          copy[copy.length - 1] = { role: "assistant", content: assistantText };
-          return copy;
-        });
+        if (chunk === "RESET_STREAM") {
+          isStreamReset = true;
+          setInputLocked(true);
+          setMessages((current) => {
+            const copy = [...current];
+            copy[copy.length - 1] = {
+              role: "assistant",
+              content: "🔄 **System role violation detected. Generation has been reset and input has been locked.**",
+            };
+            return copy;
+          });
+          return;
+        }
+
+        if (chunk.startsWith("WARNING:")) {
+          const warnMsg = chunk.slice(8);
+          setLateWarning(warnMsg);
+          return;
+        }
+
+        if (!isStreamReset) {
+          assistantText += chunk;
+          setMessages((current) => {
+            const copy = [...current];
+            copy[copy.length - 1] = { role: "assistant", content: assistantText };
+            return copy;
+          });
+        }
       });
 
       const sanitized = assistantText.replace(/\s+/g, " ").toLowerCase();
@@ -801,17 +883,52 @@ Important:
     }
   }
 
-  function clearHistory() {
+  async function clearHistory(forceParam?: any) {
+    const force = forceParam === true;
+    setError("");
+    setResetError(null);
+    setLoading(true);
+
+    const match = pathname.match(/^\/projects\/([^/]+)/);
+    const projId = match?.[1] || projectId || "global";
+
+    if (projId === "global" || messages.length === 0) {
+      clearHistoryForce();
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/assistant/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: projId, force }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Wipe Blocked: We couldn't summarize your active session (Rate Limit Expired or API Timeout). To prevent losing your chat context, the history has not been cleared." }));
+        throw new Error(errData.error || errData.message || "Wipe Blocked: We couldn't summarize your active session (Rate Limit Expired or API Timeout). To prevent losing your chat context, the history has not been cleared.");
+      }
+
+      clearHistoryForce();
+    } catch (e: any) {
+      console.error("[ClearHistory] Error:", e);
+      setResetError(e.message || "Wipe Blocked: We couldn't summarize your active session (Rate Limit Expired or API Timeout). To prevent losing your chat context, the history has not been cleared.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function clearHistoryForce() {
     setMessages([{ role: "assistant", content: personalizedGreeting }]);
     setAttachment(null);
     setAttachmentFile(null);
     setInputValue("");
     setError("");
-    // SECTION 9 & Phase 3: Clear session memory on "New Chat"
+    setResetError(null);
     sessionMemory.clear();
-    // Also clear localStorage history
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(storageKey);
+      window.sessionStorage.removeItem(storageKey);
     }
   }
 
@@ -913,10 +1030,10 @@ Important:
               type="button"
               onClick={clearHistory}
               className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-              title="New Chat"
-              aria-label="New Chat"
+              title="Clear Chat"
+              aria-label="Clear Chat"
             >
-              <Plus className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -987,6 +1104,55 @@ Important:
 
         <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3 bg-[var(--color-surface)] shrink-0">
           <div className="space-y-2">
+            {resetError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800 space-y-2 mb-2 animate-fadeIn shadow-sm">
+                <p className="font-semibold leading-snug">{resetError}</p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-7 px-2.5 text-[11px] font-bold border-red-200 text-red-800 hover:bg-red-100"
+                    onClick={() => clearHistory(false)}
+                    disabled={loading}
+                  >
+                    Retry
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-7 px-2.5 text-[11px] font-bold text-white"
+                    onClick={() => clearHistory(true)}
+                    disabled={loading}
+                  >
+                    Clear Anyway
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 px-2.5 text-[11px] font-medium text-red-700/70 hover:text-red-900 hover:bg-red-100/50 border-none animate-none active:scale-100"
+                    onClick={() => setResetError(null)}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+            {lateWarning && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 space-y-2 mb-2 animate-fadeIn shadow-sm">
+                <p className="font-semibold leading-snug">{lateWarning}</p>
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 px-2.5 text-[11px] font-medium text-amber-700/70 hover:text-amber-900 hover:bg-amber-100/50 border-none animate-none active:scale-100"
+                    onClick={() => setLateWarning(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2 relative">
               <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
 
@@ -1049,10 +1215,11 @@ Important:
                       void sendPrompt(inputValue);
                     }
                   }}
-                  placeholder="Ask Harita..."
+                  placeholder={inputLocked ? "Input locked due to safety check failure" : "Ask Harita..."}
                   className="min-h-[80px] resize-none text-[12px]"
+                  disabled={loading || inputLocked}
                 />
-                <Button type="button" onClick={() => sendPrompt(inputValue)} className="h-10 rounded-full px-4" disabled={loading}>
+                <Button type="button" onClick={() => sendPrompt(inputValue)} className="h-10 rounded-full px-4" disabled={loading || inputLocked}>
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -1099,10 +1266,10 @@ Important:
               type="button"
               onClick={clearHistory}
               className="rounded-md p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-              title="New Chat"
-              aria-label="New Chat"
+              title="Clear Chat"
+              aria-label="Clear Chat"
             >
-              <Plus className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -1233,6 +1400,55 @@ Important:
 
         <div className="space-y-2 border-t border-[var(--color-border)] px-3 py-3">
           <div className="space-y-2">
+            {resetError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800 space-y-2 mb-2 animate-fadeIn shadow-sm">
+                <p className="font-semibold leading-snug">{resetError}</p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-7 px-2.5 text-[11px] font-bold border-red-200 text-red-800 hover:bg-red-100"
+                    onClick={() => clearHistory(false)}
+                    disabled={loading}
+                  >
+                    Retry
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-7 px-2.5 text-[11px] font-bold text-white"
+                    onClick={() => clearHistory(true)}
+                    disabled={loading}
+                  >
+                    Clear Anyway
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 px-2.5 text-[11px] font-medium text-red-700/70 hover:text-red-900 hover:bg-red-100/50 border-none animate-none active:scale-100"
+                    onClick={() => setResetError(null)}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+            {lateWarning && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 space-y-2 mb-2 animate-fadeIn shadow-sm">
+                <p className="font-semibold leading-snug">{lateWarning}</p>
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 px-2.5 text-[11px] font-medium text-amber-700/70 hover:text-amber-900 hover:bg-amber-100/50 border-none animate-none active:scale-100"
+                    onClick={() => setLateWarning(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2 relative">
               <input ref={uploadInputRef} type="file" onChange={onFilePicked} className="hidden" />
 
@@ -1295,10 +1511,11 @@ Important:
                       void sendPrompt(inputValue);
                     }
                   }}
-                  placeholder="Ask Harita..."
+                  placeholder={inputLocked ? "Input locked due to safety check failure" : "Ask Harita..."}
                   className="min-h-[84px] resize-none"
+                  disabled={loading || inputLocked}
                 />
-                <Button type="button" onClick={() => sendPrompt(inputValue)} className="h-10 rounded-full px-4" disabled={loading}>
+                <Button type="button" onClick={() => sendPrompt(inputValue)} className="h-10 rounded-full px-4" disabled={loading || inputLocked}>
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>

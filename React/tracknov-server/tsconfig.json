@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tracknov/core/*": ["./src/lib/core/*"],
+      "@tracknov/harita-engine/*": ["./src/lib/harita-engine/*"],
+      "@tracknov/ui/*": ["./src/components/ui-lib/*"]
+    }
+  }
+}

@@ -34,7 +34,9 @@ export default async function ProjectOverviewPage({
 
   const categoryProgress = stats.categories;
 
-  const milestones = await stageGateService.getMilestones(projectId);
+  // Use pre-loaded workspace docs — avoids a redundant project_document DB round-trip (~550ms)
+  const allDocs = workspace.credits.flatMap((c: any) => c.documents ?? []);
+  const milestones = stageGateService.getMilestonesFromDocs(allDocs);
 
   const activeGuidebook = workspace.guidebooks?.[0];
   const guidebookName = activeGuidebook?.title || activeGuidebook?.file_name;

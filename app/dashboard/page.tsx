@@ -60,9 +60,11 @@ export default async function DashboardPage({
   searchParams?: Promise<{ project?: string; action?: string; entity?: string; actor_role?: string }>;
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const [user, projects, ownerQueue, insights, myTasks, roleTasks, runtimeSummary, actionQueue, reviewQueue, blockerQueue] = await Promise.all([
-    getCurrentUser(),
-    getDashboardProjects(),
+  // Pre-fetch foundational data to populate React cache and prevent connection pool exhaustion
+  const user = await getCurrentUser();
+  const projects = await getDashboardProjects();
+
+  const [ownerQueue, insights, myTasks, roleTasks, runtimeSummary, actionQueue, reviewQueue, blockerQueue, timelineRows] = await Promise.all([
     getOwnerReviewQueue(),
     getExecutiveInsights(),
     getTasksForUser(),
@@ -71,15 +73,13 @@ export default async function DashboardPage({
     getUserActionQueue(),
     getUserReviewQueue(),
     getUserBlockerQueue(),
-  ]);
-  const [timelineRows] = await Promise.all([
     getAuditTimeline({
       projectId: resolvedSearchParams?.project,
       action: resolvedSearchParams?.action,
       entityType: resolvedSearchParams?.entity,
       actorRole: resolvedSearchParams?.actor_role,
       limit: 80,
-    }),
+    })
   ]);
   const condensedTimelineRows = collapseTimelineRows(timelineRows);
   const roi = await getRoiSnapshot();

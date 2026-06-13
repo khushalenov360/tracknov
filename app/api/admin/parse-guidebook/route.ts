@@ -1,8 +1,46 @@
 import { NextResponse } from "next/server";
-import { DocumentParser } from "@/lib/harita-engine/document-intelligence/DocumentParser";
 import { env } from "@/lib/env";
 
 export const maxDuration = 300; // Vercel max timeout (5 mins)
+
+const creditSchema = {
+  type: "ARRAY",
+  description: "A list of green building credits extracted from the guidebook.",
+  items: {
+    type: "OBJECT",
+    properties: {
+      category: {
+        type: "STRING",
+        description: "The overarching category section (e.g. Eco Design Approach, Water Conservation)"
+      },
+      credit_code: {
+        type: "STRING",
+        description: "The abbreviation code (e.g. EDA MR1, EDA C1)"
+      },
+      credit_name: {
+        type: "STRING",
+        description: "The full title of the credit"
+      },
+      is_mandatory: {
+        type: "BOOLEAN",
+        description: "true if it's a Mandatory Requirement (MR)"
+      },
+      max_points: {
+        type: "INTEGER",
+        description: "0 for mandatory, otherwise the max points available for the credit"
+      },
+      what_to_submit: {
+        type: "STRING",
+        description: "Brief bulleted summary of required documents"
+      },
+      documentation_summary: {
+        type: "STRING",
+        description: "Brief summary of the credit's intent and requirements"
+      }
+    },
+    required: ["category", "credit_code", "credit_name", "is_mandatory", "max_points"]
+  }
+};
 
 export async function POST(req: Request) {
   try {
@@ -13,72 +51,127 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // 1. Extract text from PDF
-    const parser = new DocumentParser();
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = await parser.parse(buffer, file.name);
-
-    if (!parsed.text || parsed.text.length < 100) {
-      return NextResponse.json({ error: "Could not extract text from PDF." }, { status: 400 });
-    }
-
-    // 2. Extract structured credits using Gemini
     const geminiKey = process.env.GEMINI_API_KEY || env.geminiApiKeys?.[0];
     if (!geminiKey) {
       return NextResponse.json({ error: "No Gemini API key available." }, { status: 500 });
     }
 
-    const systemPrompt = `You are an expert at extracting structured green building framework data from unstructured PDF text.
-The user will provide the raw text of an official Green Building Guidebook (like IGBC Green Interiors).
-Your goal is to extract ALL of the credits/mandatory requirements defined in the manual and output them strictly as a JSON array.
+    // 1. Prepare PDF as base64 for Multimodal processing
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64Data = buffer.toString("base64");
 
-Output format must be a JSON array of objects:
-[
-  {
-    "category": "Eco Design Approach", // The overarching category section
-    "credit_code": "EDA MR1", // The abbreviation code (e.g. EDA MR1, EDA C1)
-    "credit_name": "Eco Design Approach", // The full title of the credit
-    "is_mandatory": true, // true if it's a Mandatory Requirement (MR)
-    "max_points": 0, // 0 for mandatory, otherwise the max points available for the credit
-    "what_to_submit": "Brief bulleted summary of required documents",
-    "documentation_summary": "Brief summary of the credit's intent and requirements"
-  }
-]
+    const pdfPart = {
+      inlineData: {
+        mimeType: "application/pdf",
+        data: base64Data
+      }
+    };
 
+    // --- PASS 1: EXTRACT INDEX ---
+    const indexSchema = {
+      type: "ARRAY",
+      description: "A strict index of green building credits extracted from the summary checklist.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          category: { type: "STRING" },
+          credit_code: { type: "STRING" },
+          credit_name: { type: "STRING" },
+          is_mandatory: { type: "BOOLEAN" },
+          max_points: { type: "INTEGER" }
+        },
+        required: ["category", "credit_code", "credit_name", "is_mandatory", "max_points"]
+      }
+    };
+
+    const indexPrompt = `You are an expert at extracting structured green building framework data from PDF Guidebooks.
+Your goal is to locate the summary "Points Distribution" or "Checklist" table in the document and extract a strict index of all credits and mandatory requirements.
 CRITICAL RULES:
-- Read carefully and make sure NOT to miss any credits.
-- Output ONLY valid JSON, starting with [ and ending with ]. Do NOT include markdown code fences (\`\`\`json).`;
+- Only extract the summary list. Do not extract detailed documentation yet.
+- Ensure you do not miss any credits. Look carefully at the table structure.
+- Mandatory Requirements (MR) should have max_points = 0 and is_mandatory = true.`;
 
-    const response = await fetch(
+    const indexRes = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey as string },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: parsed.text.slice(0, 1000000) }] }], // pass up to 1M chars
-          generationConfig: { temperature: 0.1 },
+          systemInstruction: { parts: [{ text: indexPrompt }] },
+          contents: [{ role: "user", parts: [pdfPart, { text: "Extract the strict credit index from the summary tables." }] }],
+          generationConfig: { 
+            temperature: 0.1,
+            responseMimeType: "application/json",
+            responseSchema: indexSchema
+          },
         }),
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json({ error: "Gemini API failed: " + errorText }, { status: 500 });
+    if (!indexRes.ok) {
+      const errorText = await indexRes.text();
+      return NextResponse.json({ error: "Index API failed: " + errorText }, { status: 500 });
     }
 
-    const data = await response.json();
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-    
-    // Clean markdown
-    const cleanJson = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
+    const indexData = await indexRes.json();
+    const indexText = indexData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    let indexJson = [];
     try {
-      const parsedJson = JSON.parse(cleanJson);
-      return NextResponse.json({ credits: parsedJson });
-    } catch (parseError) {
-      return NextResponse.json({ error: "Failed to parse JSON from LLM: " + cleanJson }, { status: 500 });
+      indexJson = JSON.parse(indexText);
+    } catch (e) {
+      return NextResponse.json({ error: "Failed to parse index JSON" }, { status: 500 });
     }
+
+    if (indexJson.length === 0) {
+      return NextResponse.json({ error: "No credits found in the summary tables." }, { status: 400 });
+    }
+
+    // --- PASS 2: MAP DETAILS ---
+    const mapPrompt = `You are an expert at mapping detailed requirements to a strict credit index.
+I am providing you with the strict index of credits extracted from the summary tables.
+Your job is to read the full guidebook and extract the "documentation_summary" (a brief summary of the required documents) for each credit in the index.
+
+CRITICAL RULES:
+1. DO NOT ADD any credits that are not in the provided index.
+2. DO NOT REMOVE any credits from the provided index.
+3. Keep the exact category, credit_code, credit_name, is_mandatory, and max_points from the index.
+4. Just fill in the \`documentation_summary\` for each one based on the detailed sections of the manual.`;
+
+    const mapRes = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey as string },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: mapPrompt }] },
+          contents: [{ role: "user", parts: [
+            pdfPart, 
+            { text: "Here is the strict index. Map the detailed documentation requirements to it:\n" + indexText }
+          ] }],
+          generationConfig: { 
+            temperature: 0.1,
+            responseMimeType: "application/json",
+            responseSchema: creditSchema
+          },
+        }),
+      }
+    );
+
+    if (!mapRes.ok) {
+      const errText = await mapRes.text();
+      return NextResponse.json({ error: "Map API failed: " + errText }, { status: 500 });
+    }
+
+    const mapData = await mapRes.json();
+    const finalText = mapData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    let parsedJson = [];
+    try {
+      parsedJson = JSON.parse(finalText);
+    } catch (parseError) {
+      return NextResponse.json({ error: "Failed to parse final JSON string." }, { status: 500 });
+    }
+
+    return NextResponse.json({ credits: parsedJson });
 
   } catch (error: any) {
     console.error("Parse Guidebook Error:", error);

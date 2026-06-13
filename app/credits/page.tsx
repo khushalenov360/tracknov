@@ -76,7 +76,7 @@ export default async function CreditsPage() {
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {score.categories.map((category) => {
+                    {score.categories.map((category: any) => {
                       const meta = categoryMeta[category.category as keyof typeof categoryMeta];
                       return (
                         <div key={category.category} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">

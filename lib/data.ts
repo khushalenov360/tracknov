@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
-import { buildProjectCreditSeedRows, buildSeedCredits } from "@/lib/catalog";
+
 import { categoryMeta, igbcRatingSystems } from "@/lib/constants";
 import { env } from "@/lib/env";
 import {
@@ -665,40 +666,61 @@ export const getDashboardProjects = cache(async function getDashboardProjects():
   return summaries;
 });
 
-async function instantiateLegacyCreditBridge(admin: any, projectId: string): Promise<number> {
-  const seedCredits = buildSeedCredits(projectId);
-  if (!seedCredits.length) return 0;
 
-  const { error: creditInsertError } = await admin.from("credits").insert(seedCredits);
-  if (creditInsertError && creditInsertError.code !== "23505") {
-    throw creditInsertError;
-  }
 
-  const { data: legacyCredits, error: legacyCreditsError } = await admin
-    .from("credits")
-    .select("id, credit_code, credit_name, is_mandatory, documents_required, documentation_summary")
-    .eq("project_id", projectId);
-  if (legacyCreditsError) throw legacyCreditsError;
-  if (!legacyCredits?.length) return 0;
+const getCachedProject = (projectId: string) => unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const { data } = await admin.from("projects").select("*").eq("id", projectId).single();
+    return data;
+  },
+  [`project-${projectId}`],
+  { revalidate: 60, tags: [`project:${projectId}`] }
+)();
 
-  const bridgeRows = legacyCredits.map((credit: any) => ({
-    project_id: projectId,
-    credit_id: credit.id,
-    credit_code: credit.credit_code,
-    credit_name: credit.credit_name,
-    is_mandatory: Boolean(credit.is_mandatory),
-    documents_required: credit.documents_required ?? [],
-    documentation_summary: credit.documentation_summary ?? null,
-    status: "DRAFT",
-  }));
+const getCachedGuidebooks = (projectId: string) => unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("project_guidebooks")
+      .select("id, title, file_name, file_path, uploaded_by, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+    return data || [];
+  },
+  [`guidebooks-${projectId}`],
+  { revalidate: 60, tags: [`project-guidebooks:${projectId}`] }
+)();
 
-  const { error: bridgeError } = await admin.from("project_credits").insert(bridgeRows);
-  if (bridgeError && bridgeError.code !== "23505") {
-    throw bridgeError;
-  }
+const getCachedValidationRules = (projectId: string) => unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("validation_rules")
+      .select("id, project_credit_id, credit_id, doc_category, rule_name, required_keywords, severity, is_active, created_at")
+      .eq("project_id", projectId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return data || [];
+  },
+  [`validation-rules-${projectId}`],
+  { revalidate: 60, tags: [`project-validation-rules:${projectId}`] }
+)();
 
-  return bridgeRows.length;
-}
+const getCachedDataTables = (projectId: string) => unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("project_data_tables")
+      .select("id, title, file_name, file_path, uploaded_by, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+    return data || [];
+  },
+  [`data-tables-${projectId}`],
+  { revalidate: 60, tags: [`project-data-tables:${projectId}`] }
+)();
 
 export const getProjectWorkspace = cache(async function getProjectWorkspace(projectId: string) {
   if (!env.isConfigured) {
@@ -714,9 +736,9 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
   const currentUser = await getCurrentUser();
   if ((currentUser?.role === "super_user" || currentUser?.role === "L5") && env.supabaseServiceRoleKey) {
     const admin = createAdminClient();
-    const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, { data: assignments }, { data: tasks }, { data: history }, { data: dataTables }, members, invites] =
+    const [project, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, guidebooks, validationRules, { data: assignments }, { data: tasks }, { data: history }, dataTables, members, invites] =
       await Promise.all([
-        admin.from("projects").select("*").eq("id", projectId).single(),
+        getCachedProject(projectId),
         admin.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
         admin
           .from("project_document")
@@ -735,18 +757,8 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
           .limit(25),
-        admin
-          .from("project_guidebooks")
-          .select("id, title, file_name, file_path, uploaded_by, created_at")
-          .eq("project_id", projectId)
-          .order("created_at", { ascending: false }),
-        admin
-          .from("validation_rules")
-          .select("id, project_credit_id, credit_id, doc_category, rule_name, required_keywords, severity, is_active, created_at")
-          .eq("project_id", projectId)
-          .eq("is_active", true)
-          .order("created_at", { ascending: false })
-          .limit(200),
+        getCachedGuidebooks(projectId),
+        getCachedValidationRules(projectId),
         admin
           .from("assignments")
           .select("id, project_id, project_credit_id, document_type, user_id, role, is_active")
@@ -754,7 +766,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
           .eq("is_active", true),
         admin.from("tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
         admin.from("task_history").select("*").order("created_at", { ascending: true }),
-        admin.from("project_data_tables").select("id, title, file_name, file_path, uploaded_by, created_at").eq("project_id", projectId).order("created_at", { ascending: false }),
+        getCachedDataTables(projectId),
         getProjectMembers(admin, projectId),
         getProjectInvites(admin, projectId),
       ]);
@@ -780,37 +792,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
       return doc;
     });
 
-    let effectiveCredits = (credits ?? []) as Array<any>;
-    if (effectiveCredits.length === 0) {
-      const fallbackCredits = buildProjectCreditSeedRows(projectId);
-      if (fallbackCredits.length > 0) {
-        const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
-        if (seedError) {
-          const message = String(seedError.message ?? "").toLowerCase();
-          const code = String(seedError.code ?? "");
-          const needsLegacyBridge =
-            code === "23502" ||
-            message.includes("credit_id") ||
-            message.includes("null value") ||
-            message.includes("violates not-null constraint");
-          if (needsLegacyBridge) {
-            try {
-              await instantiateLegacyCreditBridge(admin, projectId);
-            } catch (bridgeError: any) {
-              console.error("[Workspace self-heal] Legacy bridge fallback failed:", bridgeError.message);
-            }
-          } else {
-            console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
-          }
-        }
-        const { data: refreshedCredits } = await admin
-          .from("project_credits")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("credit_code");
-        effectiveCredits = (refreshedCredits ?? []) as Array<any>;
-      }
-    }
+    const effectiveCredits = (credits ?? []) as Array<any>;
     const creditIds = effectiveCredits.map((credit: any) => credit.id);
     const { data: remarks } = creditIds.length
       ? await admin.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
@@ -859,50 +841,40 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
     return null;
   }
 
-  const [{ data: project }, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, { data: guidebooks }, { data: validationRules }, { data: assignments }, { data: tasks }, { data: history }, { data: dataTables }, members, invites] =
-    await Promise.all([
-      client.from("projects").select("*").eq("id", projectId).single(),
-      client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
-      client
-        .from("project_document")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("uploaded_at", { ascending: false }),
-      client
-        .from("notifications")
-        .select("id, body, action_url, created_at, read_at")
-        .eq("user_id", user.id)
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false }),
-      client
-        .from("system_activity_logs")
-        .select("id, project_id, entity_type, entity_id, action, actor_id, actor_role, summary, details, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false })
-        .limit(25),
-      client
-        .from("project_guidebooks")
-        .select("id, title, file_name, file_path, uploaded_by, created_at")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false }),
-      client
-        .from("validation_rules")
-        .select("id, project_credit_id, credit_id, doc_category, rule_name, required_keywords, severity, is_active, created_at")
-        .eq("project_id", projectId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(200),
-      admin
-        .from("assignments")
-        .select("id, project_id, project_credit_id, document_type, user_id, role, is_active")
-        .eq("project_id", projectId)
-        .eq("is_active", true),
-      client.from("tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
-      client.from("task_history").select("*").order("created_at", { ascending: true }),
-      client.from("project_data_tables").select("id, title, file_name, file_path, uploaded_by, created_at").eq("project_id", projectId).order("created_at", { ascending: false }),
-      getProjectMembers(client, projectId),
-      getProjectInvites(client, projectId),
-    ]);
+    const [project, { data: credits }, { data: documents }, { data: notifications }, { data: activityLogs }, guidebooks, validationRules, { data: assignments }, { data: tasks }, { data: history }, dataTables, members, invites] =
+      await Promise.all([
+        getCachedProject(projectId),
+        client.from("project_credits").select("*").eq("project_id", projectId).order("credit_code"),
+        client
+          .from("project_document")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("uploaded_at", { ascending: false }),
+        client
+          .from("notifications")
+          .select("id, body, action_url, created_at, read_at")
+          .eq("user_id", user.id)
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false }),
+        client
+          .from("system_activity_logs")
+          .select("id, project_id, entity_type, entity_id, action, actor_id, actor_role, summary, details, created_at")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(25),
+        getCachedGuidebooks(projectId),
+        getCachedValidationRules(projectId),
+        admin
+          .from("assignments")
+          .select("id, project_id, project_credit_id, document_type, user_id, role, is_active")
+          .eq("project_id", projectId)
+          .eq("is_active", true),
+        client.from("tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
+        client.from("task_history").select("*").order("created_at", { ascending: true }),
+        getCachedDataTables(projectId),
+        getProjectMembers(client, projectId),
+        getProjectInvites(client, projectId),
+      ]);
 
   const documentIds = (documents ?? []).map((d: any) => d.id);
   const { data: documentIntelligence } = documentIds.length
@@ -925,37 +897,7 @@ export const getProjectWorkspace = cache(async function getProjectWorkspace(proj
     return doc;
   });
 
-  let effectiveCredits = (credits ?? []) as Array<any>;
-  if (effectiveCredits.length === 0) {
-    const fallbackCredits = buildProjectCreditSeedRows(projectId);
-    if (fallbackCredits.length > 0) {
-      const { error: seedError } = await admin.from("project_credits").insert(fallbackCredits);
-      if (seedError) {
-        const message = String(seedError.message ?? "").toLowerCase();
-        const code = String(seedError.code ?? "");
-        const needsLegacyBridge =
-          code === "23502" ||
-          message.includes("credit_id") ||
-          message.includes("null value") ||
-          message.includes("violates not-null constraint");
-        if (needsLegacyBridge) {
-          try {
-            await instantiateLegacyCreditBridge(admin, projectId);
-          } catch (bridgeError: any) {
-            console.error("[Workspace self-heal] Legacy bridge fallback failed:", bridgeError.message);
-          }
-        } else {
-          console.error("[Workspace self-heal] Failed to seed project credits:", seedError.message);
-        }
-      }
-      const { data: refreshedCredits } = await client
-        .from("project_credits")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("credit_code");
-      effectiveCredits = (refreshedCredits ?? []) as Array<any>;
-    }
-  }
+  const effectiveCredits = (credits ?? []) as Array<any>;
   const creditIds = effectiveCredits.map((credit) => credit.id);
   const { data: remarks } = creditIds.length
     ? await client.from("remarks").select("*").in("credit_id", creditIds).order("created_at", { ascending: false })
@@ -1106,125 +1048,7 @@ export function creditStats(credits: CreditWorkspace[]) {
   };
 }
 
-export async function createProjectForCurrentUser({
-  name,
-  ratingSystem,
-  targetRating = "Certified",
-  clientName = "",
-  location = "",
-  projectType = "commercial",
-  status = "active",
-  greenCertification = "IGBC",
-  igbcVariant = "new",
-}: {
-  name: string;
-  ratingSystem: string;
-  targetRating?: string;
-  clientName?: string;
-  location?: string;
-  projectType?: string;
-  status?: string;
-  greenCertification?: string;
-  igbcVariant?: string;
-}) {
-  if (!env.isConfigured) {
-    return null;
-  }
 
-  const client = createClient();
-  const user = await getSupabaseUser(client);
-  if (!user) {
-    return null;
-  }
-  const currentUser = await getCurrentUser();
-  if (!canCreateProjects(currentUser?.role)) {
-    return null;
-  }
-  const elevatedClient =
-    env.supabaseServiceRoleKey && canCreateProjects(currentUser?.role)
-      ? createAdminClient()
-      : client;
-
-  const safeRatingSystem = igbcRatingSystems.includes(ratingSystem as any)
-    ? ratingSystem
-    : greenInteriorsSystem;
-
-  const { data: project, error: projectError } = await elevatedClient
-    .from("projects")
-    .insert({
-      name,
-      client: clientName,
-      location,
-      project_type: projectType,
-      status,
-      green_certification: greenCertification,
-      igbc_variant: igbcVariant,
-      target_rating: targetRating,
-      certification_type: safeRatingSystem,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (projectError || !project) {
-    throw projectError ?? new Error("Could not create project");
-  }
-
-  const membershipError = await elevatedClient.from("project_users").insert({
-    project_id: project.id,
-    user_id: user.id,
-    role: currentUser?.role === "super_user" ? "super_user" : "super_admin",
-  });
-
-  if (membershipError.error) {
-    throw membershipError.error;
-  }
-
-  if (safeRatingSystem === greenInteriorsSystem) {
-    const { data: createdCredits, error: creditsError } = await elevatedClient
-      .from("project_credits")
-      .insert(buildSeedCredits(project.id))
-      .select("id, project_id");
-    if (creditsError) {
-      throw creditsError;
-    }
-    if ((createdCredits ?? []).length) {
-      const { error: projectCreditError } = await elevatedClient.from("project_credits").insert(
-        (createdCredits ?? []).map((credit: any) => ({
-          project_id: credit.project_id,
-          credit_id: credit.id,
-        })),
-      );
-      if (projectCreditError) {
-        throw projectCreditError;
-      }
-    }
-  }
-
-  const { data: starterPlan } = await elevatedClient
-    .from("subscription_plans")
-    .select("code, document_credit_limit, consultant_credit_limit")
-    .eq("code", "starter")
-    .maybeSingle();
-  const defaultPlanCode = starterPlan?.code ?? "starter";
-  const defaultDocumentLimit = Number(starterPlan?.document_credit_limit ?? 250);
-  const defaultConsultantLimit = Number(starterPlan?.consultant_credit_limit ?? 40);
-  const { error: billingError } = await elevatedClient.from("project_billing_settings").upsert(
-    {
-      project_id: project.id,
-      plan_code: defaultPlanCode,
-      document_credit_limit: defaultDocumentLimit,
-      consultant_credit_limit: defaultConsultantLimit,
-      updated_by: user.id,
-    },
-    { onConflict: "project_id" },
-  );
-  if (billingError) {
-    throw billingError;
-  }
-
-  return project;
-}
 
 export async function getActiveSubscriptionPlans() {
   if (!env.isConfigured) {

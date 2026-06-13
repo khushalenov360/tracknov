@@ -29,3 +29,7 @@ jobs:
         run: npx tsx benchmarks/run_all_benchmarks.ts
       - name: Run Intelligence Governance & Replay Proofs
         run: npx tsx scripts/verify_intelligence_governance.ts
+      - name: Execute Harita Deterministic Integrity Assertions
+        run: |
+          npm install
+          npx mocha lib/harita-engine/replay/replayValidator.ts --require tsx --exit

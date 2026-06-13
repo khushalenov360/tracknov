@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --color-bg: #0F1117;
+  --color-surface: #161B22;
+  --color-surface-2: #1C2128;
+  --color-border: #30363D;
+  --color-border-strong: #484F58;
+  --color-text-primary: #E6EDF3;
+  --color-text-secondary: #8B949E;
+  --color-text-tertiary: #6E7681;
+  --color-green: #5C6E9E;
+  --color-green-light: #212631;
+  --color-green-dim: #4B5A80;
+  --color-amber: #D29922;
+  --color-amber-light: #4D3C10;
+  --color-red: #DA3633;
+  --color-red-light: #4A1616;
+  --color-blue: #2f81f7;
+  --color-blue-light: #121d2f;
+  --color-purple: #8957e5;
+  --color-purple-light: #24183a;
+  --color-olive: #238636;
+  --color-olive-light: #102b16;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: "Geist Sans", "Segoe UI", sans-serif;
+  font-feature-settings: "ss01" 1, "cv05" 1;
+  background-image: linear-gradient(180deg, #11141A 0%, var(--color-bg) 180px, var(--color-bg) 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+input,
+select,
+textarea,
+a {
+  transition-property: background-color, border-color, color;
+  transition-duration: 100ms;
+  transition-timing-function: ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-green);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-green-light);
+  color: var(--color-text-primary);
+}
+
+@layer base {
+  * {
+    box-shadow: none !important;
+  }
+}
+
+@layer components {
+  .app-shell {
+    min-height: 100vh;
+    background: var(--color-bg);
+  }
+
+  .surface-card {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    border-radius: 8px;
+  }
+
+  .surface-muted {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+    border-radius: 8px;
+  }
+
+  .dense-label {
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .mono {
+    font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-tertiary {
+    color: var(--color-text-tertiary);
+  }
+
+  .hairline {
+    border-color: var(--color-border);
+  }
+}
+
+/* Premium Card System */
+.surface-card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Colors System: Contrast States */
+.state-active {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-2);
+}
+
+.state-critical {
+  border-color: #f87171;
+  background-color: #fef2f2;
+  color: #991b1b;
+}
+
+.state-pending {
+  border-color: #fbbf24;
+  background-color: #fffbeb;
+  color: #92400e;
+}
+
+.state-approved {
+  border-color: #34d399;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+/* Animations */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -27,6 +27,10 @@ export async function POST(req: Request) {
       rsData = newRs;
     }
 
+    if (!rsData) {
+      return NextResponse.json({ error: "Failed to create or find rating system" }, { status: 500 });
+    }
+
     const rsId = rsData.id;
 
     // 2. Insert Categories uniquely
@@ -54,21 +58,24 @@ export async function POST(req: Request) {
       const catId = categoryMap[c.category];
       if (!catId) continue;
 
-      await adminClient
+      const { error: upsertError } = await adminClient
         .from("credit_templates")
         .upsert(
           {
             rating_system_id: rsId,
             category_id: catId,
-            credit_code: c.credit_code,
-            credit_name: c.credit_name,
+            code: c.credit_code,
+            name: c.credit_name,
             is_mandatory: c.is_mandatory || false,
             max_points: c.max_points || 0,
-            what_to_submit: c.what_to_submit || "",
             documentation_summary: c.documentation_summary || ""
           },
-          { onConflict: 'rating_system_id,credit_code' }
+          { onConflict: 'rating_system_id,code' }
         );
+      
+      if (upsertError) {
+        throw new Error("Failed to upsert credit: " + upsertError.message);
+      }
     }
 
     return NextResponse.json({ success: true, count: credits.length });

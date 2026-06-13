@@ -46,7 +46,7 @@ function loadMessages(storageKey: string, fallback: AssistantMessage[]) {
   }
 
   try {
-    const raw = window.localStorage.getItem(storageKey);
+    const raw = window.sessionStorage.getItem(storageKey);
     if (!raw) {
       return fallback;
     }
@@ -99,7 +99,7 @@ export function AiGuidePanel({
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(storageKey, JSON.stringify(messages));
+    window.sessionStorage.setItem(storageKey, JSON.stringify(messages));
   }, [messages, storageKey]);
 
   useEffect(() => {

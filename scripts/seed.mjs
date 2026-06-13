@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import catalog from "../data/igbc-green-interiors-v2.json" assert { type: "json" };
 
 const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -9,22 +8,6 @@ const env = {
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   ),
 };
-
-function buildSeedCredits(projectId) {
-  return catalog.map((credit) => ({
-    project_id: projectId,
-    credit_code: credit.credit_code,
-    category: credit.credit_code.split(" ")[0],
-    credit_name: credit.credit_name,
-    is_mandatory: credit.is_mandatory,
-    documents_required: credit.documents_required,
-    documentation_summary: credit.documentation_summary,
-    completion_pct: 0,
-    status: credit.na ? "complete" : "pending",
-    blocked_by: null,
-    na: credit.na,
-  }));
-}
 
 if (!env.isConfigured || !env.supabaseServiceRoleKey) {
   console.error("Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY before running npm run seed.");
@@ -40,33 +23,80 @@ const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
   auth: { persistSession: false },
 });
 
+// 1. Resolve rating system
+const { data: ratingSystem } = await supabase
+  .from("rating_systems")
+  .select("id, name")
+  .eq("name", "IGBC Green Interiors")
+  .limit(1)
+  .maybeSingle();
+
+const ratingSystemId = ratingSystem?.id ?? null;
+const ratingSystemName = ratingSystem?.name ?? "IGBC Green Interiors";
+
+// 2. Create project
 const { data: project, error: projectError } = await supabase
   .from("projects")
   .insert({
     name: projectName,
     target_rating: targetRating,
-    certification_type: "IGBC Green Interiors v2",
+    certification_type: ratingSystemName,
+    rating_system_id: ratingSystemId,
   })
   .select("id")
   .single();
 
 if (projectError || !project) {
-  console.error(projectError);
+  console.error("Failed to create project:", projectError);
   process.exit(1);
 }
 
+// 3. Initialize membership
 if (ownerUserId) {
-  await supabase.from("project_members").insert({
+  await supabase.from("project_users").insert({
     project_id: project.id,
     user_id: ownerUserId,
     role: "owner",
   });
 }
 
-const { error: creditsError } = await supabase.from("credits").insert(buildSeedCredits(project.id));
-if (creditsError) {
-  console.error(creditsError);
-  process.exit(1);
+// 4. Initialize project credits from templates
+if (ratingSystemId) {
+  const { data: templates, error: templatesError } = await supabase
+    .from("credit_templates")
+    .select("*, category:credit_categories(name)")
+    .eq("rating_system_id", ratingSystemId);
+
+  if (templatesError) {
+    console.error("Failed to fetch templates:", templatesError);
+    process.exit(1);
+  }
+
+  if (templates && templates.length > 0) {
+    const projectCreditsToInsert = templates.map((template) => ({
+      project_id: project.id,
+      credit_template_id: template.id,
+      credit_code: template.code,
+      credit_name: template.name,
+      category_id: template.category_id,
+      category_name: template.category?.name ?? null,
+      max_points: template.max_points || 0,
+      status: "DRAFT",
+    }));
+
+    const { error: insertError } = await supabase
+      .from("project_credits")
+      .insert(projectCreditsToInsert);
+
+    if (insertError) {
+      console.error("Failed to insert project credits:", insertError);
+      process.exit(1);
+    }
+  } else {
+    console.warn("No credit templates found for rating system. Seeding project without credits.");
+  }
+} else {
+  console.warn("Rating system 'IGBC Green Interiors' not found. Seeding project without credits.");
 }
 
 console.log(`Seeded project ${projectName} (${project.id})`);
