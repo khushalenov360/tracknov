@@ -13,6 +13,7 @@ export function ProjectTabs({ projectId, userRole }: { projectId: string; userRo
 
   if (userRole && ["L3", "L5", "project_admin", "super_admin", "super_user"].includes(userRole)) {
     tabs.push(
+      { key: "reviewer", label: "Reviewer" },
       { key: "assignments", label: "Assignments" },
       { key: "team", label: "Team" }
     );
@@ -27,7 +28,10 @@ export function ProjectTabs({ projectId, userRole }: { projectId: string; userRo
   return (
     <div className="flex shrink-0 border-b border-[var(--color-border)] mb-6 overflow-x-auto whitespace-nowrap gap-1 sticky top-0 bg-[var(--color-surface)] z-10 pt-1 pb-1">
       {tabs.map((t) => {
-        const active = segment === t.key || (segment === projectId && t.key === "credits");
+        const active =
+          segment === t.key ||
+          (segment === "dashboard" && t.key === "overview") ||
+          (segment === projectId && t.key === "credits");
         return (
           <Link
             key={t.key}

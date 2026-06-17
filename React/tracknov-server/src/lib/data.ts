@@ -246,7 +246,7 @@ async function getSupabaseUser(client: SupabaseClient) {
   let cacheKey = "";
   try {
     const cookieStore = await cookies();
-    cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+    cacheKey = (cookieStore.getAll() as Array<{ name: string; value: string }>).map((c) => `${c.name}=${c.value}`).join(";");
   } catch (e) {
     // cookies() might fail if called outside Request/Response context
   }
@@ -376,7 +376,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   let cacheKey = "";
   try {
     const cookieStore = await cookies();
-    cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+    cacheKey = (cookieStore.getAll() as Array<{ name: string; value: string }>).map((c) => `${c.name}=${c.value}`).join(";");
   } catch (e) {
     // cookies() might fail if called outside request context
   }
@@ -1779,10 +1779,10 @@ export async function getTeamMembers() {
       .select("id, project_id, user_id, role, created_at, projects(name)");
 
     const { data: wallets } = await admin
-      .from("client_token_wallets")
-      .select("client_user_id, token_balance");
+      .from("client_accounts")
+      .select("primary_client_user_id, token_balance");
 
-    const walletByClient = new Map((wallets ?? []).map((wallet: any) => [wallet.client_user_id, Number(wallet.token_balance ?? 0)]));
+    const walletByClient = new Map((wallets ?? []).map((wallet: any) => [wallet.primary_client_user_id, Number(wallet.token_balance ?? 0)]));
     const grouped = new Map<string, TeamMemberRecord>();
 
     (profiles ?? []).forEach((profile: any) => {
@@ -1850,9 +1850,9 @@ export async function getTeamMembers() {
     : { data: [] };
   const profilesByUser = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile]));
   const { data: wallets } = await client
-    .from("client_token_wallets")
-    .select("client_user_id, token_balance");
-  const walletByClient = new Map((wallets ?? []).map((wallet: any) => [wallet.client_user_id, Number(wallet.token_balance ?? 0)]));
+    .from("client_accounts")
+    .select("primary_client_user_id, token_balance");
+  const walletByClient = new Map((wallets ?? []).map((wallet: any) => [wallet.primary_client_user_id, Number(wallet.token_balance ?? 0)]));
   const grouped = new Map<string, TeamMemberRecord>();
 
   rows.forEach((row: any) => {
@@ -2360,10 +2360,10 @@ export async function getSuperUserCommandCenter() {
   const admin = createAdminClient();
   const [{ data: projects }, { data: wallets }, { data: transactions }, { data: uploadLogs }, { data: profiles }] = await Promise.all([
     admin.from("projects").select("id, name, client, status, created_at"),
-    admin.from("client_token_wallets").select("client_user_id, token_balance"),
+    admin.from("client_accounts").select("id, primary_client_user_id, account_name, token_balance"),
     admin
-      .from("client_token_transactions")
-      .select("id, client_user_id, project_id, tokens, reason, created_at, meta")
+      .from("token_transactions")
+      .select("id, client_account_id, project_id, transaction_kind, tokens, reason, created_at, meta")
       .order("created_at", { ascending: false })
       .limit(1000),
     admin
@@ -2385,18 +2385,20 @@ export async function getSuperUserCommandCenter() {
 
   const transactionsByClient = new Map<string, Array<any>>();
   for (const tx of transactions ?? []) {
-    const profile = profileById.get(tx.client_user_id);
-    const clientKey = (profile?.company || "Unassigned Client").trim();
+    const wallet = (wallets ?? []).find((row: any) => row.id === tx.client_account_id);
+    const profile = wallet?.primary_client_user_id ? profileById.get(wallet.primary_client_user_id) : null;
+    const clientKey = (wallet?.account_name || profile?.company || "Unassigned Client").trim();
     const existing = transactionsByClient.get(clientKey) ?? [];
     existing.push(tx);
     transactionsByClient.set(clientKey, existing);
   }
 
   const clientWalletRows = (wallets ?? []).map((wallet: any) => {
-    const profile = profileById.get(wallet.client_user_id);
+    const profile = wallet.primary_client_user_id ? profileById.get(wallet.primary_client_user_id) : null;
     return {
-      client_user_id: wallet.client_user_id,
-      client_name: profile?.company || "Unassigned Client",
+      client_user_id: wallet.primary_client_user_id,
+      client_account_id: wallet.id,
+      client_name: wallet.account_name || profile?.company || "Unassigned Client",
       client_contact: profile?.full_name || profile?.email || "Client contact",
       balance: Number(wallet.token_balance ?? 0),
     };
@@ -2406,10 +2408,10 @@ export async function getSuperUserCommandCenter() {
     const matchingWallet = clientWalletRows.find((wallet) => wallet.client_name === clientName);
     const clientTx = transactionsByClient.get(clientName) ?? [];
     const consumed = clientTx
-      .filter((tx) => Number(tx.tokens) < 0)
-      .reduce((sum, tx) => sum + Math.abs(Number(tx.tokens ?? 0)), 0);
+      .filter((tx) => tx.transaction_kind === "debit")
+      .reduce((sum, tx) => sum + Number(tx.tokens ?? 0), 0);
     const credited = clientTx
-      .filter((tx) => Number(tx.tokens) > 0)
+      .filter((tx) => tx.transaction_kind !== "debit")
       .reduce((sum, tx) => sum + Number(tx.tokens ?? 0), 0);
     const walletBalance = matchingWallet?.balance ?? 0;
     const projectCount = rows.length;
@@ -2425,22 +2427,22 @@ export async function getSuperUserCommandCenter() {
   });
 
   const totalTokensSold = (transactions ?? [])
-    .filter((tx: any) => Number(tx.tokens ?? 0) > 0)
+    .filter((tx: any) => tx.transaction_kind !== "debit")
     .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
   const totalTokensConsumed = (transactions ?? [])
-    .filter((tx: any) => Number(tx.tokens ?? 0) < 0)
-    .reduce((sum: number, tx: any) => sum + Math.abs(Number(tx.tokens ?? 0)), 0);
+    .filter((tx: any) => tx.transaction_kind === "debit")
+    .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
   const weeklyConsumed = (transactions ?? [])
-    .filter((tx: any) => Number(tx.tokens ?? 0) < 0 && new Date(tx.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
-    .reduce((sum: number, tx: any) => sum + Math.abs(Number(tx.tokens ?? 0)), 0);
+    .filter((tx: any) => tx.transaction_kind === "debit" && new Date(tx.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
   const uploadSpend = (transactions ?? [])
-    .filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("upload") && Number(tx.tokens ?? 0) < 0)
-    .reduce((sum: number, tx: any) => sum + Math.abs(Number(tx.tokens ?? 0)), 0);
+    .filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("upload") && tx.transaction_kind === "debit")
+    .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
   const consultSpend = (transactions ?? [])
-    .filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("consult") && Number(tx.tokens ?? 0) < 0)
-    .reduce((sum: number, tx: any) => sum + Math.abs(Number(tx.tokens ?? 0)), 0);
+    .filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("consult") && tx.transaction_kind === "debit")
+    .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
   const refunds = (transactions ?? [])
-    .filter((tx: any) => String(tx.reason ?? "").toLowerCase().includes("refund") && Number(tx.tokens ?? 0) > 0)
+    .filter((tx: any) => tx.transaction_kind === "refund" || String(tx.reason ?? "").toLowerCase().includes("refund"))
     .reduce((sum: number, tx: any) => sum + Number(tx.tokens ?? 0), 0);
 
   const uploadsToday = (uploadLogs ?? []).length;
@@ -2464,8 +2466,11 @@ export async function getSuperUserCommandCenter() {
 
   const revenueEstimateInr = totalTokensSold * 1;
   const reconciliationRows = clientWalletRows.map((wallet) => {
-    const tx = (transactions ?? []).filter((row: any) => row.client_user_id === wallet.client_user_id);
-    const ledgerDelta = tx.reduce((sum: number, row: any) => sum + Number(row.tokens ?? 0), 0);
+    const tx = (transactions ?? []).filter((row: any) => row.client_account_id === wallet.client_account_id);
+    const ledgerDelta = tx.reduce((sum: number, row: any) => {
+      const direction = row.transaction_kind === "debit" ? -1 : 1;
+      return sum + direction * Number(row.tokens ?? 0);
+    }, 0);
     const baselineEstimate = wallet.balance - ledgerDelta;
     const mismatch = Math.abs((baselineEstimate + ledgerDelta) - wallet.balance);
     return {
@@ -2504,9 +2509,9 @@ export async function getSuperUserCommandCenter() {
     alerts: criticalAlerts,
     recentTransactions: (transactions ?? []).slice(0, 20).map((tx: any) => ({
       id: tx.id,
-      client_user_id: tx.client_user_id,
+      client_user_id: clientWalletRows.find((wallet) => wallet.client_account_id === tx.client_account_id)?.client_user_id ?? null,
       project_id: tx.project_id,
-      tokens: Number(tx.tokens ?? 0),
+      tokens: tx.transaction_kind === "debit" ? -Number(tx.tokens ?? 0) : Number(tx.tokens ?? 0),
       reason: String(tx.reason ?? ""),
       created_at: tx.created_at,
     })),

@@ -14,8 +14,8 @@
 
 import { env } from "@/lib/env";
 import { buildAssistantSystemPrompt } from "../assistant";
+import { toOpenAiTools } from "./tool-registry";
 import { compress } from "headroom-ai";
-import { toOpenAiTools } from "../assistant-tools";
 
 // ---------------------------------------------------------------------------
 // Provider descriptor
@@ -172,25 +172,27 @@ function buildFallbackChain(
   if (ollamaUrl) {
     availableProviders.push({
       id: "ollama",
-      name: `Local (Gemma 3)`,
-      call: (sp, _contents) =>
-        fetch(ollamaUrl, {
+      name: `Local (Qwen)`,
+      call: (sp, _contents) => {
+        const payload = {
+          model: env.ollamaModel || "qwen-vision-expert:latest",
+          // Truncate the massive system prompt (which contains the full workspace) to 6000 chars for local Ollama
+          // to prevent 2+ minute prompt evaluation times on consumer hardware.
+          messages: [{ role: "system", content: sp.slice(0, 6000) }, ...geminiContents.map(c => ({ role: c.role === "model" ? "assistant" : "user", content: c.parts ? c.parts.map((p: any) => p.text || "").join("") : c.content || "" }))],
+          temperature: 0.4,
+          max_tokens: 1200,
+          stream: true,
+        };
+
+        return fetch(ollamaUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            model: env.ollamaModel || "gemma3",
-            // Truncate the massive system prompt (which contains the full workspace) to 6000 chars for local Ollama
-            // to prevent 2+ minute prompt evaluation times on consumer hardware.
-            messages: [{ role: "system", content: sp.slice(0, 6000) }, ...geminiContents.map(c => ({ role: c.role === "model" ? "assistant" : "user", content: c.parts ? c.parts.map((p: any) => p.text || "").join("") : c.content || "" }))],
-            temperature: 0.4,
-            max_tokens: 1200,
-            stream: true,
-            tools: toOpenAiTools(),
-          }),
-          signal: AbortSignal.timeout(30000),
-        }),
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(90000),
+        });
+      },
       parseStream: buildOpenAiStream,
       isRetryable: (s) => s >= 500,
     });
@@ -340,12 +342,11 @@ function buildFallbackChain(
     chain.push(primaryProvider);
     chain.push(...restProviders);
   } else {
-    // If auto or invalid provider, prioritize Atomesus, then OpenAI, then others
-    const gemini = availableProviders.find(p => p.id === "gemini");
-    if (gemini) chain.push(gemini);
-
     const ollama = availableProviders.find(p => p.id === "ollama");
     if (ollama) chain.push(ollama);
+
+    const gemini = availableProviders.find(p => p.id === "gemini");
+    if (gemini) chain.push(gemini);
     
     const atomesus = availableProviders.find(p => p.id === "atomesus");
     if (atomesus) chain.push(atomesus);
