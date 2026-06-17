@@ -1,14 +1,25 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
-import { Shell } from './components/shell';
-import { GlobalHarita } from './components/assistant/global-harita';
-import { ProjectTabs } from './components/project/ProjectTabs';
-import { Badge } from './components/ui-lib/ui/badge';
-import { ComplianceMatrix } from './components/ComplianceMatrix';
-import { DocumentAudit } from './components/DocumentAudit';
-import { supabase } from './lib/supabaseClient';
-import { LoginPage } from './pages/LoginPage';
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle, AlertTriangle, Lock, Unlock } from "lucide-react";
+import { Shell } from "./components/shell";
+import { HaritaContextProvider, PersistentHaritaSidebar } from "./components/assistant/harita-context";
+import { ProjectTabs } from "./components/project/ProjectTabs";
+import { Badge } from "./components/ui-lib/ui/badge";
+import { LoginPage } from "./pages/LoginPage";
+import {
+  getCreditPoints,
+  getCreditStats,
+  getCreditStatus,
+  getDashboardProjects,
+  getProjectWorkspace,
+  getReviewerQueue,
+  type ProjectWorkspace,
+  type ReviewerQueueEntry,
+  type WorkspaceCredit,
+  type WorkspaceMember,
+} from "./lib/liveData";
+import { supabase } from "./lib/supabaseClient";
 
 function mandatoryCode(creditCode: string, mandatory: boolean) {
   if (!mandatory || creditCode.includes("MR")) {
@@ -18,53 +29,58 @@ function mandatoryCode(creditCode: string, mandatory: boolean) {
   return `${parts[0]} MR ${parts.slice(1).join(" ")}`.trim();
 }
 
-function LegacyCreditsPage({ projectId }: { projectId: string }) {
+function statusClass(status: string) {
+  if (status === "approved") return "state-approved";
+  if (status === "blocked") return "state-critical";
+  return "state-pending";
+}
+
+function LoadingScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)]">
+      <div className="w-8 h-8 border-4 border-[var(--color-green)] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
+
+function WorkspaceSkeleton() {
+  return (
+    <div className="flex min-h-screen bg-[var(--color-bg)] overflow-hidden">
+      <div className="hidden md:flex w-24 border-r border-[var(--color-border)] bg-[var(--color-surface)]" />
+      <div className="flex-1 flex">
+        <div className="flex-1 flex flex-col">
+          <div className="h-20 border-b border-[var(--color-border)] bg-[var(--color-surface)]/80" />
+          <div className="px-10 py-8 space-y-6">
+            <div className="space-y-3">
+              <div className="h-8 w-64 rounded-xl bg-[var(--color-surface-2)] animate-pulse" />
+              <div className="h-4 w-96 max-w-full rounded-lg bg-[var(--color-surface-2)] animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-44 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="hidden xl:block w-[420px] border-l border-[var(--color-border)] bg-[var(--color-surface)]" />
+      </div>
+    </div>
+  );
+}
+
+function ProjectCards({
+  projectId,
+  credits,
+}: {
+  projectId: string;
+  credits: WorkspaceCredit[];
+}) {
   const [category, setCategory] = useState<string | null>(null);
+  const stats = useMemo(() => getCreditStats(credits), [credits]);
 
-  // Static mockup data to mimic the production layout
-  const stats = {
-    categories: [
-      { key: "EDA" },
-      { key: "WC" },
-      { key: "EE" },
-      { key: "IM" },
-      { key: "IE" },
-      { key: "IID" },
-    ]
-  };
-
-  const filteredCredits = [
-    {
-      id: "credit-1",
-      credit_code: "EDA Credit 1",
-      credit_name: "Eco Vision for Interior Design",
-      is_mandatory: false,
-      state: "approved",
-      available_points: 1,
-      responsible_role: "ARCHITECT",
-      remarks: [{ body: "Approved by IGBC committee." }]
-    },
-    {
-      id: "credit-2",
-      credit_code: "IE Mandatory Requirement 1",
-      credit_name: "Optimise Circulation Spaces",
-      is_mandatory: true,
-      state: "pending",
-      available_points: 0,
-      responsible_role: "PROJECT_ADMIN",
-      remarks: [{ body: "Awaiting uploaded floor plan." }]
-    },
-    {
-      id: "credit-3",
-      credit_code: "IID Credit 1",
-      credit_name: "Occupancy in a Green Facility",
-      is_mandatory: false,
-      state: "blocked",
-      available_points: 2,
-      responsible_role: "MEP",
-      remarks: [{ body: "Missing calculation sheets." }]
-    }
-  ];
+  const filteredCredits = useMemo(() => {
+    return credits.filter((credit) => (category ? credit.category === category : true));
+  }, [category, credits]);
 
   return (
     <div className="space-y-4 text-left animate-page-enter">
@@ -80,17 +96,17 @@ function LegacyCreditsPage({ projectId }: { projectId: string }) {
           >
             All Credits
           </button>
-          {stats.categories.map((c) => (
+          {stats.categories.map((entry) => (
             <button
-              key={c.key}
-              onClick={() => setCategory(c.key)}
+              key={entry.key}
+              onClick={() => setCategory(entry.key)}
               className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg border ${
-                category === c.key
+                category === entry.key
                   ? "bg-[var(--color-surface)] border-[var(--color-border-strong)] text-[var(--color-text-primary)]"
                   : "bg-[var(--color-surface-2)] border-[var(--color-border)] text-[var(--color-text-secondary)]"
               }`}
             >
-              {c.key}
+              {entry.key}
             </button>
           ))}
         </div>
@@ -100,69 +116,1078 @@ function LegacyCreditsPage({ projectId }: { projectId: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCredits.map((credit: any) => {
-          const isBlocked = credit.state === "blocked";
-          const stateColorClass = isBlocked ? "state-critical" : credit.state === "approved" ? "state-approved" : "state-pending";
+        {filteredCredits.map((credit) => {
+          const status = getCreditStatus(credit);
+          const note = credit.remarks?.[0]?.body;
+          const displayedResponsibility =
+            credit.responsible_role ||
+            credit.assignments?.[0]?.full_name ||
+            credit.assignments?.[0]?.role ||
+            "UNASSIGNED";
+
           return (
-            <div key={credit.id} className={`surface-card p-5 flex flex-col space-y-4 hover:border-[var(--color-green)] transition-all`}>
+            <div key={credit.id} className="surface-card p-5 flex flex-col space-y-4 hover:border-[var(--color-green)] transition-all">
               <div className="flex justify-between items-start gap-3">
                 <div className="space-y-1">
                   <span className="font-mono font-black text-[var(--color-green)] text-xs block">
-                    {mandatoryCode(credit.credit_code, credit.is_mandatory)}
+                    {mandatoryCode(credit.credit_code, Boolean(credit.is_mandatory))}
                   </span>
                   <h3 className="font-bold text-[var(--color-text-primary)] leading-snug">
                     {credit.credit_name}
                   </h3>
                 </div>
-                <Badge className={`shrink-0 ${stateColorClass}`}>
-                  {credit.state.toUpperCase()}
-                </Badge>
+                <Badge className={`shrink-0 ${statusClass(status)}`}>{status.toUpperCase()}</Badge>
               </div>
-              
+
               <div className="space-y-2 flex-1">
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
                   <span>Points</span>
-                  <strong className="text-[var(--color-text-primary)]">{Number(credit.available_points ?? 0).toFixed(1)}</strong>
+                  <strong className="text-[var(--color-text-primary)]">{getCreditPoints(credit).toFixed(1)}</strong>
                 </div>
                 <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
                   <span>Responsibility</span>
                   <strong className="text-[var(--color-text-primary)] uppercase">
-                    {credit.responsible_role.replace("_", " ")}
+                    {String(displayedResponsibility).replace(/_/g, " ")}
                   </strong>
                 </div>
-                {credit.remarks?.[0]?.body && (
+                {note ? (
                   <div className="bg-[var(--color-surface-2)] p-2.5 rounded-lg border border-[var(--color-border)] mt-2">
-                    {isBlocked ? (
+                    {status === "blocked" ? (
                       <span className="text-[var(--color-red)] font-bold flex items-center gap-1.5 text-xs">
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{credit.remarks?.[0]?.body}</span>
+                        <span className="truncate">{note}</span>
                       </span>
                     ) : (
                       <span className="text-[var(--color-text-tertiary)] font-medium text-xs line-clamp-2">
-                        {credit.remarks?.[0]?.body}
+                        {note}
                       </span>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
 
-              <div className="pt-2 border-t border-[var(--color-border)] flex gap-2">
-                <Link
-                  to={`/project/${projectId}/credit/${credit.id}`}
-                  className="w-1/2 flex items-center justify-center py-2 px-4 bg-[var(--color-surface-2)] hover:bg-[var(--color-green-soft)] text-[var(--color-text-primary)] hover:text-[var(--color-green)] text-xs font-bold rounded-lg border border-[var(--color-border)] hover:border-[var(--color-green-light)] transition-colors"
+              <div className="pt-2 border-t border-[var(--color-border)]">
+                <a
+                  href={`/projects/${projectId}/documents?credit=${credit.id}`}
+                  className="w-full flex items-center justify-center py-2 px-4 bg-[var(--color-surface-2)] hover:bg-[var(--color-green-soft)] text-[var(--color-text-primary)] hover:text-[var(--color-green)] text-xs font-bold rounded-lg border border-[var(--color-border)] hover:border-[var(--color-green-light)] transition-colors"
                 >
-                  Document Audit
-                </Link>
-                <Link
-                  to={`/project/${projectId}`}
-                  className="w-1/2 flex items-center justify-center py-2 px-4 bg-[var(--color-surface-2)] hover:bg-[var(--color-green-soft)] text-[var(--color-text-primary)] hover:text-[var(--color-green)] text-xs font-bold rounded-lg border border-[var(--color-border)] hover:border-[var(--color-green-light)] transition-colors"
-                >
-                  Compliance Matrix
-                </Link>
+                  Open Workspace
+                </a>
               </div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function AssignmentsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const isAllowed = ["L3", "L5", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  const [credits, setCredits] = useState<WorkspaceCredit[]>(workspace.credits);
+  const [assignmentsLocked, setAssignmentsLocked] = useState(Boolean(workspace.project.assignments_locked));
+  const [isSavingLock, setIsSavingLock] = useState(false);
+
+  useEffect(() => {
+    setCredits(workspace.credits);
+    setAssignmentsLocked(Boolean(workspace.project.assignments_locked));
+  }, [workspace]);
+
+  if (!isAllowed) {
+    return <Navigate to={`/projects/${workspace.project.id}/overview`} replace />;
+  }
+
+  const creditsWithDocuments = useMemo(() => {
+    const activeCredits = credits.filter((credit) => (credit.documents_required ?? []).length > 0);
+    const categoryOrder = ["EDA", "WC", "EE", "IM", "IE", "IID"];
+
+    return [...activeCredits].sort((a, b) => {
+      const prefixA = a.credit_code ? a.credit_code.split(" ")[0] : "";
+      const prefixB = b.credit_code ? b.credit_code.split(" ")[0] : "";
+      const idxA = categoryOrder.indexOf(prefixA);
+      const idxB = categoryOrder.indexOf(prefixB);
+
+      if (idxA !== idxB) {
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      }
+
+      const isMRA = Boolean(a.is_mandatory) || a.credit_code.includes("MR");
+      const isMRB = Boolean(b.is_mandatory) || b.credit_code.includes("MR");
+      if (isMRA && !isMRB) return -1;
+      if (!isMRA && isMRB) return 1;
+
+      const numA = parseFloat(a.credit_code.match(/\d+(\.\d+)?/)?.[0] || "0");
+      const numB = parseFloat(b.credit_code.match(/\d+(\.\d+)?/)?.[0] || "0");
+      return numA - numB;
+    });
+  }, [credits]);
+
+  const canManage = !assignmentsLocked;
+
+  const toggleAssignmentsLock = async () => {
+    setIsSavingLock(true);
+    const nextValue = !assignmentsLocked;
+    const { error } = await supabase
+      .from("projects")
+      .update({ assignments_locked: nextValue })
+      .eq("id", workspace.project.id);
+
+    if (!error) {
+      setAssignmentsLocked(nextValue);
+    }
+    setIsSavingLock(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-[var(--color-border)] pb-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Project Assignment Matrix</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Rapidly assign responsible team members to individual credit documents without navigating through each workspace.
+          </p>
+        </div>
+        <button
+          onClick={toggleAssignmentsLock}
+          disabled={isSavingLock}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all shadow-sm border shrink-0 ${
+            assignmentsLocked
+              ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+              : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+          } ${isSavingLock ? "opacity-60 cursor-not-allowed" : ""}`}
+        >
+          {assignmentsLocked ? (
+            <>
+              <Lock className="w-3 h-3" />
+              Unlock Assignments
+            </>
+          ) : (
+            <>
+              <Unlock className="w-3 h-3" />
+              Lock Assignments
+            </>
+          )}
+        </button>
+      </div>
+
+      {assignmentsLocked ? (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-xs">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>Assignments are locked for this project. Contributor assignments are read-only.</span>
+        </div>
+      ) : null}
+
+      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-[12px]">
+            <thead>
+              <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)] w-1/3">Credit</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)] w-1/3">Document Status</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)] w-1/3">Assigned Contributor</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {creditsWithDocuments.map((credit) => (
+                credit.documents_required?.map((requirement: any, index: number) => (
+                  <tr
+                    key={`${credit.id}-${requirement.type || requirement.label || index}`}
+                    className="hover:bg-[var(--color-surface-2)]/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 border-r border-[var(--color-border)]/50 align-top">
+                      {index === 0 ? (
+                        <div>
+                          <p className="font-bold text-[var(--color-text-primary)]">{credit.credit_code}</p>
+                          <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{credit.credit_name}</p>
+                        </div>
+                      ) : null}
+                    </td>
+                    <AssignmentMatrixRowControls
+                      projectId={workspace.project.id}
+                      credit={credit}
+                      docType={String(requirement.type || requirement.label || "")}
+                      label={String(requirement.label || requirement.type || "Required document")}
+                      initialIsRequired={Boolean(requirement.required)}
+                      initialAssigneeId={
+                        credit.assignments?.find(
+                          (assignment: any) =>
+                            assignment.document_type === requirement.type || assignment.document_type === requirement.label,
+                        )?.user_id
+                      }
+                      members={workspace.members}
+                      isDisabled={!canManage}
+                      onCreditChange={(nextCredit) => {
+                        setCredits((current) => current.map((entry) => (entry.id === nextCredit.id ? nextCredit : entry)));
+                      }}
+                    />
+                  </tr>
+                )) ?? []
+              ))}
+              {creditsWithDocuments.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-[var(--color-text-secondary)] text-[13px]">
+                    No active credits with required documents found.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssignmentMatrixRowControls({
+  projectId,
+  credit,
+  docType,
+  label,
+  initialIsRequired,
+  initialAssigneeId,
+  members,
+  isDisabled,
+  onCreditChange,
+}: {
+  projectId: string;
+  credit: WorkspaceCredit;
+  docType: string;
+  label: string;
+  initialIsRequired: boolean;
+  initialAssigneeId?: string;
+  members: WorkspaceMember[];
+  isDisabled: boolean;
+  onCreditChange: (credit: WorkspaceCredit) => void;
+}) {
+  const [localRequired, setLocalRequired] = useState(initialIsRequired);
+  const [localAssigneeId, setLocalAssigneeId] = useState(initialAssigneeId);
+
+  useEffect(() => {
+    setLocalRequired(initialIsRequired);
+  }, [initialIsRequired]);
+
+  useEffect(() => {
+    setLocalAssigneeId(initialAssigneeId);
+  }, [initialAssigneeId]);
+
+  const coordinators = members.filter((member) => ["owner", "project_admin", "consultant"].includes(member.role));
+  const contributors = members.filter((member) => ["architect", "mep", "contractor"].includes(member.role));
+
+  const displayMember = (member: WorkspaceMember) => {
+    const name = member.full_name?.trim();
+    if (name) {
+      return name;
+    }
+
+    return member.email?.trim() || String(member.role).replace(/_/g, " ") || "Assigned User";
+  };
+
+  const handleRequirementChange = async (value: boolean) => {
+    if (value === localRequired) return;
+
+    const previousRequirements = credit.documents_required ?? [];
+    const previousAssignments = credit.assignments ?? [];
+    const nextRequirements = previousRequirements.map((item: any) =>
+      item.type === docType
+        ? {
+            ...item,
+            required: value,
+            requirement: value ? "Required" : "NA",
+          }
+        : item,
+    );
+    const nextAssignments = value
+      ? previousAssignments
+      : previousAssignments.filter((assignment: any) => assignment.document_type !== docType);
+
+    setLocalRequired(value);
+    if (!value) {
+      setLocalAssigneeId(undefined);
+    }
+
+    onCreditChange({
+      ...credit,
+      documents_required: nextRequirements,
+      assignments: nextAssignments,
+    });
+
+    const { error: updateError } = await supabase
+      .from("project_credits")
+      .update({ documents_required: nextRequirements })
+      .eq("id", credit.id);
+
+    if (!updateError && !value) {
+      const { error: clearAssignmentError } = await supabase
+        .from("assignments")
+        .update({ is_active: false })
+        .eq("project_credit_id", credit.id)
+        .eq("document_type", docType)
+        .eq("is_active", true);
+
+      if (clearAssignmentError) {
+        onCreditChange({
+          ...credit,
+          documents_required: previousRequirements,
+          assignments: previousAssignments,
+        });
+        setLocalRequired(initialIsRequired);
+        setLocalAssigneeId(initialAssigneeId);
+        return;
+      }
+    }
+
+    if (updateError) {
+      onCreditChange({
+        ...credit,
+        documents_required: previousRequirements,
+        assignments: previousAssignments,
+      });
+      setLocalRequired(initialIsRequired);
+      setLocalAssigneeId(initialAssigneeId);
+    }
+  };
+
+  const handleAssignmentChange = async (userId: string) => {
+    const nextUserId = userId || undefined;
+    if (nextUserId === localAssigneeId) return;
+
+    const previousAssignments = credit.assignments ?? [];
+    const selectedMember = members.find((member) => member.user_id === nextUserId);
+    const remainingAssignments = previousAssignments.filter((assignment: any) => assignment.document_type !== docType);
+    const optimisticAssignments = nextUserId
+      ? [
+          ...remainingAssignments,
+          {
+            id: `temp-${credit.id}-${docType}`,
+            project_credit_id: credit.id,
+            document_type: docType,
+            user_id: nextUserId,
+            role: selectedMember?.role ?? null,
+            full_name: selectedMember?.full_name ?? null,
+            email: selectedMember?.email ?? null,
+            is_active: true,
+          },
+        ]
+      : remainingAssignments;
+
+    setLocalAssigneeId(nextUserId);
+    onCreditChange({
+      ...credit,
+      assignments: optimisticAssignments,
+    });
+
+    const { error: deactivateError } = await supabase
+      .from("assignments")
+      .update({ is_active: false })
+      .eq("project_credit_id", credit.id)
+      .eq("document_type", docType)
+      .eq("is_active", true);
+
+    if (deactivateError) {
+      onCreditChange({ ...credit, assignments: previousAssignments });
+      setLocalAssigneeId(initialAssigneeId);
+      return;
+    }
+
+    if (!nextUserId || !selectedMember) {
+      return;
+    }
+
+    const { data: insertedAssignment, error: insertError } = await supabase
+      .from("assignments")
+      .insert({
+        project_id: projectId,
+        project_credit_id: credit.id,
+        document_type: docType,
+        user_id: nextUserId,
+        role: selectedMember.role,
+        is_active: true,
+      })
+      .select("id, project_credit_id, document_type, user_id, role, is_active")
+      .single();
+
+    if (insertError) {
+      onCreditChange({ ...credit, assignments: previousAssignments });
+      setLocalAssigneeId(initialAssigneeId);
+      return;
+    }
+
+    onCreditChange({
+      ...credit,
+      assignments: [
+        ...remainingAssignments,
+        {
+          ...insertedAssignment,
+          full_name: selectedMember.full_name,
+          email: selectedMember.email,
+        },
+      ],
+    });
+  };
+
+  return (
+    <>
+      <td className="px-4 py-3 border-r border-[var(--color-border)]/50">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-medium text-[var(--color-text-primary)]">{label}</span>
+          <select
+            value={localRequired ? "true" : "false"}
+            onChange={(event) => handleRequirementChange(event.target.value === "true")}
+            disabled={isDisabled}
+            className={`h-7 rounded-md border text-[10px] uppercase font-bold focus:outline-none disabled:opacity-50 px-2 cursor-pointer min-w-[110px] transition-colors ${
+              localRequired
+                ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                : "border-[var(--color-red)] bg-[var(--color-red-soft)] text-[var(--color-red)]"
+            }`}
+          >
+            <option value="true">Required</option>
+            <option value="false">Not Required</option>
+          </select>
+        </div>
+      </td>
+      <td className="px-4 py-2">
+        <select
+          value={localAssigneeId || ""}
+          onChange={(event) => handleAssignmentChange(event.target.value)}
+          disabled={isDisabled || !localRequired}
+          className={`h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-xs text-[var(--color-text-secondary)] focus:border-[var(--color-green)] focus:outline-none disabled:opacity-50 transition-colors ${
+            localAssigneeId ? "border-[var(--color-green)] text-[var(--color-green)]" : ""
+          }`}
+        >
+          <option value="">Unassigned</option>
+          {coordinators.length > 0 ? (
+            <optgroup label="Coordinators">
+              {coordinators.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {displayMember(member)}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          {contributors.length > 0 ? (
+            <optgroup label="Contributors">
+              {contributors.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {displayMember(member)}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+        </select>
+      </td>
+    </>
+  );
+}
+
+function DocumentsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const documents = workspace.documents;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Document Intelligence</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Live uploads, workflow states, and Harita evidence analysis from Bhavarkua.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {documents.length} Uploads
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {documents.map((document) => (
+          <div key={document.id} className="surface-card p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-[var(--color-text-primary)]">{document.file_name}</p>
+                <p className="text-[12px] text-[var(--color-text-secondary)]">
+                  {document.doc_category || "Uncategorised"} / {document.workflow_state || document.status || "Unknown state"}
+                </p>
+              </div>
+              <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                {document.intelligence?.evidence_type || "UNCLASSIFIED"}
+              </Badge>
+            </div>
+
+            <div className="space-y-2 text-[12px]">
+              <p className="text-[var(--color-text-secondary)]">
+                {document.intelligence?.summary || document.notes || "No intelligence summary available yet."}
+              </p>
+              {typeof document.intelligence?.relevance_score === "number" ? (
+                <p className="text-[var(--color-text-secondary)]">
+                  Relevance score: <span className="font-bold text-[var(--color-text-primary)]">{document.intelligence.relevance_score}</span>
+                </p>
+              ) : null}
+              {document.intelligence?.risks?.length ? (
+                <div className="bg-[var(--color-surface-2)] rounded-lg border border-[var(--color-border)] p-3">
+                  <p className="font-bold text-[var(--color-text-primary)] mb-1">Risks</p>
+                  <ul className="space-y-1 text-[var(--color-text-secondary)]">
+                    {document.intelligence.risks.map((risk, index) => (
+                      <li key={index}>- {risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {document.intelligence?.next_steps?.length ? (
+                <div className="bg-[var(--color-surface-2)] rounded-lg border border-[var(--color-border)] p-3">
+                  <p className="font-bold text-[var(--color-text-primary)] mb-1">Next steps</p>
+                  <ul className="space-y-1 text-[var(--color-text-secondary)]">
+                    {document.intelligence.next_steps.map((step, index) => (
+                      <li key={index}>- {step}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ))}
+        {documents.length === 0 ? (
+          <div className="surface-card p-8 text-center text-[var(--color-text-secondary)]">
+            No project documents found yet.
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ClarificationsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const clarificationItems = workspace.documents.filter((document) => {
+    const state = String(document.workflow_state || document.status || "").toUpperCase();
+    return state.includes("CLARIFICATION") || (document.intelligence?.risks?.length ?? 0) > 0;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Clarification Queue</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Documents needing follow-up, clarification, or risk resolution.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {clarificationItems.length} Open
+        </Badge>
+      </div>
+
+      <div className="space-y-4">
+        {clarificationItems.map((document) => (
+          <div key={document.id} className="surface-card p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-[var(--color-text-primary)]">{document.file_name}</p>
+                <p className="text-[12px] text-[var(--color-text-secondary)]">
+                  {document.doc_category || "Uncategorised"} / {document.workflow_state || document.status || "Unknown state"}
+                </p>
+              </div>
+              <Badge className="state-pending">FOLLOW-UP</Badge>
+            </div>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">
+              {document.intelligence?.summary || document.notes || "Clarification required but no summary is available yet."}
+            </p>
+            {document.intelligence?.risks?.length ? (
+              <div className="text-[12px] text-[var(--color-red)] space-y-1">
+                {document.intelligence.risks.map((risk, index) => (
+                  <p key={index}>{risk}</p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ))}
+        {clarificationItems.length === 0 ? (
+          <div className="surface-card p-8 text-center text-[var(--color-text-secondary)]">
+            No clarification items are open right now.
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TeamPage({ workspace }: { workspace: ProjectWorkspace }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Project Team</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Live member list from the current workspace.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {workspace.members.length} Members
+        </Badge>
+      </div>
+
+      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+        <table className="w-full text-left border-collapse text-[12px]">
+          <thead>
+            <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+              <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Name</th>
+              <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Email</th>
+              <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Role</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--color-border)]">
+            {workspace.members.map((member) => (
+              <tr key={member.user_id}>
+                <td className="px-4 py-3 text-[var(--color-text-primary)]">{member.full_name}</td>
+                <td className="px-4 py-3 text-[var(--color-text-secondary)]">{member.email || "-"}</td>
+                <td className="px-4 py-3 text-[var(--color-text-primary)] uppercase">{member.role}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SettingsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const activeAssignments = workspace.assignments.length;
+  const docsInReview = workspace.documents.filter((document) =>
+    String(document.workflow_state || document.status || "").toUpperCase().includes("REVIEW"),
+  ).length;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="surface-card p-5 space-y-2">
+        <h3 className="font-bold text-[var(--color-text-primary)]">Workspace Profile</h3>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Client: {workspace.project.client || "Unknown"}</p>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Location: {workspace.project.location || "Unknown"}</p>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Status: {workspace.project.status || "Unknown"}</p>
+      </div>
+      <div className="surface-card p-5 space-y-2">
+        <h3 className="font-bold text-[var(--color-text-primary)]">Operational Snapshot</h3>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Active assignments: {activeAssignments}</p>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Documents in review: {docsInReview}</p>
+        <p className="text-[12px] text-[var(--color-text-secondary)]">Notifications: {workspace.notifications.length}</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const creditStats = useMemo(() => {
+    const total = workspace.credits.length;
+    const approved = workspace.credits.filter((credit) => getCreditStatus(credit) === "approved").length;
+    const blocked = workspace.credits.filter((credit) => getCreditStatus(credit) === "blocked").length;
+    const pending = total - approved - blocked;
+    const totalPoints = workspace.credits.reduce((sum, credit) => sum + getCreditPoints(credit), 0);
+
+    return { total, approved, blocked, pending, totalPoints };
+  }, [workspace.credits]);
+
+  const topBlockers = useMemo(
+    () =>
+      workspace.credits
+        .filter((credit) => getCreditStatus(credit) !== "approved")
+        .sort((a, b) => getCreditPoints(b) - getCreditPoints(a))
+        .slice(0, 5),
+    [workspace.credits],
+  );
+
+  const recentDocuments = useMemo(() => workspace.documents.slice(0, 5), [workspace.documents]);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="surface-card p-5 space-y-1">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Credits</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{creditStats.total}</p>
+          <p className="text-[12px] text-[var(--color-text-secondary)]">{creditStats.approved} approved</p>
+        </div>
+        <div className="surface-card p-5 space-y-1">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Points</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{creditStats.totalPoints.toFixed(1)}</p>
+          <p className="text-[12px] text-[var(--color-text-secondary)]">Live max-point visibility</p>
+        </div>
+        <div className="surface-card p-5 space-y-1">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Open Risks</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{creditStats.blocked}</p>
+          <p className="text-[12px] text-[var(--color-text-secondary)]">Blocked or critical credits</p>
+        </div>
+        <div className="surface-card p-5 space-y-1">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Uploads</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{workspace.documents.length}</p>
+          <p className="text-[12px] text-[var(--color-text-secondary)]">{workspace.notifications.length} live notifications</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.95fr] gap-4">
+        <div className="surface-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Priority Credits</h2>
+              <p className="text-[13px] text-[var(--color-text-secondary)]">
+                Highest-value active credits that still need evidence or progress.
+              </p>
+            </div>
+            <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+              {creditStats.pending} active
+            </Badge>
+          </div>
+
+          <div className="space-y-3">
+            {topBlockers.map((credit) => (
+              <div key={credit.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="font-mono text-[11px] font-black text-[var(--color-green)]">
+                      {mandatoryCode(credit.credit_code, Boolean(credit.is_mandatory))}
+                    </p>
+                    <p className="font-semibold text-[var(--color-text-primary)]">{credit.credit_name}</p>
+                    <p className="text-[12px] text-[var(--color-text-secondary)]">
+                      {credit.responsible_role ? String(credit.responsible_role).replace(/_/g, " ") : "Unassigned"}
+                    </p>
+                  </div>
+                  <Badge className={statusClass(getCreditStatus(credit))}>{getCreditStatus(credit).toUpperCase()}</Badge>
+                </div>
+              </div>
+            ))}
+            {topBlockers.length === 0 ? (
+              <div className="text-[13px] text-[var(--color-text-secondary)]">No active blockers found.</div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="surface-card p-5 space-y-4">
+          <div>
+            <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Recent Evidence Flow</h2>
+            <p className="text-[13px] text-[var(--color-text-secondary)]">
+              Latest uploads reaching this workspace.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {recentDocuments.map((document) => (
+              <div key={document.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                <p className="font-semibold text-[var(--color-text-primary)]">{document.file_name}</p>
+                <p className="text-[12px] text-[var(--color-text-secondary)]">
+                  {document.doc_category || "Uncategorised"} / {document.workflow_state || document.status || "Unknown state"}
+                </p>
+              </div>
+            ))}
+            {recentDocuments.length === 0 ? (
+              <div className="text-[13px] text-[var(--color-text-secondary)]">No project uploads found yet.</div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreditsLedgerPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const ledgerCredits = useMemo(
+    () =>
+      [...workspace.credits].sort((a, b) => {
+        if (a.category !== b.category) {
+          return String(a.category || "").localeCompare(String(b.category || ""));
+        }
+        return String(a.credit_code || "").localeCompare(String(b.credit_code || ""));
+      }),
+    [workspace.credits],
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Credits Ledger</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Structured ledger of all project credits, responsibilities, points, and current status.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {ledgerCredits.length} Credits
+        </Badge>
+      </div>
+
+      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-[12px]">
+            <thead>
+              <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Credit</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Category</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Points</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Responsibility</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Required Docs</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {ledgerCredits.map((credit) => {
+                const requiredDocs = (credit.documents_required ?? []).filter((entry: any) => entry.required);
+                return (
+                  <tr key={credit.id} className="hover:bg-[var(--color-surface-2)]/40">
+                    <td className="px-4 py-3 align-top">
+                      <div>
+                        <p className="font-bold text-[var(--color-text-primary)]">{mandatoryCode(credit.credit_code, Boolean(credit.is_mandatory))}</p>
+                        <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{credit.credit_name}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{credit.category || credit.category_name || "OTHER"}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-primary)] font-semibold">{getCreditPoints(credit).toFixed(1)}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] uppercase">{String(credit.responsible_role || "unassigned").replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{requiredDocs.length ? requiredDocs.map((entry: any) => entry.label || entry.type).filter(Boolean).join(", ") : "None"}</td>
+                    <td className="px-4 py-3"><Badge className={statusClass(getCreditStatus(credit))}>{getCreditStatus(credit).toUpperCase()}</Badge></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TablesPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const categorySummary = useMemo(() => {
+    const grouped = new Map<string, { count: number; points: number; approved: number; blocked: number }>();
+    for (const credit of workspace.credits) {
+      const key = credit.category || credit.category_name || "OTHER";
+      const current = grouped.get(key) ?? { count: 0, points: 0, approved: 0, blocked: 0 };
+      current.count += 1;
+      current.points += getCreditPoints(credit);
+      const status = getCreditStatus(credit);
+      if (status === "approved") current.approved += 1;
+      if (status === "blocked") current.blocked += 1;
+      grouped.set(key, current);
+    }
+    return Array.from(grouped.entries()).map(([category, data]) => ({ category, ...data }));
+  }, [workspace.credits]);
+
+  const evidenceTypeSummary = useMemo(() => {
+    const grouped = new Map<string, number>();
+    for (const document of workspace.documents) {
+      const key = document.intelligence?.evidence_type || document.doc_category || "UNCLASSIFIED";
+      grouped.set(key, (grouped.get(key) || 0) + 1);
+    }
+    return Array.from(grouped.entries()).map(([type, count]) => ({ type, count }));
+  }, [workspace.documents]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Tables</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Aggregated project tables for category performance and evidence distribution.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+          <div className="px-4 py-3 border-b border-[var(--color-border)]">
+            <h3 className="font-bold text-[var(--color-text-primary)]">Category Performance</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Category</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Credits</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Points</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Approved</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Blocked</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {categorySummary.map((row) => (
+                  <tr key={row.category}>
+                    <td className="px-4 py-3 text-[var(--color-text-primary)] font-semibold">{row.category}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.count}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.points.toFixed(1)}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.approved}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.blocked}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+          <div className="px-4 py-3 border-b border-[var(--color-border)]">
+            <h3 className="font-bold text-[var(--color-text-primary)]">Evidence Type Distribution</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Evidence Type</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Documents</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {evidenceTypeSummary.map((row) => (
+                  <tr key={row.type}>
+                    <td className="px-4 py-3 text-[var(--color-text-primary)] font-semibold">{row.type}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.count}</td>
+                  </tr>
+                ))}
+                {evidenceTypeSummary.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="px-4 py-8 text-center text-[var(--color-text-secondary)]">No document intelligence rows found.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExportsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const exportRows = useMemo(
+    () =>
+      workspace.credits.map((credit) => ({
+        id: credit.id,
+        code: mandatoryCode(credit.credit_code, Boolean(credit.is_mandatory)),
+        name: credit.credit_name,
+        status: getCreditStatus(credit),
+        points: getCreditPoints(credit).toFixed(1),
+        docs: credit.documents?.length ?? 0,
+        exportedState:
+          (credit.documents?.length ?? 0) > 0
+            ? getCreditStatus(credit) === "approved"
+              ? "Ready for export"
+              : "Needs review"
+            : "Missing evidence",
+      })),
+    [workspace.credits],
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Exports</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Export-readiness view for credits, evidence presence, and current approval state.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {exportRows.length} Credit Rows
+        </Badge>
+      </div>
+
+      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-[12px]">
+            <thead>
+              <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Credit</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Points</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Documents</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Status</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Export Readiness</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {exportRows.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="font-bold text-[var(--color-text-primary)]">{row.code}</p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{row.name}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.points}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.docs}</td>
+                  <td className="px-4 py-3"><Badge className={statusClass(row.status)}>{row.status.toUpperCase()}</Badge></td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.exportedState}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewerDashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const canReview = ["L3", "L5", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
+  if (!canReview) {
+    return <Navigate to={`/projects/${workspace.project.id}/overview`} replace />;
+  }
+
+  const queueQuery = useQuery({
+    queryKey: ["reviewer-queue", workspace.project.id, workspace.userRole],
+    queryFn: () => getReviewerQueue(workspace.project.id, workspace.userRole),
+    staleTime: 15_000,
+  });
+
+  if (queueQuery.isLoading) {
+    return <WorkspaceSkeleton />;
+  }
+
+  if (queueQuery.error) {
+    return <div className="p-8 text-red-500">{queueQuery.error instanceof Error ? queueQuery.error.message : "Failed to load reviewer queue."}</div>;
+  }
+
+  const queue = queueQuery.data ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Reviewer Dashboard</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Reviewer-only audit trail and validation queue for L3 and L5 governance roles.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {queue.length} Review Events
+        </Badge>
+      </div>
+
+      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-[12px]">
+            <thead>
+              <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Document</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Action</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Status After</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Reviewer Role</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Remarks</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {queue.map((entry: ReviewerQueueEntry) => (
+                <tr key={entry.id}>
+                  <td className="px-4 py-3 text-[var(--color-text-primary)] mono">{entry.document_id}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.action}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.status_after}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.reviewer_role || "UNASSIGNED"}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.remarks || "-"}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{new Date(entry.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+              {queue.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-secondary)]">
+                    No reviewer events are currently visible for this project.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -174,50 +1199,111 @@ function PlaceholderPage({ title }: { title: string }) {
       <div className="text-center space-y-4">
         <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">{title}</h2>
         <p className="text-[var(--color-text-secondary)] max-w-md mx-auto">
-          This module is currently under active development. Check back soon for updates to the {title} engine.
+          This React module is not migrated yet, but the workspace shell is now using live project context instead of dummy data.
         </p>
       </div>
     </div>
   );
 }
 
-function MainLayout({ email }: { email?: string }) {
-  const haritaPanel = <GlobalHarita />;
+function WorkspaceScreen({
+  workspace,
+  tab,
+}: {
+  workspace: ProjectWorkspace;
+  tab: string;
+}) {
+  const renderTab = () => {
+    if (tab === "dashboard") return <DashboardPage workspace={workspace} />;
+    if (tab === "credits") return <CreditsLedgerPage workspace={workspace} />;
+    if (tab === "reviewer") return <ReviewerDashboardPage workspace={workspace} />;
+    if (tab === "assignments") return <AssignmentsPage workspace={workspace} />;
+    if (tab === "documents") return <DocumentsPage workspace={workspace} />;
+    if (tab === "clarifications") return <ClarificationsPage workspace={workspace} />;
+    if (tab === "team") return <TeamPage workspace={workspace} />;
+    if (tab === "tables") return <TablesPage workspace={workspace} />;
+    if (tab === "exports") return <ExportsPage workspace={workspace} />;
+    if (tab === "settings") return <SettingsPage workspace={workspace} />;
+    if (["overview"].includes(tab)) {
+      return <ProjectCards projectId={workspace.project.id} credits={workspace.credits} />;
+    }
+    return <PlaceholderPage title={tab.charAt(0).toUpperCase() + tab.slice(1)} />;
+  };
 
   return (
     <Shell
       title={
-        <div className="flex items-center gap-2">
-          <span>Bhavarkua</span>
-          <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px]">
-            ATTENTION_NEEDED
-          </Badge>
-        </div>
+        <span className="flex items-center gap-3">
+          {workspace.project.name}
+          {workspace.project.health_status ? (
+            <Badge className="border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]">
+              {workspace.project.health_status}
+            </Badge>
+          ) : null}
+        </span>
       }
-      description="IGBC Green Interiors / Target Certified"
-      harita={haritaPanel}
-      email={email}
-      notificationCount={3}
+      description={`${workspace.project.certification_type ?? "IGBC Green Interiors"} / Target ${workspace.project.target_rating ?? "Unknown"}`}
+      harita={<PersistentHaritaSidebar />}
+      email={workspace.user.email}
+      notificationCount={workspace.notifications.length}
+      workspaceLabel={workspace.project.client || workspace.project.name}
     >
-      <ProjectTabs projectId="b73d7310-df16-4d26-b6c8-61bebb197410" />
-      <Routes>
-        <Route path="/" element={<LegacyCreditsPage projectId="b73d7310-df16-4d26-b6c8-61bebb197410" />} />
-        <Route path="/project/:projectId" element={<ComplianceMatrix />} />
-        <Route path="/project/:projectId/credit/:creditId" element={<DocumentAudit />} />
-        
-        {/* Module Placeholders */}
-        <Route path="/dashboard" element={<PlaceholderPage title="Command Dashboard" />} />
-        <Route path="/projects" element={<PlaceholderPage title="Project Directory" />} />
-        <Route path="/members" element={<PlaceholderPage title="Team Members" />} />
-        <Route path="/tasks" element={<PlaceholderPage title="Task Management" />} />
-        <Route path="/review-queue" element={<PlaceholderPage title="Review Queue" />} />
-        <Route path="/executive-reports" element={<PlaceholderPage title="Executive Reports" />} />
-        <Route path="/admin" element={<PlaceholderPage title="Administration Panel" />} />
-
-        <Route path="*" element={<LegacyCreditsPage projectId="b73d7310-df16-4d26-b6c8-61bebb197410" />} />
-      </Routes>
+      <ProjectTabs projectId={workspace.project.id} userRole={workspace.userRole} />
+      {renderTab()}
     </Shell>
   );
+}
+
+function WorkspaceRouteContent({ tab }: { tab: string }) {
+  const { workspace } = useOutletContext<{ workspace: ProjectWorkspace }>();
+  return <WorkspaceScreen workspace={workspace} tab={tab} />;
+}
+
+function WorkspaceRouteLayout() {
+  const params = useParams<{ projectId: string }>();
+  const projectId = params.projectId ?? "";
+  const workspaceQuery = useQuery({
+    queryKey: ["workspace", projectId],
+    queryFn: () => getProjectWorkspace(projectId),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+
+  if (workspaceQuery.isLoading) return <WorkspaceSkeleton />;
+  if (workspaceQuery.error) {
+    return <div className="p-8 text-red-500">{workspaceQuery.error instanceof Error ? workspaceQuery.error.message : "Failed to load workspace."}</div>;
+  }
+  if (!workspaceQuery.data) {
+    return <div className="p-8 text-[var(--color-text-secondary)]">Project not found or access denied.</div>;
+  }
+
+  const workspace = workspaceQuery.data;
+  const haritaValue = {
+    projectId: workspace.project.id,
+    title: workspace.project.name,
+    description: `${workspace.project.certification_type ?? "IGBC"} / Target ${workspace.project.target_rating ?? "Unknown"}`,
+  };
+
+  return (
+    <HaritaContextProvider value={haritaValue}>
+      <Outlet context={{ workspace }} />
+    </HaritaContextProvider>
+  );
+}
+
+function DefaultRoute() {
+  const projectsQuery = useQuery({
+    queryKey: ["dashboard-projects"],
+    queryFn: getDashboardProjects,
+    staleTime: 30_000,
+  });
+
+  if (projectsQuery.isLoading) return <LoadingScreen />;
+  if (!projectsQuery.data?.length) {
+    return <div className="p-8 text-[var(--color-text-secondary)]">No projects available for this user.</div>;
+  }
+
+  return <Navigate to={`/projects/${projectsQuery.data[0].id}/dashboard`} replace />;
 }
 
 export default function App() {
@@ -227,22 +1313,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
       setSession(session);
       setLoading(false);
-      if (!session && location.pathname !== '/login') {
-        navigate('/login');
+      if (!session && location.pathname !== "/login") {
+        navigate("/login");
       }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (!session && location.pathname !== '/login') {
-        navigate('/login');
-      } else if (session && location.pathname === '/login') {
-        navigate('/');
+    } = supabase.auth.onAuthStateChange((_event: string, nextSession: any) => {
+      setSession(nextSession);
+      if (!nextSession && location.pathname !== "/login") {
+        navigate("/login");
+      } else if (nextSession && location.pathname === "/login") {
+        navigate("/");
       }
     });
 
@@ -250,17 +1336,28 @@ export default function App() {
   }, [navigate, location.pathname]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)]">
-        <div className="w-8 h-8 border-4 border-[var(--color-green)] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="*" element={session ? <MainLayout email={session.user?.email} /> : null} />
+      <Route path="/" element={session ? <DefaultRoute /> : null} />
+      <Route path="/projects/:projectId" element={session ? <WorkspaceRouteLayout /> : null}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<WorkspaceRouteContent tab="dashboard" />} />
+        <Route path="overview" element={<WorkspaceRouteContent tab="overview" />} />
+        <Route path="credits" element={<WorkspaceRouteContent tab="credits" />} />
+        <Route path="reviewer" element={<WorkspaceRouteContent tab="reviewer" />} />
+        <Route path="documents" element={<WorkspaceRouteContent tab="documents" />} />
+        <Route path="clarifications" element={<WorkspaceRouteContent tab="clarifications" />} />
+        <Route path="assignments" element={<WorkspaceRouteContent tab="assignments" />} />
+        <Route path="team" element={<WorkspaceRouteContent tab="team" />} />
+        <Route path="tables" element={<WorkspaceRouteContent tab="tables" />} />
+        <Route path="exports" element={<WorkspaceRouteContent tab="exports" />} />
+        <Route path="settings" element={<WorkspaceRouteContent tab="settings" />} />
+      </Route>
+      <Route path="*" element={session ? <DefaultRoute /> : null} />
     </Routes>
   );
 }

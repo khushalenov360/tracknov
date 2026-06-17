@@ -12,6 +12,36 @@ export class BillingService {
   private get client() { return createClient(); }
   private get admin() { return env.supabaseServiceRoleKey ? createAdminClient() : this.client; }
 
+  private async resolveProjectClientAccountId(projectId: string) {
+    const { data: project, error } = await this.admin
+      .from("projects")
+      .select("id, client_account_id")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!project?.client_account_id) {
+      throw new Error("Client account is not linked for this project yet.");
+    }
+
+    return String(project.client_account_id);
+  }
+
+  private async resolveClientAccountIdFromUser(clientUserId: string) {
+    const { data: account, error } = await this.admin
+      .from("client_accounts")
+      .select("id")
+      .eq("primary_client_user_id", clientUserId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!account?.id) {
+      throw new Error("Client account could not be resolved for the selected client user.");
+    }
+
+    return String(account.id);
+  }
+
   /**
    * Updates project billing settings and quotas.
    */
@@ -58,36 +88,23 @@ export class BillingService {
       throw new Error("Unauthorized: Insufficient permissions for billing actions.");
     }
 
-    const { data: membership } = await this.client
-      .from("project_users")
-      .select("user_id")
-      .eq("project_id", params.projectId)
-      .eq("role", "client")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const clientUserId = membership?.user_id;
-    if (!clientUserId) {
-      throw new Error("Client user not found for project.");
-    }
+    const clientAccountId = await this.resolveProjectClientAccountId(params.projectId);
 
     const tokensToBurn = Math.max(1, Math.trunc(params.creditsBurned || 1)) * 50;
 
-    const idempotencyKey = `debit_${params.projectId}_${clientUserId}_${tokensToBurn}_${Date.now()}`;
-
-    const { error: tokenError } = await this.admin.rpc("consume_client_tokens", {
-      p_client_user_id: clientUserId,
+    const { error: tokenError } = await this.admin.rpc("debit_client_account_tokens", {
+      p_client_account_id: clientAccountId,
       p_project_id: params.projectId,
       p_tokens: tokensToBurn,
       p_reason: "Consulting session token burn",
       p_actor_id: user.id,
+      p_subject_user_id: user.id,
+      p_feature_code: "expert_consultation",
       p_meta: { 
         source: params.source, 
         notes: params.notes, 
         hours: Math.max(1, Math.trunc(params.creditsBurned || 1)) 
       },
-      p_idempotency_key: idempotencyKey,
     });
 
     if (tokenError) throw tokenError;
@@ -168,16 +185,17 @@ export class BillingService {
       throw new Error("Only Super User can load client tokens.");
     }
 
-    const idempotencyKey = `credit_${params.projectId}_${params.clientUserId}_${Math.trunc(params.tokens)}_${Date.now()}`;
+    const clientAccountId = await this.resolveClientAccountIdFromUser(params.clientUserId);
 
-    const { error } = await this.admin.rpc("credit_client_tokens", {
-      p_client_user_id: params.clientUserId,
+    const { error } = await this.admin.rpc("credit_client_account_tokens", {
+      p_client_account_id: clientAccountId,
       p_project_id: params.projectId,
       p_tokens: Math.trunc(params.tokens),
       p_reason: params.reason || "Super User top-up",
       p_actor_id: user.id,
+      p_subject_user_id: params.clientUserId,
+      p_feature_code: "manual_credit",
       p_meta: { loaded_by_role: role },
-      p_idempotency_key: idempotencyKey,
     });
 
     if (error) throw error;
@@ -209,10 +227,11 @@ export class BillingService {
    * Gets the wallet balance for a client.
    */
   async getWalletBalance(user: CurrentUser, clientUserId: string) {
+    const clientAccountId = await this.resolveClientAccountIdFromUser(clientUserId);
     const { data, error } = await this.admin
-      .from("client_token_wallets")
+      .from("client_accounts")
       .select("token_balance")
-      .eq("client_user_id", clientUserId)
+      .eq("id", clientAccountId)
       .maybeSingle();
 
     if (error) throw error;
@@ -223,10 +242,11 @@ export class BillingService {
    * Gets the transaction history for a client.
    */
   async getTransactionHistory(user: CurrentUser, clientUserId: string, limit = 50) {
+    const clientAccountId = await this.resolveClientAccountIdFromUser(clientUserId);
     const { data, error } = await this.admin
-      .from("client_token_transactions")
+      .from("token_transactions")
       .select("*")
-      .eq("client_user_id", clientUserId)
+      .eq("client_account_id", clientAccountId)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -244,17 +264,21 @@ export class BillingService {
       throw new Error("Unauthorized: Only Super Admin can run reconciliation.");
     }
 
+    const clientAccountId = await this.resolveClientAccountIdFromUser(clientUserId);
     const { data: transactions } = await this.admin
       .from("token_transactions")
-      .select("amount")
-      .eq("client_id", (await this.admin.from("project_users").select("client_id").eq("user_id", clientUserId).limit(1).maybeSingle()).data?.client_id);
+      .select("transaction_kind, tokens")
+      .eq("client_account_id", clientAccountId);
 
-    const calculatedBalance = transactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0;
+    const calculatedBalance = transactions?.reduce((sum, tx: any) => {
+      const direction = tx.transaction_kind === "debit" ? -1 : 1;
+      return sum + direction * Number(tx.tokens ?? 0);
+    }, 0) ?? 0;
 
     const { data: wallet } = await this.admin
-      .from("client_token_wallets")
+      .from("client_accounts")
       .select("token_balance")
-      .eq("client_user_id", clientUserId)
+      .eq("id", clientAccountId)
       .maybeSingle();
 
     const currentBalance = Number(wallet?.token_balance ?? 0);
@@ -262,9 +286,9 @@ export class BillingService {
 
     if (mismatch) {
       await this.admin
-        .from("client_token_wallets")
+        .from("client_accounts")
         .update({ token_balance: calculatedBalance, updated_at: new Date().toISOString() })
-        .eq("client_user_id", clientUserId);
+        .eq("id", clientAccountId);
 
       await logSystemActivity(this.admin, {
         projectId: "",

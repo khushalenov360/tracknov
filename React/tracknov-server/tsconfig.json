@@ -14,5 +14,10 @@
       "@tracknov/harita-engine/*": ["./src/lib/harita-engine/*"],
       "@tracknov/ui/*": ["./src/components/ui-lib/*"]
     }
-  }
+  },
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/**/tests/**",
+    "src/lib/harita-engine/replay/replayValidator.ts"
+  ]
 }

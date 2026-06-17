@@ -1,30 +1,26 @@
-import { createServerClient } from "@supabase/ssr";
-const cookies = () => ({ get: () => ({ value: "dummy" }), getAll: () => [], set: () => {} });
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { getSupabaseAccessToken } from "@/lib/supabase/request-auth";
 
 export function createClient() {
-  return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      async getAll() {
-        try {
-          const cookieStore = await cookies();
-          return cookieStore.getAll();
-        } catch (error) {
-          return [];
-        }
+  const accessToken = getSupabaseAccessToken();
+  if (accessToken) {
+    return createSupabaseClient(env.supabaseUrl, env.supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-      async setAll(cookiesToSet) {
-        try {
-          const cookieStore = await cookies();
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch (error) {
-          // The `setAll` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
+    });
+  }
+  return createSupabaseClient(env.supabaseUrl, env.supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
   });
 }
