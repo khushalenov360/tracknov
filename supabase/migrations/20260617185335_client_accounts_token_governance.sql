@@ -75,9 +75,11 @@ inserted_accounts as (
 )
 update public.projects p
 set client_account_id = ca.id
-from public.client_accounts ca
-join client_memberships cm on cm.user_id = ca.primary_client_user_id and cm.project_id = p.id
-where p.client_account_id is null;
+from public.client_accounts ca,
+     client_memberships cm
+where p.client_account_id is null
+  and cm.user_id = ca.primary_client_user_id
+  and cm.project_id = p.id;
 
 insert into public.client_accounts (account_name, token_balance)
 select distinct
