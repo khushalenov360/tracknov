@@ -21,6 +21,36 @@ class BillingService {
     // Test comment
     get client() { return (0, server_1.createClient)(); }
     get admin() { return env_1.env.supabaseServiceRoleKey ? (0, admin_1.createAdminClient)() : this.client; }
+    resolveProjectClientAccountId(projectId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { data: project, error } = yield this.admin
+                .from("projects")
+                .select("id, client_account_id")
+                .eq("id", projectId)
+                .maybeSingle();
+            if (error)
+                throw error;
+            if (!(project === null || project === void 0 ? void 0 : project.client_account_id)) {
+                throw new Error("Client account is not linked for this project yet.");
+            }
+            return String(project.client_account_id);
+        });
+    }
+    resolveClientAccountIdFromUser(clientUserId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { data: account, error } = yield this.admin
+                .from("client_accounts")
+                .select("id")
+                .eq("primary_client_user_id", clientUserId)
+                .maybeSingle();
+            if (error)
+                throw error;
+            if (!(account === null || account === void 0 ? void 0 : account.id)) {
+                throw new Error("Client account could not be resolved for the selected client user.");
+            }
+            return String(account.id);
+        });
+    }
     /**
      * Updates project billing settings and quotas.
      */
@@ -52,32 +82,21 @@ class BillingService {
             if (!(0, rbac_1.canAccessBillingAndInvoice)(role)) {
                 throw new Error("Unauthorized: Insufficient permissions for billing actions.");
             }
-            const { data: membership } = yield this.client
-                .from("project_users")
-                .select("user_id")
-                .eq("project_id", params.projectId)
-                .eq("role", "client")
-                .order("created_at", { ascending: true })
-                .limit(1)
-                .maybeSingle();
-            const clientUserId = membership === null || membership === void 0 ? void 0 : membership.user_id;
-            if (!clientUserId) {
-                throw new Error("Client user not found for project.");
-            }
+            const clientAccountId = yield this.resolveProjectClientAccountId(params.projectId);
             const tokensToBurn = Math.max(1, Math.trunc(params.creditsBurned || 1)) * 50;
-            const idempotencyKey = `debit_${params.projectId}_${clientUserId}_${tokensToBurn}_${Date.now()}`;
-            const { error: tokenError } = yield this.admin.rpc("consume_client_tokens", {
-                p_client_user_id: clientUserId,
+            const { error: tokenError } = yield this.admin.rpc("debit_client_account_tokens", {
+                p_client_account_id: clientAccountId,
                 p_project_id: params.projectId,
                 p_tokens: tokensToBurn,
                 p_reason: "Consulting session token burn",
                 p_actor_id: user.id,
+                p_subject_user_id: user.id,
+                p_feature_code: "expert_consultation",
                 p_meta: {
                     source: params.source,
                     notes: params.notes,
                     hours: Math.max(1, Math.trunc(params.creditsBurned || 1))
                 },
-                p_idempotency_key: idempotencyKey,
             });
             if (tokenError)
                 throw tokenError;
@@ -144,15 +163,16 @@ class BillingService {
             if (role !== "super_user") {
                 throw new Error("Only Super User can load client tokens.");
             }
-            const idempotencyKey = `credit_${params.projectId}_${params.clientUserId}_${Math.trunc(params.tokens)}_${Date.now()}`;
-            const { error } = yield this.admin.rpc("credit_client_tokens", {
-                p_client_user_id: params.clientUserId,
+            const clientAccountId = yield this.resolveClientAccountIdFromUser(params.clientUserId);
+            const { error } = yield this.admin.rpc("credit_client_account_tokens", {
+                p_client_account_id: clientAccountId,
                 p_project_id: params.projectId,
                 p_tokens: Math.trunc(params.tokens),
                 p_reason: params.reason || "Super User top-up",
                 p_actor_id: user.id,
+                p_subject_user_id: params.clientUserId,
+                p_feature_code: "manual_credit",
                 p_meta: { loaded_by_role: role },
-                p_idempotency_key: idempotencyKey,
             });
             if (error)
                 throw error;
@@ -184,10 +204,11 @@ class BillingService {
     getWalletBalance(user, clientUserId) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
+            const clientAccountId = yield this.resolveClientAccountIdFromUser(clientUserId);
             const { data, error } = yield this.admin
-                .from("client_token_wallets")
+                .from("client_accounts")
                 .select("token_balance")
-                .eq("client_user_id", clientUserId)
+                .eq("id", clientAccountId)
                 .maybeSingle();
             if (error)
                 throw error;
@@ -199,10 +220,11 @@ class BillingService {
      */
     getTransactionHistory(user_1, clientUserId_1) {
         return __awaiter(this, arguments, void 0, function* (user, clientUserId, limit = 50) {
+            const clientAccountId = yield this.resolveClientAccountIdFromUser(clientUserId);
             const { data, error } = yield this.admin
-                .from("client_token_transactions")
+                .from("token_transactions")
                 .select("*")
-                .eq("client_user_id", clientUserId)
+                .eq("client_account_id", clientAccountId)
                 .order("created_at", { ascending: false })
                 .limit(limit);
             if (error)
@@ -216,28 +238,33 @@ class BillingService {
      */
     reconcileClientWallet(user, clientUserId) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c;
+            var _a, _b;
             const role = yield project_service_1.projectService.getActorProjectRole("", user);
             if (!(role === "super_user" || role === "super_admin")) {
                 throw new Error("Unauthorized: Only Super Admin can run reconciliation.");
             }
+            const clientAccountId = yield this.resolveClientAccountIdFromUser(clientUserId);
             const { data: transactions } = yield this.admin
                 .from("token_transactions")
-                .select("amount")
-                .eq("client_id", (_a = (yield this.admin.from("project_users").select("client_id").eq("user_id", clientUserId).limit(1).maybeSingle()).data) === null || _a === void 0 ? void 0 : _a.client_id);
-            const calculatedBalance = (_b = transactions === null || transactions === void 0 ? void 0 : transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)) !== null && _b !== void 0 ? _b : 0;
+                .select("transaction_kind, tokens")
+                .eq("client_account_id", clientAccountId);
+            const calculatedBalance = (_a = transactions === null || transactions === void 0 ? void 0 : transactions.reduce((sum, tx) => {
+                var _a;
+                const direction = tx.transaction_kind === "debit" ? -1 : 1;
+                return sum + direction * Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0);
+            }, 0)) !== null && _a !== void 0 ? _a : 0;
             const { data: wallet } = yield this.admin
-                .from("client_token_wallets")
+                .from("client_accounts")
                 .select("token_balance")
-                .eq("client_user_id", clientUserId)
+                .eq("id", clientAccountId)
                 .maybeSingle();
-            const currentBalance = Number((_c = wallet === null || wallet === void 0 ? void 0 : wallet.token_balance) !== null && _c !== void 0 ? _c : 0);
+            const currentBalance = Number((_b = wallet === null || wallet === void 0 ? void 0 : wallet.token_balance) !== null && _b !== void 0 ? _b : 0);
             const mismatch = calculatedBalance !== currentBalance;
             if (mismatch) {
                 yield this.admin
-                    .from("client_token_wallets")
+                    .from("client_accounts")
                     .update({ token_balance: calculatedBalance, updated_at: new Date().toISOString() })
-                    .eq("client_user_id", clientUserId);
+                    .eq("id", clientAccountId);
                 yield (0, activity_service_1.logSystemActivity)(this.admin, {
                     projectId: "",
                     entityType: "billing",

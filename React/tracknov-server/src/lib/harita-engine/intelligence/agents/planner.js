@@ -11,13 +11,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateExecutionPlan = generateExecutionPlan;
 const env_1 = require("@/lib/env");
+const plannerPersona_1 = require("./plannerPersona");
 function generateExecutionPlan(query, surface, role, historySummary) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         const geminiKey = process.env.GEMINI_API_KEY || ((_a = env_1.env.geminiApiKeys) === null || _a === void 0 ? void 0 : _a[0]);
         const groqKey = process.env.GROQ_API_KEY || ((_b = env_1.env.groqApiKeys) === null || _b === void 0 ? void 0 : _b[0]);
-        const systemPrompt = `You are a high-speed Planner Agent for a green building certification assistant.
-Your job is to parse the user's query and output a strict JSON object mapping their intent to execution steps.
+        const systemPrompt = `${plannerPersona_1.plannerPersona}
+
+Your job is to isolate intent, classify the module category, and output a strict JSON execution plan.
 
 Available Intents:
 - "credit_query": User is asking about the status, assignee, or requirements of a specific credit code (e.g. "who is assigned to EE C4?", "what is the status of IM MR1?").
@@ -32,12 +34,22 @@ Available Tools:
 - "query_guidebook": Run a RAG search on the IGBC guidebook.
 - "get_project_members": List members in the project.
 
+Module Categories:
+- "ECO_DESIGN"
+- "WATER_CONSERVATION"
+- "ENERGY_EFFICIENCY"
+- "MATERIALS_RESOURCES"
+- "INDOOR_ENVIRONMENTAL_QUALITY"
+- "INNOVATION_DESIGN"
+
 JSON Output Schema:
 {
   "intent": "credit_query" | "general_qa" | "document_analysis" | "workflow_action" | "unknown",
   "target_credit_code": "EE C4" | null, // Extract specific code if mentioned (e.g., "EE C4", "IM MR1")
   "tools_required": ["get_credit_status", ...],
-  "reasoning": "Brief explanation of the plan"
+  "reasoning": "Brief explanation of the plan",
+  "source_query": "The user's original question",
+  "module_category": "ENERGY_EFFICIENCY" | null
 }
 
 Do not include any markup, markdown tags, or markdown blocks like \`\`\`json. Output raw JSON only.`;
@@ -107,11 +119,51 @@ Previous Session Summary: "${historySummary !== null && historySummary !== void 
             }
         }
         // Final fallback
+        const normalized = query.trim().toUpperCase();
+        const creditMatch = (_l = normalized.match(/\b(EDA|WC|EE|IM|IE|IID)\s*(?:C|MR|P)?\s*\d+\b/)) !== null && _l !== void 0 ? _l : normalized.match(/\b(EDA|WC|EE|IM|IE|IID)[-_]?(?:C|MR|P)?\d+\b/);
+        const targetCreditCode = creditMatch ? creditMatch[0].replace(/[_-]/g, " ").replace(/\s+/g, " ").trim() : null;
+        const lowerQuery = query.toLowerCase();
+        const isCreditFactQuestion = Boolean(targetCreditCode) &&
+            /(who|what|which|status|assigned|responsible|requirement|checklist|points|score)/.test(lowerQuery);
+        const intent = isCreditFactQuestion
+            ? "credit_query"
+            : /upload|submit|delete|update|map/.test(lowerQuery)
+                ? "workflow_action"
+                : /document|drawing|sheet|pdf|scan|certificate/.test(lowerQuery)
+                    ? "document_analysis"
+                    : targetCreditCode
+                        ? "credit_query"
+                        : "general_qa";
+        const toolsRequired = targetCreditCode
+            ? [
+                "get_credit_status",
+                ...(/assign|owner|responsible/.test(lowerQuery) ? ["get_credit_assignments"] : []),
+                ...(/requirement|checklist|submit/.test(lowerQuery) ? ["get_credit_checklists"] : []),
+            ]
+            : ["query_guidebook"];
         return {
-            intent: "unknown",
-            target_credit_code: null,
-            tools_required: [],
-            reasoning: "Failed to contact planner LLM, proceeding with direct RAG/Q&A fallback."
+            intent,
+            target_credit_code: targetCreditCode,
+            tools_required: toolsRequired,
+            reasoning: "Planner LLM unavailable, using deterministic fallback intent classification.",
+            source_query: query,
+            module_category: inferModuleCategory(query, targetCreditCode),
         };
     });
+}
+function inferModuleCategory(query, targetCreditCode) {
+    const normalized = `${targetCreditCode !== null && targetCreditCode !== void 0 ? targetCreditCode : ""} ${query}`.toUpperCase();
+    if (normalized.includes("EDA"))
+        return "ECO_DESIGN";
+    if (normalized.includes("WC"))
+        return "WATER_CONSERVATION";
+    if (normalized.includes("EE"))
+        return "ENERGY_EFFICIENCY";
+    if (normalized.includes("MR"))
+        return "MATERIALS_RESOURCES";
+    if (normalized.includes("IE"))
+        return "INDOOR_ENVIRONMENTAL_QUALITY";
+    if (normalized.includes("IID") || normalized.includes("IM"))
+        return "INNOVATION_DESIGN";
+    return null;
 }

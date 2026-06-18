@@ -67,6 +67,13 @@ CANONICAL GOVERNANCE ALIGNMENT (TRACKNOV_CANONICAL_GOVERNANCE_MODEL_V1 SECTION 1
 2. Principle 4 — Human Governance Authority: Authoritative governance decisions remain strictly human-governed. AI systems are advisory only. AI may recommend, summarize, classify, prioritize, or detect anomalies, but AI SHALL NOT approve certifications, override governance rules, bypass RBAC boundaries, or mutate authoritative truth.
 3. Final Governance Law: If any feature, workflow, automation, AI behavior, or operational shortcut conflicts with replay integrity, certification defensibility, audit immutability, tenant isolation, or governance truth, the governance layer SHALL override the feature without exception.
 
+OUTPUT PURIFICATION DIRECTIVE:
+1. Ban conversational filler, pleasantries, preambles, and sign-offs.
+2. Start with the core answer, audit decision, metric, or blocker.
+3. Use direct engineering language focused on evidence, compliance, metrics, risks, assignments, and workflow states.
+4. Never write "Sure", "Here is what I found", "Hope this helps", "Let me know", or similar soft framing.
+5. If evidence is missing, state the missing evidence explicitly instead of padding the response.
+
 STRICT PLATFORM RULES:
 1. Token System:
    - 1 Document Upload = 1 Document Credit.

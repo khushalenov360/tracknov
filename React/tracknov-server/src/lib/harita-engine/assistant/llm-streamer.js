@@ -59,7 +59,7 @@ exports.createAiStream = createAiStream;
 exports.tryDetectFunctionCalls = tryDetectFunctionCalls;
 const env_1 = require("@/lib/env");
 const assistant_1 = require("../assistant");
-const assistant_tools_1 = require("../assistant-tools");
+const tool_registry_1 = require("./tool-registry");
 // ---------------------------------------------------------------------------
 // SSE stream parser — shared between Gemini providers
 // ---------------------------------------------------------------------------
@@ -206,24 +206,26 @@ function buildFallbackChain(systemPrompt, geminiContents) {
     if (ollamaUrl) {
         availableProviders.push({
             id: "ollama",
-            name: `Local (Gemma 3)`,
-            call: (sp, _contents) => fetch(ollamaUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: env_1.env.ollamaModel || "gemma3",
+            name: `Local (Qwen)`,
+            call: (sp, _contents) => {
+                const payload = {
+                    model: env_1.env.ollamaModel || "qwen-vision-expert:latest",
                     // Truncate the massive system prompt (which contains the full workspace) to 6000 chars for local Ollama
                     // to prevent 2+ minute prompt evaluation times on consumer hardware.
                     messages: [{ role: "system", content: sp.slice(0, 6000) }, ...geminiContents.map(c => ({ role: c.role === "model" ? "assistant" : "user", content: c.parts ? c.parts.map((p) => p.text || "").join("") : c.content || "" }))],
                     temperature: 0.4,
                     max_tokens: 1200,
                     stream: true,
-                    tools: (0, assistant_tools_1.toOpenAiTools)(),
-                }),
-                signal: AbortSignal.timeout(30000),
-            }),
+                };
+                return fetch(ollamaUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(90000),
+                });
+            },
             parseStream: buildOpenAiStream,
             isRetryable: (s) => s >= 500,
         });
@@ -250,7 +252,7 @@ function buildFallbackChain(systemPrompt, geminiContents) {
                     temperature: 0.4,
                     max_tokens: 1200,
                     stream: true,
-                    tools: (0, assistant_tools_1.toOpenAiTools)(),
+                    tools: (0, tool_registry_1.toOpenAiTools)(),
                 }),
                 signal: AbortSignal.timeout(30000),
             }),
@@ -314,7 +316,7 @@ function buildFallbackChain(systemPrompt, geminiContents) {
                     temperature: 0.4,
                     max_tokens: 1200,
                     stream: true,
-                    tools: (0, assistant_tools_1.toOpenAiTools)(),
+                    tools: (0, tool_registry_1.toOpenAiTools)(),
                 }),
                 signal: AbortSignal.timeout(30000),
             }),
@@ -340,7 +342,7 @@ function buildFallbackChain(systemPrompt, geminiContents) {
                     temperature: 0.4,
                     max_tokens: 1200,
                     stream: true,
-                    tools: (0, assistant_tools_1.toOpenAiTools)(),
+                    tools: (0, tool_registry_1.toOpenAiTools)(),
                 }),
                 signal: AbortSignal.timeout(30000),
             }),
@@ -364,13 +366,12 @@ function buildFallbackChain(systemPrompt, geminiContents) {
         chain.push(...restProviders);
     }
     else {
-        // If auto or invalid provider, prioritize Atomesus, then OpenAI, then others
-        const gemini = availableProviders.find(p => p.id === "gemini");
-        if (gemini)
-            chain.push(gemini);
         const ollama = availableProviders.find(p => p.id === "ollama");
         if (ollama)
             chain.push(ollama);
+        const gemini = availableProviders.find(p => p.id === "gemini");
+        if (gemini)
+            chain.push(gemini);
         const atomesus = availableProviders.find(p => p.id === "atomesus");
         if (atomesus)
             chain.push(atomesus);

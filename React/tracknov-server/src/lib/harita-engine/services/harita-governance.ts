@@ -78,6 +78,10 @@ export function requiresToolCall(category: ConsultantIntent): boolean {
  */
 export function sanitizeAiResponse(text: string): string {
   return text
+    // Strip common filler / pleasantry openers and closers
+    .replace(/^\s*(sure|certainly|absolutely|of course)[,!\.\s]*/i, "")
+    .replace(/\b(here is what i found|here's what i found|hope this helps|let me know if you need anything else|happy to help)\b[:!\.\s]*/gi, "")
+    .replace(/^\s*(thanks for sharing|thank you for sharing|thanks)[,!\.\s]*/gi, "")
     // Strip RAG chunk labels e.g. "RAG 1 [igbc_guidance/EE C4] score=0.823:"
     .replace(/RAG\s+\d+\s*\[[^\]]*\]\s*score=[\d.]+:?\s*/gi, "")
     // Strip standalone score lines
@@ -95,6 +99,7 @@ export function sanitizeAiResponse(text: string): string {
     .replace(/\(\s+\)/g, "()")
     .replace(/\(\s+/g, "(")
     .replace(/\s+\)/g, ")")
+    .replace(/\n{3,}/g, "\n\n")
     .replace(/^\.\s*/, "") // Remove leading dot
     .trim();
 }

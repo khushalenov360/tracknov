@@ -155,15 +155,17 @@ function assembleRuntimeContext() {
     });
 }
 function formatRuntimeContext(ctx) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
-    const lines = [];
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+    const projectLines = [];
+    const guidebookLines = [];
+    const documentLines = [];
+    const creditLines = [];
     if (ctx.project) {
-        lines.push(`\n=== CURRENT PROJECT STATE ===`);
-        lines.push(`Project: ${ctx.project.name}`);
-        lines.push(`State: ${(_a = ctx.project.status) !== null && _a !== void 0 ? _a : "unknown"} | Certification: ${(_b = ctx.project.certification_type) !== null && _b !== void 0 ? _b : "n/a"} | Client: ${(_c = ctx.project.client) !== null && _c !== void 0 ? _c : "n/a"} | Location: ${(_d = ctx.project.location) !== null && _d !== void 0 ? _d : "n/a"}`);
+        projectLines.push(`Project: ${ctx.project.name}`);
+        projectLines.push(`State: ${(_a = ctx.project.status) !== null && _a !== void 0 ? _a : "unknown"} | Certification: ${(_b = ctx.project.certification_type) !== null && _b !== void 0 ? _b : "n/a"} | Client: ${(_c = ctx.project.client) !== null && _c !== void 0 ? _c : "n/a"} | Location: ${(_d = ctx.project.location) !== null && _d !== void 0 ? _d : "n/a"}`);
     }
     else {
-        lines.push(`Accessible projects: ${ctx.accessibleProjects.length}`);
+        projectLines.push(`Accessible projects: ${ctx.accessibleProjects.length}`);
     }
     const activeCredits = ctx.credits.filter(c => !c.na);
     const completeCredits = activeCredits.filter(c => c.status === "APPROVED" || c.status === "complete").length;
@@ -171,10 +173,10 @@ function formatRuntimeContext(ctx) {
     const inProgressCredits = activeCredits.filter(c => c.status === "IN_PROGRESS").length;
     const draftCredits = activeCredits.filter(c => c.status === "DRAFT").length;
     const naCredits = ctx.credits.filter(c => c.na);
-    lines.push(`\nCredits Loaded: ${ctx.credits.length}`);
-    lines.push(`Active: ${activeCredits.length} (In Progress: ${inProgressCredits}, Completed: ${completeCredits}, Blocked: ${blockedCredits}, Draft: ${draftCredits})`);
-    lines.push(`Not Required / Not Applicable: ${naCredits.length} (${naCredits.map(c => c.credit_code).join(", ") || "None"})`);
-    lines.push(`\nAssignments:`);
+    projectLines.push(`Credits Loaded: ${ctx.credits.length}`);
+    projectLines.push(`Active: ${activeCredits.length} (In Progress: ${inProgressCredits}, Completed: ${completeCredits}, Blocked: ${blockedCredits}, Draft: ${draftCredits})`);
+    projectLines.push(`Not Required / Not Applicable: ${naCredits.length} (${naCredits.map(c => c.credit_code).join(", ") || "None"})`);
+    creditLines.push(`Assignments:`);
     for (const credit of ctx.credits) {
         const graph = ctx.creditAssignmentGraph.get(credit.id);
         const completion = credit.completion_pct != null ? `${credit.completion_pct}%` : "0%";
@@ -184,18 +186,18 @@ function formatRuntimeContext(ctx) {
         if (!graph || graph.requirements.length === 0) {
             const p = credit.assigned_user_id ? ctx.profiles[credit.assigned_user_id] : null;
             const owner = p ? `${p.full_name} (${p.email})` : ((_e = credit.responsible_role) !== null && _e !== void 0 ? _e : "UNASSIGNED");
-            lines.push(`${baseStr} -> ${owner} (Single Owner)`);
+            creditLines.push(`${baseStr} -> ${owner} (Single Owner)`);
         }
         else {
             const contributors = new Set(graph.requirements.map(r => r.contributorId).filter(Boolean));
             if (contributors.size <= 1) {
                 const singleOwner = (_g = (_f = graph.requirements.find(r => r.contributorName)) === null || _f === void 0 ? void 0 : _f.contributorName) !== null && _g !== void 0 ? _g : "Unassigned";
-                lines.push(`${baseStr} -> ${singleOwner} (Single Owner)`);
+                creditLines.push(`${baseStr} -> ${singleOwner} (Single Owner)`);
             }
             else {
-                lines.push(`${baseStr} -> MULTIPLE CONTRIBUTORS`);
+                creditLines.push(`${baseStr} -> MULTIPLE CONTRIBUTORS`);
                 for (const req of graph.requirements) {
-                    lines.push(`  - ${req.requirementType}: ${(_h = req.contributorName) !== null && _h !== void 0 ? _h : "Unassigned"}`);
+                    creditLines.push(`  - ${req.requirementType}: ${(_h = req.contributorName) !== null && _h !== void 0 ? _h : "Unassigned"}`);
                 }
             }
         }
@@ -203,15 +205,14 @@ function formatRuntimeContext(ctx) {
     const uploadedCount = ctx.documents.filter((d) => d.state === "READY" || d.state === "uploaded").length;
     const ownerReviewCount = ctx.documents.filter((d) => d.state === "SUBMITTED").length;
     const approvedCount = ctx.documents.filter((d) => d.state === "APPROVED").length;
-    lines.push(`\n--- DOCUMENTS ---`);
-    lines.push(`Uploaded: ${uploadedCount} | Pending Review: ${ownerReviewCount} | Approved: ${approvedCount}`);
+    documentLines.push(`Uploaded: ${uploadedCount} | Pending Review: ${ownerReviewCount} | Approved: ${approvedCount}`);
     const recentFiles = ctx.documents.slice(0, 5).map(doc => `${doc.file_name} [${doc.doc_category}/${doc.state}]`).join("; ");
-    lines.push(`Recent files: ${recentFiles || "none"}`);
+    documentLines.push(`Recent files: ${recentFiles || "none"}`);
     if (ctx.documentIntelligence.length) {
-        lines.push("\n--- DOCUMENT INTELLIGENCE ---");
+        documentLines.push(`Document intelligence:`);
         for (const intel of ctx.documentIntelligence) {
             const doc = ctx.documents.find(d => d.id === intel.document_id);
-            lines.push(`- ${doc === null || doc === void 0 ? void 0 : doc.file_name}: ${intel.summary} [Relevance: ${intel.relevance_score}%] Risks: ${((_j = intel.risks) === null || _j === void 0 ? void 0 : _j.join(", ")) || "None"}`);
+            documentLines.push(`- ${doc === null || doc === void 0 ? void 0 : doc.file_name}: ${intel.summary} [Relevance: ${intel.relevance_score}%] Risks: ${((_j = intel.risks) === null || _j === void 0 ? void 0 : _j.join(", ")) || "None"}`);
         }
     }
     // Submission Readiness — EXCLUDE na credits
@@ -221,21 +222,45 @@ function formatRuntimeContext(ctx) {
         .map(credit => submission_readiness_engine_1.submissionReadinessEngine.generateContextString(credit, ctx.documents))
         .join("\n");
     if (topPendingEvaluated) {
-        lines.push(`\n--- SUBMISSION READINESS ---`);
-        lines.push(topPendingEvaluated);
+        creditLines.push(`Submission readiness:`);
+        creditLines.push(topPendingEvaluated);
     }
     const strategy = certification_strategy_engine_1.certificationStrategyEngine.getStrategy(ctx.credits);
-    lines.push(`\n--- CERTIFICATION STRATEGY ---`);
-    lines.push(certification_strategy_engine_1.certificationStrategyEngine.generateContextString(strategy));
+    creditLines.push(`Certification strategy:`);
+    creditLines.push(certification_strategy_engine_1.certificationStrategyEngine.generateContextString(strategy));
     // Full credit matrix — gives Harita complete awareness of every credit
-    lines.push(`\n--- FULL CREDIT STATUS MATRIX ---`);
-    lines.push(`(All ${ctx.credits.length} credits loaded. NA=Not Required/Not Applicable for this project.)`);
-    lines.push(`CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%`);
+    creditLines.push(`Full credit status matrix:`);
+    creditLines.push(`(All ${ctx.credits.length} credits loaded. NA=Not Required/Not Applicable for this project.)`);
+    creditLines.push(`CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%`);
     for (const c of ctx.credits) {
         const maxPts = (_k = c.max_points) !== null && _k !== void 0 ? _k : 0;
         const na = c.na ? "YES" : "NO";
         const pct = c.completion_pct != null ? `${c.completion_pct}%` : "0%";
-        lines.push(`${c.credit_code} | ${(_l = c.credit_name) !== null && _l !== void 0 ? _l : ""} | ${c.status} | ${maxPts} | ${na} | ${pct}`);
+        creditLines.push(`${c.credit_code} | ${(_l = c.credit_name) !== null && _l !== void 0 ? _l : ""} | ${c.status} | ${maxPts} | ${na} | ${pct}`);
     }
-    return lines.join("\n");
+    if (ctx.guidebooks.length) {
+        for (const guidebook of ctx.guidebooks.slice(0, 5)) {
+            guidebookLines.push(`${guidebook.title || guidebook.file_name} | uploaded_at=${(_m = guidebook.created_at) !== null && _m !== void 0 ? _m : "unknown"}`);
+        }
+    }
+    else {
+        guidebookLines.push(`No guidebook metadata found.`);
+    }
+    return [
+        `<project_database_current_state>`,
+        ...projectLines,
+        `</project_database_current_state>`,
+        ``,
+        `<authoritative_igbc_guidebook_rules>`,
+        ...guidebookLines,
+        `</authoritative_igbc_guidebook_rules>`,
+        ``,
+        `<uploaded_document_variables>`,
+        ...documentLines,
+        `</uploaded_document_variables>`,
+        ``,
+        `<project_credit_execution_matrix>`,
+        ...creditLines,
+        `</project_credit_execution_matrix>`,
+    ].join("\n");
 }

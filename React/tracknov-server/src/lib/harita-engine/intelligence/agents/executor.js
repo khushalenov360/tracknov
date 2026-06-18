@@ -13,8 +13,10 @@ exports.executePlan = executePlan;
 const server_1 = require("@/lib/supabase/server");
 const admin_1 = require("@/lib/supabase/admin");
 const env_1 = require("@/lib/env");
+const executorPersona_1 = require("./executorPersona");
 function executePlan(plan, projectId, userId, role) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         const supabase = (0, server_1.createClient)();
         const admin = env_1.env.supabaseServiceRoleKey ? (0, admin_1.createAdminClient)() : supabase;
         const facts = {};
@@ -49,6 +51,29 @@ function executePlan(plan, projectId, userId, role) {
                                 details: r.rule_value
                             }));
                         }
+                        const { data: linkedDocuments } = yield admin
+                            .from("project_document")
+                            .select("id, file_name, doc_category, workflow_state, created_at")
+                            .eq("project_credit_id", creditData.id)
+                            .order("created_at", { ascending: false })
+                            .limit(10);
+                        if (linkedDocuments) {
+                            facts.documents = linkedDocuments;
+                        }
+                    }
+                }
+                if (tool === "get_credit_checklists" && plan.target_credit_code) {
+                    const { data: credit } = yield admin
+                        .from("project_credits")
+                        .select("id, documents_required, what_to_submit")
+                        .eq("project_id", projectId)
+                        .eq("credit_code", plan.target_credit_code)
+                        .maybeSingle();
+                    if (credit) {
+                        facts.creditChecklist = {
+                            documents_required: (_a = credit.documents_required) !== null && _a !== void 0 ? _a : [],
+                            what_to_submit: (_b = credit.what_to_submit) !== null && _b !== void 0 ? _b : null,
+                        };
                     }
                 }
                 if (tool === "get_credit_assignments" && plan.target_credit_code) {
@@ -123,7 +148,8 @@ function executePlan(plan, projectId, userId, role) {
             plan,
             facts,
             guidelineChecklist,
-            securityApproved
+            securityApproved,
+            executionBoundaries: executorPersona_1.executorPersona,
         };
     });
 }

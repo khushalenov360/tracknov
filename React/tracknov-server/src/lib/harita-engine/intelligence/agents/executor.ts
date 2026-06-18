@@ -2,12 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import type { ExecutionPlan } from "./planner";
+import { executorPersona } from "./executorPersona";
 
 export type ExecutorOutput = {
   plan: ExecutionPlan;
   facts: Record<string, any>;
   guidelineChecklist: string[];
   securityApproved: boolean;
+  executionBoundaries: string;
 };
 
 export async function executePlan(
@@ -56,6 +58,33 @@ export async function executePlan(
               details: r.rule_value
             }));
           }
+
+          const { data: linkedDocuments } = await admin
+            .from("project_document")
+            .select("id, file_name, doc_category, workflow_state, created_at")
+            .eq("project_credit_id", creditData.id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          if (linkedDocuments) {
+            facts.documents = linkedDocuments;
+          }
+        }
+      }
+
+      if (tool === "get_credit_checklists" && plan.target_credit_code) {
+        const { data: credit } = await admin
+          .from("project_credits")
+          .select("id, documents_required, what_to_submit")
+          .eq("project_id", projectId)
+          .eq("credit_code", plan.target_credit_code)
+          .maybeSingle();
+
+        if (credit) {
+          facts.creditChecklist = {
+            documents_required: credit.documents_required ?? [],
+            what_to_submit: credit.what_to_submit ?? null,
+          };
         }
       }
 
@@ -137,6 +166,7 @@ export async function executePlan(
     plan,
     facts,
     guidelineChecklist,
-    securityApproved
+    securityApproved,
+    executionBoundaries: executorPersona,
   };
 }

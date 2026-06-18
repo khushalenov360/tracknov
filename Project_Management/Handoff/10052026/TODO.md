@@ -68,7 +68,7 @@ Secondary sources (2026-05-10):
 
 ### P2 - 9+ maturity roadmap
 - [ ] Phase 1 maturity closure: runtime stabilization (workflow determinism, derived-state engine, validation interception, immutable audit chain, concurrency protection).
-- [ ] Phase 2 maturity closure: certification intelligence (credit applicability/dependencies, evidence intelligence, multi-layer score model, clarification intelligence).
+- [~] Phase 2 maturity closure: certification intelligence (credit applicability/dependencies, evidence intelligence, multi-layer score model, clarification intelligence).
 - [ ] Phase 3 maturity closure: certification closure engine (snapshot freeze, audit replay, submission freeze).
 - [ ] Phase 4 maturity closure: AI + deterministic rule validation with human-only finalization.
 - [ ] Phase 5 maturity closure: enterprise hardening (runtime acceptance matrix, golden flow, submission packaging + archives).
@@ -101,6 +101,7 @@ Secondary sources (2026-05-10):
 - [~] Review orchestration must be submittal-first, not document/card-first. (submittal review route added; remaining mutation universality still pending)
 - [~] Project Admin UI must show only validation queues, blockers, stage readiness, pending reviews, and workflow actions.
 - [x] Hide runtime desync metrics, repair tooling, and infrastructure diagnostics from Project Admin and operational roles; reserve internal diagnostics for governance/super-user/admin-only surfaces.
+- [x] Close React Harita Phase 2 stream contract and remove dead evidence-target selection path from the active upload/analyze flow.
 
 ### P1 - Phase 3 AI certification intelligence safety
 - [x] Keep AI advisory-only:
@@ -108,6 +109,23 @@ Secondary sources (2026-05-10):
   - recommend
   - explain
 - [x] Block AI from approve/reject/override/transition authority.
+
+---
+
+## Latest execution pass (2026-06-18 IST, React Harita Phase 2 closure)
+
+- Closed the active React Harita Phase 2 path at the integration layer:
+  - terminal SSE `done` event now carries structured attachment analysis metadata
+  - React client now consumes terminal metadata without legacy side-channel dependence
+  - dead credit-evidence target loader removed from the client
+  - dead `GET /api/assistant/credit-evidence-targets` route removed from the React server
+- Verification completed:
+  - `tracknov-ai-server`: `npm run build`
+  - `React/tracknov-server`: `npm run build`
+  - `React/tracknov-client`: `npm run build`
+- Scope note:
+  - this does **not** mark the broader certification-intelligence roadmap complete
+  - this closes Phase 2 only for the active React Harita runtime path
 - [x] Enforce RBAC filtering before retrieval, project-scoped context, and prompt-injection defense.
 - [~] Ensure AI answers are evidence-linked and do not expose raw runtime/retrieval internals.
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, AlertTriangle, Lock, Unlock } from "lucide-react";
 import { Shell } from "./components/shell";
@@ -167,12 +167,12 @@ function ProjectCards({
               </div>
 
               <div className="pt-2 border-t border-[var(--color-border)]">
-                <a
-                  href={`/projects/${projectId}/documents?credit=${credit.id}`}
+                <Link
+                  to={`/projects/${projectId}/documents?credit=${credit.id}`}
                   className="w-full flex items-center justify-center py-2 px-4 bg-[var(--color-surface-2)] hover:bg-[var(--color-green-soft)] text-[var(--color-text-primary)] hover:text-[var(--color-green)] text-xs font-bold rounded-lg border border-[var(--color-border)] hover:border-[var(--color-green-light)] transition-colors"
                 >
                   Open Workspace
-                </a>
+                </Link>
               </div>
             </div>
           );
@@ -1193,19 +1193,6 @@ function ReviewerDashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
   );
 }
 
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center h-[calc(100vh-8rem)] bg-[var(--color-surface)]">
-      <div className="text-center space-y-4">
-        <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">{title}</h2>
-        <p className="text-[var(--color-text-secondary)] max-w-md mx-auto">
-          This React module is not migrated yet, but the workspace shell is now using live project context instead of dummy data.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function WorkspaceScreen({
   workspace,
   tab,
@@ -1227,7 +1214,7 @@ function WorkspaceScreen({
     if (["overview"].includes(tab)) {
       return <ProjectCards projectId={workspace.project.id} credits={workspace.credits} />;
     }
-    return <PlaceholderPage title={tab.charAt(0).toUpperCase() + tab.slice(1)} />;
+    return <Navigate to={`/projects/${workspace.project.id}/dashboard`} replace />;
   };
 
   return (
@@ -1356,6 +1343,7 @@ export default function App() {
         <Route path="tables" element={<WorkspaceRouteContent tab="tables" />} />
         <Route path="exports" element={<WorkspaceRouteContent tab="exports" />} />
         <Route path="settings" element={<WorkspaceRouteContent tab="settings" />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
       <Route path="*" element={session ? <DefaultRoute /> : null} />
     </Routes>

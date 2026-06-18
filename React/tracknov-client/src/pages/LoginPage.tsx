@@ -22,7 +22,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const nextPath = searchParams.get("next") || "/dashboard";
+  const nextPath = searchParams.get("next") || "/";
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

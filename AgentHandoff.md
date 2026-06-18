@@ -3250,3 +3250,39 @@ Comprehensively rename all references of the AI assistant from "Copilot" to "Har
   - Executed `tests/workflow-state-machine.spec.ts` verifying valid transitions and project creation procedures.
 - **Repository Sync**:
   - Pushed all refactoring changes and clean-up commits to GitHub (`origin main`).
+
+---
+
+## Latest execution pass (2026-06-18 IST, React Harita Phase 2 closure)
+
+### Objective
+Close Phase 2 on the active React Harita runtime, remove dead attachment-target routing, and finalize the SSE contract between `tracknov-ai-server` and the React client.
+
+### Delivered in this pass
+- **SSE contract closure**:
+  - Moved structured attachment analysis metadata into the terminal `done` event in:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\controllers\agentController.ts`
+  - Updated the React stream parser to consume `done.meta` instead of relying on a side-channel event in:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\services\api.ts`
+- **Legacy target-selection cleanup**:
+  - Removed the dead `CreditEvidenceTarget` client type and `fetchCreditEvidenceTargets(...)` loader from:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\services\api.ts`
+  - Removed the unused `GET /api/assistant/credit-evidence-targets` route from:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\index.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\index.js`
+- **Phase 1 closure carried into commit scope**:
+  - Preserved the active React-path cleanup already validated earlier:
+    - dead mock components removed
+    - fallback env wiring normalized
+    - stale Next-only middleware/rate-limit files removed from the React server path
+    - React workspace routing tightened to explicit route handling
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+
+### Status boundary
+- Phase 2 is closed for the active React Harita path only.
+- Legacy Next.js Harita surfaces remain outside this closure scope.

@@ -32,9 +32,13 @@ exports.getBurnRateForecast = getBurnRateForecast;
 exports.getVendorIntelligence = getVendorIntelligence;
 exports.getRatingSystems = getRatingSystems;
 const uuid_1 = require("uuid");
-const react_1 = require("react");
-const cache_1 = require("next/cache");
-const headers_1 = require("next/headers");
+const cookies = () => ({ get: () => ({ value: "dummy" }), getAll: () => [], set: () => { } });
+function cache(fn) {
+    return (...args) => fn(...args);
+}
+function unstable_cache(fn, _keyParts, _options) {
+    return (...args) => fn(...args);
+}
 const constants_1 = require("@/lib/constants");
 const env_1 = require("@/lib/env");
 const rbac_1 = require("@/lib/rbac");
@@ -207,8 +211,8 @@ function getSupabaseUser(client) {
         var _a;
         let cacheKey = "";
         try {
-            const cookieStore = yield (0, headers_1.cookies)();
-            cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+            const cookieStore = yield cookies();
+            cacheKey = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join(";");
         }
         catch (e) {
             // cookies() might fail if called outside Request/Response context
@@ -318,15 +322,15 @@ function getCurrentUserUncached() {
         };
     });
 }
-exports.getCurrentUser = (0, react_1.cache)(function getCurrentUser() {
+exports.getCurrentUser = cache(function getCurrentUser() {
     return __awaiter(this, void 0, void 0, function* () {
         if (!env_1.env.isConfigured) {
             return null;
         }
         let cacheKey = "";
         try {
-            const cookieStore = yield (0, headers_1.cookies)();
-            cacheKey = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join(";");
+            const cookieStore = yield cookies();
+            cacheKey = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join(";");
         }
         catch (e) {
             // cookies() might fail if called outside request context
@@ -344,7 +348,7 @@ exports.getCurrentUser = (0, react_1.cache)(function getCurrentUser() {
         return user;
     });
 });
-exports.getTasksForUser = (0, react_1.cache)(function getTasksForUser() {
+exports.getTasksForUser = cache(function getTasksForUser() {
     return __awaiter(this, void 0, void 0, function* () {
         if (!env_1.env.isConfigured)
             return [];
@@ -363,7 +367,7 @@ exports.getTasksForUser = (0, react_1.cache)(function getTasksForUser() {
         });
     });
 });
-exports.getDashboardProjects = (0, react_1.cache)(function getDashboardProjects() {
+exports.getDashboardProjects = cache(function getDashboardProjects() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e;
         if (!env_1.env.isConfigured) {
@@ -588,12 +592,12 @@ exports.getDashboardProjects = (0, react_1.cache)(function getDashboardProjects(
         return summaries;
     });
 });
-const getCachedProject = (projectId) => (0, cache_1.unstable_cache)(() => __awaiter(void 0, void 0, void 0, function* () {
+const getCachedProject = (projectId) => unstable_cache(() => __awaiter(void 0, void 0, void 0, function* () {
     const admin = (0, admin_1.createAdminClient)();
     const { data } = yield admin.from("projects").select("*").eq("id", projectId).single();
     return data;
 }), [`project-${projectId}`], { revalidate: 60, tags: [`project:${projectId}`] })();
-const getCachedGuidebooks = (projectId) => (0, cache_1.unstable_cache)(() => __awaiter(void 0, void 0, void 0, function* () {
+const getCachedGuidebooks = (projectId) => unstable_cache(() => __awaiter(void 0, void 0, void 0, function* () {
     const admin = (0, admin_1.createAdminClient)();
     const { data } = yield admin
         .from("project_guidebooks")
@@ -602,7 +606,7 @@ const getCachedGuidebooks = (projectId) => (0, cache_1.unstable_cache)(() => __a
         .order("created_at", { ascending: false });
     return data || [];
 }), [`guidebooks-${projectId}`], { revalidate: 60, tags: [`project-guidebooks:${projectId}`] })();
-const getCachedValidationRules = (projectId) => (0, cache_1.unstable_cache)(() => __awaiter(void 0, void 0, void 0, function* () {
+const getCachedValidationRules = (projectId) => unstable_cache(() => __awaiter(void 0, void 0, void 0, function* () {
     const admin = (0, admin_1.createAdminClient)();
     const { data } = yield admin
         .from("validation_rules")
@@ -613,7 +617,7 @@ const getCachedValidationRules = (projectId) => (0, cache_1.unstable_cache)(() =
         .limit(200);
     return data || [];
 }), [`validation-rules-${projectId}`], { revalidate: 60, tags: [`project-validation-rules:${projectId}`] })();
-const getCachedDataTables = (projectId) => (0, cache_1.unstable_cache)(() => __awaiter(void 0, void 0, void 0, function* () {
+const getCachedDataTables = (projectId) => unstable_cache(() => __awaiter(void 0, void 0, void 0, function* () {
     const admin = (0, admin_1.createAdminClient)();
     const { data } = yield admin
         .from("project_data_tables")
@@ -622,7 +626,7 @@ const getCachedDataTables = (projectId) => (0, cache_1.unstable_cache)(() => __a
         .order("created_at", { ascending: false });
     return data || [];
 }), [`data-tables-${projectId}`], { revalidate: 60, tags: [`project-data-tables:${projectId}`] })();
-exports.getProjectWorkspace = (0, react_1.cache)(function getProjectWorkspace(projectId) {
+exports.getProjectWorkspace = cache(function getProjectWorkspace(projectId) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!env_1.env.isConfigured) {
             return null;
@@ -1471,9 +1475,9 @@ function getTeamMembers() {
                 .from("project_users")
                 .select("id, project_id, user_id, role, created_at, projects(name)");
             const { data: wallets } = yield admin
-                .from("client_token_wallets")
-                .select("client_user_id, token_balance");
-            const walletByClient = new Map((wallets !== null && wallets !== void 0 ? wallets : []).map((wallet) => { var _a; return [wallet.client_user_id, Number((_a = wallet.token_balance) !== null && _a !== void 0 ? _a : 0)]; }));
+                .from("client_accounts")
+                .select("primary_client_user_id, token_balance");
+            const walletByClient = new Map((wallets !== null && wallets !== void 0 ? wallets : []).map((wallet) => { var _a; return [wallet.primary_client_user_id, Number((_a = wallet.token_balance) !== null && _a !== void 0 ? _a : 0)]; }));
             const grouped = new Map();
             (profiles !== null && profiles !== void 0 ? profiles : []).forEach((profile) => {
                 var _a, _b, _c, _d, _e, _f, _g, _h;
@@ -1533,9 +1537,9 @@ function getTeamMembers() {
             : { data: [] };
         const profilesByUser = new Map((profiles !== null && profiles !== void 0 ? profiles : []).map((profile) => [profile.user_id, profile]));
         const { data: wallets } = yield client
-            .from("client_token_wallets")
-            .select("client_user_id, token_balance");
-        const walletByClient = new Map((wallets !== null && wallets !== void 0 ? wallets : []).map((wallet) => { var _a; return [wallet.client_user_id, Number((_a = wallet.token_balance) !== null && _a !== void 0 ? _a : 0)]; }));
+            .from("client_accounts")
+            .select("primary_client_user_id, token_balance");
+        const walletByClient = new Map((wallets !== null && wallets !== void 0 ? wallets : []).map((wallet) => { var _a; return [wallet.primary_client_user_id, Number((_a = wallet.token_balance) !== null && _a !== void 0 ? _a : 0)]; }));
         const grouped = new Map();
         rows.forEach((row) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
@@ -1571,7 +1575,7 @@ function getTeamMembers() {
         return Array.from(grouped.values());
     });
 }
-exports.getOwnerReviewQueue = (0, react_1.cache)(function getOwnerReviewQueue() {
+exports.getOwnerReviewQueue = cache(function getOwnerReviewQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d;
         if (!env_1.env.isConfigured) {
@@ -1720,7 +1724,7 @@ function getReviewerPerformanceSummary() {
         };
     });
 }
-exports.getExecutiveInsights = (0, react_1.cache)(function getExecutiveInsights() {
+exports.getExecutiveInsights = cache(function getExecutiveInsights() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e;
         const projects = yield (0, exports.getDashboardProjects)();
@@ -2002,10 +2006,10 @@ function getSuperUserCommandCenter() {
         const admin = (0, admin_1.createAdminClient)();
         const [{ data: projects }, { data: wallets }, { data: transactions }, { data: uploadLogs }, { data: profiles }] = yield Promise.all([
             admin.from("projects").select("id, name, client, status, created_at"),
-            admin.from("client_token_wallets").select("client_user_id, token_balance"),
+            admin.from("client_accounts").select("id, primary_client_user_id, account_name, token_balance"),
             admin
-                .from("client_token_transactions")
-                .select("id, client_user_id, project_id, tokens, reason, created_at, meta")
+                .from("token_transactions")
+                .select("id, client_account_id, project_id, transaction_kind, tokens, reason, created_at, meta")
                 .order("created_at", { ascending: false })
                 .limit(1000),
             admin
@@ -2025,18 +2029,20 @@ function getSuperUserCommandCenter() {
         }
         const transactionsByClient = new Map();
         for (const tx of transactions !== null && transactions !== void 0 ? transactions : []) {
-            const profile = profileById.get(tx.client_user_id);
-            const clientKey = ((profile === null || profile === void 0 ? void 0 : profile.company) || "Unassigned Client").trim();
+            const wallet = (wallets !== null && wallets !== void 0 ? wallets : []).find((row) => row.id === tx.client_account_id);
+            const profile = (wallet === null || wallet === void 0 ? void 0 : wallet.primary_client_user_id) ? profileById.get(wallet.primary_client_user_id) : null;
+            const clientKey = ((wallet === null || wallet === void 0 ? void 0 : wallet.account_name) || (profile === null || profile === void 0 ? void 0 : profile.company) || "Unassigned Client").trim();
             const existing = (_b = transactionsByClient.get(clientKey)) !== null && _b !== void 0 ? _b : [];
             existing.push(tx);
             transactionsByClient.set(clientKey, existing);
         }
         const clientWalletRows = (wallets !== null && wallets !== void 0 ? wallets : []).map((wallet) => {
             var _a;
-            const profile = profileById.get(wallet.client_user_id);
+            const profile = wallet.primary_client_user_id ? profileById.get(wallet.primary_client_user_id) : null;
             return {
-                client_user_id: wallet.client_user_id,
-                client_name: (profile === null || profile === void 0 ? void 0 : profile.company) || "Unassigned Client",
+                client_user_id: wallet.primary_client_user_id,
+                client_account_id: wallet.id,
+                client_name: wallet.account_name || (profile === null || profile === void 0 ? void 0 : profile.company) || "Unassigned Client",
                 client_contact: (profile === null || profile === void 0 ? void 0 : profile.full_name) || (profile === null || profile === void 0 ? void 0 : profile.email) || "Client contact",
                 balance: Number((_a = wallet.token_balance) !== null && _a !== void 0 ? _a : 0),
             };
@@ -2046,10 +2052,10 @@ function getSuperUserCommandCenter() {
             const matchingWallet = clientWalletRows.find((wallet) => wallet.client_name === clientName);
             const clientTx = (_a = transactionsByClient.get(clientName)) !== null && _a !== void 0 ? _a : [];
             const consumed = clientTx
-                .filter((tx) => Number(tx.tokens) < 0)
-                .reduce((sum, tx) => { var _a; return sum + Math.abs(Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0)); }, 0);
+                .filter((tx) => tx.transaction_kind === "debit")
+                .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
             const credited = clientTx
-                .filter((tx) => Number(tx.tokens) > 0)
+                .filter((tx) => tx.transaction_kind !== "debit")
                 .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
             const walletBalance = (_b = matchingWallet === null || matchingWallet === void 0 ? void 0 : matchingWallet.balance) !== null && _b !== void 0 ? _b : 0;
             const projectCount = rows.length;
@@ -2064,22 +2070,22 @@ function getSuperUserCommandCenter() {
             };
         });
         const totalTokensSold = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a; return Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0) > 0; })
+            .filter((tx) => tx.transaction_kind !== "debit")
             .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const totalTokensConsumed = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a; return Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0) < 0; })
-            .reduce((sum, tx) => { var _a; return sum + Math.abs(Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0)); }, 0);
+            .filter((tx) => tx.transaction_kind === "debit")
+            .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const weeklyConsumed = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a; return Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0) < 0 && new Date(tx.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000; })
-            .reduce((sum, tx) => { var _a; return sum + Math.abs(Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0)); }, 0);
+            .filter((tx) => tx.transaction_kind === "debit" && new Date(tx.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+            .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const uploadSpend = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a, _b; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("upload") && Number((_b = tx.tokens) !== null && _b !== void 0 ? _b : 0) < 0; })
-            .reduce((sum, tx) => { var _a; return sum + Math.abs(Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0)); }, 0);
+            .filter((tx) => { var _a; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("upload") && tx.transaction_kind === "debit"; })
+            .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const consultSpend = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a, _b; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("consult") && Number((_b = tx.tokens) !== null && _b !== void 0 ? _b : 0) < 0; })
-            .reduce((sum, tx) => { var _a; return sum + Math.abs(Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0)); }, 0);
+            .filter((tx) => { var _a; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("consult") && tx.transaction_kind === "debit"; })
+            .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const refunds = (transactions !== null && transactions !== void 0 ? transactions : [])
-            .filter((tx) => { var _a, _b; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("refund") && Number((_b = tx.tokens) !== null && _b !== void 0 ? _b : 0) > 0; })
+            .filter((tx) => { var _a; return tx.transaction_kind === "refund" || String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("refund"); })
             .reduce((sum, tx) => { var _a; return sum + Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
         const uploadsToday = (uploadLogs !== null && uploadLogs !== void 0 ? uploadLogs : []).length;
         const failedTransactions = (transactions !== null && transactions !== void 0 ? transactions : []).filter((tx) => { var _a; return String((_a = tx.reason) !== null && _a !== void 0 ? _a : "").toLowerCase().includes("failed"); }).length;
@@ -2100,8 +2106,12 @@ function getSuperUserCommandCenter() {
         }
         const revenueEstimateInr = totalTokensSold * 1;
         const reconciliationRows = clientWalletRows.map((wallet) => {
-            const tx = (transactions !== null && transactions !== void 0 ? transactions : []).filter((row) => row.client_user_id === wallet.client_user_id);
-            const ledgerDelta = tx.reduce((sum, row) => { var _a; return sum + Number((_a = row.tokens) !== null && _a !== void 0 ? _a : 0); }, 0);
+            const tx = (transactions !== null && transactions !== void 0 ? transactions : []).filter((row) => row.client_account_id === wallet.client_account_id);
+            const ledgerDelta = tx.reduce((sum, row) => {
+                var _a;
+                const direction = row.transaction_kind === "debit" ? -1 : 1;
+                return sum + direction * Number((_a = row.tokens) !== null && _a !== void 0 ? _a : 0);
+            }, 0);
             const baselineEstimate = wallet.balance - ledgerDelta;
             const mismatch = Math.abs((baselineEstimate + ledgerDelta) - wallet.balance);
             return {
@@ -2138,13 +2148,13 @@ function getSuperUserCommandCenter() {
             },
             alerts: criticalAlerts,
             recentTransactions: (transactions !== null && transactions !== void 0 ? transactions : []).slice(0, 20).map((tx) => {
-                var _a, _b;
+                var _a, _b, _c, _d, _e;
                 return ({
                     id: tx.id,
-                    client_user_id: tx.client_user_id,
+                    client_user_id: (_b = (_a = clientWalletRows.find((wallet) => wallet.client_account_id === tx.client_account_id)) === null || _a === void 0 ? void 0 : _a.client_user_id) !== null && _b !== void 0 ? _b : null,
                     project_id: tx.project_id,
-                    tokens: Number((_a = tx.tokens) !== null && _a !== void 0 ? _a : 0),
-                    reason: String((_b = tx.reason) !== null && _b !== void 0 ? _b : ""),
+                    tokens: tx.transaction_kind === "debit" ? -Number((_c = tx.tokens) !== null && _c !== void 0 ? _c : 0) : Number((_d = tx.tokens) !== null && _d !== void 0 ? _d : 0),
+                    reason: String((_e = tx.reason) !== null && _e !== void 0 ? _e : ""),
                     created_at: tx.created_at,
                 });
             }),
@@ -2152,7 +2162,7 @@ function getSuperUserCommandCenter() {
         };
     });
 }
-exports.getRoleTasks = (0, react_1.cache)(function getRoleTasks() {
+exports.getRoleTasks = cache(function getRoleTasks() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g, _h;
         const user = yield (0, exports.getCurrentUser)();
@@ -2358,7 +2368,7 @@ function getRatingSystems() {
         });
     });
 }
-exports.getRuntimeDesyncSummary = (0, react_1.cache)(function getRuntimeDesyncSummary() {
+exports.getRuntimeDesyncSummary = cache(function getRuntimeDesyncSummary() {
     return __awaiter(this, void 0, void 0, function* () {
         if (!env_1.env.isConfigured) {
             return { openDesyncCount: 0, queuedRepairs: 0, projectsImpacted: 0 };
@@ -2381,7 +2391,7 @@ exports.getRuntimeDesyncSummary = (0, react_1.cache)(function getRuntimeDesyncSu
         };
     });
 });
-exports.getUserActionQueue = (0, react_1.cache)(function getUserActionQueue() {
+exports.getUserActionQueue = cache(function getUserActionQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         const user = yield (0, exports.getCurrentUser)();
         if (!user)
@@ -2415,7 +2425,7 @@ exports.getUserActionQueue = (0, react_1.cache)(function getUserActionQueue() {
         });
     });
 });
-exports.getUserReviewQueue = (0, react_1.cache)(function getUserReviewQueue() {
+exports.getUserReviewQueue = cache(function getUserReviewQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         const user = yield (0, exports.getCurrentUser)();
         if (!user)
@@ -2470,7 +2480,7 @@ exports.getUserReviewQueue = (0, react_1.cache)(function getUserReviewQueue() {
         });
     });
 });
-exports.getUserBlockerQueue = (0, react_1.cache)(function getUserBlockerQueue() {
+exports.getUserBlockerQueue = cache(function getUserBlockerQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         const user = yield (0, exports.getCurrentUser)();
         if (!user)

@@ -63,8 +63,10 @@ type Message = {
 const STARTER_PROMPTS = [
   "What should we prioritize next?",
   "Show the biggest project blockers",
-  "Which credits need attention?",
+  "Attach documents to analyze and map to credits",
 ];
+
+const ATTACH_DOCUMENT_PROMPT = "Attach documents to analyze and map to credits";
 
 const EVIDENCE_FILE_ACCEPT =
   ".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,image/*,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -110,7 +112,7 @@ export function GlobalHarita({
           ? `${window.location.pathname}${window.location.search}`
           : projectId
             ? `/projects/${projectId}/overview`
-            : "/dashboard",
+            : "/",
     }),
     [description, projectId, title],
   );
@@ -165,6 +167,16 @@ export function GlobalHarita({
   ) => {
     const attachment = options?.attachment ?? preparedAttachment;
     const messageText = rawMessage.trim() || (attachment ? buildDefaultAttachmentPrompt(projectLabel) : "");
+
+    if (attachedFile && !attachment) {
+      setSystemError({
+        title: "The file is still being prepared for Harita analysis.",
+        detail: "Wait until the attachment shows as ready, then send the message again.",
+        retryable: false,
+      });
+      return;
+    }
+
     if (!messageText || isTyping) return;
 
     const userMessage = { id: `user-${Date.now()}`, role: "user" as const, content: rawMessage.trim() || "Attached a document for analysis." };
@@ -230,6 +242,27 @@ export function GlobalHarita({
     await submitMessage(input);
   };
 
+  const handleStarterPrompt = async (prompt: string) => {
+    if (prompt === ATTACH_DOCUMENT_PROMPT && !preparedAttachment) {
+      if (!projectId) {
+        setSystemError({
+          title: "Open a project workspace before attaching a document.",
+          retryable: false,
+        });
+        return;
+      }
+
+      if (isPreparingAttachment || isTyping || isCommittingEvidence) {
+        return;
+      }
+
+      assetInputRef.current?.click();
+      return;
+    }
+
+    await submitMessage(prompt);
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -278,6 +311,9 @@ export function GlobalHarita({
       setIsPreparingAttachment(false);
     }
   };
+
+  const composerLocked = isTyping || isPreparingAttachment || isCommittingEvidence;
+  const canSend = !composerLocked && Boolean(input.trim() || preparedAttachment);
 
   const appendAssistantMessage = (content: string) => {
     setMessages((prev) => [
@@ -387,7 +423,7 @@ export function GlobalHarita({
                   <button
                     key={prompt}
                     type="button"
-                    onClick={() => void submitMessage(prompt)}
+                    onClick={() => void handleStarterPrompt(prompt)}
                     className="rounded-full border border-[var(--color-border)] bg-[rgba(28,33,40,0.92)] px-4 py-2.5 text-[13px] font-medium text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:bg-[rgba(34,39,49,0.98)]"
                   >
                     {prompt}
@@ -525,7 +561,7 @@ export function GlobalHarita({
             <button
               type="button"
               onClick={() => assetInputRef.current?.click()}
-              disabled={isPreparingAttachment || isTyping || isCommittingEvidence}
+              disabled={composerLocked}
               className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-45"
               title="Attach evidence"
             >
@@ -538,12 +574,12 @@ export function GlobalHarita({
               placeholder={`Ask Harita about ${projectLabel}...`}
               className="min-h-[44px] max-h-32 w-full resize-none border-0 bg-transparent pr-1 pt-1 text-[14px] leading-6 text-[var(--color-text-primary)] outline-none shadow-none ring-0 placeholder:text-[var(--color-text-tertiary)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none focus-visible:ring-0"
               rows={1}
-              disabled={isTyping || isCommittingEvidence}
+              disabled={composerLocked}
               style={{ outline: "none", boxShadow: "none" }}
             />
             <button
               onClick={() => void handleSend()}
-              disabled={isTyping || isPreparingAttachment || isCommittingEvidence || (!input.trim() && !preparedAttachment)}
+              disabled={!canSend}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#5C6E9E_0%,#4B5A80_100%)] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
             >
               {isCommittingEvidence ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
