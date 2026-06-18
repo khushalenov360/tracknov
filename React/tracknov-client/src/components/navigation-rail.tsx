@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { 
   LayoutDashboard, 
   FolderKanban, 
@@ -9,17 +9,19 @@ import {
   Settings,
   Pin,
   PinOff,
-  ChevronRight,
   Bot,
   Users
 } from "lucide-react";
 
 export function NavigationRail() {
   const location = useLocation();
+  const params = useParams<{ projectId?: string }>();
   const pathname = location.pathname;
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const projectId = params.projectId;
+  const projectBase = projectId ? `/projects/${projectId}` : "/";
 
   useEffect(() => {
     setMounted(true);
@@ -37,56 +39,29 @@ export function NavigationRail() {
 
   const isExpanded = isHovered || isPinned;
 
-  const navItems = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/dashboard",
-    },
-    {
-      label: "Projects",
-      icon: FolderKanban,
-      href: "/projects",
-      subItems: [
-        { label: "Active Projects", href: "/projects" },
-        { label: "Templates", href: "/projects?tab=templates" },
-        { label: "Archives", href: "/projects?tab=archives" },
-      ]
-    },
-    {
-      label: "Members",
-      icon: Users,
-      href: "/members",
-    },
-    {
-      label: "Tasks",
-      icon: ListChecks,
-      href: "/tasks",
-      subItems: [
-        { label: "My Tasks", href: "/tasks" },
-        { label: "Team Tasks", href: "/tasks?view=team" },
-      ]
-    },
-    {
-      label: "Reviews",
-      icon: Inbox,
-      href: "/review-queue",
-      subItems: [
-        { label: "Pending Reviews", href: "/review-queue" },
-        { label: "Clarifications", href: "/review-queue?tab=clarifications" },
-      ]
-    },
-    {
-      label: "Reports",
-      icon: BarChart3,
-      href: "/executive-reports",
-    },
-    {
-      label: "Administration",
-      icon: Settings,
-      href: "/admin",
-    },
-  ];
+  const navItems = useMemo(() => {
+    if (!projectId) {
+      return [
+        {
+          label: "Dashboard",
+          icon: LayoutDashboard,
+          href: "/",
+        },
+      ];
+    }
+
+    return [
+      { label: "Dashboard", icon: LayoutDashboard, href: `${projectBase}/dashboard` },
+      { label: "Credits", icon: FolderKanban, href: `${projectBase}/credits` },
+      { label: "Documents", icon: Inbox, href: `${projectBase}/documents` },
+      { label: "Clarifications", icon: ListChecks, href: `${projectBase}/clarifications` },
+      { label: "Assignments", icon: Users, href: `${projectBase}/assignments` },
+      { label: "Team", icon: Users, href: `${projectBase}/team` },
+      { label: "Tables", icon: BarChart3, href: `${projectBase}/tables` },
+      { label: "Exports", icon: Inbox, href: `${projectBase}/exports` },
+      { label: "Settings", icon: Settings, href: `${projectBase}/settings` },
+    ];
+  }, [projectBase, projectId]);
 
   if (!mounted) return <div className="hidden lg:flex w-[72px] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] h-screen" />;
 
@@ -102,7 +77,7 @@ export function NavigationRail() {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="h-16 flex items-center px-4 border-b border-[var(--color-border)] shrink-0 justify-between">
-          <Link to="/dashboard" className="flex items-center gap-3 overflow-hidden whitespace-nowrap min-w-0">
+          <Link to={projectId ? `${projectBase}/dashboard` : "/"} className="flex items-center gap-3 overflow-hidden whitespace-nowrap min-w-0">
             <div className="w-10 h-10 shrink-0 flex items-center justify-center">
               <div className="w-6 h-6 rounded-md bg-green-500 flex items-center justify-center font-bold text-white text-xs opacity-80">T</div>
             </div>
@@ -133,26 +108,7 @@ export function NavigationRail() {
                       {item.label}
                     </div>
 
-                    {item.subItems && isExpanded && (
-                      <ChevronRight className="w-4 h-4 ml-auto mr-3 opacity-30 group-hover:opacity-100 transition-opacity" />
-                    )}
                   </Link>
-
-                  {/* Sub-items */}
-                  {item.subItems && isExpanded && (
-                    <ul className="mt-1 mb-2 ml-[3.25rem] space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {item.subItems.map(subItem => (
-                        <li key={subItem.label}>
-                          <Link 
-                            to={subItem.href}
-                            className="block py-1.5 px-2 rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors whitespace-nowrap"
-                          >
-                            {subItem.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </li>
               );
             })}
@@ -180,21 +136,21 @@ export function NavigationRail() {
 
       {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-around items-center px-4 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <Link to="/dashboard" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
+        <Link to={projectId ? `${projectBase}/dashboard` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <LayoutDashboard className="h-5 w-5" />
           <span className="text-xs font-semibold">Home</span>
         </Link>
-        <Link to="/review-queue" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
+        <Link to={projectId ? `${projectBase}/documents` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Inbox className="h-5 w-5" />
-          <span className="text-xs font-semibold">Queue</span>
+          <span className="text-xs font-semibold">Docs</span>
         </Link>
         <button onClick={() => window.dispatchEvent(new Event('toggle-mobile-harita'))} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Bot className="h-5 w-5 text-[var(--color-green)]" />
           <span className="text-xs font-semibold">Harita</span>
         </button>
-        <Link to="/projects" className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <FolderKanban className="h-5 w-5" />
-          <span className="text-xs font-semibold">Projects</span>
+        <Link to={projectId ? `${projectBase}/settings` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
+          <Settings className="h-5 w-5" />
+          <span className="text-xs font-semibold">Settings</span>
         </Link>
       </nav>
     </>

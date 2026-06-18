@@ -1,8 +1,19 @@
 import { v4 as uuidv4 } from "uuid";
-import { redirect } from "next/navigation";
-import { cache } from "react";
-import { unstable_cache } from "next/cache";
 const cookies = () => ({ get: () => ({ value: "dummy" }), getAll: () => [], set: () => {} });
+
+function cache<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => TResult,
+) {
+  return (...args: TArgs) => fn(...args);
+}
+
+function unstable_cache<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  _keyParts?: unknown,
+  _options?: unknown,
+) {
+  return (...args: TArgs) => fn(...args);
+}
 
 import { categoryMeta, igbcRatingSystems } from "@/lib/constants";
 import { env } from "@/lib/env";

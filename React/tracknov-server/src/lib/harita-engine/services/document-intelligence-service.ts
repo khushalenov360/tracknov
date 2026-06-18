@@ -2,6 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DocumentParser } from "../document-intelligence/DocumentParser";
 import { DocumentClassifier } from "../document-intelligence/DocumentClassifier";
 import { EvidenceMappingEngine } from "../intelligence/evidence/evidence-mapping-engine";
+import { dispatchSubmittalToPipeline } from "@/services/IngestionDispatcher";
+import {
+  evaluateDaylightCompliance,
+  evaluateMaterialsCompliance,
+} from "@/services/ComplianceAssertionEngine";
 
 export type DocumentIntelligenceResult = {
   summary: string;
@@ -10,6 +15,9 @@ export type DocumentIntelligenceResult = {
   suggestedNextSteps: string[];
   evidenceType?: string;
   parsedText?: string;
+  pipeline?: string;
+  extractedVariables?: Record<string, unknown>;
+  complianceSnapshot?: Record<string, unknown> | null;
 };
 
 export class DocumentIntelligenceService {
@@ -45,17 +53,52 @@ export class DocumentIntelligenceService {
     // 3. Parse and classify the document deterministically (NO AI)
     let parsedText = "";
     let evidenceType = "UNKNOWN";
+    let extractedVariables: Record<string, unknown> = {};
+    let pipeline = "fallback";
+    let complianceSnapshot: Record<string, unknown> | null = null;
+    const risks: string[] = [];
 
     try {
       const parsed = await this.parser.parse(buffer, doc.file_name);
       parsedText = parsed.text;
       evidenceType = this.classifier.classifyText(parsedText, doc.file_name);
+
+      const dispatched = await dispatchSubmittalToPipeline({
+        fileBuffer: buffer,
+        filename: doc.file_name,
+        mimeType: doc.mime_type || "",
+        creditCategory: doc.project_credits?.category || doc.project_credits?.category_name,
+      });
+
+      pipeline = dispatched.pipeline;
+      extractedVariables = dispatched.extractedVariables;
+      if (typeof extractedVariables.rawText !== "string" && parsedText) {
+        extractedVariables.rawText = parsedText.slice(0, 4000);
+      }
+
+      if (Array.isArray(extractedVariables.materials) && extractedVariables.materials.length > 0) {
+        complianceSnapshot = {
+          family: "materials",
+          report: evaluateMaterialsCompliance(extractedVariables.materials as any[]),
+        };
+      } else if (
+        Array.isArray(extractedVariables.spatialZones) &&
+        extractedVariables.spatialZones.length > 0
+      ) {
+        complianceSnapshot = {
+          family: "daylight",
+          report: evaluateDaylightCompliance(extractedVariables.spatialZones as any[]),
+        };
+      }
+
+      if (dispatched.errors.length > 0) {
+        risks.push(...dispatched.errors);
+      }
     } catch (parseError) {
       console.error("Parsing failed:", parseError);
     }
 
     // 4. Construct the intelligence result
-    const risks: string[] = [];
     if (doc.file_name.includes("draft")) {
       risks.push("Document marked as draft - verify final version before submission.");
     }
@@ -68,12 +111,23 @@ export class DocumentIntelligenceService {
     }
 
     const result: DocumentIntelligenceResult = {
-      summary: `Deterministically classified as: ${evidenceType}. Extracted ${parsedText.length} characters of text. Target Credit: ${doc.project_credits?.credit_code || "Unknown"}.`,
+      summary: [
+        `Deterministically classified as: ${evidenceType}.`,
+        `Pipeline: ${pipeline}.`,
+        `Extracted ${parsedText.length} characters of text.`,
+        `Target Credit: ${doc.project_credits?.credit_code || "Unknown"}.`,
+        complianceSnapshot
+          ? `Deterministic compliance snapshot available for ${complianceSnapshot.family}.`
+          : "No deterministic compliance snapshot was produced for this document.",
+      ].join(" "),
       relevanceScore: evidenceType !== "UNKNOWN" ? 95 : 50, // High confidence if we mapped it
       risks,
       suggestedNextSteps: ["Request Owner Approval", "Verify technical values against IGBC baseline"],
       evidenceType,
-      parsedText: parsedText.slice(0, 1000) // Keep a snippet for debugging/summary
+      parsedText: parsedText.slice(0, 1000), // Keep a snippet for debugging/summary
+      pipeline,
+      extractedVariables,
+      complianceSnapshot,
     };
 
     // 5. Query Evidence Mapping Engine

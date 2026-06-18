@@ -66,10 +66,10 @@ export async function chatWithAgent(req: Request, res: Response) {
       );
 
       writeEvent(res, { type: "token", content: analysis.markdown });
-      writeEvent(res, { type: "meta", meta: analysis.meta });
       writeEvent(res, {
         type: "done",
         provider: providerStatus.cloud ? "cloud" : providerStatus.local ? "local" : "offline",
+        meta: analysis.meta,
       });
       return;
     }

@@ -12,7 +12,7 @@ const DEFAULTS = {
 };
 function getEnvironmentConfig() {
     const nodeEnv = process.env.NODE_ENV || 'development';
-    const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || nodeEnv);
+    const appEnv = (process.env.APP_ENV || process.env.VITE_APP_ENV || nodeEnv);
     switch (appEnv) {
         case 'production':
             return Object.assign(Object.assign({}, DEFAULTS), { type: 'production', isProduction: true, isStaging: false, isDevelopment: false, auditLevel: 'forensic', replaySafety: 'immutable', exportWatermark: false });

@@ -191,14 +191,16 @@ export async function assembleRuntimeContext(
 }
 
 export function formatRuntimeContext(ctx: RuntimeContext): string {
-  const lines: string[] = [];
+  const projectLines: string[] = [];
+  const guidebookLines: string[] = [];
+  const documentLines: string[] = [];
+  const creditLines: string[] = [];
   
   if (ctx.project) {
-    lines.push(`\n=== CURRENT PROJECT STATE ===`);
-    lines.push(`Project: ${ctx.project.name}`);
-    lines.push(`State: ${ctx.project.status ?? "unknown"} | Certification: ${ctx.project.certification_type ?? "n/a"} | Client: ${ctx.project.client ?? "n/a"} | Location: ${ctx.project.location ?? "n/a"}`);
+    projectLines.push(`Project: ${ctx.project.name}`);
+    projectLines.push(`State: ${ctx.project.status ?? "unknown"} | Certification: ${ctx.project.certification_type ?? "n/a"} | Client: ${ctx.project.client ?? "n/a"} | Location: ${ctx.project.location ?? "n/a"}`);
   } else {
-    lines.push(`Accessible projects: ${ctx.accessibleProjects.length}`);
+    projectLines.push(`Accessible projects: ${ctx.accessibleProjects.length}`);
   }
 
   const activeCredits = ctx.credits.filter(c => !c.na);
@@ -208,11 +210,11 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
   const draftCredits = activeCredits.filter(c => c.status === "DRAFT").length;
   const naCredits = ctx.credits.filter(c => c.na);
   
-  lines.push(`\nCredits Loaded: ${ctx.credits.length}`);
-  lines.push(`Active: ${activeCredits.length} (In Progress: ${inProgressCredits}, Completed: ${completeCredits}, Blocked: ${blockedCredits}, Draft: ${draftCredits})`);
-  lines.push(`Not Required / Not Applicable: ${naCredits.length} (${naCredits.map(c => c.credit_code).join(", ") || "None"})`);
+  projectLines.push(`Credits Loaded: ${ctx.credits.length}`);
+  projectLines.push(`Active: ${activeCredits.length} (In Progress: ${inProgressCredits}, Completed: ${completeCredits}, Blocked: ${blockedCredits}, Draft: ${draftCredits})`);
+  projectLines.push(`Not Required / Not Applicable: ${naCredits.length} (${naCredits.map(c => c.credit_code).join(", ") || "None"})`);
 
-  lines.push(`\nAssignments:`);
+  creditLines.push(`Assignments:`);
   for (const credit of ctx.credits) {
     const graph = ctx.creditAssignmentGraph.get(credit.id);
     const completion = credit.completion_pct != null ? `${credit.completion_pct}%` : "0%";
@@ -223,16 +225,16 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
     if (!graph || graph.requirements.length === 0) {
       const p = credit.assigned_user_id ? ctx.profiles[credit.assigned_user_id] : null;
       const owner = p ? `${p.full_name} (${p.email})` : (credit.responsible_role ?? "UNASSIGNED");
-      lines.push(`${baseStr} -> ${owner} (Single Owner)`);
+      creditLines.push(`${baseStr} -> ${owner} (Single Owner)`);
     } else {
       const contributors = new Set(graph.requirements.map(r => r.contributorId).filter(Boolean));
       if (contributors.size <= 1) {
          const singleOwner = graph.requirements.find(r => r.contributorName)?.contributorName ?? "Unassigned";
-         lines.push(`${baseStr} -> ${singleOwner} (Single Owner)`);
+         creditLines.push(`${baseStr} -> ${singleOwner} (Single Owner)`);
       } else {
-         lines.push(`${baseStr} -> MULTIPLE CONTRIBUTORS`);
+         creditLines.push(`${baseStr} -> MULTIPLE CONTRIBUTORS`);
          for (const req of graph.requirements) {
-           lines.push(`  - ${req.requirementType}: ${req.contributorName ?? "Unassigned"}`);
+           creditLines.push(`  - ${req.requirementType}: ${req.contributorName ?? "Unassigned"}`);
          }
       }
     }
@@ -242,17 +244,16 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
   const ownerReviewCount = ctx.documents.filter((d) => d.state === "SUBMITTED").length;
   const approvedCount = ctx.documents.filter((d) => d.state === "APPROVED").length;
   
-  lines.push(`\n--- DOCUMENTS ---`);
-  lines.push(`Uploaded: ${uploadedCount} | Pending Review: ${ownerReviewCount} | Approved: ${approvedCount}`);
+  documentLines.push(`Uploaded: ${uploadedCount} | Pending Review: ${ownerReviewCount} | Approved: ${approvedCount}`);
   
   const recentFiles = ctx.documents.slice(0, 5).map(doc => `${doc.file_name} [${doc.doc_category}/${doc.state}]`).join("; ");
-  lines.push(`Recent files: ${recentFiles || "none"}`);
+  documentLines.push(`Recent files: ${recentFiles || "none"}`);
 
   if (ctx.documentIntelligence.length) {
-    lines.push("\n--- DOCUMENT INTELLIGENCE ---");
+    documentLines.push(`Document intelligence:`);
     for (const intel of ctx.documentIntelligence) {
       const doc = ctx.documents.find(d => d.id === intel.document_id);
-      lines.push(`- ${doc?.file_name}: ${intel.summary} [Relevance: ${intel.relevance_score}%] Risks: ${intel.risks?.join(", ") || "None"}`);
+      documentLines.push(`- ${doc?.file_name}: ${intel.summary} [Relevance: ${intel.relevance_score}%] Risks: ${intel.risks?.join(", ") || "None"}`);
     }
   }
 
@@ -264,24 +265,48 @@ export function formatRuntimeContext(ctx: RuntimeContext): string {
     .join("\n");
   
   if (topPendingEvaluated) {
-    lines.push(`\n--- SUBMISSION READINESS ---`);
-    lines.push(topPendingEvaluated);
+    creditLines.push(`Submission readiness:`);
+    creditLines.push(topPendingEvaluated);
   }
 
   const strategy = certificationStrategyEngine.getStrategy(ctx.credits);
-  lines.push(`\n--- CERTIFICATION STRATEGY ---`);
-  lines.push(certificationStrategyEngine.generateContextString(strategy));
+  creditLines.push(`Certification strategy:`);
+  creditLines.push(certificationStrategyEngine.generateContextString(strategy));
 
   // Full credit matrix — gives Harita complete awareness of every credit
-  lines.push(`\n--- FULL CREDIT STATUS MATRIX ---`);
-  lines.push(`(All ${ctx.credits.length} credits loaded. NA=Not Required/Not Applicable for this project.)`);
-  lines.push(`CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%`);
+  creditLines.push(`Full credit status matrix:`);
+  creditLines.push(`(All ${ctx.credits.length} credits loaded. NA=Not Required/Not Applicable for this project.)`);
+  creditLines.push(`CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%`);
   for (const c of ctx.credits) {
     const maxPts = (c as any).max_points ?? 0;
     const na = c.na ? "YES" : "NO";
     const pct = c.completion_pct != null ? `${c.completion_pct}%` : "0%";
-    lines.push(`${c.credit_code} | ${c.credit_name ?? ""} | ${c.status} | ${maxPts} | ${na} | ${pct}`);
+    creditLines.push(`${c.credit_code} | ${c.credit_name ?? ""} | ${c.status} | ${maxPts} | ${na} | ${pct}`);
   }
 
-  return lines.join("\n");
+  if (ctx.guidebooks.length) {
+    for (const guidebook of ctx.guidebooks.slice(0, 5)) {
+      guidebookLines.push(`${guidebook.title || guidebook.file_name} | uploaded_at=${guidebook.created_at ?? "unknown"}`);
+    }
+  } else {
+    guidebookLines.push(`No guidebook metadata found.`);
+  }
+
+  return [
+    `<project_database_current_state>`,
+    ...projectLines,
+    `</project_database_current_state>`,
+    ``,
+    `<authoritative_igbc_guidebook_rules>`,
+    ...guidebookLines,
+    `</authoritative_igbc_guidebook_rules>`,
+    ``,
+    `<uploaded_document_variables>`,
+    ...documentLines,
+    `</uploaded_document_variables>`,
+    ``,
+    `<project_credit_execution_matrix>`,
+    ...creditLines,
+    `</project_credit_execution_matrix>`,
+  ].join("\n");
 }

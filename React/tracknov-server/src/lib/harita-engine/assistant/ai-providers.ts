@@ -12,21 +12,21 @@ import {
 } from "./stream-utils";
 
 export function buildProviderAttempts(): ProviderAttempt[] {
-  const configuredOrder: AiProvider[] = ["gemini", "groq", "openrouter", "doubleword", "ollama"];
+  const configuredOrder: AiProvider[] = ["ollama", "gemini", "groq", "openrouter", "doubleword"];
   const requestedProvider = env.aiProvider.toLowerCase();
   const order = configuredOrder.includes(requestedProvider as AiProvider)
     ? [requestedProvider as AiProvider, ...configuredOrder.filter((provider) => provider !== requestedProvider)]
     : configuredOrder;
 
   const keysByProvider: Record<AiProvider, string[]> = {
-    ollama: ["local"],
+    ollama: env.ollamaToolModel ? ["local"] : [],
     doubleword: env.doublewordApiKeys,
     gemini: env.geminiApiKeys,
     groq: env.groqApiKeys,
     openrouter: env.openRouterApiKeys,
   };
   const modelByProvider: Record<AiProvider, string> = {
-    ollama: env.ollamaModel || "gemma2",
+    ollama: env.ollamaToolModel,
     doubleword: env.doublewordModel,
     gemini: env.geminiModel,
     groq: env.groqModel,
@@ -113,7 +113,7 @@ function openAiHeaders(attempt: ProviderAttempt): Record<string, string> {
     headers["Authorization"] = `Bearer ${attempt.apiKey}`;
   }
   if (attempt.provider === "openrouter") {
-    headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://tracknov.app";
+    headers["HTTP-Referer"] = process.env.APP_URL ?? process.env.SITE_URL ?? "https://tracknov.app";
     headers["X-Title"] = "Tracknov";
   }
   return headers;

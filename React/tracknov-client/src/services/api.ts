@@ -24,17 +24,6 @@ export type HaritaApiError = Error & {
   retryable?: boolean;
 };
 
-export type CreditEvidenceTarget = {
-  id: string;
-  projectCreditId: string;
-  creditId: string | null;
-  creditCode: string;
-  creditName: string;
-  docCategory: string;
-  requirementLabel: string;
-  assignedToUser: boolean;
-};
-
 export type CreditEvidenceUploadResponse = {
   ok?: boolean;
   message?: string;
@@ -89,7 +78,7 @@ export type HaritaAuditResult = {
 
 export type HaritaResponseMeta = {
   kind: "document_analysis";
-  mode: "discovery" | "audit" | "irrelevant";
+  mode: "document_answer" | "discovery" | "audit" | "irrelevant";
   attachment: HaritaPreparedAttachment;
   matches?: HaritaDocumentMatch[];
   audit?: HaritaAuditResult;
@@ -172,23 +161,6 @@ export async function fetchHaritaStatus(): Promise<HaritaStatus> {
     throw new Error("Failed to fetch Harita status");
   }
   return await response.json();
-}
-
-export async function fetchCreditEvidenceTargets(projectId: string): Promise<CreditEvidenceTarget[]> {
-  const token = await getAuthToken();
-  const response = await fetch(`${TRACKNOV_SERVER_BASE_URL}/api/assistant/credit-evidence-targets?project_id=${encodeURIComponent(projectId)}`, {
-    method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-
-  const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; targets?: CreditEvidenceTarget[]; error?: string };
-  if (!response.ok || !payload.ok) {
-    const error = new Error(payload.error || "Could not load evidence targets.") as HaritaApiError;
-    error.retryable = true;
-    throw error;
-  }
-
-  return Array.isArray(payload.targets) ? payload.targets : [];
 }
 
 export async function prepareHaritaAttachment(
@@ -293,6 +265,7 @@ export async function streamHaritaMessage(
         cloud?: boolean;
         local?: boolean;
         active?: "cloud" | "local" | "offline";
+        provider?: "cloud" | "local" | "offline";
         meta?: HaritaResponseMeta;
       };
 
@@ -317,6 +290,13 @@ export async function streamHaritaMessage(
 
       if (payload.type === "meta" && payload.meta) {
         callbacks.onMeta?.(payload.meta);
+        continue;
+      }
+
+      if (payload.type === "done") {
+        if (payload.meta) {
+          callbacks.onMeta?.(payload.meta);
+        }
         continue;
       }
 

@@ -1,10 +1,13 @@
 import { env } from "@/lib/env";
+import { plannerPersona } from "./plannerPersona";
 
 export type ExecutionPlan = {
   intent: "credit_query" | "general_qa" | "document_analysis" | "workflow_action" | "unknown";
   target_credit_code: string | null;
   tools_required: string[];
   reasoning: string;
+  source_query: string;
+  module_category: string | null;
 };
 
 export async function generateExecutionPlan(
@@ -16,8 +19,9 @@ export async function generateExecutionPlan(
   const geminiKey = process.env.GEMINI_API_KEY || env.geminiApiKeys?.[0];
   const groqKey = process.env.GROQ_API_KEY || env.groqApiKeys?.[0];
 
-  const systemPrompt = `You are a high-speed Planner Agent for a green building certification assistant.
-Your job is to parse the user's query and output a strict JSON object mapping their intent to execution steps.
+  const systemPrompt = `${plannerPersona}
+
+Your job is to isolate intent, classify the module category, and output a strict JSON execution plan.
 
 Available Intents:
 - "credit_query": User is asking about the status, assignee, or requirements of a specific credit code (e.g. "who is assigned to EE C4?", "what is the status of IM MR1?").
@@ -32,12 +36,22 @@ Available Tools:
 - "query_guidebook": Run a RAG search on the IGBC guidebook.
 - "get_project_members": List members in the project.
 
+Module Categories:
+- "ECO_DESIGN"
+- "WATER_CONSERVATION"
+- "ENERGY_EFFICIENCY"
+- "MATERIALS_RESOURCES"
+- "INDOOR_ENVIRONMENTAL_QUALITY"
+- "INNOVATION_DESIGN"
+
 JSON Output Schema:
 {
   "intent": "credit_query" | "general_qa" | "document_analysis" | "workflow_action" | "unknown",
   "target_credit_code": "EE C4" | null, // Extract specific code if mentioned (e.g., "EE C4", "IM MR1")
   "tools_required": ["get_credit_status", ...],
-  "reasoning": "Brief explanation of the plan"
+  "reasoning": "Brief explanation of the plan",
+  "source_query": "The user's original question",
+  "module_category": "ENERGY_EFFICIENCY" | null
 }
 
 Do not include any markup, markdown tags, or markdown blocks like \`\`\`json. Output raw JSON only.`;
@@ -112,10 +126,51 @@ Previous Session Summary: "${historySummary ?? "none"}"`;
   }
 
   // Final fallback
+  const normalized = query.trim().toUpperCase();
+  const creditMatch =
+    normalized.match(/\b(EDA|WC|EE|IM|IE|IID)\s*(?:C|MR|P)?\s*\d+\b/) ??
+    normalized.match(/\b(EDA|WC|EE|IM|IE|IID)[-_]?(?:C|MR|P)?\d+\b/);
+  const targetCreditCode = creditMatch ? creditMatch[0].replace(/[_-]/g, " ").replace(/\s+/g, " ").trim() : null;
+  const lowerQuery = query.toLowerCase();
+  const isCreditFactQuestion =
+    Boolean(targetCreditCode) &&
+    /(who|what|which|status|assigned|responsible|requirement|checklist|points|score)/.test(lowerQuery);
+  const intent =
+    isCreditFactQuestion
+      ? "credit_query"
+      : /upload|submit|delete|update|map/.test(lowerQuery)
+        ? "workflow_action"
+        : /document|drawing|sheet|pdf|scan|certificate/.test(lowerQuery)
+          ? "document_analysis"
+          : targetCreditCode
+            ? "credit_query"
+            : "general_qa";
+
+  const toolsRequired = targetCreditCode
+    ? [
+        "get_credit_status",
+        ...( /assign|owner|responsible/.test(lowerQuery) ? ["get_credit_assignments"] : []),
+        ...( /requirement|checklist|submit/.test(lowerQuery) ? ["get_credit_checklists"] : []),
+      ]
+    : ["query_guidebook"];
+
   return {
-    intent: "unknown",
-    target_credit_code: null,
-    tools_required: [],
-    reasoning: "Failed to contact planner LLM, proceeding with direct RAG/Q&A fallback."
+    intent,
+    target_credit_code: targetCreditCode,
+    tools_required: toolsRequired,
+    reasoning: "Planner LLM unavailable, using deterministic fallback intent classification.",
+    source_query: query,
+    module_category: inferModuleCategory(query, targetCreditCode),
   };
+}
+
+function inferModuleCategory(query: string, targetCreditCode: string | null): string | null {
+  const normalized = `${targetCreditCode ?? ""} ${query}`.toUpperCase();
+  if (normalized.includes("EDA")) return "ECO_DESIGN";
+  if (normalized.includes("WC")) return "WATER_CONSERVATION";
+  if (normalized.includes("EE")) return "ENERGY_EFFICIENCY";
+  if (normalized.includes("MR")) return "MATERIALS_RESOURCES";
+  if (normalized.includes("IE")) return "INDOOR_ENVIRONMENTAL_QUALITY";
+  if (normalized.includes("IID") || normalized.includes("IM")) return "INNOVATION_DESIGN";
+  return null;
 }

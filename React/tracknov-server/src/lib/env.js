@@ -1,11 +1,10 @@
 "use strict";
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.env = void 0;
-// Environment variables are automatically loaded by Next.js
-// using process.env during build and runtime.
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+require("dotenv/config");
+const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 // In Next.js 15, explicit access to process.env is preferred for static optimization and Edge compatibility.
 const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
 const doublewordApiKeys = (process.env.DOUBLEWORD_API_KEYS || process.env.DOUBLEWORD_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
@@ -26,12 +25,14 @@ exports.env = {
     groqModel: (_g = process.env.GROQ_MODEL) !== null && _g !== void 0 ? _g : "llama-3.3-70b-versatile",
     openAiModel: (_h = process.env.OPENAI_MODEL) !== null && _h !== void 0 ? _h : "gpt-4o-mini",
     openRouterModel: (_j = process.env.OPENROUTER_MODEL) !== null && _j !== void 0 ? _j : "openai/gpt-4o-mini",
-    ollamaModel: (_k = process.env.OLLAMA_MODEL) !== null && _k !== void 0 ? _k : "llama3.2:1b",
-    ollamaUrl: (_l = process.env.OLLAMA_URL) !== null && _l !== void 0 ? _l : "http://192.168.29.48:11434/v1/chat/completions",
+    ollamaModel: (_k = process.env.OLLAMA_MODEL) !== null && _k !== void 0 ? _k : "qwen-vision-expert:latest",
+    ollamaToolModel: (_m = (_l = process.env.OLLAMA_TOOL_MODEL) !== null && _l !== void 0 ? _l : process.env.OLLAMA_CHAT_MODEL) !== null && _m !== void 0 ? _m : "",
+    ollamaVisionModel: (_p = (_o = process.env.OLLAMA_VISION_MODEL) !== null && _o !== void 0 ? _o : process.env.OLLAMA_MODEL) !== null && _p !== void 0 ? _p : "qwen-vision-expert:latest",
+    ollamaUrl: (_q = process.env.OLLAMA_URL) !== null && _q !== void 0 ? _q : "http://192.168.29.48:11434/v1/chat/completions",
     aiReady: Boolean(doublewordApiKeys.length || geminiApiKeys.length || groqApiKeys.length || openRouterApiKeys.length || openAiApiKeys.length || process.env.OLLAMA_URL),
     supabaseUrl: url,
     supabaseAnonKey: anonKey,
-    supabaseServiceRoleKey: (_m = process.env.SUPABASE_SERVICE_ROLE_KEY) !== null && _m !== void 0 ? _m : "",
+    supabaseServiceRoleKey: (_r = process.env.SUPABASE_SERVICE_ROLE_KEY) !== null && _r !== void 0 ? _r : "",
     demoModeEnabled: process.env.DEMO_MODE_ENABLED === "true",
     isConfigured: Boolean(url && anonKey),
 };

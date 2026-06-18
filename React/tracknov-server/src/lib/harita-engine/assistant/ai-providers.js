@@ -18,20 +18,20 @@ const assistant_1 = require("@/lib/harita-engine/assistant");
 const assistant_tools_1 = require("@/lib/harita-engine/assistant-tools");
 const stream_utils_1 = require("./stream-utils");
 function buildProviderAttempts() {
-    const configuredOrder = ["gemini", "groq", "openrouter", "doubleword", "ollama"];
+    const configuredOrder = ["ollama", "gemini", "groq", "openrouter", "doubleword"];
     const requestedProvider = env_1.env.aiProvider.toLowerCase();
     const order = configuredOrder.includes(requestedProvider)
         ? [requestedProvider, ...configuredOrder.filter((provider) => provider !== requestedProvider)]
         : configuredOrder;
     const keysByProvider = {
-        ollama: ["local"],
+        ollama: env_1.env.ollamaToolModel ? ["local"] : [],
         doubleword: env_1.env.doublewordApiKeys,
         gemini: env_1.env.geminiApiKeys,
         groq: env_1.env.groqApiKeys,
         openrouter: env_1.env.openRouterApiKeys,
     };
     const modelByProvider = {
-        ollama: env_1.env.ollamaModel || "gemma2",
+        ollama: env_1.env.ollamaToolModel,
         doubleword: env_1.env.doublewordModel,
         gemini: env_1.env.geminiModel,
         groq: env_1.env.groqModel,
@@ -106,7 +106,7 @@ function openAiHeaders(attempt) {
         headers["Authorization"] = `Bearer ${attempt.apiKey}`;
     }
     if (attempt.provider === "openrouter") {
-        headers["HTTP-Referer"] = (_b = (_a = process.env.NEXT_PUBLIC_APP_URL) !== null && _a !== void 0 ? _a : process.env.NEXT_PUBLIC_SITE_URL) !== null && _b !== void 0 ? _b : "https://tracknov.app";
+        headers["HTTP-Referer"] = (_b = (_a = process.env.APP_URL) !== null && _a !== void 0 ? _a : process.env.SITE_URL) !== null && _b !== void 0 ? _b : "https://tracknov.app";
         headers["X-Title"] = "Tracknov";
     }
     return headers;

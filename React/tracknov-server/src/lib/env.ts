@@ -1,8 +1,6 @@
 import 'dotenv/config';
-// Environment variables are automatically loaded by Next.js
-// using process.env during build and runtime.
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 
 // In Next.js 15, explicit access to process.env is preferred for static optimization and Edge compatibility.
 const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
@@ -25,7 +23,9 @@ export const env = {
   groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
   openAiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
   openRouterModel: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
-  ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2:1b",
+  ollamaModel: process.env.OLLAMA_MODEL ?? "qwen-vision-expert:latest",
+  ollamaToolModel: process.env.OLLAMA_TOOL_MODEL ?? process.env.OLLAMA_CHAT_MODEL ?? "",
+  ollamaVisionModel: process.env.OLLAMA_VISION_MODEL ?? process.env.OLLAMA_MODEL ?? "qwen-vision-expert:latest",
   ollamaUrl: process.env.OLLAMA_URL ?? "http://192.168.29.48:11434/v1/chat/completions",
   aiReady: Boolean(doublewordApiKeys.length || geminiApiKeys.length || groqApiKeys.length || openRouterApiKeys.length || openAiApiKeys.length || process.env.OLLAMA_URL),
   supabaseUrl: url,
