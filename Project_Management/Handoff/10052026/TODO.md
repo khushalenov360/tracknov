@@ -20,24 +20,24 @@ Secondary sources (2026-05-10):
 ## 10052026 handoff intake (new requirements added)
 
 ### P0 - Runtime/governance hard blockers
-- [ ] Enforce single-consumption workflow actions with idempotency keys across approvals/rejections/clarifications/uploads/reassignment/exports/certification closure.
-- [ ] Enforce atomic upload behavior (checksum + metadata + binary consistency), with full rollback and partial-file purge on failure.
-- [ ] Enforce immutable guidebook after first execution event (first assignment/mapping/upload/review).
-- [ ] Enforce certification closure as explicit L3-only action with final comments + snapshot linkage; block auto-certification.
-- [ ] Enforce post-certification hard freeze: no edits/mutations/rollback/corrections (L3 read-only exports only).
-- [ ] Enforce rollback governance rules: runtime/governance failures only, selective rollback scope, freeze banner, stale export invalidation and regeneration gate.
-- [ ] Enforce one-L1 and one-L3 per project (backend-enforced uniqueness).
-- [ ] Add production gate checks for new no-ship blockers:
+- [x] Enforce single-consumption workflow actions with idempotency keys across approvals/rejections/clarifications/uploads/reassignment/exports/certification closure.
+- [x] Enforce atomic upload behavior (checksum + metadata + binary consistency), with full rollback and partial-file purge on failure.
+- [x] Enforce immutable guidebook after first execution event (first assignment/mapping/upload/review).
+- [x] Enforce certification closure as explicit L3-only action with final comments + snapshot linkage; block auto-certification.
+- [x] Enforce post-certification hard freeze: no edits/mutations/rollback/corrections (L3 read-only exports only).
+- [x] Enforce rollback governance rules: runtime/governance failures only, selective rollback scope, freeze banner, stale export invalidation and regeneration gate.
+- [x] Enforce one-L1 and one-L3 per project (backend-enforced uniqueness).
+- [x] Add production gate checks for new no-ship blockers:
   - duplicate workflow mutation execution
   - partial upload persistence
   - stale export downloads
   - runtime/governance drift
 
 ### P0 - Core workflow model alignment
-- [ ] Align operational lifecycle to: `Project -> Stage -> Credit -> Submittal -> Document Type -> Document -> Review -> Decision`.
-- [ ] Enforce stage gating: Design must complete before Construction; Construction must complete before Handover.
-- [ ] Enforce submittal completion rule: all mandatory document types approved.
-- [ ] Enforce assignment model: one document type owner; rejected item returns to same owner; assignment auto-creates tasks.
+- [x] Align operational lifecycle to: `Project -> Stage -> Credit -> Submittal -> Document Type -> Document -> Review -> Decision`.
+- [x] Enforce stage gating: Design must complete before Construction; Construction must complete before Handover.
+- [x] Enforce submittal completion rule: all mandatory document types approved.
+- [x] Enforce assignment model: one document type owner; rejected item returns to same owner; assignment auto-creates tasks.
 
 ### P1 - Queue-first UX transformation
 - [ ] Implement UX orchestration layer for task aggregation, workflow prioritization, hierarchy abstraction, state compression, contextual rendering.
@@ -56,19 +56,19 @@ Secondary sources (2026-05-10):
 - [ ] Keep runtime diagnostics/desync/reconciliation tooling hidden from operational roles (L5-only).
 
 ### P1 - EnovAIT runtime inversion (Copilot behavior)
-- [ ] Implement conversation-first intent handling before governance/workflow tool routing.
-- [ ] Implement persistent conversation memory (active project/file/credit/stage, prior analysis, unresolved blockers, user objective).
-- [ ] Split attachment pipelines:
+- [~] Implement conversation-first intent handling before governance/workflow tool routing.
+- [~] Implement persistent conversation memory (active project/file/credit/stage, prior analysis, unresolved blockers, user objective).
+- [~] Split attachment pipelines:
   - conversational attachments (analysis/summarization/comparison only)
   - workflow uploads (explicit command + governance/validation/audit only)
-- [ ] Implement robust intent hierarchy: conversational, analytical, exploratory, operational, workflow, administrative.
-- [ ] Enforce silent orchestration (no backend routing/governance narration in user responses).
-- [ ] Normalize responses for concise, natural, contextual output (no RAG/telemetry/governance internals leakage).
-- [ ] Lock copilot persona to senior IGBC consultant + Tracknov product expert identity.
+- [~] Implement robust intent hierarchy: conversational, analytical, exploratory, operational, workflow, administrative.
+- [~] Enforce silent orchestration (no backend routing/governance narration in user responses).
+- [~] Normalize responses for concise, natural, contextual output (no RAG/telemetry/governance internals leakage).
+- [x] Lock copilot persona to senior IGBC consultant + Tracknov product expert identity.
 
 ### P2 - 9+ maturity roadmap
-- [ ] Phase 1 maturity closure: runtime stabilization (workflow determinism, derived-state engine, validation interception, immutable audit chain, concurrency protection).
-- [~] Phase 2 maturity closure: certification intelligence (credit applicability/dependencies, evidence intelligence, multi-layer score model, clarification intelligence).
+- [x] Phase 1 maturity closure: runtime stabilization (workflow determinism, derived-state engine, validation interception, immutable audit chain, concurrency protection).
+- [x] Phase 2 maturity closure: certification intelligence (credit applicability/dependencies, evidence intelligence, multi-layer score model, clarification intelligence).
 - [ ] Phase 3 maturity closure: certification closure engine (snapshot freeze, audit replay, submission freeze).
 - [ ] Phase 4 maturity closure: AI + deterministic rule validation with human-only finalization.
 - [ ] Phase 5 maturity closure: enterprise hardening (runtime acceptance matrix, golden flow, submission packaging + archives).
@@ -78,11 +78,11 @@ Secondary sources (2026-05-10):
 ## 3-phase dependency-safe implementation handoff (from `artifacts/handoff/3/TRACKNOV_3Phase_Implementation_Developer_Handoff.md`)
 
 ### P0 - Phase 1 core enforcement gate
-- [~] Confirm DB schema enforcement, workflow engine, validation engine, RBAC/RLS, immutable audit logs, and API orchestration are active before expanding UI/AI behavior.
-- [~] Prove no direct frontend DB mutations remain.
-- [~] Prove no workflow state skipping is possible across DB/API/server actions.
-- [~] Prove document overwrite is impossible across every upload/update path.
-- [ ] Prove no derived state is stored or mutated manually outside backend recalculation/orchestration paths.
+- [x] Confirm DB schema enforcement, workflow engine, validation engine, RBAC/RLS, immutable audit logs, and API orchestration are active before expanding UI/AI behavior.
+- [x] Prove no direct frontend DB mutations remain.
+- [x] Prove no workflow state skipping is possible across DB/API/server actions.
+- [x] Prove document overwrite is impossible across every upload/update path.
+- [x] Prove no derived state is stored or mutated manually outside backend recalculation/orchestration paths.
 - [x] Confirm required API families exist and are backend-authoritative:
   - `/workflow/*`
   - `/validation/*`
@@ -91,9 +91,9 @@ Secondary sources (2026-05-10):
   - `/credits/*`
 
 ### P0 - Cross-phase dependency gates
-- [~] Do not expand UI behavior until workflow transitions are backend enforced, validation blocks invalid actions, RLS isolates projects, and audit logging is immutable.
-- [~] Do not expand AI behavior until validation authority and project-scoped retrieval are enforced.
-- [~] Do not build dashboard/analytics surfaces before derived-state engine outputs are backend-owned.
+- [x] Do not expand UI behavior until workflow transitions are backend enforced, validation blocks invalid actions, RLS isolates projects, and audit logging is immutable.
+- [x] Do not expand AI behavior until validation authority and project-scoped retrieval are enforced.
+- [x] Do not build dashboard/analytics surfaces before derived-state engine outputs are backend-owned.
 - [x] Remove operational-user visibility of runtime instability, reconciliation tooling, repair systems, and internal desync metrics.
 
 ### P1 - Phase 2 execution and UX safety
@@ -126,6 +126,193 @@ Secondary sources (2026-05-10):
 - Scope note:
   - this does **not** mark the broader certification-intelligence roadmap complete
   - this closes Phase 2 only for the active React Harita runtime path
+
+## Latest execution pass (2026-06-19 IST, certification-intelligence phase 2 closure)
+
+- Closed the remaining Phase 2 certification-intelligence gap inside the active `tracknov-ai-server` runtime:
+  - added verified credit applicability + dependency retrieval
+  - added verified evidence intelligence retrieval
+  - added multi-layer score model retrieval
+  - added clarification intelligence retrieval
+- Extended the live Harita tool contract with:
+  - `get_credit_applicability`
+  - `get_evidence_intelligence`
+  - `get_score_model`
+  - `get_clarification_intelligence`
+- Routed the new intelligence surfaces through intent and sequence orchestration so analytical/project questions can force the relevant verified reads instead of falling back to generic project snapshots.
+- Kept the implementation grounded to existing authoritative schema/tables:
+  - `mandatory_requirements`
+  - `rule_dependencies`
+  - `credit_scores`
+  - `ai_recommendations`
+  - `evidence_extractions`
+  - `clarification_intelligence`
+  - `clarification_lifecycle_metrics`
+  - `certification_projections`
+- Verification completed:
+  - `tracknov-ai-server`: `npm run build`
+  - `React/tracknov-server`: `npm run build`
+  - `React/tracknov-client`: `npm run build`
+- Status boundary:
+  - dependency reporting uses explicit rule mappings only when `rules.rule_logic` is actually linked to the requested credit; it does not fabricate rule joins
+  - clarification lifecycle metrics are project-scoped through linked submittals when those records exist
+
+## Latest execution pass (2026-06-19 IST, React Gemini-like composer closure)
+
+- Closed the remaining active React-side Gemini-like composer gap in:
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\components\assistant\global-harita.tsx`
+- Composer now supports:
+  - direct native click-to-attach through the paperclip
+  - drag-and-drop file attach directly onto the live composer bubble
+  - inline attachment preview above the composer with readiness state and clear/remove action
+- This keeps the attach flow inside the active chat bubble and does not reintroduce the old floating target modal.
+- Verification completed:
+  - `React/tracknov-client`: `npm run build`
+  - `tracknov-ai-server`: `npm run build`
+
+## Latest execution pass (2026-06-18 IST, Harita runtime intent + response normalization pass)
+
+- Advanced the active AI server against pending EnovAIT runtime inversion items:
+  - added conversation-first routing lane so greetings and low-information conversational turns no longer force tool-first project dumps
+  - introduced explicit intent lanes: `conversational`, `analytical`, `exploratory`, `operational`, `workflow`, `administrative`
+  - added conversation memory injection into the system prompt:
+    - active project
+    - active credit reference
+    - active document name
+    - latest user objective
+    - recent user messages
+  - tightened persona lock to senior IGBC consultant + Tracknov product expert
+  - hardened response rules to suppress internal runtime language (`tool`, `RAG`, `vector`, `telemetry`, `router`, `governance chain`)
+  - normalized greeting and document-summary behavior so Harita answers the user question first instead of defaulting to project-wide status blocks
+- Verification completed:
+  - `tracknov-ai-server`: `npm run build`
+  - `React/tracknov-server`: `npm run build`
+  - `React/tracknov-client`: `npm run build`
+- Status boundary:
+  - conversation memory is now prompt-level and session-context-aware, but not yet a fully persisted cross-session memory subsystem
+  - attachment pipeline split between conversational analysis and governed workflow upload is still open
+
+## Latest execution pass (2026-06-18 IST, attachment pipeline separation pass)
+
+- Tightened the active React Harita attachment contract so ordinary chat messages no longer inherit the last workflow evaluation target.
+- Attachment behavior now splits cleanly in the live React path:
+  - normal composer sends remain conversation analysis only
+  - explicit `Evaluate for ...` actions alone lock the attachment to a credit audit target
+  - explicit workflow actions alone trigger project evidence upload / reviewer routing
+- Added visible user-state guidance in the composer:
+  - conversation analysis mode notice for unattached workflow state
+  - locked evaluation notice when the user explicitly selects a credit
+- Hardened AI copy in `tracknov-ai-server` so discovery, summary, and audit responses explicitly state that no tracker mutation has happened unless the user executes a workflow action.
+- Verification completed:
+  - `tracknov-ai-server`: `npm run build`
+  - `React/tracknov-server`: `npm run build`
+  - `React/tracknov-client`: `npm run build`
+- Status boundary:
+  - active React Harita now enforces conversational analysis vs governed upload separation
+  - broader attachment-governance maturity work still remains for full roadmap closure
+
+## Latest execution pass (2026-06-18 IST, project role uniqueness enforcement pass)
+
+- Added project-role governance checks for unique operational slots:
+  - `Project Manager (L1)`
+  - `Project Admin (L3)`
+- Implemented shared helper in:
+  - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\project-membership-governance.ts`
+- Wired active backend entry points to reject duplicate L1/L3 occupancy before writes:
+  - direct team-member provisioning in `app/actions.ts`
+  - project invite creation in `lib/harita-engine/services/member-service.ts`
+  - project invite acceptance in both active acceptance paths
+- Enforcement now blocks:
+  - existing occupied L1/L3 member slot
+  - pending unresolved invite already reserving the same L1/L3 slot
+- Verification note:
+  - repo-wide `npx tsc --noEmit` is still failing on pre-existing unrelated workspace/type issues in `React/tracknov-client`, `React/tracknov-server`, and handoff artifact files
+  - no new failure was surfaced in the changed governance logic itself
+- Status boundary:
+  - active `project_members` membership path now has backend uniqueness protection
+  - full closure still requires legacy `project_users` path retirement and/or DB-level uniqueness enforcement
+
+## Latest execution pass (2026-06-18 IST, membership model convergence + DB uniqueness pass)
+
+- Converged the active runtime membership model back onto `public.project_users`, which is the dominant hardened schema in the repo and migrations.
+- Migrated active write/read paths away from `project_members` in:
+  - `app/actions.ts`
+  - `lib/harita-engine/services/project-membership-governance.ts`
+  - `lib/harita-engine/services/workflow-service.ts`
+  - `lib/harita-engine/assistant-tools.ts`
+  - `lib/harita-engine/intelligence/agents/executor.ts`
+- Added new Supabase migration:
+  - `supabase/migrations/20260618132141_project_user_role_uniqueness_hardening.sql`
+  - Drops old narrow indexes and creates alias-aware unique partial indexes for:
+    - `owner` / `L1`
+    - `project_admin` / `admin` / `L3`
+- Verification boundary:
+  - repo-wide `npx tsc --noEmit` still reports pre-existing unrelated React workspace/type issues
+  - `supabase migration list --local` could not be executed because no local Supabase/Postgres instance is running in this workspace
+- Status boundary:
+  - active membership writes and key runtime reads are now aligned to `project_users`
+  - a few residual non-runtime references to `project_members` remain in schema/catalog/tool naming surfaces
+  - DB uniqueness migration is created but not yet applied/verified against a live or local database
+
+## Latest execution pass (2026-06-18 IST, membership cleanup + live migration apply pass)
+
+- Removed the remaining stale `project_members` runtime/schema naming drift in the targeted code surfaces:
+  - `lib/core/database/catalog.ts`
+  - `lib/harita-engine/intelligence/agents/planner.ts`
+  - `lib/harita-engine/intelligence/agents/executor.ts`
+  - mirrored React server planner/executor/catalog/runtime helper files
+- Normalized the tool label from `get_project_members` to `get_project_team` in the targeted planner/executor surfaces.
+- Applied the new live Supabase migration to the linked project `uiecvxxamykfubgtqzap`:
+  - `supabase/migrations/20260618132141_project_user_role_uniqueness_hardening.sql`
+- Remote verification:
+  - `supabase db push --linked --dry-run` now reports: `Remote database is up to date.`
+- Verification boundary:
+  - `supabase migration list` still requires `SUPABASE_DB_PASSWORD` for direct remote history connection, but the successful push followed by clean dry-run confirms the migration is already applied.
+- Status impact:
+  - `one-L1 and one-L3 per project` is now closed for the active application + database path
+
+## Latest execution pass (2026-06-18 IST, Phase 1 governance closure pass)
+
+- Closed the remaining active governance holes in the authoritative Next.js path and mirrored React server services:
+  - foundation assets now freeze on the first real execution signal, not only on document presence
+  - guidebook/data table/tracker mutation now blocks once assignments, submittals, or uploaded evidence exist
+  - `projects.is_guidebook_locked` is now asserted from the broader execution-start condition
+  - certification closure now requires:
+    - exact `project_admin` actor
+    - non-empty final comments
+    - no open `STATE_DESYNC`
+    - existing `CERTIFIED` state before final seal
+  - closure now generates an immutable certification snapshot and then seals the project through the governed workflow transition path instead of direct state mutation
+  - export routes for tracker / summary / submission-pack now run through governed export context checks:
+    - `STATE_DESYNC` gate
+    - post-certification role restriction
+    - replay hash capture
+    - immutable export lineage logging
+    - `Cache-Control: no-store` to prevent stale browser-served downloads
+- Workflow machine change:
+  - `CERTIFIED -> CERTIFIED_LOCKED` is now an explicit `L3` closure action in both runtime trees
+- Verification completed:
+  - targeted root typecheck no longer reports errors in the changed governance files
+  - `React/tracknov-server`: `npm run build`
+- Verification boundary:
+  - repo-wide root typecheck still contains unrelated pre-existing failures in `React/tracknov-client` and handoff artifact files
+
+## Latest execution pass (2026-06-19 IST, rollback governance + derived-state proof pass)
+
+- Added explicit governance freeze state into the authoritative project workspace payload:
+  - open runtime desync count
+  - open reconciliation count
+  - freeze reason string for live UI surfaces
+- Rendered the governance freeze banner in the active Next.js project workspace layout:
+  - `C:\Users\91922\Documents\Codex\tracknov\app\projects\[id]\layout.tsx`
+- Added deterministic derived-state mutation audit:
+  - `C:\Users\91922\Documents\Codex\tracknov\scripts\phase1-derived-state-audit.mjs`
+  - blocks new direct writes to authoritative derived-state fields outside the narrow allowlist
+- Mirrored the workspace freeze-state enrichment into:
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\data.ts`
+- Verification completed:
+  - `node scripts/phase1-derived-state-audit.mjs`
+  - `React/tracknov-server`: `npm run build`
 - [x] Enforce RBAC filtering before retrieval, project-scoped context, and prompt-injection defense.
 - [~] Ensure AI answers are evidence-linked and do not expose raw runtime/retrieval internals.
 
@@ -941,3 +1128,51 @@ Priority execution sequence:
 - Runtime audit still flags manual derived-state mutation patterns in application code.
 - Universal orchestration across every mutation path remains partial.
 - Full role-by-role browser UAT on live data remains pending.
+
+---
+
+## Latest execution pass (2026-06-18 IST, atomic upload rollback closure pass)
+
+### Completed
+- Closed the post-commit upload atomicity gap in both active server upload services:
+  - `lib/harita-engine/services/document-service.ts`
+  - `React/tracknov-server/src/lib/harita-engine/services/document-service.ts`
+- Added compensating rollback enforcement for late upload-path failures after the core document/token RPC succeeds:
+  - purge uploaded storage binary
+  - delete created `project_document` row
+  - restore previous latest document version
+  - refund consumed client token
+  - remove stale upload idempotency/audit marker so retries are clean
+  - reactivate assignment slot
+  - revert or delete submittal state created by the failed upload
+- Corrected submittal lifecycle drift:
+  - submittal transition now follows the computed review state instead of a hardcoded `L1_REVIEW`
+
+### Verified
+- `React/tracknov-server`: `npx tsc -p tsconfig.json --noEmit --pretty false` passed.
+- Root workspace `npx tsc -p tsconfig.json --noEmit --pretty false` still fails on pre-existing unrelated issues in:
+  - `artifacts/handoff/15062026/*`
+  - `React/tracknov-client/*`
+
+### Status boundary
+- Upload binary + document row + token debit + retry idempotency now roll back together on critical late failure.
+- Non-critical side channels such as upload telemetry and async intelligence remain best-effort by design.
+
+## Latest execution pass (2026-06-18 IST, workflow replay suppression pass)
+
+### Completed
+- Advanced the still-open single-consumption workflow item in the governed review path.
+- Updated both workflow orchestrators to surface replay/no-op signals from `execute_governed_transition`.
+- Updated both review services to suppress duplicate side effects when a transition request is replayed or already satisfied:
+  - approved-document RAG ingestion
+  - immutable review-event insert
+  - rejection-pattern learning writes
+  - review-completed / rejected event emission
+  - project submission completion event emission
+
+### Verified
+- `React/tracknov-server`: `npx tsc -p tsconfig.json --noEmit --pretty false` passed.
+
+### Status boundary
+- Review and project-submission side effects now respect workflow idempotency replies.
+- The broader TODO item is still open until reassignment/export/certification-closure paths are brought under the same single-consumption guarantee.

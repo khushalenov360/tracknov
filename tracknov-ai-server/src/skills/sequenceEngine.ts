@@ -16,6 +16,54 @@ export function buildSequenceDirective(intentSignal: HaritaIntentSignal, context
   const label = projectLabel(context);
 
   switch (intentSignal.intent) {
+    case "credit_applicability":
+      return {
+        shouldInject: true,
+        title: "Credit Applicability Sequence",
+        enforcedToolNames: ["get_credit_applicability", "get_compliance_thresholds", "lookup_guidebook_clause"],
+        guidance: [
+          `Treat the user as asking whether a credit applies or what it depends on inside ${label}.`,
+          "Use verified applicability, mandatory-requirement, and dependency signals before answering.",
+          "If there is no explicit rule mapping, say that clearly and fall back only to the runtime mandatory requirements and required document types.",
+          "Do not invent dependencies from generic credit names.",
+        ],
+      };
+    case "evidence_intelligence":
+      return {
+        shouldInject: true,
+        title: "Evidence Intelligence Sequence",
+        enforcedToolNames: ["get_evidence_intelligence", "check_document_pipeline"],
+        guidance: [
+          `Treat the user as asking for the evidence state inside ${label}.`,
+          "Prioritize missing required document types, extracted evidence signals, recommendation confidence, and evidence graph gaps.",
+          "Separate verified uploaded proof from AI recommendations.",
+          "If no evidence extraction exists yet, say that directly instead of inferring one.",
+        ],
+      };
+    case "score_model":
+      return {
+        shouldInject: true,
+        title: "Multi-layer Score Model Sequence",
+        enforcedToolNames: ["get_score_model", "calculate_credit_gap", "get_compliance_thresholds"],
+        guidance: [
+          `Treat the user as asking for the certification scoring model inside ${label}.`,
+          "Keep the answer layered: certification summary, credit score totals, projection layer, and risk layer.",
+          "Do not collapse risk-adjusted and verified earned points into a single number.",
+          "If thresholds are referenced, use the threshold tool before explaining rating movement.",
+        ],
+      };
+    case "clarification_intelligence":
+      return {
+        shouldInject: true,
+        title: "Clarification Intelligence Sequence",
+        enforcedToolNames: ["get_clarification_intelligence", "check_document_pipeline"],
+        guidance: [
+          `Treat the user as asking about clarification loops inside ${label}.`,
+          "Report open remarks, latest clarification plans, and lifecycle metrics separately.",
+          "Call out stale clarification rounds explicitly when they exist.",
+          "Do not treat ordinary document absence as a clarification unless there are actual remarks or clarification records.",
+        ],
+      };
     case "guidebook_lookup":
       return {
         shouldInject: true,
@@ -56,10 +104,10 @@ export function buildSequenceDirective(intentSignal: HaritaIntentSignal, context
       return {
         shouldInject: true,
         title: "Blocker Isolation Sequence",
-        enforcedToolNames: ["get_project_snapshot", "check_document_pipeline"],
+        enforcedToolNames: ["get_project_snapshot", "get_evidence_intelligence", "get_clarification_intelligence"],
         guidance: [
           `Treat the user as asking for the strongest blockers inside ${label}.`,
-          "Identify blockers in this order: missing evidence, no uploaded proof, no active assignment, repeated reviewer remarks, low completion credits.",
+          "Identify blockers in this order: missing evidence, no uploaded proof, repeated clarification loops, no active assignment, low completion credits.",
           "List only verified blockers. Do not speculate about blockers that are not supported by live data.",
         ],
       };

@@ -1,6 +1,14 @@
 import type { FunctionDeclaration } from "@google/genai";
 import type { HaritaContext, WritePermission } from "../services/vertexService";
-import { assignComplianceTask, checkDocumentPipeline, getProjectSnapshot } from "../services/supabaseService";
+import {
+  assignComplianceTask,
+  checkDocumentPipeline,
+  getClarificationIntelligence,
+  getCreditApplicability,
+  getEvidenceIntelligence,
+  getProjectSnapshot,
+  getScoreModel,
+} from "../services/supabaseService";
 
 export const getProjectSnapshotDeclaration: FunctionDeclaration = {
   name: "get_project_snapshot",
@@ -74,6 +82,68 @@ export const assignComplianceTaskDeclaration: FunctionDeclaration = {
   },
 };
 
+export const getCreditApplicabilityDeclaration: FunctionDeclaration = {
+  name: "get_credit_applicability",
+  description: "Return verified credit applicability, mandatory requirements, prerequisite dependencies, and runtime blockers for a project credit.",
+  parametersJsonSchema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "string", description: "Project id when it is already known." },
+      creditId: { type: "string", description: "Project credit id for an exact applicability lookup." },
+      creditCode: { type: "string", description: "Credit code such as WC C1 or EDA C2." },
+      title: { type: "string", description: "Project title when the request references the project by name." },
+      currentItem: { type: "string", description: "Current UI route such as /projects/<id>/credits." },
+    },
+  },
+};
+
+export const getEvidenceIntelligenceDeclaration: FunctionDeclaration = {
+  name: "get_evidence_intelligence",
+  description: "Return verified evidence intelligence for a project or credit: missing document types, AI recommendations, evidence extractions, and evidence graph signals.",
+  parametersJsonSchema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "string", description: "Project id when it is already known." },
+      creditId: { type: "string", description: "Project credit id for a credit-scoped evidence read." },
+      creditCode: { type: "string", description: "Credit code such as WC C1 or IM MR1." },
+      title: { type: "string", description: "Project title when the request references the project by name." },
+      currentItem: { type: "string", description: "Current UI route such as /projects/<id>/documents." },
+    },
+  },
+};
+
+export const getScoreModelDeclaration: FunctionDeclaration = {
+  name: "get_score_model",
+  description: "Return the multi-layer score model for a project including certification summary, credit score totals, projection layer, and risk layer.",
+  parametersJsonSchema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "string", description: "Project id when it is already known." },
+      title: { type: "string", description: "Project title when the request references the project by name." },
+      currentItem: { type: "string", description: "Current UI route such as /projects/<id>/overview." },
+    },
+  },
+};
+
+export const getClarificationIntelligenceDeclaration: FunctionDeclaration = {
+  name: "get_clarification_intelligence",
+  description: "Return clarification intelligence for a project or credit including open remarks, AI clarification plans, and clarification lifecycle metrics.",
+  parametersJsonSchema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "string", description: "Project id when it is already known." },
+      creditId: { type: "string", description: "Project credit id for a credit-scoped clarification read." },
+      creditCode: { type: "string", description: "Credit code such as EDA C1 or WC C1." },
+      title: { type: "string", description: "Project title when the request references the project by name." },
+      currentItem: { type: "string", description: "Current UI route such as /projects/<id>/clarifications." },
+    },
+  },
+};
+
 function mergeContextArgs(args: Record<string, unknown>, context?: HaritaContext) {
   return {
     projectId: typeof args.projectId === "string" ? args.projectId : context?.projectId,
@@ -97,6 +167,26 @@ export async function runPmTool(
       return checkDocumentPipeline({
         ...lookup,
         creditId: typeof args.creditId === "string" ? args.creditId : undefined,
+      });
+    case "get_credit_applicability":
+      return getCreditApplicability({
+        ...lookup,
+        creditId: typeof args.creditId === "string" ? args.creditId : undefined,
+        creditCode: typeof args.creditCode === "string" ? args.creditCode : undefined,
+      });
+    case "get_evidence_intelligence":
+      return getEvidenceIntelligence({
+        ...lookup,
+        creditId: typeof args.creditId === "string" ? args.creditId : undefined,
+        creditCode: typeof args.creditCode === "string" ? args.creditCode : undefined,
+      });
+    case "get_score_model":
+      return getScoreModel(lookup);
+    case "get_clarification_intelligence":
+      return getClarificationIntelligence({
+        ...lookup,
+        creditId: typeof args.creditId === "string" ? args.creditId : undefined,
+        creditCode: typeof args.creditCode === "string" ? args.creditCode : undefined,
       });
     case "assign_compliance_task":
       return assignComplianceTask({

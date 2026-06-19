@@ -79,6 +79,14 @@ function buildEvaluatePrompt(creditCode: string) {
   return `Check if this attached document fits ${creditCode}.`;
 }
 
+function buildAttachmentModeNote(targetCreditCode?: string | null) {
+  if (targetCreditCode) {
+    return `Locked for evaluation against ${targetCreditCode}. This still does not upload or map anything until you click an explicit workflow action.`;
+  }
+
+  return "Conversation analysis only. This file is not uploaded into the project tracker until you click an explicit workflow action.";
+}
+
 export function GlobalHarita({
   projectId,
   title,
@@ -96,11 +104,13 @@ export function GlobalHarita({
   const [status, setStatus] = useState<HaritaStatus>({ cloud: false, local: false, active: "offline" });
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [preparedAttachment, setPreparedAttachment] = useState<HaritaPreparedAttachment | null>(null);
-  const [attachmentTargetId, setAttachmentTargetId] = useState<string | null>(null);
   const [isPreparingAttachment, setIsPreparingAttachment] = useState(false);
   const [isCommittingEvidence, setIsCommittingEvidence] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [selectedEvaluationCreditCode, setSelectedEvaluationCreditCode] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
+  const dragDepthRef = useRef(0);
 
   const context = useMemo(
     () => ({
@@ -149,7 +159,7 @@ export function GlobalHarita({
     setPendingRetryMessage(null);
     setAttachedFile(null);
     setPreparedAttachment(null);
-    setAttachmentTargetId(null);
+    setSelectedEvaluationCreditCode(null);
     setIsPreparingAttachment(false);
     setIsCommittingEvidence(false);
   }, [projectId, title, description]);
@@ -200,7 +210,7 @@ export function GlobalHarita({
         context,
         historySnapshot,
         attachment,
-        options?.targetId ?? attachmentTargetId,
+        options?.targetId ?? null,
         {
           onStatus: (nextStatus) => setStatus(nextStatus),
           onToken: (chunk) => {
@@ -239,7 +249,7 @@ export function GlobalHarita({
   };
 
   const handleSend = async () => {
-    await submitMessage(input);
+    await submitMessage(input, { targetId: null });
   };
 
   const handleStarterPrompt = async (prompt: string) => {
@@ -260,7 +270,7 @@ export function GlobalHarita({
       return;
     }
 
-    await submitMessage(prompt);
+    await submitMessage(prompt, { targetId: null });
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -273,10 +283,12 @@ export function GlobalHarita({
   const clearAttachment = () => {
     setAttachedFile(null);
     setPreparedAttachment(null);
-    setAttachmentTargetId(null);
+    setSelectedEvaluationCreditCode(null);
     if (assetInputRef.current) {
       assetInputRef.current.value = "";
     }
+    dragDepthRef.current = 0;
+    setIsDragActive(false);
   };
 
   const onSelectFile = async (fileList: FileList | null) => {
@@ -293,7 +305,7 @@ export function GlobalHarita({
     setSystemError(null);
     setAttachedFile(file);
     setPreparedAttachment(null);
-    setAttachmentTargetId(null);
+    setSelectedEvaluationCreditCode(null);
     setIsPreparingAttachment(true);
 
     try {
@@ -314,6 +326,40 @@ export function GlobalHarita({
 
   const composerLocked = isTyping || isPreparingAttachment || isCommittingEvidence;
   const canSend = !composerLocked && Boolean(input.trim() || preparedAttachment);
+
+  const handleComposerDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!projectId || composerLocked) return;
+    dragDepthRef.current += 1;
+    setIsDragActive(true);
+  };
+
+  const handleComposerDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!projectId || composerLocked) return;
+    event.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleComposerDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!projectId || composerLocked) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleComposerDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDragActive(false);
+    if (!projectId || composerLocked) return;
+    await onSelectFile(event.dataTransfer.files);
+  };
 
   const appendAssistantMessage = (content: string) => {
     setMessages((prev) => [
@@ -357,7 +403,7 @@ export function GlobalHarita({
 
   const handleMetaAction = async (action: HaritaActionButton) => {
     if (action.kind === "evaluate_credit") {
-      setAttachmentTargetId(action.targetId || null);
+      setSelectedEvaluationCreditCode(action.creditCode || null);
       await submitMessage(buildEvaluatePrompt(action.creditCode || "this credit"), {
         targetId: action.targetId || null,
         attachment: preparedAttachment,
@@ -366,9 +412,10 @@ export function GlobalHarita({
     }
 
     if (action.kind === "explore_matches") {
-      setAttachmentTargetId(null);
+      setSelectedEvaluationCreditCode(null);
       await submitMessage(`Show all likely credit matches for this attached document in ${projectLabel}.`, {
         attachment: preparedAttachment,
+        targetId: null,
       });
       return;
     }
@@ -544,6 +591,11 @@ export function GlobalHarita({
                         ? `Ready for discovery or audit analysis • ${preparedAttachment.evidenceType}`
                         : "Waiting for analysis readiness"}
                   </div>
+                  {!isPreparingAttachment && preparedAttachment ? (
+                    <div className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+                      {buildAttachmentModeNote(selectedEvaluationCreditCode)}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <button
@@ -557,7 +609,17 @@ export function GlobalHarita({
             </div>
           ) : null}
 
-          <div className="relative flex items-end gap-3 rounded-[30px] border border-[var(--color-border-strong)]/80 bg-[rgba(28,33,40,0.98)] px-4 py-3 transition-colors focus-within:border-[var(--color-green)]">
+          <div
+            className={`relative flex items-end gap-3 rounded-[30px] border px-4 py-3 transition-colors ${
+              isDragActive
+                ? "border-[var(--color-green)] bg-[rgba(36,50,42,0.96)]"
+                : "border-[var(--color-border-strong)]/80 bg-[rgba(28,33,40,0.98)] focus-within:border-[var(--color-green)]"
+            }`}
+            onDragEnter={handleComposerDragEnter}
+            onDragOver={handleComposerDragOver}
+            onDragLeave={handleComposerDragLeave}
+            onDrop={(event) => void handleComposerDrop(event)}
+          >
             <button
               type="button"
               onClick={() => assetInputRef.current?.click()}
@@ -584,10 +646,18 @@ export function GlobalHarita({
             >
               {isCommittingEvidence ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
+            {isDragActive ? (
+              <div className="pointer-events-none absolute inset-x-3 bottom-[calc(100%+10px)] rounded-2xl border border-[var(--color-green)]/60 bg-[rgba(22,27,34,0.96)] px-3 py-2 text-center text-[12px] font-medium text-[var(--color-text-primary)] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                Drop file here to attach it to Harita
+              </div>
+            ) : null}
           </div>
-          <div className="mt-2 px-2 text-[11px] text-[var(--color-text-tertiary)]">Enter to send. Shift + Enter for a new line.</div>
+          <div className="mt-2 px-2 text-[11px] text-[var(--color-text-tertiary)]">
+            Enter to send. Shift + Enter for a new line. Attached files stay in conversation analysis mode until you choose an explicit workflow action.
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

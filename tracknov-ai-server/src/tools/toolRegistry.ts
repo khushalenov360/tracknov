@@ -11,13 +11,21 @@ import {
 import {
   assignComplianceTaskDeclaration,
   checkDocumentPipelineDeclaration,
+  getClarificationIntelligenceDeclaration,
+  getCreditApplicabilityDeclaration,
+  getEvidenceIntelligenceDeclaration,
   getProjectSnapshotDeclaration,
+  getScoreModelDeclaration,
   runPmTool,
 } from "./pmTools";
 
 export const haritaToolDeclarations: FunctionDeclaration[] = [
   getProjectSnapshotDeclaration,
   checkDocumentPipelineDeclaration,
+  getCreditApplicabilityDeclaration,
+  getEvidenceIntelligenceDeclaration,
+  getScoreModelDeclaration,
+  getClarificationIntelligenceDeclaration,
   assignComplianceTaskDeclaration,
   lookupGuidebookClauseDeclaration,
   getComplianceThresholdsDeclaration,
@@ -28,6 +36,10 @@ async function executeTool(name: string, args: Record<string, unknown>, context?
   switch (name) {
     case "get_project_snapshot":
     case "check_document_pipeline":
+    case "get_credit_applicability":
+    case "get_evidence_intelligence":
+    case "get_score_model":
+    case "get_clarification_intelligence":
     case "assign_compliance_task":
       return runPmTool(name, args, context, writePermission);
     case "lookup_guidebook_clause":

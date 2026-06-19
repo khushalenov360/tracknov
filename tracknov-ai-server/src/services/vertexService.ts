@@ -77,26 +77,87 @@ type ModelContent = {
   parts: Array<Record<string, unknown>>;
 };
 
+function detectGreeting(message: string) {
+  return /^(hi|hello|hey|hii|good morning|good afternoon|good evening)\b/i.test(message.trim());
+}
+
+function detectThanks(message: string) {
+  return /^(thanks|thank you|ok thanks|great thanks|noted thanks)\b/i.test(message.trim());
+}
+
+function extractActiveCreditReference(source: string) {
+  const directCode = source.match(/\b(?:EDA|EE|IE|IM|MR|SS|WC|WE)\s*[A-Z]?\s*\d+\b/i);
+  if (directCode) {
+    return directCode[0].replace(/\s+/g, " ").trim().toUpperCase();
+  }
+
+  const compactCode = source.match(/\b(?:EDA|EE|IE|IM|MR|SS|WC|WE)[A-Z]?\d+\b/i);
+  return compactCode ? compactCode[0].toUpperCase() : null;
+}
+
+function extractAttachmentName(history?: ChatHistoryItem[]) {
+  if (!history?.length) return null;
+  const recentText = history
+    .slice(-8)
+    .map((item) => item.content)
+    .join("\n");
+
+  const namedFile = recentText.match(/\b[\w\s.-]+\.(pdf|xlsx|xls|csv|docx|png|jpg|jpeg)\b/i);
+  return namedFile ? namedFile[0].trim() : null;
+}
+
+function buildConversationMemory(
+  message: string,
+  context?: HaritaContext,
+  history?: ChatHistoryItem[],
+) {
+  const recentUserMessages = (history || [])
+    .filter((item) => item.role === "user")
+    .slice(-3)
+    .map((item) => item.content.trim())
+    .filter(Boolean);
+  const activeCredit = extractActiveCreditReference(
+    [context?.currentItem || "", context?.summary || "", ...recentUserMessages, message].join(" "),
+  );
+  const activeDocument = extractAttachmentName(history);
+
+  return {
+    active_project: context?.title || context?.projectId || "unresolved",
+    active_credit_reference: activeCredit || "unresolved",
+    active_document_name: activeDocument || "unresolved",
+    latest_user_objective: message.trim(),
+    recent_user_messages: recentUserMessages,
+  };
+}
+
 function buildSystemPrompt(
+  message: string,
   context?: HaritaContext,
   groundedProjectState?: string,
   localGuidebookContext?: string,
   intentSignal?: HaritaIntentSignal,
   sequenceDirective?: SequenceDirective,
+  history?: ChatHistoryItem[],
 ) {
   const guidebookStatus = getGuidebookStatus();
+  const memory = buildConversationMemory(message, context, history);
+  const greeting = detectGreeting(message);
+  const thanks = detectThanks(message);
 
   return [
     xmlBlock(
       "system_persona_boundaries",
       [
-        "You are Harita, Tracknov's certification intelligence copilot.",
+        "You are Harita, Tracknov's senior IGBC consultant and Tracknov product expert.",
         "Ban filler, pleasantries, and decorative openings.",
         "Every answer must be direct, operational, and grounded in available project context.",
         "Never invent project evidence, assignments, metrics, or compliance points.",
         "If evidence is missing, say exactly what is missing and what the next best action is.",
         "For compliance questions, lead with the core conclusion first.",
         "Do not say data is unavailable if the grounded project context already contains the answer.",
+        "Never expose internal terms such as tool call, retrieval, RAG, vector search, prompt, governance chain, router, telemetry, or provider fallback.",
+        "If the user is greeting you or thanking you, reply naturally in one or two short sentences and do not dump project status unless the user asks for it.",
+        "If the user asks a broad exploratory question, answer the question first, then optionally suggest the next best Tracknov-specific follow-up.",
       ].join("\n"),
     ),
     xmlBlock(
@@ -111,11 +172,16 @@ function buildSystemPrompt(
         "Prefer short sections with labels such as STATUS, VERIFIED, GAPS, NEXT ACTION.",
         "When listing credits, include code, name, status, completion, points, and missing evidence if known.",
         "When asked about blockers or priorities, rank by lowest completion, missing required evidence, repeated remarks, and unassigned required documents.",
+        "Do not force labeled sections for greetings, acknowledgements, or simple document-summary questions.",
       ].join("\n"),
     ),
     xmlBlock(
       "response_format_contract",
       [
+        `interaction_mode: ${intentSignal?.lane || "exploratory"}`,
+        greeting || thanks
+          ? "For greeting/acknowledgement turns: reply in plain natural language, max two short sentences."
+          : "For analytical and operational turns: answer the user's exact question first, then use compact labels only if they add clarity.",
         "Default answer shape:",
         "STATUS: <one line conclusion>",
         "VERIFIED:",
@@ -128,13 +194,16 @@ function buildSystemPrompt(
         "- <action>",
         "- <action>",
         "If the user explicitly asks for a count, total, owner, assignment, blocker, or credit list, answer that first before anything else.",
+        "If the user asks what a document is about, summarize the file itself before talking about credit mapping.",
       ].join("\n"),
     ),
+    xmlBlock("conversation_memory", JSON.stringify(memory, null, 2)),
     xmlBlock(
       "intent_router_signal",
       JSON.stringify(
         {
           intent: intentSignal?.intent || "general",
+          lane: intentSignal?.lane || "exploratory",
           confidence: intentSignal?.confidence || "low",
           reasons: intentSignal?.reasons || [],
           preferred_tools: intentSignal?.preferredTools || [],
@@ -170,13 +239,13 @@ function buildSystemPrompt(
     ),
     xmlBlock(
       "project_database_current_state",
-      groundedProjectState || "Live project state must be fetched through runtime tools such as get_project_snapshot and check_document_pipeline.",
+      groundedProjectState || "Live project state must be fetched through runtime tools such as get_project_snapshot, get_credit_applicability, get_evidence_intelligence, get_score_model, and get_clarification_intelligence.",
     ),
     xmlBlock(
       "runtime_tool_contract",
       groundedProjectState
         ? "Fallback mode: use the supplied grounded state because live tool execution is unavailable."
-        : "Cloud mode: fetch live Tracknov data through tools before making claims about points, blockers, assignments, or missing evidence.",
+        : "Cloud mode: fetch live Tracknov data through tools before making claims about points, blockers, dependencies, assignments, clarification loops, or missing evidence.",
     ),
     xmlBlock("uploaded_document_variables", "No uploaded document payload was supplied in this request."),
   ].join("\n\n");
@@ -244,6 +313,14 @@ export async function checkProviderStatus(): Promise<ProviderStatus> {
 }
 
 function shouldUseCloudTools(request: StreamRequest) {
+  if (request.intentSignal?.lane === "conversational") {
+    return false;
+  }
+
+  if (request.intentSignal?.intent === "general" && request.intentSignal?.confidence === "low") {
+    return false;
+  }
+
   return true;
 }
 
@@ -300,11 +377,13 @@ async function prepareToolAugmentedConversation(request: StreamRequest, systemPr
 
 async function streamFromVertex(request: StreamRequest) {
   const systemPrompt = buildSystemPrompt(
+    request.message,
     request.context,
     undefined,
     undefined,
     request.intentSignal,
     request.sequenceDirective,
+    request.history,
   );
   const contents = shouldUseCloudTools(request)
     ? await prepareToolAugmentedConversation(request, systemPrompt)
@@ -395,11 +474,13 @@ export async function streamHaritaResponse(request: StreamRequest): Promise<{ pr
     const groundedProjectState = request.groundedProjectState || await buildProjectGrounding(request.context);
     const localGuidebookContext = request.localGuidebookContext || await buildLocalGuidebookContext(request.message, request.context, request.context?.summary);
     const systemPrompt = buildSystemPrompt(
+      request.message,
       request.context,
       groundedProjectState,
       localGuidebookContext,
       request.intentSignal,
       request.sequenceDirective,
+      request.history,
     );
     request.onStatus({ cloud: false, local: true, active: "local" });
     await streamFromOllama(request, systemPrompt);
