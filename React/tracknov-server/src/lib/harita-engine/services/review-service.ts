@@ -7,6 +7,17 @@ import { eventBus } from "@/lib/core/events/event-bus";
 import { computeIgbcScore } from "./igbc-scoring-service";
 import { getProjectWorkspace } from "@/lib/data";
 import type { CurrentUser } from "@/lib/types";
+import type { WorkflowTransitionResult } from "./workflow-orchestrator-service";
+
+export class WorkflowTransitionError extends Error {
+  readonly transition: WorkflowTransitionResult;
+
+  constructor(transition: WorkflowTransitionResult) {
+    super(transition.message || "Workflow transition failed.");
+    this.name = "WorkflowTransitionError";
+    this.transition = transition;
+  }
+}
 
 export type ReviewEventInput = {
   documentId: string;
@@ -135,7 +146,7 @@ export class ReviewService {
       overrideReason: params.overrideReason ?? null,
     });
 
-    if (!result.ok) throw new Error(result.message);
+    if (!result.ok) throw new WorkflowTransitionError(result);
 
     if (params.newState === "APPROVED") {
       await ragService.ingestApprovedDocument(params.documentId);
@@ -209,7 +220,7 @@ export class ReviewService {
       targetState: params.newState as any,
       reason: params.remarks ?? null,
     });
-    if (!result.ok) throw new Error(result.message);
+    if (!result.ok) throw new WorkflowTransitionError(result);
     return { ok: true, workflow_state: result.workflow_state };
   }
 

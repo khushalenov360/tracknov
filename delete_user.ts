@@ -3,7 +3,7 @@ import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const admin = createClient(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function main() {
   const emailToDelete = "mep@enov360.com";

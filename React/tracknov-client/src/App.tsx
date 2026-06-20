@@ -1,24 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, AlertTriangle, Lock, Unlock } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, AlertTriangle, CheckCircle2, Clock3, Lock, RefreshCcw, Unlock } from "lucide-react";
 import { Shell } from "./components/shell";
 import { HaritaContextProvider, PersistentHaritaSidebar } from "./components/assistant/harita-context";
 import { ProjectTabs } from "./components/project/ProjectTabs";
 import { Badge } from "./components/ui-lib/ui/badge";
 import { LoginPage } from "./pages/LoginPage";
+import { fetchReviewQueue, fetchWorkspaceOpsSummary, transitionReviewQueueItem, type ReviewQueueItem } from "./services/api";
 import {
   getCreditPoints,
   getCreditStats,
   getCreditStatus,
   getDashboardProjects,
   getProjectWorkspace,
-  getReviewerQueue,
   type ProjectWorkspace,
-  type ReviewerQueueEntry,
   type WorkspaceCredit,
   type WorkspaceMember,
 } from "./lib/liveData";
+import { canReview, isProjectAdminRole } from "./lib/roles";
 import { supabase } from "./lib/supabaseClient";
 
 function mandatoryCode(creditCode: string, mandatory: boolean) {
@@ -66,6 +66,113 @@ function WorkspaceSkeleton() {
       </div>
     </div>
   );
+}
+
+type QueueBoardItem = {
+  id: string;
+  title: string;
+  description: string;
+  tone: "neutral" | "warning" | "danger" | "success";
+  href?: string;
+};
+
+function isReviewerRole(role: string) {
+  return canReview(role);
+}
+
+function humanizeAction(action: string) {
+  switch (action) {
+    case "approve":
+      return "Approve";
+    case "reject":
+      return "Reject";
+    case "request_clarification":
+      return "Request Clarification";
+    case "start_owner_review":
+      return "Start Owner Review";
+    case "start_admin_review":
+      return "Start Admin Review";
+    case "submit":
+      return "Submit";
+    case "resubmit":
+      return "Resubmit";
+    default:
+      return action.replace(/_/g, " ");
+  }
+}
+
+function queueToneClass(tone: QueueBoardItem["tone"]) {
+  if (tone === "danger") return "border-[var(--color-red)]/40 bg-[var(--color-red-soft)]";
+  if (tone === "warning") return "border-amber-400/30 bg-amber-400/10";
+  if (tone === "success") return "border-emerald-400/30 bg-emerald-400/10";
+  return "border-[var(--color-border)] bg-[var(--color-surface-2)]";
+}
+
+function buildQueueBoard(workspace: ProjectWorkspace, reviewQueue: ReviewQueueItem[]) {
+  const mandatoryBlockers: QueueBoardItem[] = workspace.credits
+    .filter((credit) => Boolean(credit.is_mandatory) && getCreditStatus(credit) !== "approved")
+    .slice(0, 6)
+    .map((credit) => ({
+      id: `mandatory-${credit.id}`,
+      title: `${mandatoryCode(credit.credit_code, true)} needs closure`,
+      description: `${credit.credit_name} is still ${getCreditStatus(credit)} and requires evidence progression.`,
+      tone: getCreditStatus(credit) === "blocked" ? "danger" : "warning",
+      href: `/projects/${workspace.project.id}/credits`,
+    }));
+
+  const clarificationItems: QueueBoardItem[] = workspace.documents
+    .filter((document) => {
+      const state = String(document.workflow_state || document.status || "").toUpperCase();
+      return state.includes("CLARIFICATION") || state.includes("REJECT");
+    })
+    .slice(0, 6)
+    .map((document) => ({
+      id: `clarification-${document.id}`,
+      title: document.file_name,
+      description: document.notes || document.intelligence?.summary || "Clarification follow-up is pending on this evidence item.",
+      tone: "warning",
+      href: `/projects/${workspace.project.id}/clarifications`,
+    }));
+
+  const aiGuidance = workspace.documents
+    .flatMap((document) => [...(document.intelligence?.next_steps ?? []), ...(document.intelligence?.risks ?? [])])
+    .filter(Boolean)
+    .slice(0, 5)
+    .map((entry, index) => ({
+      id: `guidance-${index}`,
+      title: "Harita guidance",
+      description: entry,
+      tone: "neutral" as const,
+      href: `/projects/${workspace.project.id}/documents`,
+    }));
+
+  const myPriorityTasks: QueueBoardItem[] =
+    reviewQueue.length > 0
+      ? reviewQueue.slice(0, 6).map((item) => ({
+          id: `review-${item.id}`,
+          title: `${item.creditCode} · ${item.fileName}`,
+          description: `${item.workflowLabel} for ${item.uploadedByName}. Available actions: ${item.allowedActions.map(humanizeAction).join(", ") || "None"}.`,
+          tone: item.isMandatory ? "danger" : "warning",
+          href: `/projects/${workspace.project.id}/reviews`,
+        }))
+      : workspace.credits
+          .filter((credit) => getCreditStatus(credit) !== "approved")
+          .slice(0, 6)
+          .map((credit) => ({
+            id: `credit-${credit.id}`,
+            title: `${credit.credit_code} · ${credit.credit_name}`,
+            description: `${String(credit.responsible_role || "Unassigned").replace(/_/g, " ")} owns the next movement for this credit.`,
+            tone: getCreditStatus(credit) === "blocked" ? "danger" : "neutral",
+            href: `/projects/${workspace.project.id}/credits`,
+          }));
+
+  return {
+    myPriorityTasks,
+    mandatoryBlockers,
+    pendingReviews: reviewQueue.slice(0, 8),
+    clarificationItems,
+    aiGuidance,
+  };
 }
 
 function ProjectCards({
@@ -773,6 +880,7 @@ function SettingsPage({ workspace }: { workspace: ProjectWorkspace }) {
 }
 
 function DashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const isProjectAdmin = isProjectAdminRole(workspace.userRole);
   const creditStats = useMemo(() => {
     const total = workspace.credits.length;
     const approved = workspace.credits.filter((credit) => getCreditStatus(credit) === "approved").length;
@@ -793,6 +901,101 @@ function DashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
   );
 
   const recentDocuments = useMemo(() => workspace.documents.slice(0, 5), [workspace.documents]);
+  const opsSummaryQuery = useQuery({
+    queryKey: ["workspace-ops-summary", workspace.project.id],
+    queryFn: () => fetchWorkspaceOpsSummary(workspace.project.id),
+    enabled: isProjectAdmin,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+  const adminReviewQueueQuery = useQuery({
+    queryKey: ["review-queue", workspace.project.id, "dashboard"],
+    queryFn: () => fetchReviewQueue(workspace.project.id),
+    enabled: isProjectAdmin,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+
+  if (isProjectAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="surface-card p-5 space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Stage Readiness</p>
+            <p className="text-2xl font-bold text-[var(--color-text-primary)]">{opsSummaryQuery.data?.readinessPercent ?? 0}%</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">Evidence approved against current project flow</p>
+          </div>
+          <div className="surface-card p-5 space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Pending Reviews</p>
+            <p className="text-2xl font-bold text-[var(--color-text-primary)]">{opsSummaryQuery.data?.pendingReviewCount ?? 0}</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">Submittals still waiting on review action</p>
+          </div>
+          <div className="surface-card p-5 space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Clarification Loops</p>
+            <p className="text-2xl font-bold text-[var(--color-text-primary)]">{opsSummaryQuery.data?.clarificationCount ?? 0}</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">Evidence currently sent back for correction</p>
+          </div>
+          <div className="surface-card p-5 space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Mandatory Credits</p>
+            <p className="text-2xl font-bold text-[var(--color-text-primary)]">{opsSummaryQuery.data?.mandatoryCreditsCount ?? 0}</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">Governed credits visible in this workspace</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <QueueSection
+            title="Validation Queues"
+            description="Current reviewer-facing evidence queues requiring workflow movement."
+            items={(adminReviewQueueQuery.data ?? [])
+              .slice(0, 6)
+              .map((item) => ({
+                id: `validation-${item.id}`,
+                title: item.fileName,
+                description: `${item.docCategory || "Document"} is waiting in ${item.workflowLabel}.`,
+                tone: "warning" as const,
+                href: `/projects/${workspace.project.id}/reviews`,
+              }))}
+            emptyLabel="No validation queue items are active."
+          />
+          <QueueSection
+            title="Workflow Actions"
+            description="Operational surfaces available to the Project Admin role."
+            items={[
+              {
+                id: "workflow-reviews",
+                title: "Open Reviews Workspace",
+                description: "Move through governed review actions using backend-provided allowed actions.",
+                tone: "neutral",
+                href: `/projects/${workspace.project.id}/reviews`,
+              },
+              {
+                id: "workflow-approvals",
+                title: "Open Approvals Surface",
+                description: "Review items currently carrying approval authority.",
+                tone: "success",
+                href: `/projects/${workspace.project.id}/approvals`,
+              },
+              {
+                id: "workflow-clarifications",
+                title: "Inspect Clarification Queue",
+                description: "Follow evidence items that are blocked on contributor correction.",
+                tone: "warning",
+                href: `/projects/${workspace.project.id}/clarifications`,
+              },
+              {
+                id: "workflow-assignments",
+                title: "Manage Assignment Matrix",
+                description: "Reassign governed contributor ownership where required.",
+                tone: "neutral",
+                href: `/projects/${workspace.project.id}/assignments`,
+              },
+            ]}
+            emptyLabel="No workflow surfaces are configured."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -883,6 +1086,115 @@ function DashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
   );
 }
 
+function QueueSection({
+  title,
+  description,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  description: string;
+  items: QueueBoardItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <div className="surface-card p-5 space-y-4">
+      <div>
+        <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">{title}</h2>
+        <p className="text-[13px] text-[var(--color-text-secondary)]">{description}</p>
+      </div>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <Link
+            key={item.id}
+            to={item.href || "#"}
+            className={`block rounded-xl border px-4 py-3 transition-colors hover:border-[var(--color-border-strong)] ${queueToneClass(item.tone)}`}
+          >
+            <p className="font-semibold text-[var(--color-text-primary)]">{item.title}</p>
+            <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">{item.description}</p>
+          </Link>
+        ))}
+        {items.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-6 text-[13px] text-[var(--color-text-secondary)]">
+            {emptyLabel}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MyQueuePage({ workspace }: { workspace: ProjectWorkspace }) {
+  const reviewQuery = useQuery({
+    queryKey: ["review-queue", workspace.project.id],
+    queryFn: () => fetchReviewQueue(workspace.project.id),
+    enabled: isReviewerRole(workspace.userRole),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+
+  const queueBoard = useMemo(
+    () => buildQueueBoard(workspace, reviewQuery.data ?? []),
+    [reviewQuery.data, workspace],
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">My Queue</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Queue-first operational view of the current project. Priorities, blockers, reviews, clarifications, and Harita guidance stay in one surface.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {queueBoard.myPriorityTasks.length} Priority Items
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <QueueSection
+          title="My Priority Tasks"
+          description="What needs movement first in this workspace."
+          items={queueBoard.myPriorityTasks}
+          emptyLabel="No priority tasks are active right now."
+        />
+        <QueueSection
+          title="Mandatory Blockers"
+          description="Mandatory credits and high-risk blockers requiring resolution."
+          items={queueBoard.mandatoryBlockers}
+          emptyLabel="No mandatory blockers are open."
+        />
+        <QueueSection
+          title="Pending Reviews"
+          description="Current review queue items waiting on owner or admin action."
+          items={(queueBoard.pendingReviews ?? []).map((item) => ({
+            id: item.id,
+            title: `${item.creditCode} · ${item.fileName}`,
+            description: `${item.workflowLabel} for ${item.uploadedByName}.`,
+            tone: item.isMandatory ? "danger" : "warning",
+            href: `/projects/${workspace.project.id}/reviews`,
+          }))}
+          emptyLabel="No review items are waiting right now."
+        />
+        <QueueSection
+          title="Clarifications"
+          description="Evidence items sent back with follow-up or clarification requirements."
+          items={queueBoard.clarificationItems}
+          emptyLabel="No clarification loops are active."
+        />
+      </div>
+
+      <QueueSection
+        title="AI Guidance"
+        description="Latest guidance extracted from evidence intelligence and current project context."
+        items={queueBoard.aiGuidance}
+        emptyLabel="Harita has not generated additional guidance for this workspace yet."
+      />
+    </div>
+  );
+}
+
 function CreditsLedgerPage({ workspace }: { workspace: ProjectWorkspace }) {
   const ledgerCredits = useMemo(
     () =>
@@ -944,6 +1256,53 @@ function CreditsLedgerPage({ workspace }: { workspace: ProjectWorkspace }) {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function UploadsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  const documents = workspace.documents;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Uploads</h2>
+          <p className="text-[13px] text-[var(--color-text-secondary)]">
+            Latest evidence uploads entering this project workspace, with state and intelligence summaries.
+          </p>
+        </div>
+        <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+          {documents.length} Files
+        </Badge>
+      </div>
+
+      <div className="space-y-3">
+        {documents.map((document) => (
+          <div key={document.id} className="surface-card px-4 py-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <p className="font-semibold text-[var(--color-text-primary)]">{document.file_name}</p>
+              <p className="text-[12px] text-[var(--color-text-secondary)]">
+                {document.doc_category || "Uncategorised"} · {document.workflow_state || document.status || "Unknown state"}
+              </p>
+              <p className="text-[12px] text-[var(--color-text-secondary)]">
+                {document.intelligence?.summary || document.notes || "No document note is available yet."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                {document.intelligence?.evidence_type || "UNCLASSIFIED"}
+              </Badge>
+              <Badge className={statusClass(normalizeStatus(document.workflow_state || document.status))}>
+                {String(document.workflow_state || document.status || "pending").toUpperCase()}
+              </Badge>
+            </div>
+          </div>
+        ))}
+        {documents.length === 0 ? (
+          <div className="surface-card p-8 text-center text-[var(--color-text-secondary)]">No uploads are available in this workspace.</div>
+        ) : null}
       </div>
     </div>
   );
@@ -1118,79 +1477,284 @@ function ExportsPage({ workspace }: { workspace: ProjectWorkspace }) {
   );
 }
 
-function ReviewerDashboardPage({ workspace }: { workspace: ProjectWorkspace }) {
-  const canReview = ["L3", "L5", "project_admin", "super_admin", "super_user"].includes(workspace.userRole);
-  if (!canReview) {
-    return <Navigate to={`/projects/${workspace.project.id}/overview`} replace />;
+function ReviewsPage({ workspace, approvalsOnly = false }: { workspace: ProjectWorkspace; approvalsOnly?: boolean }) {
+  const canUseReviewSurface = canReview(workspace.userRole);
+  if (!canUseReviewSurface) {
+    return <Navigate to={`/projects/${workspace.project.id}/my-queue`} replace />;
   }
 
   const queueQuery = useQuery({
-    queryKey: ["reviewer-queue", workspace.project.id, workspace.userRole],
-    queryFn: () => getReviewerQueue(workspace.project.id, workspace.userRole),
-    staleTime: 15_000,
+    queryKey: ["review-queue", workspace.project.id],
+    queryFn: () => fetchReviewQueue(workspace.project.id),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
+  const queryClient = useQueryClient();
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [remarks, setRemarks] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionConflict, setActionConflict] = useState<{ message: string; workflowState?: string; allowedActions?: string[] } | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
+
+  const reviewItems = approvalsOnly
+    ? (queueQuery.data ?? []).filter((item) => item.allowedActions.includes("approve"))
+    : (queueQuery.data ?? []);
+
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, { id: string; label: string; items: ReviewQueueItem[]; isMandatory: boolean }>();
+    for (const item of reviewItems) {
+      const key = item.submittalId || item.projectCreditId || item.id;
+      const existing = groups.get(key) ?? {
+        id: key,
+        label: item.submittalId ? `Submittal ${item.submittalId.slice(0, 8)}` : `${item.creditCode} · ${item.creditName}`,
+        items: [],
+        isMandatory: false,
+      };
+      existing.items.push(item);
+      existing.isMandatory = existing.isMandatory || item.isMandatory;
+      groups.set(key, existing);
+    }
+    return Array.from(groups.values()).sort((a, b) => Number(b.isMandatory) - Number(a.isMandatory));
+  }, [reviewItems]);
+
+  useEffect(() => {
+    const nextGroup = groupedItems.find((group) => group.id === selectedGroupId) ?? groupedItems[0] ?? null;
+    setSelectedGroupId(nextGroup?.id ?? null);
+    const nextDocument = nextGroup?.items.find((item) => item.id === selectedDocumentId) ?? nextGroup?.items[0] ?? null;
+    setSelectedDocumentId(nextDocument?.id ?? null);
+  }, [groupedItems, selectedDocumentId, selectedGroupId]);
+
+  const activeGroup = groupedItems.find((group) => group.id === selectedGroupId) ?? null;
+  const activeItem = activeGroup?.items.find((item) => item.id === selectedDocumentId) ?? activeGroup?.items[0] ?? null;
 
   if (queueQuery.isLoading) {
     return <WorkspaceSkeleton />;
   }
 
   if (queueQuery.error) {
-    return <div className="p-8 text-red-500">{queueQuery.error instanceof Error ? queueQuery.error.message : "Failed to load reviewer queue."}</div>;
+    return <div className="p-8 text-red-500">{queueQuery.error instanceof Error ? queueQuery.error.message : "Failed to load review queue."}</div>;
   }
 
-  const queue = queueQuery.data ?? [];
+  const executeAction = async (action: string) => {
+    if (!activeItem) return;
+
+    setIsActioning(true);
+    setActionError(null);
+    setActionConflict(null);
+    try {
+      await transitionReviewQueueItem(workspace.project.id, activeItem.id, action, remarks.trim() || null);
+      setRemarks("");
+      await Promise.all([
+        queueQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ["workspace", workspace.project.id] }),
+        queryClient.invalidateQueries({ queryKey: ["workspace-ops-summary", workspace.project.id] }),
+      ]);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && (error as any).code === "workflow_conflict") {
+        setActionConflict({
+          message: error instanceof Error ? error.message : "Workflow state changed.",
+          workflowState: (error as any).workflowState,
+          allowedActions: Array.isArray((error as any).allowedActions) ? (error as any).allowedActions : [],
+        });
+      } else {
+        setActionError(error instanceof Error ? error.message : "Review action failed.");
+      }
+    } finally {
+      setIsActioning(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
         <div>
-          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">Reviewer Dashboard</h2>
+          <h2 className="text-[16px] font-bold text-[var(--color-text-primary)]">{approvalsOnly ? "Approvals" : "Reviews"}</h2>
           <p className="text-[13px] text-[var(--color-text-secondary)]">
-            Reviewer-only audit trail and validation queue for L3 and L5 governance roles.
+            Submittal-first reviewer workspace with backend-provided allowed actions, lock states, and live queue refresh.
           </p>
         </div>
         <Badge className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
-          {queue.length} Review Events
+          {reviewItems.length} Active Items
         </Badge>
       </div>
 
-      <div className="surface-card rounded-md overflow-hidden border border-[var(--color-border)]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-[12px]">
-            <thead>
-              <tr className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)]">
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Document</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Action</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Status After</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Reviewer Role</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Remarks</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
-              {queue.map((entry: ReviewerQueueEntry) => (
-                <tr key={entry.id}>
-                  <td className="px-4 py-3 text-[var(--color-text-primary)] mono">{entry.document_id}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.action}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.status_after}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.reviewer_role || "UNASSIGNED"}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{entry.remarks || "-"}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{new Date(entry.created_at).toLocaleString()}</td>
-                </tr>
-              ))}
-              {queue.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-secondary)]">
-                    No reviewer events are currently visible for this project.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+      {actionError ? (
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--color-red)]/40 bg-[var(--color-red-soft)] px-4 py-3 text-[13px] text-[var(--color-red)]">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      ) : null}
+      {actionConflict ? (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-[13px] text-amber-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="space-y-1">
+            <p>{actionConflict.message}</p>
+            {actionConflict.workflowState ? (
+              <p className="text-[12px] text-amber-100/80">Current state: {actionConflict.workflowState}</p>
+            ) : null}
+            {actionConflict.allowedActions?.length ? (
+              <p className="text-[12px] text-amber-100/80">
+                Available actions now: {actionConflict.allowedActions.map(humanizeAction).join(", ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.25fr_0.85fr] gap-4">
+        <div className="surface-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Queue</p>
+              <h3 className="font-bold text-[var(--color-text-primary)]">Submittals</h3>
+            </div>
+            <button
+              onClick={() => void queueQuery.refetch()}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)]"
+            >
+              <RefreshCcw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          </div>
+          <div className="space-y-2">
+            {groupedItems.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => setSelectedGroupId(group.id)}
+                className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                  selectedGroupId === group.id
+                    ? "border-[var(--color-green)] bg-[var(--color-green-soft)]/30"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-2)]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-[var(--color-text-primary)]">{group.label}</p>
+                  {group.isMandatory ? <Badge className="state-critical">MANDATORY</Badge> : null}
+                </div>
+                <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">{group.items.length} evidence item(s)</p>
+              </button>
+            ))}
+            {groupedItems.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-6 text-[13px] text-[var(--color-text-secondary)]">
+                No review items are active for this project.
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="surface-card p-5 space-y-4">
+          {activeItem ? (
+            <>
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Current evidence</p>
+                  <h3 className="font-bold text-[var(--color-text-primary)]">{activeItem.fileName}</h3>
+                  <p className="text-[13px] text-[var(--color-text-secondary)]">
+                    {activeItem.creditCode} · {activeItem.creditName}
+                  </p>
+                </div>
+                <Badge className={activeItem.isMandatory ? "state-critical" : "state-pending"}>
+                  {activeItem.workflowLabel.toUpperCase()}
+                </Badge>
+              </div>
+
+              <div className="space-y-3 text-[13px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Contributor</p>
+                    <p className="mt-1 font-medium text-[var(--color-text-primary)]">{activeItem.uploadedByName}</p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Document Type</p>
+                    <p className="mt-1 font-medium text-[var(--color-text-primary)]">{activeItem.docCategory}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Reviewer Notes</p>
+                  <textarea
+                    value={remarks}
+                    onChange={(event) => setRemarks(event.target.value)}
+                    placeholder="Add review remarks or clarification detail..."
+                    className="mt-2 min-h-[96px] w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-green)]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {activeItem.allowedActions.map((action) => (
+                    <button
+                      key={action}
+                      disabled={isActioning}
+                      onClick={() => void executeAction(action)}
+                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] font-semibold text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-green)] hover:text-[var(--color-green)] disabled:opacity-50"
+                    >
+                      {humanizeAction(action)}
+                    </button>
+                  ))}
+                  {activeItem.allowedActions.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-[12px] text-[var(--color-text-secondary)]">
+                      No backend actions are available in this state.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-[var(--color-text-secondary)]">Select a queue item to review.</div>
+          )}
+        </div>
+
+        <div className="surface-card p-5 space-y-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Validation Warnings</p>
+            <h3 className="mt-1 font-bold text-[var(--color-text-primary)]">Workflow Context</h3>
+          </div>
+          {activeItem ? (
+            <>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-primary)]">
+                  <Clock3 className="h-4 w-4 text-[var(--color-text-secondary)]" />
+                  <span>{activeItem.uploadedAt ? new Date(activeItem.uploadedAt).toLocaleString() : "Upload time unavailable"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-primary)]">
+                  <CheckCircle2 className="h-4 w-4 text-[var(--color-green)]" />
+                  <span>{activeItem.workflowLabel}</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                <p className="font-semibold text-[var(--color-text-primary)]">Lock State</p>
+                <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                  {activeItem.lockState.reason || "No explicit lock reason was returned."}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                <p className="font-semibold text-[var(--color-text-primary)]">Workflow History</p>
+                <div className="mt-2 space-y-2">
+                  {(activeGroup?.items ?? []).map((item) => (
+                    <div key={item.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                      <p className="text-[12px] font-medium text-[var(--color-text-primary)]">{item.fileName}</p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)]">
+                        {item.workflowLabel} · {item.uploadedByName}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-[var(--color-text-secondary)]">No active review context is available.</div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function ApprovalsPage({ workspace }: { workspace: ProjectWorkspace }) {
+  return <ReviewsPage workspace={workspace} approvalsOnly />;
 }
 
 function WorkspaceScreen({
@@ -1200,10 +1764,20 @@ function WorkspaceScreen({
   workspace: ProjectWorkspace;
   tab: string;
 }) {
+  const isProjectAdmin = isProjectAdminRole(workspace.userRole);
+  const projectAdminAllowedTabs = new Set(["my-queue", "dashboard", "reviews", "reviewer", "approvals", "clarifications", "assignments", "settings"]);
+
+  if (isProjectAdmin && !projectAdminAllowedTabs.has(tab)) {
+    return <Navigate to={`/projects/${workspace.project.id}/my-queue`} replace />;
+  }
+
   const renderTab = () => {
     if (tab === "dashboard") return <DashboardPage workspace={workspace} />;
+    if (tab === "my-queue") return <MyQueuePage workspace={workspace} />;
     if (tab === "credits") return <CreditsLedgerPage workspace={workspace} />;
-    if (tab === "reviewer") return <ReviewerDashboardPage workspace={workspace} />;
+    if (tab === "reviews" || tab === "reviewer") return <ReviewsPage workspace={workspace} />;
+    if (tab === "approvals") return <ApprovalsPage workspace={workspace} />;
+    if (tab === "uploads") return <UploadsPage workspace={workspace} />;
     if (tab === "assignments") return <AssignmentsPage workspace={workspace} />;
     if (tab === "documents") return <DocumentsPage workspace={workspace} />;
     if (tab === "clarifications") return <ClarificationsPage workspace={workspace} />;
@@ -1214,7 +1788,7 @@ function WorkspaceScreen({
     if (["overview"].includes(tab)) {
       return <ProjectCards projectId={workspace.project.id} credits={workspace.credits} />;
     }
-    return <Navigate to={`/projects/${workspace.project.id}/dashboard`} replace />;
+    return <Navigate to={`/projects/${workspace.project.id}/my-queue`} replace />;
   };
 
   return (
@@ -1249,12 +1823,50 @@ function WorkspaceRouteContent({ tab }: { tab: string }) {
 function WorkspaceRouteLayout() {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId ?? "";
+  const queryClient = useQueryClient();
   const workspaceQuery = useQuery({
     queryKey: ["workspace", projectId],
     queryFn: () => getProjectWorkspace(projectId),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
   });
+
+  useEffect(() => {
+    if (!projectId || typeof (supabase as any).channel !== "function") {
+      return;
+    }
+
+    const invalidateWorkspace = () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspace", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["review-queue", projectId] });
+    };
+
+    const channel = (supabase as any)
+      .channel(`tracknov-react-workspace-${projectId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_document", filter: `project_id=eq.${projectId}` }, invalidateWorkspace)
+      .on("postgres_changes", { event: "*", schema: "public", table: "document_reviews", filter: `project_id=eq.${projectId}` }, invalidateWorkspace)
+      .on("postgres_changes", { event: "*", schema: "public", table: "assignments", filter: `project_id=eq.${projectId}` }, invalidateWorkspace)
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_credits", filter: `project_id=eq.${projectId}` }, invalidateWorkspace)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `project_id=eq.${projectId}` }, invalidateWorkspace);
+
+    channel.subscribe();
+
+    return () => {
+      if (typeof (supabase as any).removeChannel === "function") {
+        void (supabase as any).removeChannel(channel);
+      } else if (typeof channel.unsubscribe === "function") {
+        void channel.unsubscribe();
+      }
+    };
+  }, [projectId, queryClient]);
+
+  useEffect(() => {
+    const nextRole = queryClient.getQueryData<ProjectWorkspace>(["workspace", projectId])?.userRole;
+    if (typeof window !== "undefined" && nextRole) {
+      window.sessionStorage.setItem("tracknov_workspace_role", String(nextRole || "").toLowerCase());
+    }
+  }, [projectId, queryClient, workspaceQuery.data?.userRole]);
 
   if (workspaceQuery.isLoading) return <WorkspaceSkeleton />;
   if (workspaceQuery.error) {
@@ -1290,7 +1902,7 @@ function DefaultRoute() {
     return <div className="p-8 text-[var(--color-text-secondary)]">No projects available for this user.</div>;
   }
 
-  return <Navigate to={`/projects/${projectsQuery.data[0].id}/dashboard`} replace />;
+  return <Navigate to={`/projects/${projectsQuery.data[0].id}/my-queue`} replace />;
 }
 
 export default function App() {
@@ -1331,11 +1943,15 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={session ? <DefaultRoute /> : null} />
       <Route path="/projects/:projectId" element={session ? <WorkspaceRouteLayout /> : null}>
-        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route index element={<Navigate to="my-queue" replace />} />
         <Route path="dashboard" element={<WorkspaceRouteContent tab="dashboard" />} />
+        <Route path="my-queue" element={<WorkspaceRouteContent tab="my-queue" />} />
         <Route path="overview" element={<WorkspaceRouteContent tab="overview" />} />
         <Route path="credits" element={<WorkspaceRouteContent tab="credits" />} />
+        <Route path="reviews" element={<WorkspaceRouteContent tab="reviews" />} />
         <Route path="reviewer" element={<WorkspaceRouteContent tab="reviewer" />} />
+        <Route path="approvals" element={<WorkspaceRouteContent tab="approvals" />} />
+        <Route path="uploads" element={<WorkspaceRouteContent tab="uploads" />} />
         <Route path="documents" element={<WorkspaceRouteContent tab="documents" />} />
         <Route path="clarifications" element={<WorkspaceRouteContent tab="clarifications" />} />
         <Route path="assignments" element={<WorkspaceRouteContent tab="assignments" />} />
@@ -1343,7 +1959,7 @@ export default function App() {
         <Route path="tables" element={<WorkspaceRouteContent tab="tables" />} />
         <Route path="exports" element={<WorkspaceRouteContent tab="exports" />} />
         <Route path="settings" element={<WorkspaceRouteContent tab="settings" />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+        <Route path="*" element={<Navigate to="my-queue" replace />} />
       </Route>
       <Route path="*" element={session ? <DefaultRoute /> : null} />
     </Routes>

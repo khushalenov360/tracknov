@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { canReview, normalizeRole } from "./roles";
 
 export type CurrentUser = {
   id: string;
@@ -88,10 +89,6 @@ export type ReviewerQueueEntry = {
   remarks?: string | null;
   created_at: string;
 };
-
-function normalizeRole(role?: string | null) {
-  return String(role || "consultant");
-}
 
 function normalizeStatus(value?: string | null) {
   const raw = String(value || "").toUpperCase();
@@ -198,7 +195,7 @@ export async function getProjectWorkspace(projectId: string): Promise<ProjectWor
     return null;
   }
 
-  const effectiveRole = ["super_user", "super_admin", "project_admin", "L3", "L5"].includes(user.role)
+  const effectiveRole = canReview(user.role)
     ? user.role
     : normalizeRole(membership.role);
 

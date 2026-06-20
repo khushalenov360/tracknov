@@ -4,8 +4,10 @@ import cors from 'cors';
 import { createClient as createSupabaseClient } from "./lib/supabase/server";
 import { runWithSupabaseAccessToken } from "./lib/supabase/request-auth";
 import { documentService } from "./lib/harita-engine/services/document-service";
+import { reviewService, WorkflowTransitionError } from "./lib/harita-engine/services/review-service";
 import { DocumentParser } from "./lib/harita-engine/document-intelligence/DocumentParser";
 import { DocumentClassifier } from "./lib/harita-engine/document-intelligence/DocumentClassifier";
+import { workflowStateRenderer } from "./lib/core/workflow/state-renderer";
 import type { CurrentUser } from "./lib/types";
 
 const app = express();
@@ -147,6 +149,292 @@ function hasComplianceSignals(text: string, evidenceType: string) {
 
   return COMPLIANCE_SIGNAL_PATTERNS.some((pattern) => pattern.test(text));
 }
+
+function reviewerStatesForRole(role: string) {
+  if (["project_admin", "super_admin", "super_user", "l3", "l5"].includes(role)) {
+    return ["UNDER_L3_REVIEW", "RESUBMITTED"];
+  }
+
+  if (["owner", "l1"].includes(role)) {
+    return ["L1_REVIEW"];
+  }
+
+  return [];
+}
+
+function transitionTargetForAction(action: string) {
+  switch (action) {
+    case "approve":
+      return "APPROVED";
+    case "reject":
+      return "REJECTED";
+    case "request_clarification":
+      return "CLARIFICATION";
+    case "start_owner_review":
+      return "UNDER_REVIEW";
+    case "start_admin_review":
+      return "UNDER_L3_REVIEW";
+    case "submit":
+      return "L1_REVIEW";
+    case "resubmit":
+      return "RESUBMITTED";
+    default:
+      return null;
+  }
+}
+
+function summarizeWorkflowDocuments(documents: Array<{ workflow_state?: string | null; state?: string | null }>) {
+  const canonicalStates = documents.map((document) => workflowStateRenderer(document.workflow_state || document.state).state);
+  const approvedCount = canonicalStates.filter((state) => state === "APPROVED").length;
+  const pendingReviewCount = canonicalStates.filter((state) => ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"].includes(state)).length;
+  const clarificationCount = canonicalStates.filter((state) => ["CLARIFICATION", "REJECTED"].includes(state)).length;
+  const total = documents.length || 1;
+  const readinessPercent = Math.max(0, Math.min(100, Math.round((approvedCount / total) * 100)));
+
+  return {
+    readinessPercent,
+    approvedCount,
+    pendingReviewCount,
+    clarificationCount,
+    validationQueueCount: pendingReviewCount,
+  };
+}
+
+async function getProjectRoleForUser(client: ReturnType<typeof createSupabaseClient>, projectId: string, userId: string) {
+  const { data: membership } = await client
+    .from("project_users")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle<{ role: string | null }>();
+
+  return normalizeRole(membership?.role || "");
+}
+
+app.get("/api/workspace/:projectId/review-queue", async (req, res) => {
+  const authorization = typeof req.headers.authorization === "string" ? req.headers.authorization : "";
+  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : null;
+
+  try {
+    await runWithSupabaseAccessToken(accessToken, async () => {
+      const user = await resolveCurrentUserFromRequest();
+      if (!user) {
+        return res.status(401).json({ ok: false, error: "Session expired." });
+      }
+
+      const projectId = String(req.params.projectId || "").trim();
+      if (!projectId) {
+        return res.status(400).json({ ok: false, error: "Project id is required." });
+      }
+
+      const client = createSupabaseClient();
+      const projectRole = await getProjectRoleForUser(client, projectId, user.id);
+      const effectiveRole = ["super_user", "super_admin", "project_admin", "l3", "l5"].includes(normalizeRole(user.role))
+        ? normalizeRole(user.role)
+        : projectRole;
+      const reviewStates = reviewerStatesForRole(effectiveRole);
+
+      if (!reviewStates.length) {
+        return res.status(403).json({ ok: false, error: "Reviewer queue is restricted to reviewer roles." });
+      }
+
+      const { data: documents, error } = await client
+        .from("project_document")
+        .select("id, project_id, project_credit_id, credit_id, submittal_id, uploaded_by, file_name, uploaded_at, notes, doc_category, state, workflow_state, rejection_reason")
+        .eq("project_id", projectId)
+        .in("workflow_state", reviewStates)
+        .neq("uploaded_by", user.id)
+        .order("uploaded_at", { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const rows = documents ?? [];
+      const creditIds = Array.from(new Set(rows.map((row: any) => row.project_credit_id || row.credit_id).filter(Boolean)));
+      const uploaderIds = Array.from(new Set(rows.map((row: any) => row.uploaded_by).filter(Boolean)));
+
+      const [{ data: credits }, { data: profiles }] = await Promise.all([
+        creditIds.length
+          ? client.from("project_credits").select("id, credit_code, credit_name, category, is_mandatory").in("id", creditIds)
+          : Promise.resolve({ data: [] as any[] }),
+        uploaderIds.length
+          ? client.from("profiles").select("user_id, full_name, email").in("user_id", uploaderIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const creditsById = new Map((credits ?? []).map((credit: any) => [credit.id, credit]));
+      const profilesById = new Map((profiles ?? []).map((profile: any) => [profile.user_id, profile]));
+
+      const items = rows.map((row: any) => {
+        const credit = creditsById.get(row.project_credit_id || row.credit_id);
+        const profile = profilesById.get(row.uploaded_by);
+        const rendered = workflowStateRenderer(row.workflow_state || row.state);
+        const uploaderName = profile?.full_name || profile?.email || "Contributor";
+
+        return {
+          id: row.id,
+          projectId: row.project_id,
+          projectCreditId: row.project_credit_id || row.credit_id || null,
+          submittalId: row.submittal_id || null,
+          creditCode: credit?.credit_code || "REVIEW",
+          creditName: credit?.credit_name || "Evidence Document",
+          creditCategory: credit?.category || null,
+          isMandatory: Boolean(credit?.is_mandatory),
+          fileName: row.file_name,
+          docCategory: row.doc_category || "Document",
+          uploadedAt: row.uploaded_at,
+          uploadedByName: uploaderName,
+          workflowState: rendered.state,
+          workflowLabel: rendered.label,
+          allowedActions: rendered.allowedActions,
+          lockState: {
+            locked: rendered.locked,
+            reason: rendered.blocker,
+          },
+          remarks: row.rejection_reason || row.notes || "",
+        };
+      });
+
+      return res.status(200).json({ ok: true, items });
+    });
+  } catch (error: any) {
+    console.error("[TRACKNOV SERVER] Review queue failed:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to load review queue.",
+    });
+  }
+});
+
+app.get("/api/workspace/:projectId/ops-summary", async (req, res) => {
+  const authorization = typeof req.headers.authorization === "string" ? req.headers.authorization : "";
+  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : null;
+
+  try {
+    await runWithSupabaseAccessToken(accessToken, async () => {
+      const user = await resolveCurrentUserFromRequest();
+      if (!user) {
+        return res.status(401).json({ ok: false, error: "Session expired." });
+      }
+
+      const projectId = String(req.params.projectId || "").trim();
+      if (!projectId) {
+        return res.status(400).json({ ok: false, error: "Project id is required." });
+      }
+
+      const client = createSupabaseClient();
+      const projectRole = await getProjectRoleForUser(client, projectId, user.id);
+      const effectiveRole = ["super_user", "super_admin", "project_admin", "l3", "l5"].includes(normalizeRole(user.role))
+        ? normalizeRole(user.role)
+        : projectRole;
+
+      if (!["project_admin", "super_admin", "super_user", "l3", "l5"].includes(effectiveRole)) {
+        return res.status(403).json({ ok: false, error: "Ops summary is restricted to reviewer roles." });
+      }
+
+      const [{ data: documents, error: documentsError }, { data: credits, error: creditsError }] = await Promise.all([
+        client
+          .from("project_document")
+          .select("workflow_state, state")
+          .eq("project_id", projectId),
+        client
+          .from("project_credits")
+          .select("is_mandatory")
+          .eq("project_id", projectId),
+      ]);
+
+      if (documentsError) {
+        throw documentsError;
+      }
+
+      if (creditsError) {
+        throw creditsError;
+      }
+
+      const workflowSummary = summarizeWorkflowDocuments((documents ?? []) as Array<{ workflow_state?: string | null; state?: string | null }>);
+      const mandatoryCreditsCount = (credits ?? []).filter((credit: any) => Boolean(credit.is_mandatory)).length;
+
+      return res.status(200).json({
+        ok: true,
+        summary: {
+          ...workflowSummary,
+          mandatoryCreditsCount,
+        },
+      });
+    });
+  } catch (error: any) {
+    console.error("[TRACKNOV SERVER] Ops summary failed:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to load workspace ops summary.",
+    });
+  }
+});
+
+app.post("/api/workspace/:projectId/review-queue/:documentId/transition", async (req, res) => {
+  const authorization = typeof req.headers.authorization === "string" ? req.headers.authorization : "";
+  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : null;
+
+  try {
+    await runWithSupabaseAccessToken(accessToken, async () => {
+      const user = await resolveCurrentUserFromRequest();
+      if (!user) {
+        return res.status(401).json({ ok: false, error: "Session expired." });
+      }
+
+      const projectId = String(req.params.projectId || "").trim();
+      const documentId = String(req.params.documentId || "").trim();
+      const action = String(req.body?.action || "").trim();
+      const remarks = typeof req.body?.remarks === "string" ? req.body.remarks : null;
+
+      if (!projectId || !documentId || !action) {
+        return res.status(400).json({ ok: false, error: "Project, document, and action are required." });
+      }
+
+      const targetState = transitionTargetForAction(action);
+      if (!targetState) {
+        return res.status(400).json({ ok: false, error: "Unsupported review action." });
+      }
+
+      try {
+        const result = await reviewService.transitionDocument(user, {
+          documentId,
+          projectId,
+          newState: targetState,
+          remarks,
+          idempotencyKey: `react-review-${projectId}-${documentId}-${action}-${Date.now()}`,
+        });
+
+        return res.status(200).json({
+          ok: true,
+          workflowState: result.workflow_state ?? targetState,
+          allowedActions: result.allowed_actions ?? [],
+        });
+      } catch (error: any) {
+        if (error instanceof WorkflowTransitionError) {
+          const transition = error.transition;
+          const statusCode = transition.status === "workflow_failed" || transition.status === "lock_violation" ? 409 : 403;
+          return res.status(statusCode).json({
+            ok: false,
+            error: transition.message || "Failed to transition review item.",
+            workflowState: transition.workflow_state ?? null,
+            allowedActions: transition.allowed_actions ?? [],
+            status: transition.status ?? "workflow_failed",
+          });
+        }
+
+        throw error;
+      }
+    });
+  } catch (error: any) {
+    console.error("[TRACKNOV SERVER] Review transition failed:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to transition review item.",
+    });
+  }
+});
 
 app.post("/api/assistant/attachment-prepare", express.raw({ type: () => true, limit: "60mb" }), async (req, res) => {
   const authorization = typeof req.headers.authorization === "string" ? req.headers.authorization : "";

@@ -4,8 +4,8 @@ dotenv.config({ path: '.env.local' });
 const http = require('http');
 const fs = require('fs');
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabase = createClient(supabaseUrl, process.env.VITE_SUPABASE_ANON_KEY);
 
 async function run() {
   const { data: auth, error: authErr } = await supabase.auth.signInWithPassword({

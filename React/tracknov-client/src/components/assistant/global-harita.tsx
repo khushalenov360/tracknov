@@ -60,6 +60,13 @@ type Message = {
   meta?: HaritaResponseMeta;
 };
 
+type PersistedHaritaSession = {
+  messages: Message[];
+  input: string;
+  selectedEvaluationCreditCode: string | null;
+  pendingRetryMessage: string | null;
+};
+
 const STARTER_PROMPTS = [
   "What should we prioritize next?",
   "Show the biggest project blockers",
@@ -85,6 +92,10 @@ function buildAttachmentModeNote(targetCreditCode?: string | null) {
   }
 
   return "Conversation analysis only. This file is not uploaded into the project tracker until you click an explicit workflow action.";
+}
+
+function buildHaritaSessionKey(projectId?: string, title?: string) {
+  return `tracknov-harita-session::${projectId || title || "global"}`;
 }
 
 export function GlobalHarita({
@@ -127,6 +138,7 @@ export function GlobalHarita({
     [description, projectId, title],
   );
   const projectLabel = title?.trim() || "this project";
+  const sessionStorageKey = useMemo(() => buildHaritaSessionKey(projectId, title), [projectId, title]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -153,16 +165,58 @@ export function GlobalHarita({
   }, []);
 
   useEffect(() => {
-    setInput("");
-    setMessages([]);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const raw = window.sessionStorage.getItem(sessionStorageKey);
+    if (!raw) {
+      setInput("");
+      setMessages([]);
+      setSystemError(null);
+      setPendingRetryMessage(null);
+      setAttachedFile(null);
+      setPreparedAttachment(null);
+      setSelectedEvaluationCreditCode(null);
+      setIsPreparingAttachment(false);
+      setIsCommittingEvidence(false);
+      return;
+    }
+
+    try {
+      const saved = JSON.parse(raw) as PersistedHaritaSession;
+      setInput(saved.input || "");
+      setMessages(Array.isArray(saved.messages) ? saved.messages : []);
+      setPendingRetryMessage(saved.pendingRetryMessage || null);
+      setSelectedEvaluationCreditCode(saved.selectedEvaluationCreditCode || null);
+    } catch {
+      window.sessionStorage.removeItem(sessionStorageKey);
+      setInput("");
+      setMessages([]);
+      setPendingRetryMessage(null);
+      setSelectedEvaluationCreditCode(null);
+    }
+
     setSystemError(null);
-    setPendingRetryMessage(null);
     setAttachedFile(null);
     setPreparedAttachment(null);
-    setSelectedEvaluationCreditCode(null);
     setIsPreparingAttachment(false);
     setIsCommittingEvidence(false);
-  }, [projectId, title, description]);
+  }, [sessionStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const payload: PersistedHaritaSession = {
+      messages,
+      input,
+      selectedEvaluationCreditCode,
+      pendingRetryMessage,
+    };
+    window.sessionStorage.setItem(sessionStorageKey, JSON.stringify(payload));
+  }, [input, messages, pendingRetryMessage, selectedEvaluationCreditCode, sessionStorageKey]);
 
   const showWelcomeState = messages.length === 0 && !systemError;
 
@@ -425,6 +479,10 @@ export function GlobalHarita({
     }
   };
 
+  const composerPlaceholder = attachedFile
+    ? `Ask Harita about ${attachedFile.name} in ${projectLabel}...`
+    : `Ask Harita about ${projectLabel}...`;
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#21283a_0%,#171c24_26%,#161B22_58%,#151922_100%)]">
       <div className="shrink-0 border-b border-[var(--color-border)]/80 bg-[linear-gradient(180deg,rgba(28,33,40,0.96)_0%,rgba(22,27,34,0.92)_100%)] px-5 py-4 backdrop-blur-xl">
@@ -557,7 +615,7 @@ export function GlobalHarita({
                   <Loader2 className="h-4 w-4 animate-spin text-[var(--color-text-primary)]" />
                 </div>
                 <div className="rounded-[26px] rounded-bl-[12px] border border-[var(--color-border)]/80 bg-[linear-gradient(180deg,rgba(31,37,46,0.96)_0%,rgba(24,29,38,0.98)_100%)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                  <span className="animate-pulse">Harita is analyzing the current project context...</span>
+                  <span className="animate-pulse">Harita is working...</span>
                 </div>
               </div>
             ) : null}
@@ -633,7 +691,7 @@ export function GlobalHarita({
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Ask Harita about ${projectLabel}...`}
+              placeholder={composerPlaceholder}
               className="min-h-[44px] max-h-32 w-full resize-none border-0 bg-transparent pr-1 pt-1 text-[14px] leading-6 text-[var(--color-text-primary)] outline-none shadow-none ring-0 placeholder:text-[var(--color-text-tertiary)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none focus-visible:outline-none focus-visible:ring-0"
               rows={1}
               disabled={composerLocked}

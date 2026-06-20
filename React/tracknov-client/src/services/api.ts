@@ -85,6 +85,38 @@ export type HaritaResponseMeta = {
   actions?: HaritaActionButton[];
 };
 
+export type ReviewQueueItem = {
+  id: string;
+  projectId: string;
+  projectCreditId?: string | null;
+  submittalId?: string | null;
+  creditCode: string;
+  creditName: string;
+  creditCategory?: string | null;
+  isMandatory: boolean;
+  fileName: string;
+  docCategory: string;
+  uploadedAt?: string | null;
+  uploadedByName: string;
+  workflowState: string;
+  workflowLabel: string;
+  allowedActions: string[];
+  lockState: {
+    locked: boolean;
+    reason?: string | null;
+  };
+  remarks?: string;
+};
+
+export type WorkspaceOpsSummary = {
+  readinessPercent: number;
+  approvedCount: number;
+  pendingReviewCount: number;
+  clarificationCount: number;
+  mandatoryCreditsCount: number;
+  validationQueueCount: number;
+};
+
 type HaritaStreamCallbacks = {
   onReady?: () => void;
   onStatus?: (status: HaritaStatus) => void;
@@ -211,6 +243,90 @@ export async function uploadCreditEvidence(
   }
 
   return payload;
+}
+
+export async function fetchReviewQueue(projectId: string): Promise<ReviewQueueItem[]> {
+  const token = await getAuthToken();
+  const response = await fetch(`${TRACKNOV_SERVER_BASE_URL}/api/workspace/${projectId}/review-queue`, {
+    method: "GET",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    items?: ReviewQueueItem[];
+    error?: string;
+  };
+
+  if (!response.ok || !payload.ok) {
+    const error = new Error(payload.error || "Failed to load review queue.") as HaritaApiError;
+    error.retryable = true;
+    throw error;
+  }
+
+  return payload.items ?? [];
+}
+
+export async function fetchWorkspaceOpsSummary(projectId: string): Promise<WorkspaceOpsSummary> {
+  const token = await getAuthToken();
+  const response = await fetch(`${TRACKNOV_SERVER_BASE_URL}/api/workspace/${projectId}/ops-summary`, {
+    method: "GET",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    summary?: WorkspaceOpsSummary;
+    error?: string;
+  };
+
+  if (!response.ok || !payload.ok || !payload.summary) {
+    const error = new Error(payload.error || "Failed to load workspace ops summary.") as HaritaApiError;
+    error.retryable = true;
+    throw error;
+  }
+
+  return payload.summary;
+}
+
+export async function transitionReviewQueueItem(
+  projectId: string,
+  documentId: string,
+  action: string,
+  remarks?: string | null,
+): Promise<{ ok: true; workflowState: string }> {
+  const token = await getAuthToken();
+  const response = await fetch(`${TRACKNOV_SERVER_BASE_URL}/api/workspace/${projectId}/review-queue/${documentId}/transition`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ action, remarks: remarks ?? null }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    workflowState?: string;
+    allowedActions?: string[];
+    error?: string;
+  };
+
+  if (!response.ok || !payload.ok || !payload.workflowState) {
+    const error = new Error(payload.error || "Failed to execute review action.") as HaritaApiError;
+    error.retryable = true;
+    if (response.status === 409) {
+      error.code = "workflow_conflict";
+      (error as HaritaApiError & { workflowState?: string; allowedActions?: string[] }).workflowState = payload.workflowState;
+      (error as HaritaApiError & { workflowState?: string; allowedActions?: string[] }).allowedActions = payload.allowedActions ?? [];
+    }
+    throw error;
+  }
+
+  return {
+    ok: true,
+    workflowState: payload.workflowState,
+  };
 }
 
 export async function streamHaritaMessage(

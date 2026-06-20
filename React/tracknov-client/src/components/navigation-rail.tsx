@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { 
   LayoutDashboard, 
-  FolderKanban, 
+  FolderKanban,
   ListChecks, 
   Inbox, 
   BarChart3, 
@@ -10,8 +10,11 @@ import {
   Pin,
   PinOff,
   Bot,
-  Users
+  Users,
+  ClipboardList,
+  CheckCheck
 } from "lucide-react";
+import { isProjectAdminRole, normalizeRole } from "../lib/roles";
 
 export function NavigationRail() {
   const location = useLocation();
@@ -20,6 +23,7 @@ export function NavigationRail() {
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [projectAdminMode, setProjectAdminMode] = useState(false);
   const projectId = params.projectId;
   const projectBase = projectId ? `/projects/${projectId}` : "/";
 
@@ -30,6 +34,11 @@ export function NavigationRail() {
       setIsPinned(true);
     }
   }, []);
+
+  useEffect(() => {
+    const role = typeof window !== "undefined" ? window.sessionStorage.getItem("tracknov_workspace_role") : null;
+    setProjectAdminMode(isProjectAdminRole(normalizeRole(role)));
+  }, [pathname]);
 
   const togglePin = () => {
     const newPinned = !isPinned;
@@ -50,10 +59,26 @@ export function NavigationRail() {
       ];
     }
 
+    if (projectAdminMode) {
+      return [
+        { label: "My Queue", icon: ClipboardList, href: `${projectBase}/my-queue` },
+        { label: "Dashboard", icon: LayoutDashboard, href: `${projectBase}/dashboard` },
+        { label: "Reviews", icon: ListChecks, href: `${projectBase}/reviews` },
+        { label: "Approvals", icon: CheckCheck, href: `${projectBase}/approvals` },
+        { label: "Clarifications", icon: ListChecks, href: `${projectBase}/clarifications` },
+        { label: "Assignments", icon: Users, href: `${projectBase}/assignments` },
+        { label: "Settings", icon: Settings, href: `${projectBase}/settings` },
+      ];
+    }
+
     return [
       { label: "Dashboard", icon: LayoutDashboard, href: `${projectBase}/dashboard` },
+      { label: "My Queue", icon: ClipboardList, href: `${projectBase}/my-queue` },
+      { label: "Reviews", icon: ListChecks, href: `${projectBase}/reviews` },
+      { label: "Uploads", icon: Inbox, href: `${projectBase}/uploads` },
       { label: "Credits", icon: FolderKanban, href: `${projectBase}/credits` },
       { label: "Documents", icon: Inbox, href: `${projectBase}/documents` },
+      { label: "Approvals", icon: CheckCheck, href: `${projectBase}/approvals` },
       { label: "Clarifications", icon: ListChecks, href: `${projectBase}/clarifications` },
       { label: "Assignments", icon: Users, href: `${projectBase}/assignments` },
       { label: "Team", icon: Users, href: `${projectBase}/team` },
@@ -61,7 +86,7 @@ export function NavigationRail() {
       { label: "Exports", icon: Inbox, href: `${projectBase}/exports` },
       { label: "Settings", icon: Settings, href: `${projectBase}/settings` },
     ];
-  }, [projectBase, projectId]);
+  }, [projectAdminMode, projectBase, projectId]);
 
   if (!mounted) return <div className="hidden lg:flex w-[72px] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] h-screen" />;
 
@@ -136,13 +161,17 @@ export function NavigationRail() {
 
       {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex justify-around items-center px-4 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <Link to={projectId ? `${projectBase}/my-queue` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
+          <ClipboardList className="h-5 w-5" />
+          <span className="text-xs font-semibold">Queue</span>
+        </Link>
+        <Link to={projectId ? `${projectBase}/reviews` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
+          <ListChecks className="h-5 w-5" />
+          <span className="text-xs font-semibold">Reviews</span>
+        </Link>
         <Link to={projectId ? `${projectBase}/dashboard` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <LayoutDashboard className="h-5 w-5" />
           <span className="text-xs font-semibold">Home</span>
-        </Link>
-        <Link to={projectId ? `${projectBase}/documents` : "/"} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
-          <Inbox className="h-5 w-5" />
-          <span className="text-xs font-semibold">Docs</span>
         </Link>
         <button onClick={() => window.dispatchEvent(new Event('toggle-mobile-harita'))} className="flex flex-col items-center gap-1 text-[var(--color-text-secondary)] hover:text-[var(--color-green)]">
           <Bot className="h-5 w-5 text-[var(--color-green)]" />

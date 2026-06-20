@@ -1,0 +1,1512 @@
+
+> tracknov-server@1.0.0 dev
+> tsx watch --tsconfig tsconfig.json src/index.ts
+
+1:20:55 am [tsx] change in ./src\index.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+[HARITA ENGINE] Received message: hi
+[HARITA ENGINE] Received message: what can u do
+[route.ts] Calling assembleRuntimeContext with focusedProjectId: 1fabd316-6d0f-4de3-a149-7e23c528aab9
+[assembleRuntimeContext] Authenticated user: khush@enov360.com 81e20209-8a9b-4922-a319-989a4891e4eb
+[assembleRuntimeContext] Found projectIds: [
+  '43e52562-067a-4db9-a491-d4128048b735',
+  '1fabd316-6d0f-4de3-a149-7e23c528aab9'
+]
+=== AI SNAPSHOT PREVIEW ===
+
+=== CURRENT PROJECT STATE ===
+Project: Bhavarkua
+State: active | Certification: IGBC Green Interiors | Client: SFIL | Location: Indore
+
+Credits Loaded: 36
+Active: 36 (In Progress: 35, Completed: 0, Blocked: 0, Draft: 0)
+Not Required / Not Applicable: 0 (None)
+
+Assignments:
+EDA C1 | Eco Vision for Interior Design | status=IN_PROGRESS | completion=12.5% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C2 | Optimise Circulation Spaces | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C4 | 10:13:44 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewerPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:13:54 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\plannerPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:02 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\executorPersona.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:15 am [tsx] change in ./src\lib\harita-engine\assistant.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:58 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewer.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:37 am [tsx] change in ./src\lib\harita-engine\lib\runtime\runtime-context-assembler.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:48 am [tsx] change in ./src\lib\harita-engine\services\harita-governance.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:28:55 am [tsx] change in ./src\lib\env.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:29:06 am [tsx] change in ./src\lib\harita-engine\assistant\llm-streamer.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C5 | Embodied Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C1 | Enchanced Fresh Air Ventilation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C10 | Low-Emitting Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C11 | Indoor Air Quality Management, During Installation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C2 | Daylighting | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoi10:13:44 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewerPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:13:54 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\plannerPersona.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:02 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\executorPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:15 am [tsx] change in ./src\lib\harita-engine\assistant.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:58 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewer.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:37 am [tsx] change in ./src\lib\harita-engine\lib\runtime\runtime-context-assembler.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:48 am [tsx] change in ./src\lib\harita-engine\services\harita-governance.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:28:55 am [tsx] change in ./src\lib\env.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:29:06 am [tsx] change in ./src\lib\harita-engine\assistant\llm-streamer.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+[HARITA ENGINE] Received message: hi
+[HARITA ENGINE] Received message: how
+[route.ts] Calling assembleRuntimeContext with focusedProjectId: 1fabd316-6d0f-4de3-a149-7e23c528aab9
+[assembleRuntimeContext] Authenticated user: khush@enov360.com 81e20209-8a9b-4922-a319-989a4891e4eb
+[assembleRuntimeContext] Found projectIds: [
+  '43e52562-067a-4db9-a491-d4128048b735',
+  '1fabd316-6d0f-4de3-a149-7e23c528aab9'
+]
+=== AI SNAPSHOT PREVIEW ===
+<project_database_current_state>
+Project: Bhavarkua
+State: active | Certification: IGBC Green Interiors | Client: SFIL | Location: Indore
+Credits Loaded: 36
+Active: 36 (In Progress: 35, Completed: 0, Blocked: 0, Draft: 0)
+Not Required / Not Applicable: 0 (None)
+</project_database_current_state>
+
+<authoritative_igbc_guidebook_rules>
+IGBC_Green_Interiors_Reference_Guide_2021_(with_Addendum) | uploaded_at=2026-05-27T06:06:32.33238+00:00
+</authoritative_igbc_guidebook_rules>
+
+<uploaded_document_variables>
+Uploaded: 0 | Pending Review: 0 | Approved: 0
+Recent files: none
+</uploaded_document_variables>
+
+<project_credit_execution_matrix>
+Assignments:
+EDA C1 | Eco Vision for Interior Design | status=IN_PROGRESS | completion=12.5% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C2 | Optimise Circulation Spaces | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C4 | Occupancy in a Green Facility | status=IN_PROGRESS | completion=10% -> Project Manager (Single Owner)
+EDA C5 | Commercial Lease Term / Ownership | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EE C1 | Eco-friendly Refrigerants & Halons | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: MEPCON
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C2 | Energy Efficient Interiors | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C3 | Energy Metering & Management | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C4 | On-site /Off-site Renewable Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C5 | Embodied Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C1 | Enchanced Fresh Air Ventilation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C10 | Low-Emitting Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C11 | Indoor Air Quality Management, During Installation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C2 | Daylighting | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C3 | Thermal Comfort | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: MEPCON
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C4 | Ergonomic Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C5 | Air Quality Monitoring | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C6 | Indoor Plants | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Project Manager
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: Project Manager
+IE C7 | Material Acoustic performance | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C8 | Outdoor Views | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C9 | Minimise Indoor Pollutant Contamination | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE MR1 | Tobacco Smoke Pollution | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE MR2 | null | status=NOT_STARTED | completion=0% -> UNASSIGNED (Single Owner)
+IID C1 (Credit 1.1) | Innovation in Interior Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Project Manager
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C2 | IGBC Accredited Professional | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Deepa
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: Unassigned
+IM C1 | Waste Management (During Installation of Interior fit-out) | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IM C2 | Local Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: contractor
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C3 | Recycled Content Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C5 | Salvaged Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: contractor
+  - Pic/Video: contractor
+IM C6 | Reuse of materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C7 | Eco Friendly Wood Based Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: MEPCON
+IM MR1 | Segregation of Waste, Post Occupancy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+WC C1 | Water Efficient Fixtures | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+Submission readiness:
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C1
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C2
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C4
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+Certification strategy:
+
+[CERTIFICATION STRATEGY ENGINE]
+Current Achievable Score: 0
+Total Possible Score: 100
+Blocked Points (High Risk): 0
+Fastest Route to Gold (60 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6
+Fastest Route to Platinum (80 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6, IE C7, IM C1, IM C7, EDA C1, EDA C2, EDA C5, IE C1, IE C11
+High Risk Credits: None
+Highest ROI Credits: WC C1 (80% prob), EE C2 (80% prob), EE C4 (80% prob)
+
+Full credit status matrix:
+(All 36 credits loaded. NA=Not Required/Not Applicable for this project.)
+CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%
+EDA C1 | Eco Vision for Interior Design | IN_PROGRESS | 2 | NO | 12.5%
+EDA C2 | Optimise Circulation Spaces | IN_PROGRESS | 2 | NO | 10%
+EDA C4 | Occupancy in a Green Facility | IN_PROGRESS | 1 | NO | 10%
+EDA C5 | Commercial Lease Term / Ownership | IN_PROGRESS | 2 | NO | 10%
+EE C1 | Eco-friendly Refrigerants & Halons | IN_PROGRESS | 1 | NO | 10%
+EE C2 | Energy Efficient Interiors | IN_PROGRESS | 10 | NO | 10%
+EE C3 | Energy Metering & Management | IN_PROGRESS | 4 | NO | 10%
+EE C4 | On-site /Off-site Renewable Energy | IN_PROGRESS | 6 | NO | 10%
+EE C5 | Embodied Energy | IN_PROGRESS | 1 | NO | 10%
+IE C1 | Enchanced Fresh Air Ventilation | IN_PROGRESS | 2 | NO | 10%
+IE C10 | Low-Emitting Materials | IN_PROGRESS | 4 | NO | 10%
+IE C11 | Indoor Air Quality Management, During Installation | IN_PROGRESS | 2 | NO | 10%
+IE C2 | Daylighting | IN_PROGRESS | 4 | NO | 10%
+IE C3 | Thermal Comfort | IN_PROGRESS | 1 | NO | 10%
+IE C4 | Ergonomic Design | IN_PROGRESS | 2 | NO | 10%
+IE C5 | Air Quality Monitoring | IN_PROGRESS | 2 | NO | 10%
+IE C6 | Indoor Plants | IN_PROGRESS | 2 | NO | 10%
+IE C7 | Material Acoustic performance | IN_PROGRESS | 3 | NO | 10%
+IE C8 | Outdoor Views | IN_PROGRESS | 4 | NO | 10%
+IE C9 | Minimise Indoor Pollutant Contamination | IN_PROGRESS | 2 | NO | 10%
+IE MR1 | Tobacco Smoke Pollution | IN_PROGRESS | 0 | NO | 10%
+IE MR2 |  | NOT_STARTED | 0 | NO | 0%
+IID C1 (Credit 1.1) | Innovation in Interior Design | IN_PROGRESS | 1 | NO | 10%
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C2 | IGBC Accredited Professional | IN_PROGRESS | 1 | NO | 10%
+IM C1 | Waste Management (During Installation of Interior fit-out) | IN_PROGRESS | 3 | NO | 10%
+IM C2 | Local Materials | IN_PROGRESS | 4 | NO | 10%
+IM C3 | Recycled Content Materials | IN_PROGRESS | 4 | NO | 10%
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | IN_PROGRESS | 2 | NO | 10%
+IM C5 | Salvaged Materials | IN_PROGRESS | 6 | NO | 10%
+IM C6 | Reuse of materials | IN_PROGRESS | 4 | NO | 10%
+IM C7 | Eco Friendly Wood Based Materials | IN_PROGRESS | 3 | NO | 10%
+IM MR1 | Segregation of Waste, Post Occupancy | IN_PROGRESS | 0 | NO | 10%
+WC C1 | Water Efficient Fixtures | IN_PROGRESS | 12 | NO | 10%
+</project_credit_execution_matrix>
+===========================
+contractor
+IE C9 | Minimise Indoor Pollutant Contamination | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE MR1 | Tobacco Smoke Pollution | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE MR2 | null | status=NOT_STARTED | completion=0% -> UNASSIGNED (Single Owner)
+IID C1 (Credit 1.1) | Innovation in Interior Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Project Manager
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C2 | IGBC Accredited Professional | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Deepa
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: Unassigned
+IM C1 | Waste Management (During Installation of Interior fit-out) | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IM C2 | Local Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: contractor
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C3 | Recycled Content Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C5 | Salvaged Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: contractor
+  - Pic/Video: contractor
+IM C6 | Reuse of materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C7 | Eco Friendly Wood Based Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: MEPCON
+IM MR1 | Segregation of Waste, Post Occupancy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+WC C1 | Water Efficient Fixtures | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+
+--- DOCUMENTS ---
+Uploaded: 0 | Pending Review: 0 | Approved: 0
+Recent files: none
+
+--- SUBMISSION READINESS ---
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C1
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C2
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C4
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+--- CERTIFICATION STRATEGY ---
+
+[CERTIFICATION STRATEGY ENGINE]
+Current Achievable Score: 0
+Total Possible Score: 100
+Blocked Points (High Risk): 0
+Fastest Route to Gold (60 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6
+Fastest Route to Platinum (80 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6, IE C7, IM C1, IM C7, EDA C1, EDA C2, EDA C5, IE C1, IE C11
+High Risk Credits: None
+Highest ROI Credits: WC C1 (80% prob), EE C2 (80% prob), EE C4 (80% prob)
+
+
+--- FULL CREDIT STATUS MATRIX ---
+(All 36 credits loaded. NA=Not Required/Not Applicable for this project.)
+CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%
+EDA C1 | Eco Vision for Interior Design | IN_PROGRESS | 2 | NO | 12.5%
+EDA C2 | Optimise Circulation Spaces | IN_PROGRESS | 2 | NO | 10%
+EDA C4 | Occupancy in a Green Facility | IN_PROGRESS | 1 | NO | 10%
+EDA C5 | Commercial Lease Term / Ownership | IN_PROGRESS | 2 | NO | 10%
+EE C1 | Eco-friendly Refrigerants & Halons | IN_PROGRESS | 1 | NO | 10%
+EE C2 | Energy Efficient Interiors | IN_PROGRESS | 10 | NO | 10%
+EE C3 | Energy Metering & Management | IN_PROGRESS | 4 | NO | 10%
+EE C4 | On-site /Off-site Renewable Energy | IN_PROGRESS | 6 | NO | 10%
+EE C5 | Embodied Energy | IN_PROGRESS | 1 | NO | 10%
+IE C1 | Enchanced Fresh Air Ventilation | IN_PROGRESS | 2 | NO | 10%
+IE C10 | Low-Emitting Materials | IN_PROGRESS | 4 | NO | 10%
+IE C11 | Indoor Air Quality Management, During Installation | IN_PROGRESS | 2 | NO | 10%
+IE C2 | Daylighting | IN_PROGRESS | 4 | NO | 10%
+IE C3 | Thermal Comfort | IN_PROGRESS | 1 | NO | 10%
+IE C4 | Ergonomic Design | IN_PROGRESS | 2 | NO | 10%
+IE C5 | Air Quality Monitoring | IN_PROGRESS | 2 | NO | 10%
+IE C6 | Indoor Plants | IN_PROGRESS | 2 | NO | 10%
+IE C7 | Material Acoustic performance | IN_PROGRESS | 3 | NO | 10%
+IE C8 | Outdoor Views | IN_PROGRESS | 4 | NO | 10%
+IE C9 | Minimise Indoor Pollutant Contamination | IN_PROGRESS | 2 | NO | 10%
+IE MR1 | Tobacco Smoke Pollution | IN_PROGRESS | 0 | NO | 10%
+IE MR2 |  | NOT_STARTED | 0 | NO | 0%
+IID C1 (Credit 1.1) | Innovation in Interior Design | IN_PROGRESS | 1 | NO | 10%
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C2 | IGBC Accredited Professional | IN_PROGRESS | 1 | NO | 10%
+IM C1 | Waste Management (During Installation of Interior fit-out) | IN_PROGRESS | 3 | NO | 10%
+IM C2 | Local Materials | IN_PROGRESS | 4 | NO | 10%
+IM C3 | Recycled Content Materials | IN_PROGRESS | 4 | NO | 10%
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | IN_PROGRESS | 2 | NO | 10%
+IM C5 | Salvaged Materials | IN_PROGRESS | 6 | NO | 10%
+IM C6 | Reuse of materials | IN_PROGRESS | 4 | NO | 10%
+IM C7 | Eco Friendly Wood Based Materials | IN_PROGRESS | 3 | NO | 10%
+IM MR1 | Segregation of Waste, Post Occupancy | IN_PROGRESS | 0 | NO | 10%
+WC C1 | Water Efficient Fixtures | IN_PROGRESS | 12 | NO | 10%
+===========================
+10:13:44 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewerPersona.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:13:54 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\plannerPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:02 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\executorPersona.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:15 am [tsx] change in ./src\lib\harita-engine\assistant.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:14:58 am [tsx] change in ./src\lib\harita-engine\intelligence\agents\reviewer.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:37 am [tsx] change in ./src\lib\harita-engine\lib\runtime\runtime-context-assembler.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:15:48 am [tsx] change in ./src\lib\harita-engine\services\harita-governance.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+[HARITA ENGINE] Received message: hi
+[HARITA ENGINE] Received message: is it?
+[route.ts] Calling assembleRuntimeContext with focusedProjectId: 1fabd316-6d0f-4de3-a149-7e23c528aab9
+[assembleRuntimeContext] Authenticated user: khush@enov360.com 81e20209-8a9b-4922-a319-989a4891e4eb
+[assembleRuntimeContext] Found projectIds: [
+  '43e52562-067a-4db9-a491-d4128048b735',
+  '1fabd316-6d0f-4de3-a149-7e23c528aab9'
+]
+=== AI SNAPSHOT PREVIEW ===
+<project_database_current_state>
+Project: Bhavarkua
+State: active | Certification: IGBC Green Interiors | Client: SFIL | Location: Indore
+Credits Loaded: 36
+Active: 36 (In Progress: 35, Completed: 0, Blocked: 0, Draft: 0)
+Not Required / Not Applicable: 0 (None)
+</project_database_current_state>
+
+<authoritative_igbc_guidebook_rules>
+IGBC_Green_Interiors_Reference_Guide_2021_(with_Addendum) | uploaded_at=2026-05-27T06:06:32.33238+00:00
+</authoritative_igbc_guidebook_rules>
+
+<uploaded_document_variables>
+Uploaded: 0 | Pending Review: 0 | Approved: 0
+Recent files: none
+</uploaded_document_variables>
+
+<project_credit_execution_matrix>
+Assignments:
+EDA C1 | Eco Vision for Interior Design | status=IN_PROGRESS | completion=12.5% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C2 | Optimise Circulation Spaces | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C4 | Occupancy in a Green Facility | status=IN_PROGRESS | completion=10% -> Project Manager (Single Owner)
+EDA C5 | Commercial Lease Term / Ownership | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EE C1 | Eco-friendly Refrigerants & Halons | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: MEPCON
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C2 | Energy Efficient Interiors | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C3 | Energy Metering & Management | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C4 | On-site /Off-site Renewable Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C5 | Embodied Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C1 | Enchanced Fresh Air Ventilation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C10 | Low-Emitting Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C11 | Indoor Air Quality Management, During Installation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C2 | Daylighting | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C3 | Thermal Comfort | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: MEPCON
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C4 | Ergonomic Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C5 | Air Quality Monitoring | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C6 | Indoor Plants | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Project Manager
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: Project Manager
+IE C7 | Material Acoustic performance | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C8 | Outdoor Views | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C9 | Minimise Indoor Pollutant Contamination | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE MR1 | Tobacco Smoke Pollution | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE MR2 | null | status=NOT_STARTED | completion=0% -> UNASSIGNED (Single Owner)
+IID C1 (Credit 1.1) | Innovation in Interior Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Project Manager
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C2 | IGBC Accredited Professional | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Deepa
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: Unassigned
+IM C1 | Waste Management (During Installation of Interior fit-out) | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IM C2 | Local Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: contractor
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C3 | Recycled Content Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C5 | Salvaged Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: contractor
+  - Pic/Video: contractor
+IM C6 | Reuse of materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C7 | Eco Friendly Wood Based Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: MEPCON
+IM MR1 | Segregation of Waste, Post Occupancy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+WC C1 | Water Efficient Fixtures | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+Submission readiness:
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C1
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C2
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C4
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+Certification strategy:
+
+[CERTIFICATION STRATEGY ENGINE]
+Current Achievable Score: 0
+Total Possible Score: 100
+Blocked Points (High Risk): 0
+Fastest Route to Gold (60 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6
+Fastest Route to Platinum (80 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6, IE C7, IM C1, IM C7, EDA C1, EDA C2, EDA C5, IE C1, IE C11
+High Risk Credits: None
+Highest ROI Credits: WC C1 (80% prob), EE C2 (80% prob), EE C4 (80% prob)
+
+Full credit status matrix:
+(All 36 credits loaded. NA=Not Required/Not Applicable for this project.)
+CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%
+EDA C1 | Eco Vision for Interior Design | IN_PROGRESS | 2 | NO | 12.5%
+EDA C2 | Optimise Circulation Spaces | IN_PROGRESS | 2 | NO | 10%
+EDA C4 | Occupancy in a Green Facility | IN_PROGRESS | 1 | NO | 10%
+EDA C5 | Commercial Lease Term / Ownership | IN_PROGRESS | 2 | NO | 10%
+EE C1 | Eco-friendly Refrigerants & Halons | IN_PROGRESS | 1 | NO | 10%
+EE C2 | Energy Efficient Interiors | IN_PROGRESS | 10 | NO | 10%
+EE C3 | Energy Metering & Management | IN_PROGRESS | 4 | NO | 10%
+EE C4 | On-site /Off-site Renewable Energy | IN_PROGRESS | 6 | NO | 10%
+EE C5 | Embodied Energy | IN_PROGRESS | 1 | NO | 10%
+IE C1 | Enchanced Fresh Air Ventilation | IN_PROGRESS | 2 | NO | 10%
+IE C10 | Low-Emitting Materials | IN_PROGRESS | 4 | NO | 10%
+IE C11 | Indoor Air Quality Management, During Installation | IN_PROGRESS | 2 | NO | 10%
+IE C2 | Daylighting | IN_PROGRESS | 4 | NO | 10%
+IE C3 | Thermal Comfort | IN_PROGRESS | 1 | NO | 10%
+IE C4 | Ergonomic Design | IN_PROGRESS | 2 | NO | 10%
+IE C5 | Air Quality Monitoring | IN_PROGRESS | 2 | NO | 10%
+IE C6 | Indoor Plants | IN_PROGRESS | 2 | NO | 10%
+IE C7 | Material Acoustic performance | IN_PROGRESS | 3 | NO | 10%
+IE C8 | Outdoor Views | IN_PROGRESS | 4 | NO | 10%
+IE C9 | Minimise Indoor Pollutant Contamination | IN_PROGRESS | 2 | NO | 10%
+IE MR1 | Tobacco Smoke Pollution | IN_PROGRESS | 0 | NO | 10%
+IE MR2 |  | NOT_STARTED | 0 | NO | 0%
+IID C1 (Credit 1.1) | Innovation in Interior Design | IN_PROGRESS | 1 | NO | 10%
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C2 | IGBC Accredited Professional | IN_PROGRESS | 1 | NO | 10%
+IM C1 | Waste Management (During Installation of Interior fit-out) | IN_PROGRESS | 3 | NO | 10%
+IM C2 | Local Materials | IN_PROGRESS | 4 | NO | 10%
+IM C3 | Recycled Content Materials | IN_PROGRESS | 4 | NO | 10%
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | IN_PROGRESS | 2 | NO | 10%
+IM C5 | Salvaged Materials | IN_PROGRESS | 6 | NO | 10%
+IM C6 | Reuse of materials | IN_PROGRESS | 4 | NO | 10%
+IM C7 | Eco Friendly Wood Based Materials | IN_PROGRESS | 3 | NO | 10%
+IM MR1 | Segregation of Waste, Post Occupancy | IN_PROGRESS | 0 | NO | 10%
+WC C1 | Water Efficient Fixtures | IN_PROGRESS | 12 | NO | 10%
+</project_credit_execution_matrix>
+===========================
+[HARITA ENGINE] Received message: hi
+[HARITA ENGINE] Received message: how
+[route.ts] Calling assembleRuntimeContext with focusedProjectId: 1fabd316-6d0f-4de3-a149-7e23c528aab9
+[assembleRuntimeContext] Authenticated user: khush@enov360.com 81e20209-8a9b-4922-a319-989a4891e4eb
+[assembleRuntimeContext] Found projectIds: [
+  '43e52562-067a-4db9-a491-d4128048b735',
+  '1fabd316-6d0f-4de3-a149-7e23c528aab9'
+]
+=== AI SNAPSHOT PREVIEW ===
+<project_database_current_state>
+Project: Bhavarkua
+State: active | Certification: IGBC Green Interiors | Client: SFIL | Location: Indore
+Credits Loaded: 36
+Active: 36 (In Progress: 35, Completed: 0, Blocked: 0, Draft: 0)
+Not Required / Not Applicable: 0 (None)
+</project_database_current_state>
+
+<authoritative_igbc_guidebook_rules>
+IGBC_Green_Interiors_Reference_Guide_2021_(with_Addendum) | uploaded_at=2026-05-27T06:06:32.33238+00:00
+</authoritative_igbc_guidebook_rules>
+
+<uploaded_document_variables>
+Uploaded: 0 | Pending Review: 0 | Approved: 0
+Recent files: none
+</uploaded_document_variables>
+
+<project_credit_execution_matrix>
+Assignments:
+EDA C1 | Eco Vision for Interior Design | status=IN_PROGRESS | completion=12.5% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C2 | Optimise Circulation Spaces | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EDA C4 | Occupancy in a Green Facility | status=IN_PROGRESS | completion=10% -> Project Manager (Single Owner)
+EDA C5 | Commercial Lease Term / Ownership | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+EE C1 | Eco-friendly Refrigerants & Halons | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: MEPCON
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C2 | Energy Efficient Interiors | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C3 | Energy Metering & Management | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C4 | On-site /Off-site Renewable Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Project Manager
+  - Drawing: MEPCON
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+EE C5 | Embodied Energy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C1 | Enchanced Fresh Air Ventilation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C10 | Low-Emitting Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C11 | Indoor Air Quality Management, During Installation | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C2 | Daylighting | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C3 | Thermal Comfort | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: MEPCON
+  - Drawing: MEPCON
+  - Calculation & Tables: MEPCON
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C4 | Ergonomic Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C5 | Air Quality Monitoring | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C6 | Indoor Plants | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Project Manager
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: Project Manager
+IE C7 | Material Acoustic performance | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE C8 | Outdoor Views | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: architect
+  - Calculation & Tables: architect
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE C9 | Minimise Indoor Pollutant Contamination | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IE MR1 | Tobacco Smoke Pollution | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IE MR2 | null | status=NOT_STARTED | completion=0% -> UNASSIGNED (Single Owner)
+IID C1 (Credit 1.1) | Innovation in Interior Design | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Project Manager
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IID C2 | IGBC Accredited Professional | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Deepa
+  - Drawing: Unassigned
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: Unassigned
+IM C1 | Waste Management (During Installation of Interior fit-out) | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+IM C2 | Local Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: contractor
+  - Certificate/Declaration: Unassigned
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C3 | Recycled Content Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: architect
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: architect
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C5 | Salvaged Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: contractor
+  - Pic/Video: contractor
+IM C6 | Reuse of materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: contractor
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+IM C7 | Eco Friendly Wood Based Materials | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Deepa
+  - Certificate/Declaration: Project Manager
+  - Drawing: Unassigned
+  - Calculation & Tables: contractor
+  - Invoice: Project Manager
+  - Pic/Video: MEPCON
+IM MR1 | Segregation of Waste, Post Occupancy | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: Unassigned
+  - Certificate/Declaration: Project Manager
+  - Drawing: architect
+  - Calculation & Tables: Unassigned
+  - Invoice: Unassigned
+  - Pic/Video: contractor
+WC C1 | Water Efficient Fixtures | status=IN_PROGRESS | completion=10% -> MULTIPLE CONTRIBUTORS
+  - Narrative: Project Manager
+  - Tech Spec: MEPCON
+  - Certificate/Declaration: architect
+  - Drawing: Unassigned
+  - Calculation & Tables: MEPCON
+  - Invoice: Project Manager
+  - Pic/Video: contractor
+Submission readiness:
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C1
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C2
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+
+[SUBMISSION READINESS ENGINE]
+Active Credit: EDA C4
+Readiness Score: 0/100
+Ready for Submission: false
+Blockers: Only 0 of 7 required documents uploaded.
+Missing Evidence: 7 required document(s)
+Approval Status: DRAFT
+Recommended Action: Upload missing documents.
+
+Certification strategy:
+
+[CERTIFICATION STRATEGY ENGINE]
+Current Achievable Score: 0
+Total Possible Score: 100
+Blocked Points (High Risk): 0
+Fastest Route to Gold (60 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6
+Fastest Route to Platinum (80 pts): WC C1, EE C2, EE C4, IM C5, EE C3, IE C10, IE C2, IE C8, IM C2, IM C3, IM C6, IE C7, IM C1, IM C7, EDA C1, EDA C2, EDA C5, IE C1, IE C11
+High Risk Credits: None
+Highest ROI Credits: WC C1 (80% prob), EE C2 (80% prob), EE C4 (80% prob)
+
+Full credit status matrix:
+(All 36 credits loaded. NA=Not Required/Not Applicable for this project.)
+CODE | NAME | STATUS | MAX_PTS | NA | COMPLETION%
+EDA C1 | Eco Vision for Interior Design | IN_PROGRESS | 2 | NO | 12.5%
+EDA C2 | Optimise Circulation Spaces | IN_PROGRESS | 2 | NO | 10%
+EDA C4 | Occupancy in a Green Facility | IN_PROGRESS | 1 | NO | 10%
+EDA C5 | Commercial Lease Term / Ownership | IN_PROGRESS | 2 | NO | 10%
+EE C1 | Eco-friendly Refrigerants & Halons | IN_PROGRESS | 1 | NO | 10%
+EE C2 | Energy Efficient Interiors | IN_PROGRESS | 10 | NO | 10%
+EE C3 | Energy Metering & Management | IN_PROGRESS | 4 | NO | 10%
+EE C4 | On-site /Off-site Renewable Energy | IN_PROGRESS | 6 | NO | 10%
+EE C5 | Embodied Energy | IN_PROGRESS | 1 | NO | 10%
+IE C1 | Enchanced Fresh Air Ventilation | IN_PROGRESS | 2 | NO | 10%
+IE C10 | Low-Emitting Materials | IN_PROGRESS | 4 | NO | 10%
+IE C11 | Indoor Air Quality Management, During Installation | IN_PROGRESS | 2 | NO | 10%
+IE C2 | Daylighting | IN_PROGRESS | 4 | NO | 10%
+IE C3 | Thermal Comfort | IN_PROGRESS | 1 | NO | 10%
+IE C4 | Ergonomic Design | IN_PROGRESS | 2 | NO | 10%
+IE C5 | Air Quality Monitoring | IN_PROGRESS | 2 | NO | 10%
+IE C6 | Indoor Plants | IN_PROGRESS | 2 | NO | 10%
+IE C7 | Material Acoustic performance | IN_PROGRESS | 3 | NO | 10%
+IE C8 | Outdoor Views | IN_PROGRESS | 4 | NO | 10%
+IE C9 | Minimise Indoor Pollutant Contamination | IN_PROGRESS | 2 | NO | 10%
+IE MR1 | Tobacco Smoke Pollution | IN_PROGRESS | 0 | NO | 10%
+IE MR2 |  | NOT_STARTED | 0 | NO | 0%
+IID C1 (Credit 1.1) | Innovation in Interior Design | IN_PROGRESS | 1 | NO | 10%
+IID C1.2 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.3 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C1.4 | Innovation in Interior Design Same as credit 1.1 | IN_PROGRESS | 1 | NO | 10%
+IID C2 | IGBC Accredited Professional | IN_PROGRESS | 1 | NO | 10%
+IM C1 | Waste Management (During Installation of Interior fit-out) | IN_PROGRESS | 3 | NO | 10%
+IM C2 | Local Materials | IN_PROGRESS | 4 | NO | 10%
+IM C3 | Recycled Content Materials | IN_PROGRESS | 4 | NO | 10%
+IM C4 | Use of Certified Green Building Materials, Products & Equipment | IN_PROGRESS | 2 | NO | 10%
+IM C5 | Salvaged Materials | IN_PROGRESS | 6 | NO | 10%
+IM C6 | Reuse of materials | IN_PROGRESS | 4 | NO | 10%
+IM C7 | Eco Friendly Wood Based Materials | IN_PROGRESS | 3 | NO | 10%
+IM MR1 | Segregation of Waste, Post Occupancy | IN_PROGRESS | 0 | NO | 10%
+WC C1 | Water Efficient Fixtures | IN_PROGRESS | 12 | NO | 10%
+</project_credit_execution_matrix>
+===========================
+10:28:55 am [tsx] change in ./src\lib\env.ts Restarting...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
+10:29:06 am [tsx] change in ./src\lib\harita-engine\assistant\llm-streamer.ts Rerunning...
+c[SERVER ACTIVE] Harita engine listening cleanly on http://localhost:5101
