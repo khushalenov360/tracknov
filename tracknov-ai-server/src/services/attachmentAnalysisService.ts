@@ -1,4 +1,5 @@
-import type { HaritaContext } from "./vertexService";
+import { generateStructuredAudit, type HaritaContext } from "./vertexService";
+import { buildLocalGuidebookContext } from "./guidebookService";
 import { getComplianceThresholds } from "../tools/complianceTools";
 import { getProjectCreditCatalog, type ProjectCreditCatalogItem } from "./supabaseService";
 
@@ -11,6 +12,8 @@ export type HaritaPreparedAttachment = {
   evidenceType: string;
   hasComplianceSignals: boolean;
   extractedAt: string;
+  pageCount?: number;
+  tokenEstimate?: number;
 };
 
 export type HaritaActionButton = {
@@ -89,10 +92,22 @@ const DOMAIN_SIGNAL_GROUPS = [
   },
   {
     name: "energy",
-    attachmentKeywords: ["energy", "lighting", "lpd", "watt", "kw", "kwh", "meter", "hvac", "chiller", "cooling"],
-    creditPatterns: [/\bee\b/i, /energy/i, /lighting/i, /hvac/i, /meter/i, /cooling/i, /power/i],
+    attachmentKeywords: ["energy", "lighting", "lpd", "watt", "kw", "kwh", "meter", "hvac", "chiller", "cooling", "capacity", "air conditioner", "ac", "tonnage", "tr", "refrigerant", "r32", "r410a", "bee", "iseer", "star", "efficiency", "compressor", "inverter"],
+    creditPatterns: [/\bee\b/i, /energy/i, /lighting/i, /hvac/i, /meter/i, /cooling/i, /power/i, /air conditioner/i, /refrigerant/i],
     positiveBoost: 18,
     mismatchPenalty: 9,
+  },
+  {
+    name: "refrigerants_and_halons",
+    attachmentKeywords: [
+      "vrf", "vrv", "chiller", "fire suppression", "extinguisher", "cfc", "hcfc", "halon", 
+      "r22", "r-22", "r11", "r-11", "r12", "r-12", "r123", "r-123", "r32", "r-32", "r410a", 
+      "r-410a", "r134a", "r-134a", "r125", "r143a", "r152a", "r407c", "r-407c", "r717", 
+      "ammonia", "r744", "co2", "odp", "gwp", "montreal protocol", "msds"
+    ],
+    creditPatterns: [/\bee\s*c1\b/i, /refrigerant/i, /halon/i, /odp/i, /cfc/i],
+    positiveBoost: 25,
+    mismatchPenalty: 5,
   },
   {
     name: "materials",
@@ -146,6 +161,9 @@ const EVIDENCE_TYPE_DOMAIN_MAP: Record<string, string[]> = {
   WATER_CALCULATION: ["water"],
   ENERGY_MODEL: ["energy"],
   AREA_STATEMENT: ["space_planning"],
+  HVAC_SPECS: ["energy"],
+  SPECIFICATION: ["energy", "materials"],
+  TECH_SPECS: ["energy", "materials"],
 };
 
 function normalize(value: string) {
@@ -156,6 +174,7 @@ function tokenize(value: string) {
   return normalize(value)
     .split(/[^a-z0-9.+/%-]+/i)
     .map((entry) => entry.trim())
+    .map((entry) => entry.endsWith("s") ? entry.slice(0, -1) : entry)
     .filter((entry) => entry.length >= 3 && !STOP_WORDS.has(entry));
 }
 
@@ -240,13 +259,11 @@ function buildCreditIdentityTokens(credit: ProjectCreditCatalogItem) {
     tokenize([
       credit.credit_code || "",
       credit.credit_name || "",
-      credit.category || "",
-      credit.category_name || "",
     ].join(" ")),
   );
 }
 
-function scoreAttachmentAgainstCredit(attachment: HaritaPreparedAttachment, credit: ProjectCreditCatalogItem) {
+function scoreAttachmentAgainstCredit(attachment: HaritaPreparedAttachment, credit: ProjectCreditCatalogItem, targetDocCategory?: string) {
   const corpus = buildCreditCorpus(credit);
   const corpusTokens = unique(tokenize(corpus));
   const identityTokens = buildCreditIdentityTokens(credit);
@@ -257,10 +274,13 @@ function scoreAttachmentAgainstCredit(attachment: HaritaPreparedAttachment, cred
   const identityOverlap = identityTokens.filter((token) => textSet.has(token));
   const overlapRatio = corpusTokens.length ? overlap.length / corpusTokens.length : 0;
 
-  const requiredDocs = (credit.documents_required || [])
-    .filter((entry) => entry.required)
-    .map((entry) => String(entry.type || ""))
-    .filter(Boolean);
+  let requiredDocsList = (credit.documents_required || [])
+    .filter((entry) => entry.required);
+  if (targetDocCategory) {
+    requiredDocsList = requiredDocsList.filter(entry => normalizeDocType(entry.type) === normalizeDocType(targetDocCategory));
+  }
+  const requiredDocs = requiredDocsList.map((entry) => String(entry.type || "")).filter(Boolean);
+
   const normalizedEvidenceType = normalizeDocType(attachment.evidenceType);
   const normalizedRequiredDocs = requiredDocs.map((entry) => normalizeDocType(entry));
   const requirementMatch = normalizedRequiredDocs.includes(normalizedEvidenceType);
@@ -293,11 +313,32 @@ function scoreAttachmentAgainstCredit(attachment: HaritaPreparedAttachment, cred
     return total - (group.mismatchPenalty + Math.min(signalStrength * 2, 12));
   }, 0);
 
+  const dynamicPositive = credit.dynamic_keywords?.positive || [];
+  const dynamicNegative = credit.dynamic_keywords?.negative || [];
+
+  let dynamicPositiveMatches = 0;
+  for (const kw of dynamicPositive) {
+    if (sourceText.includes(normalize(kw))) dynamicPositiveMatches++;
+  }
+  
+  let dynamicNegativeMatches = 0;
+  for (const kw of dynamicNegative) {
+    if (sourceText.includes(normalize(kw))) dynamicNegativeMatches++;
+  }
+
   let score = 10;
   score += overlapRatio * 18;
   score += Math.min(identityOverlap.length * 14, 28);
   score += Math.min(hintMatches.length * 6, 18);
   score += domainBoost;
+
+  if (dynamicPositiveMatches > 0) {
+    score += Math.min(dynamicPositiveMatches * 8, 30);
+  }
+  if (dynamicNegativeMatches > 0) {
+    score -= dynamicNegativeMatches * 20;
+  }
+
   if (requirementMatch) score += 20;
   if (attachment.hasComplianceSignals) score += 8;
   if (hasNumbers) score += 4;
@@ -323,6 +364,12 @@ function scoreAttachmentAgainstCredit(attachment: HaritaPreparedAttachment, cred
     requirementMatch ? `attachment type aligns with required document type (${attachment.evidenceType})` : "attachment type does not exactly match a required document type",
     hasTechnicalUnits ? "technical metrics detected" : "few technical metrics detected",
   ];
+  if (dynamicPositiveMatches > 0) {
+    rationaleParts.push(`AI mapped ${dynamicPositiveMatches} project-specific keywords`);
+  }
+  if (dynamicNegativeMatches > 0) {
+    rationaleParts.push(`WARNING: found ${dynamicNegativeMatches} prohibited/negative keywords`);
+  }
   if (attachmentDomainMatches.length) {
     rationaleParts.push(`detected topic signals: ${attachmentDomainMatches.map((group) => group.name.replace(/_/g, " ")).join(", ")}`);
   }
@@ -356,7 +403,7 @@ function buildDiscoveryMarkdown(projectName: string, matches: HaritaDocumentMatc
 }
 
 function buildIrrelevantMarkdown() {
-  return "This document contains no applicable compliance parameters. No tracker modifications are permitted.";
+  return "I could not find any applicable compliance parameters in this document. This usually happens if the file name lacks descriptive keywords (e.g., 'HVAC', 'Plumbing') AND the document's text extraction failed or did not contain recognizable engineering metrics. Please try renaming the file to something descriptive or ensure the PDF contains selectable text.";
 }
 
 function isDocumentQuestion(message: string) {
@@ -373,7 +420,7 @@ function isDocumentQuestion(message: string) {
     return true;
   }
 
-  if (/\bwhat\s+is\s*(?:the\s+)?(?:attached\s+)?(?:document|file)\s+about\b/.test(normalizedMessage)) {
+  if (/\bwhat\s+is\s*(?:this\s+)?(?:the\s+)?(?:attached\s+)?(?:document|file)\b/i.test(normalizedMessage)) {
     return true;
   }
 
@@ -492,14 +539,14 @@ function buildDocumentAnswerActions(matches: HaritaDocumentMatch[]): HaritaActio
   ];
 }
 
-function detectExplicitCreditTarget(message: string, credits: ProjectCreditCatalogItem[], attachmentTargetId?: string | null) {
+function detectExplicitCreditTarget(message: string, credits: ProjectCreditCatalogItem[], attachmentTargetId?: string | null, currentItem?: string) {
   if (attachmentTargetId) {
     const [projectCreditId] = attachmentTargetId.split("::");
     return credits.find((credit) => credit.id === projectCreditId) || null;
   }
 
   const normalizedMessage = normalize(message);
-  return credits.find((credit) => {
+  let found = credits.find((credit) => {
     const code = normalize(credit.credit_code || "");
     const codeTight = code.replace(/\s+/g, "");
     const name = normalize(credit.credit_name || "");
@@ -507,30 +554,46 @@ function detectExplicitCreditTarget(message: string, credits: ProjectCreditCatal
       (code && (normalizedMessage.includes(code) || normalizedMessage.includes(codeTight))) ||
       (name && normalizedMessage.includes(name)),
     );
-  }) || null;
+  });
+
+  if (!found && currentItem) {
+    const normalizedItem = normalize(currentItem);
+    found = credits.find(credit => {
+      const code = normalize(credit.credit_code || "");
+      const name = normalize(credit.credit_name || "");
+      return (code && normalizedItem.includes(code)) || (name && normalizedItem.includes(name));
+    });
+  }
+
+  return found || null;
 }
 
-function buildMissingEvidence(credit: ProjectCreditCatalogItem, thresholdResult: ComplianceThresholdResult | null, requirementMatched: boolean) {
+function buildMissingEvidence(credit: ProjectCreditCatalogItem, thresholdResult: ComplianceThresholdResult | null, requirementMatched: boolean, docCategory?: string) {
   const missing = new Set<string>();
-  const requiredDocs = (credit.documents_required || [])
-    .filter((entry) => entry.required)
-    .map((entry) => String(entry.type || ""))
-    .filter(Boolean);
+  let requiredDocsList = (credit.documents_required || [])
+    .filter((entry) => entry.required);
+  if (docCategory) {
+    requiredDocsList = requiredDocsList.filter(entry => normalizeDocType(entry.type) === normalizeDocType(docCategory));
+  }
+  const requiredDocs = requiredDocsList.map((entry) => String(entry.type || "")).filter(Boolean);
 
   if (!requirementMatched && requiredDocs.length) {
     missing.add(`Required evidence types still expected: ${requiredDocs.join(", ")}`);
   }
 
-  if (credit.what_to_submit?.trim()) {
+  if (credit.what_to_submit?.trim() && !docCategory) {
     missing.add(`Submission baseline: ${compact(credit.what_to_submit.trim(), 180)}`);
   }
 
   const thresholdNote = thresholdResult?.credit_specific_thresholds;
   if (thresholdNote && typeof thresholdNote === "object" && Array.isArray((thresholdNote as { required_document_types?: unknown }).required_document_types)) {
-    const exactRequired = ((thresholdNote as { required_document_types?: unknown }).required_document_types as unknown[])
+    let exactRequired = ((thresholdNote as { required_document_types?: unknown }).required_document_types as unknown[])
       .map((entry) => String(entry || "").trim())
       .filter(Boolean);
-    if (exactRequired.length) {
+    if (docCategory) {
+      exactRequired = exactRequired.filter(req => normalizeDocType(req) === normalizeDocType(docCategory));
+    }
+    if (exactRequired.length && !requirementMatched) {
       missing.add(`Exact credit baseline expects: ${exactRequired.join(", ")}`);
     }
   }
@@ -571,7 +634,7 @@ export async function analyzeAttachmentForProject(
 
   if (!attachment.hasComplianceSignals && !attachment.parsedText.trim()) {
     return {
-      markdown: buildIrrelevantMarkdown(),
+      markdown: "I could not extract any readable text from this document. If this is a scanned image or PDF, the OCR engine may have failed to process it, and without a descriptive file name, I cannot determine its purpose. Please ensure the document contains selectable text or rename the file to include descriptive keywords (e.g., 'HVAC', 'Plumbing').",
       meta: {
         kind: "document_analysis",
         mode: "irrelevant",
@@ -622,20 +685,56 @@ export async function analyzeAttachmentForProject(
     };
   }
 
-  const targetCredit = detectExplicitCreditTarget(message, catalog.credits, attachmentTargetId);
+  let targetDocCategory: string | undefined;
+  if (attachmentTargetId) {
+    const [, docCat] = attachmentTargetId.split("::");
+    targetDocCategory = docCat;
+  }
+
+
+
+  const targetCredit = detectExplicitCreditTarget(message, catalog.credits, attachmentTargetId, context?.currentItem);
   if (!targetCredit) {
     const matches = topMatches;
 
-    if (!matches.length) {
-      return {
-        markdown: buildIrrelevantMarkdown(),
-        meta: {
-          kind: "document_analysis",
-          mode: "irrelevant",
-          attachment,
-          actions: [],
-        },
-      };
+    if (!matches.length || matches[0].confidence < 45) {
+      // Instead of failing immediately or relying on weak guesses, fall back to the Consultant Advisory Strategy
+      try {
+        const catalogContext = catalog.credits.map((c) => `- ${c.credit_code}: ${c.credit_name}`).join("\n");
+        const { generateDiscoveryAdvisory } = require("./vertexService");
+        const advisory = await generateDiscoveryAdvisory(attachment.parsedText, catalogContext);
+        
+        return {
+          markdown: advisory.advisoryMarkdown,
+          meta: {
+            kind: "document_analysis",
+            mode: "discovery",
+            attachment,
+            actions: advisory.suggestedCredits.map((code: string) => {
+              const matchedCredit = catalog.credits.find(c => normalize(c.credit_code || "") === normalize(code));
+              return {
+                id: `evaluate-fallback-${code}`,
+                label: `Evaluate for ${code}`,
+                kind: "evaluate_credit" as const,
+                targetId: matchedCredit ? `${matchedCredit.id}::narrative` : `unmapped::${code}`,
+                creditCode: code,
+                confidence: 85,
+              };
+            }),
+          },
+        };
+      } catch (error) {
+        console.error("Failed to generate discovery advisory", error);
+        return {
+          markdown: buildIrrelevantMarkdown(),
+          meta: {
+            kind: "document_analysis",
+            mode: "irrelevant",
+            attachment,
+            actions: [],
+          },
+        };
+      }
     }
 
     return {
@@ -664,8 +763,7 @@ export async function analyzeAttachmentForProject(
     };
   }
 
-  const scored = scoreAttachmentAgainstCredit(attachment, targetCredit);
-  const primaryRequired = normalizeDocType((targetCredit.documents_required || []).find((entry) => entry.required)?.type);
+  const primaryRequired = targetDocCategory || (attachment.evidenceType ? normalizeDocType(attachment.evidenceType) : normalizeDocType((targetCredit.documents_required || []).find((entry) => entry.required)?.type));
   const requirementMatched = Boolean(primaryRequired && primaryRequired === normalizeDocType(attachment.evidenceType));
   const thresholdResult = await getComplianceThresholds(
     {
@@ -678,8 +776,48 @@ export async function analyzeAttachmentForProject(
     context,
   ) as ComplianceThresholdResult;
 
-  const band = scored.confidence <= 64 ? "high_risk" : scored.confidence <= 85 ? "medium_risk" : "low_risk";
-  const missingEvidence = buildMissingEvidence(targetCredit, thresholdResult, requirementMatched);
+  let finalConfidence = 0;
+  let missingEvidence: string[] = [];
+  let detailedMarkdownNarrative = "";
+  let fallbackRationale = "";
+
+  try {
+      const guidebookContext = await buildLocalGuidebookContext(targetCredit.credit_code || "", context, targetCredit.credit_name || undefined);
+      const systemInstruction = `You are Harita, Tracknov's senior IGBC consultant and Green Building Systems Engineer.
+You are evaluating a document's suitability for the ${targetCredit.credit_code} - ${targetCredit.credit_name} credit under the IGBC framework.
+Your task is to analyze the extracted document text against the provided IGBC Reference Manual Context in a natural, conversational, and concise "Gemini-like" manner.
+
+Instructions:
+1. Cross-reference metrics against the mandatory and prescriptive requirements in the manual context.
+2. Produce a deterministic confidence score (0-100) indicating the likelihood this document meets the compliance thresholds.
+3. List any missing evidence or unfulfilled requirements clearly.
+4. Generate a conversational but highly concise summary (2-3 sentences maximum). Deliver the core insight immediately without a long preamble. End by naturally asking if they would like a detailed breakdown. Do not bombard the user with a massive wall of text.`;
+
+      const auditResult = await generateStructuredAudit(
+        systemInstruction,
+        attachment.parsedText,
+        guidebookContext,
+        message
+      );
+      
+      finalConfidence = auditResult.confidenceScore;
+      missingEvidence = auditResult.missingEvidence;
+      detailedMarkdownNarrative = auditResult.detailedMarkdownNarrative;
+    } catch (error) {
+      console.error("LLM Audit Engine Error", error);
+      const scored = scoreAttachmentAgainstCredit(attachment, targetCredit, targetDocCategory);
+      finalConfidence = scored.confidence;
+      fallbackRationale = scored.rationale;
+      missingEvidence = buildMissingEvidence(targetCredit, thresholdResult, requirementMatched, targetDocCategory);
+      detailedMarkdownNarrative = buildAuditMarkdown(
+        targetCredit,
+        finalConfidence,
+        "Fallback mode",
+        missingEvidence,
+      );
+    }
+
+  const band = finalConfidence <= 64 ? "high_risk" : finalConfidence <= 85 ? "medium_risk" : "low_risk";
   const targetId = `${targetCredit.id}::${primaryRequired || normalizedFallbackDocType(attachment)}`;
 
   const actions: HaritaActionButton[] = band === "low_risk"
@@ -689,7 +827,7 @@ export async function analyzeAttachmentForProject(
         kind: "map_document_directly",
         targetId,
         creditCode: targetCredit.credit_code || undefined,
-        confidence: scored.confidence,
+        confidence: finalConfidence,
       }]
     : band === "medium_risk"
       ? [{
@@ -698,17 +836,12 @@ export async function analyzeAttachmentForProject(
           kind: "refer_reviewer",
           targetId,
           creditCode: targetCredit.credit_code || undefined,
-          confidence: scored.confidence,
+          confidence: finalConfidence,
         }]
       : [];
 
   return {
-    markdown: buildAuditMarkdown(
-      targetCredit,
-      scored.confidence,
-      band === "low_risk" ? "Direct pathway" : band === "medium_risk" ? "Reviewer escalation" : "Hard block",
-      missingEvidence,
-    ),
+    markdown: detailedMarkdownNarrative,
     meta: {
       kind: "document_analysis",
       mode: "audit",
@@ -717,9 +850,9 @@ export async function analyzeAttachmentForProject(
         targetId,
         creditCode: targetCredit.credit_code || "UNMAPPED",
         creditName: targetCredit.credit_name || "Untitled credit",
-        confidence: scored.confidence,
+        confidence: finalConfidence,
         band,
-        rationale: scored.rationale,
+        rationale: fallbackRationale,
         missingEvidence,
       },
       actions,
