@@ -1,4 +1,4 @@
-import { FunctionCallingConfigMode, GoogleGenAI, type FunctionCall } from "@google/genai";
+import { FunctionCallingConfigMode, GoogleGenAI, Type, type FunctionCall } from "@google/genai";
 import { buildProjectGrounding } from "./supabaseService";
 import { buildLocalGuidebookContext, getGuidebookStatus } from "./guidebookService";
 import { executeHaritaToolCalls, haritaToolDeclarations } from "../tools/toolRegistry";
@@ -30,6 +30,8 @@ export type AgentChatRequest = {
     evidenceType: string;
     hasComplianceSignals: boolean;
     extractedAt: string;
+    pageCount?: number;
+    tokenEstimate?: number;
   } | null;
   attachmentTargetId?: string | null;
 };
@@ -53,6 +55,8 @@ type StreamRequest = {
   intentSignal?: HaritaIntentSignal;
   sequenceDirective?: SequenceDirective;
   writePermission?: WritePermission;
+  attachment?: AgentChatRequest["attachment"];
+  attachmentTargetId?: string | null;
   signal?: AbortSignal;
   onToken: (content: string) => void;
   onStatus: (status: ProviderStatus) => void;
@@ -60,8 +64,8 @@ type StreamRequest = {
 
 const vertexClient = new GoogleGenAI({
   vertexai: true,
-  project: process.env.GOOGLE_CLOUD_PROJECT,
-  location: process.env.GOOGLE_CLOUD_LOCATION,
+  project: process.env.GOOGLE_CLOUD_PROJECT || "mock-project",
+  location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1",
 });
 
 const vertexModel = process.env.VERTEX_MODEL || "gemini-2.5-flash";
@@ -138,11 +142,49 @@ function buildSystemPrompt(
   intentSignal?: HaritaIntentSignal,
   sequenceDirective?: SequenceDirective,
   history?: ChatHistoryItem[],
+  attachment?: AgentChatRequest["attachment"],
+  attachmentTargetId?: string | null,
 ) {
   const guidebookStatus = getGuidebookStatus();
   const memory = buildConversationMemory(message, context, history);
   const greeting = detectGreeting(message);
   const thanks = detectThanks(message);
+
+  let programmaticAuditResults = "No compliance audit executed.";
+  if (attachment && attachmentTargetId === "WATER_CALCULATION") {
+    try {
+      const { executeTechnicalDocumentAudit } = require("../../../React/tracknov-server/src/services/ComplianceAssertionEngine");
+      
+      const rawText = attachment.parsedText || "";
+      const modelMatch = rawText.match(/FLV-CHR-[0-9A-Z]+/i);
+      const flowMatch = rawText.match(/(?:\b|\s)([0-9.]+)\s*\/\s*([0-9.]+)\s*LPF\b/i);
+      const pressureMatch = rawText.match(/([0-9.]+)\s*(?:bar|psi|kPa)/i);
+      const standardsMatch = rawText.match(/\bIS\s*[:\s]*(?:1264(?:-1997)?|319(?:-1989)?)\b/ig) || [];
+
+      const payload = {
+        documentId: attachment.fileName,
+        modelIdentifier: modelMatch ? modelMatch[0] : "UNKNOWN",
+        flushRates: {
+          full: flowMatch ? parseFloat(flowMatch[2]) : 0,
+          half: flowMatch ? parseFloat(flowMatch[1]) : 0,
+        },
+        calibrationPressureBar: pressureMatch ? parseFloat(pressureMatch[1]) : 0,
+        extractedStandards: Array.from(new Set(standardsMatch)),
+      };
+
+      const auditResult = executeTechnicalDocumentAudit(payload);
+      programmaticAuditResults = JSON.stringify({
+        STATUS: "PROGRAMMATIC_VERIFICATION_COMPLETE",
+        TARGET_SLOT: attachmentTargetId,
+        BASELINE_CONFIDENCE_SCORE: auditResult.submissionConfidence,
+        CALCULATED_POINTS: auditResult.allocatedPoints,
+        QC_PASS: auditResult.materialQCPass,
+        IDENTIFIED_GAPS: auditResult.gapsIdentified
+      }, null, 2);
+    } catch (err) {
+      programmaticAuditResults = "Audit Engine Error: " + (err as Error).message;
+    }
+  }
 
   return [
     xmlBlock(
@@ -158,6 +200,11 @@ function buildSystemPrompt(
         "Never expose internal terms such as tool call, retrieval, RAG, vector search, prompt, governance chain, router, telemetry, or provider fallback.",
         "If the user is greeting you or thanking you, reply naturally in one or two short sentences and do not dump project status unless the user asks for it.",
         "If the user asks a broad exploratory question, answer the question first, then optionally suggest the next best Tracknov-specific follow-up.",
+        "",
+        "[CRITICAL SYSTEM ENFORCEMENT RULES]",
+        "1. If a `programmatic_compliance_audit` block is supplied in the context, you are strictly FORBIDDEN from inventing, guessing, or estimating the reasons behind the confidence score.",
+        "2. You MUST explicitly read the `IDENTIFIED_GAPS` array. Your text output explaining the score must ONLY list the specific strings present inside that array (e.g., Calibration Mismatches or Material Standard Gaps).",
+        "3. Do NOT cross-contaminate slot evaluations. If the `Slot Target` is a technical document type (like `WATER_CALCULATION`), do not declare that the score is penalized due to macro-level milestones (like a missing 'Narrative') unless the user explicitly asks for a full-credit overview."
       ].join("\n"),
     ),
     xmlBlock(
@@ -181,20 +228,9 @@ function buildSystemPrompt(
         `interaction_mode: ${intentSignal?.lane || "exploratory"}`,
         greeting || thanks
           ? "For greeting/acknowledgement turns: reply in plain natural language, max two short sentences."
-          : "For analytical and operational turns: answer the user's exact question first, then use compact labels only if they add clarity.",
-        "Default answer shape:",
-        "STATUS: <one line conclusion>",
-        "VERIFIED:",
-        "- <fact>",
-        "- <fact>",
-        "GAPS:",
-        "- <gap>",
-        "- <gap>",
-        "NEXT ACTION:",
-        "- <action>",
-        "- <action>",
+          : "For analytical and operational turns: Provide a conversational but concise 'Gemini-like' response. Deliver the core insight immediately without long preambles. Keep responses to a few short paragraphs unless the user explicitly asks for a detailed breakdown. Speak directly to the user as a trusted consultant.",
         "If the user explicitly asks for a count, total, owner, assignment, blocker, or credit list, answer that first before anything else.",
-        "If the user asks what a document is about, summarize the file itself before talking about credit mapping.",
+        "If the user asks what a document is about, summarize the file itself naturally before talking about credit mapping.",
       ].join("\n"),
     ),
     xmlBlock("conversation_memory", JSON.stringify(memory, null, 2)),
@@ -247,7 +283,17 @@ function buildSystemPrompt(
         ? "Fallback mode: use the supplied grounded state because live tool execution is unavailable."
         : "Cloud mode: fetch live Tracknov data through tools before making claims about points, blockers, dependencies, assignments, clarification loops, or missing evidence.",
     ),
-    xmlBlock("uploaded_document_variables", "No uploaded document payload was supplied in this request."),
+    xmlBlock(
+      "uploaded_document_variables",
+      attachment 
+        ? `Filename: ${attachment.fileName}\nSlot Target: ${attachmentTargetId || "None"}\n${
+            attachmentTargetId 
+              ? `SLOT FILTERING ENFORCED: Exclude alternate categories (like Narrative or Specs) from text calculation summaries. Focus solely on ${attachmentTargetId}.` 
+              : ""
+          }` 
+        : "No uploaded document payload was supplied in this request."
+    ),
+    xmlBlock("programmatic_compliance_audit", programmaticAuditResults),
   ].join("\n\n");
 }
 
@@ -343,11 +389,10 @@ async function prepareToolAugmentedConversation(request: StreamRequest, systemPr
         systemInstruction: systemPrompt,
         maxOutputTokens: 1024,
         temperature: 0.2,
-        tools: [{ functionDeclarations: haritaToolDeclarations }],
+        tools: [{ functionDeclarations: haritaToolDeclarations.filter((t) => t.name && allowedToolNames.includes(t.name)) }],
         toolConfig: {
           functionCallingConfig: {
             mode: FunctionCallingConfigMode.AUTO,
-            allowedFunctionNames: allowedToolNames,
           },
         },
       },
@@ -384,6 +429,8 @@ async function streamFromVertex(request: StreamRequest) {
     request.intentSignal,
     request.sequenceDirective,
     request.history,
+    request.attachment,
+    request.attachmentTargetId
   );
   const contents = shouldUseCloudTools(request)
     ? await prepareToolAugmentedConversation(request, systemPrompt)
@@ -481,6 +528,8 @@ export async function streamHaritaResponse(request: StreamRequest): Promise<{ pr
       request.intentSignal,
       request.sequenceDirective,
       request.history,
+      request.attachment,
+      request.attachmentTargetId
     );
     request.onStatus({ cloud: false, local: true, active: "local" });
     await streamFromOllama(request, systemPrompt);
@@ -488,4 +537,100 @@ export async function streamHaritaResponse(request: StreamRequest): Promise<{ pr
   }
 
   throw new Error("All Harita AI providers are currently unavailable.");
+}
+
+export async function generateStructuredAudit(
+  systemInstruction: string,
+  documentText: string,
+  guidebookContext: string,
+  userMessage: string
+) {
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        { text: "Here is the IGBC Reference Manual Context:\n" + guidebookContext },
+        { text: "\nHere is the Parsed Document Text to analyze:\n" + documentText },
+        { text: "\nUser Message:\n" + (userMessage || "Evaluate this document") }
+      ],
+    }
+  ];
+
+  const response = await vertexClient.models.generateContent({
+    model: vertexModel,
+    contents: contents as any,
+    config: {
+      systemInstruction,
+      temperature: 0.1,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          confidenceScore: { type: Type.INTEGER, description: "Confidence score from 0 to 100 based on the evidence matching the policy" },
+          missingEvidence: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of missing requirements or evidence gaps" },
+          detailedMarkdownNarrative: { type: Type.STRING, description: "A conversational response addressing the User Message. If the user asks for details or a breakdown, provide a detailed analysis. If it is a generic evaluation, provide a highly concise summary (2-3 sentences max) explaining the core insight." }
+        },
+        required: ["confidenceScore", "missingEvidence", "detailedMarkdownNarrative"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("Failed to generate structured audit");
+  }
+
+  return JSON.parse(response.text);
+}
+
+export async function generateDiscoveryAdvisory(
+  documentText: string,
+  catalogContext: string
+): Promise<{ advisoryMarkdown: string; suggestedCredits: string[] }> {
+  const systemInstruction = `You are Harita, a digital space-planner and regulatory auditor for IGBC Green Interiors.
+Your task is to analyze an unmapped document and determine exactly where it fits within the IGBC roadmap.
+
+Internal Methodology (Do this analysis, but do not output the steps):
+1. Visual Ingestion & Architectural Sifting
+2. Target Variable Extraction
+3. Multi-File Policy Mapping
+
+Output Requirements:
+Provide a highly conversational, concise "Gemini-like" summary (maximum 3 sentences). 
+Tell the user what the document is, which credits it matches best, and a quick sentence on why. 
+Deliver the core insight immediately without a long preamble. End by naturally asking if they would like a detailed breakdown.
+Do NOT output a massive wall of text. Do NOT use headers like "Visual Ingestion" or "Target Variable Extraction".`;
+
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        { text: "Here is the IGBC Projects Credit Catalog reference:\n" + catalogContext },
+        { text: "\nHere is the Parsed Document Text to analyze:\n" + documentText }
+      ],
+    }
+  ];
+
+  const response = await vertexClient.models.generateContent({
+    model: vertexModel,
+    contents: contents as any,
+    config: {
+      systemInstruction,
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          advisoryMarkdown: { type: Type.STRING, description: "A concise, conversational summary (2-3 sentences max) explaining the document and the suggested credits." },
+          suggestedCredits: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of exactly matched credit codes (e.g. 'EDA C2', 'IEQ C9') that are highly relevant to the document." }
+        },
+        required: ["advisoryMarkdown", "suggestedCredits"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("Failed to generate discovery advisory");
+  }
+
+  return JSON.parse(response.text);
 }

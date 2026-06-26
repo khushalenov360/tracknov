@@ -1,3 +1,17 @@
+## 2026-06-25 Harita Attachment Context Loop Fix
+
+### Objective
+Fix an infinite loop where Harita ignored follow-up chat messages and repeatedly regurgitated the same 3-sentence summary when an attachment was locked for evaluation.
+
+### Delivered in this pass
+- **Contextual Awareness**
+  - Updated `generateStructuredAudit` in `tracknov-ai-server/src/services/vertexService.ts` to accept a `userMessage` parameter.
+  - Injected the user's explicit chat message directly into the LLM prompt's `contents` array.
+- **Dynamic Constraints**
+  - Updated the JSON schema description for `detailedMarkdownNarrative` in `generateStructuredAudit`.
+  - Harita now dynamically breaks out of her 2-3 sentence constraint to provide a detailed breakdown if the user specifically requests it in their message.
+  - Updated `analyzeAttachmentForProject` in `tracknov-ai-server/src/services/attachmentAnalysisService.ts` to pass the user's message to the audit engine.
+
 ## 2026-06-18 Phase 1 Governance Closure Pass
 
 ### Objective
