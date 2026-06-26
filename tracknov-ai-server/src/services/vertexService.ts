@@ -1,4 +1,4 @@
-import { FunctionCallingConfigMode, GoogleGenAI, type FunctionCall } from "@google/genai";
+import { FunctionCallingConfigMode, GoogleGenAI, Type, type FunctionCall } from "@google/genai";
 import { buildProjectGrounding } from "./supabaseService";
 import { buildLocalGuidebookContext, getGuidebookStatus } from "./guidebookService";
 import { executeHaritaToolCalls, haritaToolDeclarations } from "../tools/toolRegistry";
@@ -30,6 +30,8 @@ export type AgentChatRequest = {
     evidenceType: string;
     hasComplianceSignals: boolean;
     extractedAt: string;
+    pageCount?: number;
+    tokenEstimate?: number;
   } | null;
   attachmentTargetId?: string | null;
 };
@@ -53,6 +55,8 @@ type StreamRequest = {
   intentSignal?: HaritaIntentSignal;
   sequenceDirective?: SequenceDirective;
   writePermission?: WritePermission;
+  attachment?: AgentChatRequest["attachment"];
+  attachmentTargetId?: string | null;
   signal?: AbortSignal;
   onToken: (content: string) => void;
   onStatus: (status: ProviderStatus) => void;
@@ -60,8 +64,8 @@ type StreamRequest = {
 
 const vertexClient = new GoogleGenAI({
   vertexai: true,
-  project: process.env.GOOGLE_CLOUD_PROJECT,
-  location: process.env.GOOGLE_CLOUD_LOCATION,
+  project: process.env.GOOGLE_CLOUD_PROJECT || "mock-project",
+  location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1",
 });
 
 const vertexModel = process.env.VERTEX_MODEL || "gemini-2.5-flash";
@@ -77,26 +81,130 @@ type ModelContent = {
   parts: Array<Record<string, unknown>>;
 };
 
+function detectGreeting(message: string) {
+  return /^(hi|hello|hey|hii|good morning|good afternoon|good evening)\b/i.test(message.trim());
+}
+
+function detectThanks(message: string) {
+  return /^(thanks|thank you|ok thanks|great thanks|noted thanks)\b/i.test(message.trim());
+}
+
+function extractActiveCreditReference(source: string) {
+  const directCode = source.match(/\b(?:EDA|EE|IE|IM|MR|SS|WC|WE)\s*[A-Z]?\s*\d+\b/i);
+  if (directCode) {
+    return directCode[0].replace(/\s+/g, " ").trim().toUpperCase();
+  }
+
+  const compactCode = source.match(/\b(?:EDA|EE|IE|IM|MR|SS|WC|WE)[A-Z]?\d+\b/i);
+  return compactCode ? compactCode[0].toUpperCase() : null;
+}
+
+function extractAttachmentName(history?: ChatHistoryItem[]) {
+  if (!history?.length) return null;
+  const recentText = history
+    .slice(-8)
+    .map((item) => item.content)
+    .join("\n");
+
+  const namedFile = recentText.match(/\b[\w\s.-]+\.(pdf|xlsx|xls|csv|docx|png|jpg|jpeg)\b/i);
+  return namedFile ? namedFile[0].trim() : null;
+}
+
+function buildConversationMemory(
+  message: string,
+  context?: HaritaContext,
+  history?: ChatHistoryItem[],
+) {
+  const recentUserMessages = (history || [])
+    .filter((item) => item.role === "user")
+    .slice(-3)
+    .map((item) => item.content.trim())
+    .filter(Boolean);
+  const activeCredit = extractActiveCreditReference(
+    [context?.currentItem || "", context?.summary || "", ...recentUserMessages, message].join(" "),
+  );
+  const activeDocument = extractAttachmentName(history);
+
+  return {
+    active_project: context?.title || context?.projectId || "unresolved",
+    active_credit_reference: activeCredit || "unresolved",
+    active_document_name: activeDocument || "unresolved",
+    latest_user_objective: message.trim(),
+    recent_user_messages: recentUserMessages,
+  };
+}
+
 function buildSystemPrompt(
+  message: string,
   context?: HaritaContext,
   groundedProjectState?: string,
   localGuidebookContext?: string,
   intentSignal?: HaritaIntentSignal,
   sequenceDirective?: SequenceDirective,
+  history?: ChatHistoryItem[],
+  attachment?: AgentChatRequest["attachment"],
+  attachmentTargetId?: string | null,
 ) {
   const guidebookStatus = getGuidebookStatus();
+  const memory = buildConversationMemory(message, context, history);
+  const greeting = detectGreeting(message);
+  const thanks = detectThanks(message);
+
+  let programmaticAuditResults = "No compliance audit executed.";
+  if (attachment && attachmentTargetId === "WATER_CALCULATION") {
+    try {
+      const { executeTechnicalDocumentAudit } = require("../../../React/tracknov-server/src/services/ComplianceAssertionEngine");
+      
+      const rawText = attachment.parsedText || "";
+      const modelMatch = rawText.match(/FLV-CHR-[0-9A-Z]+/i);
+      const flowMatch = rawText.match(/(?:\b|\s)([0-9.]+)\s*\/\s*([0-9.]+)\s*LPF\b/i);
+      const pressureMatch = rawText.match(/([0-9.]+)\s*(?:bar|psi|kPa)/i);
+      const standardsMatch = rawText.match(/\bIS\s*[:\s]*(?:1264(?:-1997)?|319(?:-1989)?)\b/ig) || [];
+
+      const payload = {
+        documentId: attachment.fileName,
+        modelIdentifier: modelMatch ? modelMatch[0] : "UNKNOWN",
+        flushRates: {
+          full: flowMatch ? parseFloat(flowMatch[2]) : 0,
+          half: flowMatch ? parseFloat(flowMatch[1]) : 0,
+        },
+        calibrationPressureBar: pressureMatch ? parseFloat(pressureMatch[1]) : 0,
+        extractedStandards: Array.from(new Set(standardsMatch)),
+      };
+
+      const auditResult = executeTechnicalDocumentAudit(payload);
+      programmaticAuditResults = JSON.stringify({
+        STATUS: "PROGRAMMATIC_VERIFICATION_COMPLETE",
+        TARGET_SLOT: attachmentTargetId,
+        BASELINE_CONFIDENCE_SCORE: auditResult.submissionConfidence,
+        CALCULATED_POINTS: auditResult.allocatedPoints,
+        QC_PASS: auditResult.materialQCPass,
+        IDENTIFIED_GAPS: auditResult.gapsIdentified
+      }, null, 2);
+    } catch (err) {
+      programmaticAuditResults = "Audit Engine Error: " + (err as Error).message;
+    }
+  }
 
   return [
     xmlBlock(
       "system_persona_boundaries",
       [
-        "You are Harita, Tracknov's certification intelligence copilot.",
+        "You are Harita, Tracknov's senior IGBC consultant and Tracknov product expert.",
         "Ban filler, pleasantries, and decorative openings.",
         "Every answer must be direct, operational, and grounded in available project context.",
         "Never invent project evidence, assignments, metrics, or compliance points.",
         "If evidence is missing, say exactly what is missing and what the next best action is.",
         "For compliance questions, lead with the core conclusion first.",
         "Do not say data is unavailable if the grounded project context already contains the answer.",
+        "Never expose internal terms such as tool call, retrieval, RAG, vector search, prompt, governance chain, router, telemetry, or provider fallback.",
+        "If the user is greeting you or thanking you, reply naturally in one or two short sentences and do not dump project status unless the user asks for it.",
+        "If the user asks a broad exploratory question, answer the question first, then optionally suggest the next best Tracknov-specific follow-up.",
+        "",
+        "[CRITICAL SYSTEM ENFORCEMENT RULES]",
+        "1. If a `programmatic_compliance_audit` block is supplied in the context, you are strictly FORBIDDEN from inventing, guessing, or estimating the reasons behind the confidence score.",
+        "2. You MUST explicitly read the `IDENTIFIED_GAPS` array. Your text output explaining the score must ONLY list the specific strings present inside that array (e.g., Calibration Mismatches or Material Standard Gaps).",
+        "3. Do NOT cross-contaminate slot evaluations. If the `Slot Target` is a technical document type (like `WATER_CALCULATION`), do not declare that the score is penalized due to macro-level milestones (like a missing 'Narrative') unless the user explicitly asks for a full-credit overview."
       ].join("\n"),
     ),
     xmlBlock(
@@ -111,30 +219,27 @@ function buildSystemPrompt(
         "Prefer short sections with labels such as STATUS, VERIFIED, GAPS, NEXT ACTION.",
         "When listing credits, include code, name, status, completion, points, and missing evidence if known.",
         "When asked about blockers or priorities, rank by lowest completion, missing required evidence, repeated remarks, and unassigned required documents.",
+        "Do not force labeled sections for greetings, acknowledgements, or simple document-summary questions.",
       ].join("\n"),
     ),
     xmlBlock(
       "response_format_contract",
       [
-        "Default answer shape:",
-        "STATUS: <one line conclusion>",
-        "VERIFIED:",
-        "- <fact>",
-        "- <fact>",
-        "GAPS:",
-        "- <gap>",
-        "- <gap>",
-        "NEXT ACTION:",
-        "- <action>",
-        "- <action>",
+        `interaction_mode: ${intentSignal?.lane || "exploratory"}`,
+        greeting || thanks
+          ? "For greeting/acknowledgement turns: reply in plain natural language, max two short sentences."
+          : "For analytical and operational turns: Provide a conversational but concise 'Gemini-like' response. Deliver the core insight immediately without long preambles. Keep responses to a few short paragraphs unless the user explicitly asks for a detailed breakdown. Speak directly to the user as a trusted consultant.",
         "If the user explicitly asks for a count, total, owner, assignment, blocker, or credit list, answer that first before anything else.",
+        "If the user asks what a document is about, summarize the file itself naturally before talking about credit mapping.",
       ].join("\n"),
     ),
+    xmlBlock("conversation_memory", JSON.stringify(memory, null, 2)),
     xmlBlock(
       "intent_router_signal",
       JSON.stringify(
         {
           intent: intentSignal?.intent || "general",
+          lane: intentSignal?.lane || "exploratory",
           confidence: intentSignal?.confidence || "low",
           reasons: intentSignal?.reasons || [],
           preferred_tools: intentSignal?.preferredTools || [],
@@ -170,15 +275,25 @@ function buildSystemPrompt(
     ),
     xmlBlock(
       "project_database_current_state",
-      groundedProjectState || "Live project state must be fetched through runtime tools such as get_project_snapshot and check_document_pipeline.",
+      groundedProjectState || "Live project state must be fetched through runtime tools such as get_project_snapshot, get_credit_applicability, get_evidence_intelligence, get_score_model, and get_clarification_intelligence.",
     ),
     xmlBlock(
       "runtime_tool_contract",
       groundedProjectState
         ? "Fallback mode: use the supplied grounded state because live tool execution is unavailable."
-        : "Cloud mode: fetch live Tracknov data through tools before making claims about points, blockers, assignments, or missing evidence.",
+        : "Cloud mode: fetch live Tracknov data through tools before making claims about points, blockers, dependencies, assignments, clarification loops, or missing evidence.",
     ),
-    xmlBlock("uploaded_document_variables", "No uploaded document payload was supplied in this request."),
+    xmlBlock(
+      "uploaded_document_variables",
+      attachment 
+        ? `Filename: ${attachment.fileName}\nSlot Target: ${attachmentTargetId || "None"}\n${
+            attachmentTargetId 
+              ? `SLOT FILTERING ENFORCED: Exclude alternate categories (like Narrative or Specs) from text calculation summaries. Focus solely on ${attachmentTargetId}.` 
+              : ""
+          }` 
+        : "No uploaded document payload was supplied in this request."
+    ),
+    xmlBlock("programmatic_compliance_audit", programmaticAuditResults),
   ].join("\n\n");
 }
 
@@ -244,6 +359,14 @@ export async function checkProviderStatus(): Promise<ProviderStatus> {
 }
 
 function shouldUseCloudTools(request: StreamRequest) {
+  if (request.intentSignal?.lane === "conversational") {
+    return false;
+  }
+
+  if (request.intentSignal?.intent === "general" && request.intentSignal?.confidence === "low") {
+    return false;
+  }
+
   return true;
 }
 
@@ -266,11 +389,10 @@ async function prepareToolAugmentedConversation(request: StreamRequest, systemPr
         systemInstruction: systemPrompt,
         maxOutputTokens: 1024,
         temperature: 0.2,
-        tools: [{ functionDeclarations: haritaToolDeclarations }],
+        tools: [{ functionDeclarations: haritaToolDeclarations.filter((t) => t.name && allowedToolNames.includes(t.name)) }],
         toolConfig: {
           functionCallingConfig: {
             mode: FunctionCallingConfigMode.AUTO,
-            allowedFunctionNames: allowedToolNames,
           },
         },
       },
@@ -300,11 +422,15 @@ async function prepareToolAugmentedConversation(request: StreamRequest, systemPr
 
 async function streamFromVertex(request: StreamRequest) {
   const systemPrompt = buildSystemPrompt(
+    request.message,
     request.context,
     undefined,
     undefined,
     request.intentSignal,
     request.sequenceDirective,
+    request.history,
+    request.attachment,
+    request.attachmentTargetId
   );
   const contents = shouldUseCloudTools(request)
     ? await prepareToolAugmentedConversation(request, systemPrompt)
@@ -395,11 +521,15 @@ export async function streamHaritaResponse(request: StreamRequest): Promise<{ pr
     const groundedProjectState = request.groundedProjectState || await buildProjectGrounding(request.context);
     const localGuidebookContext = request.localGuidebookContext || await buildLocalGuidebookContext(request.message, request.context, request.context?.summary);
     const systemPrompt = buildSystemPrompt(
+      request.message,
       request.context,
       groundedProjectState,
       localGuidebookContext,
       request.intentSignal,
       request.sequenceDirective,
+      request.history,
+      request.attachment,
+      request.attachmentTargetId
     );
     request.onStatus({ cloud: false, local: true, active: "local" });
     await streamFromOllama(request, systemPrompt);
@@ -407,4 +537,100 @@ export async function streamHaritaResponse(request: StreamRequest): Promise<{ pr
   }
 
   throw new Error("All Harita AI providers are currently unavailable.");
+}
+
+export async function generateStructuredAudit(
+  systemInstruction: string,
+  documentText: string,
+  guidebookContext: string,
+  userMessage: string
+) {
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        { text: "Here is the IGBC Reference Manual Context:\n" + guidebookContext },
+        { text: "\nHere is the Parsed Document Text to analyze:\n" + documentText },
+        { text: "\nUser Message:\n" + (userMessage || "Evaluate this document") }
+      ],
+    }
+  ];
+
+  const response = await vertexClient.models.generateContent({
+    model: vertexModel,
+    contents: contents as any,
+    config: {
+      systemInstruction,
+      temperature: 0.1,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          confidenceScore: { type: Type.INTEGER, description: "Confidence score from 0 to 100 based on the evidence matching the policy" },
+          missingEvidence: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of missing requirements or evidence gaps" },
+          detailedMarkdownNarrative: { type: Type.STRING, description: "A conversational response addressing the User Message. If the user asks for details or a breakdown, provide a detailed analysis. If it is a generic evaluation, provide a highly concise summary (2-3 sentences max) explaining the core insight." }
+        },
+        required: ["confidenceScore", "missingEvidence", "detailedMarkdownNarrative"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("Failed to generate structured audit");
+  }
+
+  return JSON.parse(response.text);
+}
+
+export async function generateDiscoveryAdvisory(
+  documentText: string,
+  catalogContext: string
+): Promise<{ advisoryMarkdown: string; suggestedCredits: string[] }> {
+  const systemInstruction = `You are Harita, a digital space-planner and regulatory auditor for IGBC Green Interiors.
+Your task is to analyze an unmapped document and determine exactly where it fits within the IGBC roadmap.
+
+Internal Methodology (Do this analysis, but do not output the steps):
+1. Visual Ingestion & Architectural Sifting
+2. Target Variable Extraction
+3. Multi-File Policy Mapping
+
+Output Requirements:
+Provide a highly conversational, concise "Gemini-like" summary (maximum 3 sentences). 
+Tell the user what the document is, which credits it matches best, and a quick sentence on why. 
+Deliver the core insight immediately without a long preamble. End by naturally asking if they would like a detailed breakdown.
+Do NOT output a massive wall of text. Do NOT use headers like "Visual Ingestion" or "Target Variable Extraction".`;
+
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        { text: "Here is the IGBC Projects Credit Catalog reference:\n" + catalogContext },
+        { text: "\nHere is the Parsed Document Text to analyze:\n" + documentText }
+      ],
+    }
+  ];
+
+  const response = await vertexClient.models.generateContent({
+    model: vertexModel,
+    contents: contents as any,
+    config: {
+      systemInstruction,
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          advisoryMarkdown: { type: Type.STRING, description: "A concise, conversational summary (2-3 sentences max) explaining the document and the suggested credits." },
+          suggestedCredits: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of exactly matched credit codes (e.g. 'EDA C2', 'IEQ C9') that are highly relevant to the document." }
+        },
+        required: ["advisoryMarkdown", "suggestedCredits"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("Failed to generate discovery advisory");
+  }
+
+  return JSON.parse(response.text);
 }
