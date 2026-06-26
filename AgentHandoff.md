@@ -1,3 +1,155 @@
+## 2026-06-25 Harita Attachment Context Loop Fix
+
+### Objective
+Fix an infinite loop where Harita ignored follow-up chat messages and repeatedly regurgitated the same 3-sentence summary when an attachment was locked for evaluation.
+
+### Delivered in this pass
+- **Contextual Awareness**
+  - Updated `generateStructuredAudit` in `tracknov-ai-server/src/services/vertexService.ts` to accept a `userMessage` parameter.
+  - Injected the user's explicit chat message directly into the LLM prompt's `contents` array.
+- **Dynamic Constraints**
+  - Updated the JSON schema description for `detailedMarkdownNarrative` in `generateStructuredAudit`.
+  - Harita now dynamically breaks out of her 2-3 sentence constraint to provide a detailed breakdown if the user specifically requests it in their message.
+  - Updated `analyzeAttachmentForProject` in `tracknov-ai-server/src/services/attachmentAnalysisService.ts` to pass the user's message to the audit engine.
+
+## 2026-06-18 Phase 1 Governance Closure Pass
+
+### Objective
+Close the remaining Phase 1 runtime-governance gaps without widening scope into unrelated dirty workspace files.
+
+### Delivered in this pass
+- **Foundation asset immutability hardening**
+  - Expanded execution-start detection in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\integrity-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\integrity-service.ts`
+  - Execution start now includes:
+    - active assignments
+    - project documents
+    - submittals
+  - Wired guidebook/data table/tracker upload paths to a shared `assertFoundationAssetMutable(...)` guard in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\project-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\project-service.ts`
+  - Result: foundational assets now freeze after first execution event instead of only after the earlier narrow document/assignment check.
+
+- **Certification closure hardening**
+  - Changed closure semantics so final sealing is:
+    - `project_admin` only
+    - comment-required
+    - blocked on open `STATE_DESYNC`
+    - blocked unless the project is already explicitly in `CERTIFIED`
+  - Added immutable snapshot linkage via `generateSnapshot(...)`.
+  - Replaced direct project-state mutation with governed workflow sealing through `workflowOrchestratorService.transition(...)`.
+  - Updated workflow machine authority in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\core\workflow\machines.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\core\workflow\machines.ts`
+  - `CERTIFIED -> CERTIFIED_LOCKED` is now an explicit `L3` closure action.
+
+- **Governed export path hardening**
+  - Added governed export context + export lineage logging in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\export-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\export-service.ts`
+  - Patched direct export endpoints:
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\projects\[id]\tracker\route.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\projects\[id]\summary\route.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\projects\[id]\submission-pack\route.ts`
+  - New export behavior:
+    - reject on `STATE_DESYNC`
+    - restrict post-certification exports to Project Admin or higher
+    - attach replay hash / lineage proof to `export_generation_history`
+    - mark responses `no-store` to prevent stale browser cache reuse
+
+### Verification
+- `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`: `npm run build` passed.
+- Root `npx tsc -p tsconfig.json --noEmit --pretty false` still has unrelated pre-existing repo failures, but no errors remained in the files changed by this pass.
+
+### Remaining Phase 1 items not closed here
+- broader global idempotency closure across all mutation families
+- production-gate proof closure for all no-ship blockers tracked in TODO
+
+## 2026-06-19 Rollback Governance And Derived-State Proof Pass
+
+### Objective
+Close the last active Phase 1 governance visibility gap and add a repeatable proof against direct derived-state mutation in the active server trees.
+
+### Delivered in this pass
+- **Governance freeze surfaced in the live workspace**
+  - Enriched project workspace payloads in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\data.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\data.ts`
+  - Added project-level freeze indicators:
+    - `has_open_desync`
+    - `open_reconciliation_count`
+    - `governance_freeze_reason`
+  - Rendered the freeze banner in:
+    - `C:\Users\91922\Documents\Codex\tracknov\app\projects\[id]\layout.tsx`
+  - Result: rollback / reconciliation freeze is now visible in the operational workspace instead of surfacing only as downstream API refusal text.
+
+- **Derived-state mutation proof**
+  - Added deterministic repository audit:
+    - `C:\Users\91922\Documents\Codex\tracknov\scripts\phase1-derived-state-audit.mjs`
+  - The audit fails on newly introduced direct writes to authoritative derived-state fields outside the explicit allowlist:
+    - `projects.certification_state`
+    - `project_credits.status`
+    - `project_credits.completion_pct`
+    - `project_credits.blocked_by`
+    - `submittals.state`
+    - `project_document.workflow_state`
+  - This converts the previous manual grep-based proof into a repeatable machine check.
+
+### Verification
+- `node scripts/phase1-derived-state-audit.mjs` passed.
+- `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`: `npm run build` passed.
+
+### Phase 1 impact
+- The specific Phase 1 items for rollback-governance visibility and derived-state mutation proof are now closed.
+- Broader Phase 1 maturity closure remains dependent on the still-open global idempotency and production-gate items in TODO.
+
+## 2026-06-19 Phase 1 Runtime Closure Pass
+
+### Objective
+Close the last open Phase 1 enforcement gaps: universal mutation idempotency wiring, mandatory submittal approval gating, and machine-verifiable no-ship proof coverage.
+
+### Delivered in this pass
+- **Universal mutation idempotency wiring**
+  - Added reservation/commit/release idempotency helper in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\mutation-idempotency-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\mutation-idempotency-service.ts`
+  - Extended assignment mutations to accept and consume explicit idempotency keys in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\credit-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\credit-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\workflow-orchestrator-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\workflow-orchestrator-service.ts`
+  - Propagated idempotency through active mutation entrypoints:
+    - `C:\Users\91922\Documents\Codex\tracknov\app\actions.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\workflow\transition\route.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\credits\[creditId]\assign\route.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\app\api\credits\[creditId]\reassign\route.ts`
+
+- **Submittal completion and lifecycle gate enforcement**
+  - Strengthened submittal validation in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\submittal-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\submittal-service.ts`
+  - Gated promoted submittal transitions (`READY_FOR_L3`, `UNDER_L3_REVIEW`, `APPROVED`) on:
+    - all mandatory document types present
+    - all mandatory document types approved
+  - Runtime now enforces this before governed transition execution.
+  - Stage sequencing remains backed by the existing DB control plane (`0029_igbc_p1_control_plane.sql`) while the active upload/submittal chain remains `Project -> Stage -> Credit -> Submittal -> Document`.
+
+- **Production no-ship proof expansion**
+  - Extended the Phase 1 audit script:
+    - `C:\Users\91922\Documents\Codex\tracknov\scripts\phase1-derived-state-audit.mjs`
+  - It now checks both:
+    - direct derived-state mutation violations
+    - presence of the required Phase 1 runtime guards in the authoritative server trees
+
+### Verification
+- `node scripts/phase1-derived-state-audit.mjs` passed.
+- `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`: `npm run build` passed.
+- `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`: `npm run build` passed.
+
+### Phase 1 status
+- The remaining Phase 1 runtime stabilization items from `Project_Management/Handoff/10052026/TODO.md` are now closed in the tracked handoff.
+
 ## 2026-05-26 Performance, Compilation, and Contributor Locking Sweep
 
 ### Objective
@@ -3250,3 +3402,393 @@ Comprehensively rename all references of the AI assistant from "Copilot" to "Har
   - Executed `tests/workflow-state-machine.spec.ts` verifying valid transitions and project creation procedures.
 - **Repository Sync**:
   - Pushed all refactoring changes and clean-up commits to GitHub (`origin main`).
+
+---
+
+## Latest execution pass (2026-06-18 IST, React Harita Phase 2 closure)
+
+### Objective
+Close Phase 2 on the active React Harita runtime, remove dead attachment-target routing, and finalize the SSE contract between `tracknov-ai-server` and the React client.
+
+### Delivered in this pass
+- **SSE contract closure**:
+  - Moved structured attachment analysis metadata into the terminal `done` event in:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\controllers\agentController.ts`
+  - Updated the React stream parser to consume `done.meta` instead of relying on a side-channel event in:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\services\api.ts`
+- **Legacy target-selection cleanup**:
+  - Removed the dead `CreditEvidenceTarget` client type and `fetchCreditEvidenceTargets(...)` loader from:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\services\api.ts`
+  - Removed the unused `GET /api/assistant/credit-evidence-targets` route from:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\index.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\index.js`
+- **Phase 1 closure carried into commit scope**:
+  - Preserved the active React-path cleanup already validated earlier:
+    - dead mock components removed
+    - fallback env wiring normalized
+    - stale Next-only middleware/rate-limit files removed from the React server path
+    - React workspace routing tightened to explicit route handling
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+
+### Status boundary
+- Phase 2 is closed for the active React Harita path only.
+- Legacy Next.js Harita surfaces remain outside this closure scope.
+
+---
+
+## Latest execution pass (2026-06-19 IST, certification-intelligence phase 2 closure)
+
+### Objective
+Close the remaining certification-intelligence gap in the standalone Harita microservice by adding verified reads for applicability/dependencies, evidence intelligence, multi-layer scoring, and clarification intelligence.
+
+### Delivered in this pass
+- **New verified certification-intelligence readers** in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\services\supabaseService.ts`
+  - Added:
+    - `getCreditApplicability(...)`
+    - `getEvidenceIntelligence(...)`
+    - `getScoreModel(...)`
+    - `getClarificationIntelligence(...)`
+- **Live Harita tool-surface expansion** in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\tools\pmTools.ts`
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\tools\toolRegistry.ts`
+  - Added callable tools:
+    - `get_credit_applicability`
+    - `get_evidence_intelligence`
+    - `get_score_model`
+    - `get_clarification_intelligence`
+- **Intent and orchestration upgrade** in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\skills\intentRouter.ts`
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\skills\sequenceEngine.ts`
+  - Added direct routing for:
+    - applicability / prerequisites / dependencies
+    - evidence intelligence
+    - score-model breakdown
+    - clarification loop analysis
+- **Prompt/runtime grounding upgrade** in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\services\vertexService.ts`
+  - Runtime contract now explicitly points Harita at the expanded certification-intelligence tools instead of only generic project snapshot reads.
+
+### Grounding sources now used
+- `mandatory_requirements`
+- `rule_dependencies`
+- `credit_scores`
+- `ai_recommendations`
+- `evidence_extractions`
+- `clarification_intelligence`
+- `clarification_lifecycle_metrics`
+- `certification_projections`
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+
+### Status boundary
+- Dependency output only reports explicit rule mappings found in `rules.rule_logic`; no synthetic dependency graph was introduced.
+- Clarification lifecycle output scopes through project-linked submittals where lifecycle metric rows exist.
+
+---
+
+## Latest execution pass (2026-06-19 IST, React Gemini-like composer closure)
+
+### Objective
+Close the remaining React-side Phase 2 UI gap so Harita’s attach flow behaves like the intended Gemini-style composer instead of a click-only attachment bar.
+
+### Delivered in this pass
+- Updated the active React Harita composer in:
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\components\assistant\global-harita.tsx`
+- Added:
+  - drag-enter / drag-over / drag-leave / drop handling on the live composer bubble
+  - direct drag-drop attachment into the same paperclip/composer surface
+  - inline drop hint rendered adjacent to the composer instead of opening a detached modal
+- Preserved the already-closed active attach path:
+  - native file picker from the paperclip
+  - inline attachment preview above the composer
+  - SSE terminal `done.meta` handling for structured attachment-analysis output
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+
+### Status boundary
+- Active React Harita composer now supports both native click attach and drag-drop attach inside the same chat-entry surface.
+
+---
+
+## Latest execution pass (2026-06-18 IST, Harita runtime intent + response normalization pass)
+
+### Objective
+Advance the pending Harita runtime inversion TODO items in the active AI server by fixing tool-first overreach, tightening intent handling, and normalizing Harita’s conversational output.
+
+### Delivered in this pass
+- **Conversation-first routing**:
+  - Added explicit conversational detection in:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\skills\intentRouter.ts`
+  - Low-information greeting turns now avoid forced cloud tool execution.
+- **Intent hierarchy expansion**:
+  - Added intent lanes:
+    - `conversational`
+    - `analytical`
+    - `exploratory`
+    - `operational`
+    - `workflow`
+    - `administrative`
+  - Existing intent signals now carry both fine-grained intent and higher-level lane classification.
+- **Prompt-level conversation memory**:
+  - Added memory extraction into the system prompt in:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\services\vertexService.ts`
+  - Memory block now carries:
+    - active project
+    - active credit reference
+    - active document name
+    - latest user objective
+    - recent user messages
+- **Response normalization and persona lock**:
+  - Locked persona to:
+    - senior IGBC consultant
+    - Tracknov product expert
+  - Added explicit suppression of internal runtime language:
+    - tools
+    - RAG
+    - vector search
+    - telemetry
+    - routing/governance internals
+  - Greeting/acknowledgement turns are now constrained to short natural replies.
+- **Attachment answer cleanup**:
+  - Document-summary wording was tightened so Harita answers the file question first and presents credit mapping second in:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\services\attachmentAnalysisService.ts`
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+
+### Status boundary
+- This pass materially advances:
+  - conversation-first intent handling
+  - intent hierarchy
+  - silent orchestration
+  - response normalization
+  - persona lock
+- It does **not** complete:
+  - full persistent cross-session memory
+  - final conversational-vs-workflow attachment pipeline separation
+
+---
+
+## Latest execution pass (2026-06-18 IST, attachment pipeline separation pass)
+
+### Objective
+Finish the active React Harita split between conversational attachment analysis and governed workflow upload behavior.
+
+### Delivered in this pass
+- **Client-side attachment boundary fix**:
+  - Updated:
+    - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\src\components\assistant\global-harita.tsx`
+  - Ordinary composer sends now pass `targetId: null` unless the action is an explicit credit-evaluation command.
+  - Removed the prior state leak where follow-up chat messages could silently inherit the last selected audit target.
+- **User-visible attachment state guidance**:
+  - Added inline mode notes for:
+    - conversation analysis only
+    - locked evaluation against an explicitly selected credit
+  - Clarified composer helper text so users know files are not uploaded into the project tracker until an explicit workflow action is chosen.
+- **AI response contract clarification**:
+  - Updated:
+    - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server\src\services\attachmentAnalysisService.ts`
+  - Discovery, summary, and audit responses now explicitly state that analysis alone does not mutate tracker records.
+
+### Verification
+- `npm run build` passed in:
+  - `C:\Users\91922\Documents\Codex\tracknov\tracknov-ai-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client`
+
+### Status boundary
+- Active React Harita now separates:
+  - conversational attachment analysis
+  - explicit credit evaluation
+  - explicit workflow upload / reviewer routing
+- Remaining roadmap work is broader governance maturity, not this specific attachment-target leak.
+
+---
+
+## Latest execution pass (2026-06-18 IST, project role uniqueness enforcement pass)
+
+### Objective
+Advance the P0 governance track by preventing duplicate `L1` and `L3` occupancy on the same project in the active membership flow.
+
+### Delivered in this pass
+- Added shared project membership governance helper:
+  - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\project-membership-governance.ts`
+- The helper now enforces uniqueness for:
+  - `owner` / `L1`
+  - `project_admin` / `admin` / `L3`
+- Wired the guard into active backend entry points before write operations:
+  - `C:\Users\91922\Documents\Codex\tracknov\app\actions.ts`
+    - direct team-member provisioning path
+    - project invite acceptance path
+  - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\member-service.ts`
+    - project invite creation path
+    - service-level invite acceptance path
+- Guard behavior:
+  - blocks creation/acceptance when a matching `L1` or `L3` member already exists on the project
+  - blocks creation when the slot is already reserved by a pending unresolved invite
+
+### Verification
+- Repository-wide `npx tsc --noEmit` still fails, but the failures are pre-existing and unrelated:
+  - React workspace JSX/type-package conflicts
+  - missing modules in `React/tracknov-server`
+  - handoff artifact compile noise under `artifacts/handoff/15062026`
+
+### Status boundary
+- The active `project_members` membership path now has backend uniqueness enforcement for `L1` and `L3`.
+- This is not full closure yet:
+  - legacy `project_users` pathways still exist in parts of the codebase
+  - there is still no DB-level uniqueness constraint/triggers guaranteeing the rule outside application-layer enforcement
+
+---
+
+## Latest execution pass (2026-06-18 IST, membership model convergence + DB uniqueness pass)
+
+### Objective
+Advance the next two governance closures together:
+1. add DB-level uniqueness enforcement for `L1` / `L3`
+2. converge the split membership model onto the active hardened table
+
+### Delivered in this pass
+- **Membership model convergence**:
+  - Standardized the active team/invite/runtime membership flow onto `public.project_users`
+  - Updated:
+    - `C:\Users\91922\Documents\Codex\tracknov\app\actions.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\project-membership-governance.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\workflow-service.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\assistant-tools.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\intelligence\agents\executor.ts`
+- **DB-level uniqueness migration**:
+  - Created via Supabase CLI:
+    - `C:\Users\91922\Documents\Codex\tracknov\supabase\migrations\20260618132141_project_user_role_uniqueness_hardening.sql`
+  - Migration behavior:
+    - drops prior narrow `project_users` uniqueness indexes
+    - creates alias-aware unique partial indexes for:
+      - `owner` / `L1`
+      - `project_admin` / `admin` / `L3`
+
+### Verification
+- Repo-wide `npx tsc --noEmit` still fails, but the remaining errors are pre-existing and unrelated to this pass:
+  - React workspace JSX/type conflicts
+  - React server missing-module issues
+- `supabase migration list --local` could not complete because no local Supabase/Postgres instance is running in the current workspace.
+
+### Status boundary
+- The active membership runtime is now aligned to `project_users`.
+- The uniqueness rule now exists at:
+  - application layer
+  - migration layer
+- This is still not final closure because:
+  - the new migration has not yet been applied/verified on a real database
+  - a few residual non-runtime `project_members` references remain in schema/catalog/tool naming surfaces
+
+---
+
+## Latest execution pass (2026-06-18 IST, membership cleanup + live migration apply pass)
+
+### Objective
+Finish the next two governance tasks in the requested order:
+1. clean remaining stale membership-model references
+2. apply the new uniqueness migration to the live Supabase project
+
+### Delivered in this pass
+- **Residual membership cleanup**:
+  - Removed the last targeted `project_members` runtime/schema naming drift in:
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\core\database\catalog.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\intelligence\agents\planner.ts`
+    - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\intelligence\agents\executor.ts`
+    - mirrored React server planner/executor/catalog/runtime helper files under:
+      - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\...`
+- **Tool naming cleanup**:
+  - Renamed the planner/executor tool label from:
+    - `get_project_members`
+  - to:
+    - `get_project_team`
+- **Live migration apply**:
+  - Confirmed the repo is linked to Supabase project:
+    - `uiecvxxamykfubgtqzap`
+  - Applied:
+    - `C:\Users\91922\Documents\Codex\tracknov\supabase\migrations\20260618132141_project_user_role_uniqueness_hardening.sql`
+  - Post-apply verification via:
+    - `supabase db push --linked --dry-run`
+    - result: `Remote database is up to date.`
+
+### Verification boundary
+- `supabase migration list` still requires `SUPABASE_DB_PASSWORD` for direct remote-history connection.
+- The migration was nonetheless verified as applied because:
+  - `supabase db push --linked --yes` completed successfully
+  - subsequent `supabase db push --linked --dry-run` reported no pending migrations
+
+### Status boundary
+- The `L1/L3` uniqueness governance item is now closed for the active code + live database path.
+- Remaining governance work is now on different blockers, not this membership uniqueness track.
+## 2026-06-18 Atomic Upload Rollback Closure
+
+### Objective
+Close the P0 upload atomicity gap after the core document/token RPC commit.
+
+### Delivered in this pass
+- Patched both active upload services:
+  - `C:\Users\91922\Documents\Codex\tracknov\lib\harita-engine\services\document-service.ts`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-server\src\lib\harita-engine\services\document-service.ts`
+- Added explicit post-commit enforcement checks after `insert_document_and_consume_tokens`.
+- Added compensating rollback logic covering:
+  - storage object purge
+  - `project_document` delete
+  - previous `is_latest` restore
+  - client token refund
+  - stale upload idempotency cleanup
+  - assignment reactivation
+  - submittal revert / empty submittal cleanup
+- Fixed lifecycle routing drift:
+  - submittal state now follows the computed upload review state instead of being forced to `L1_REVIEW`
+
+### Verification
+- `React/tracknov-server`: `npx tsc -p tsconfig.json --noEmit --pretty false` passed.
+- Root workspace typecheck still fails for unrelated pre-existing issues in:
+  - `C:\Users\91922\Documents\Codex\tracknov\artifacts\handoff\15062026\*`
+  - `C:\Users\91922\Documents\Codex\tracknov\React\tracknov-client\*`
+
+### Effect
+- The upload path no longer leaves a committed document/token/idempotency state without a compensating cleanup attempt when late critical mutations fail.
+- Retries after a rolled-back upload are clean because the stale upload idempotency marker is removed.
+
+## 2026-06-18 Workflow Replay Suppression Pass
+
+### Objective
+Advance the open single-consumption workflow item by stopping duplicate post-transition side effects on idempotent replays.
+
+### Delivered in this pass
+- Updated both workflow orchestrators to surface replay/no-op flags from `execute_governed_transition`.
+- Updated both review services to short-circuit side effects when the governed transition is a replay or no-op.
+- Duplicate suppression now covers:
+  - approved-document RAG ingestion
+  - `document_reviews` insert path
+  - rejection-pattern learning writes
+  - review-completed / rejected event emission
+  - project submission completion event emission
+
+### Verification
+- `React/tracknov-server`: `npx tsc -p tsconfig.json --noEmit --pretty false` passed.
+
+### Status boundary
+- This advances the single-consumption workflow blocker but does not close it fully.
+- Remaining surfaces still to audit under the same rule:
+  - reassignment
+  - export endpoints
+  - certification closure
