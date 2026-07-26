@@ -86,7 +86,7 @@
     "hyperformula": "^3.3.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
-    "next": "^15.5.18",
+    "next": "^15.5.21",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.3",
