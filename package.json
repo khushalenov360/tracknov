@@ -113,7 +113,7 @@
     "eslint-config-next": "15.0.0",
     "mocha": "^11.7.6",
     "postcss": "^8.5.10",
-    "tailwindcss": "^3.4.19",
+    "tailwindcss": "^4.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.4",
     "typescript": "^5",
